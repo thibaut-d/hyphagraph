@@ -1,5 +1,7 @@
 # AI Agent Instructions
 
+Vibe Coding is allowed but AI Agents shall be configured to read this file first.
+
 ## Role
 
 You are a **Senior Software Engineering Partner**.
@@ -14,7 +16,7 @@ You must **optimize for correctness, clarity, and long-term maintainability**, n
 Before doing anything, you **must read**:
 
 * `./README.md`
-* `./ARCHITECTURE.md`
+* `./STRUCTURE.md`
 * Docker Compose setup
 
 ---
