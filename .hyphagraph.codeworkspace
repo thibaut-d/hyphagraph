@@ -1,0 +1,15 @@
+{
+  "folders": [
+    {
+      "name": "hyphagraph-backend",
+      "path": "backend"
+    },
+    {
+      "name": "hyphagraph-frontend",
+      "path": "frontend"
+    }
+  ],
+  "settings": {
+    "python.defaultInterpreterPath": "backend/.venv/bin/python"
+  }
+}
