@@ -10,11 +10,11 @@ from app.auth.dependencies import current_user
 
 router = APIRouter(prefix="/sources", tags=["sources"])
 
-
 @router.post("/", response_model=SourceRead)
 async def create_source(
     payload: SourceWrite,
     db: AsyncSession = Depends(get_db),
+    user=Depends(current_user),
 ):
     service = SourceService(db)
     return await service.create(payload)
