@@ -1,22 +1,22 @@
-import { createBrowserRouter } from "react-router-dom";
-import Layout from "../components/Layout";
+import { createBrowserRouter, Outlet } from "react-router-dom";
+import { Layout } from "../components/Layout";
 
-import HomeView from "../views/HomeView";
-import SourcesView from "../views/SourcesView";
-import EntitiesView from "../views/EntitiesView";
-import RelationsView from "../views/RelationsView";
-import InferencesView from "../views/InferencesView";
+import { HomeView } from "../views/HomeView";
+import { EntitiesView } from "../views/EntitiesView";
+import { SourcesView } from "../views/SourcesView";
+import { SearchView } from "../views/SearchView";
+import { AccountView } from "../views/AccountView";
 
 export const router = createBrowserRouter([
   {
     path: "/",
-    element: <Layout />,
+    element: <Layout><Outlet /></Layout>,
     children: [
       { index: true, element: <HomeView /> },
-      { path: "sources", element: <SourcesView /> },
       { path: "entities", element: <EntitiesView /> },
-      { path: "relations", element: <RelationsView /> },
-      { path: "inferences", element: <InferencesView /> }
-    ]
-  }
+      { path: "sources", element: <SourcesView /> },
+      { path: "search", element: <SearchView /> },
+      { path: "account", element: <AccountView /> },
+    ],
+  },
 ]);
