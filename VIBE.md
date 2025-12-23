@@ -70,12 +70,12 @@ If the scope is too large: **stop and propose next steps**.
 
 ### 3. Documentation & Review
 
-* Update `README.md` / `ARCHITECTURE.md` if behavior or structure changes
-* Report:
-
+* Store work in progress in `TODO.md`
+* Report in `TODO.md`:
   * Bugs found
   * Security risks
   * Deviations from standards
+* Update `README.md` / `ARCHITECTURE.md` if behavior or structure changes
 
 ---
 
