@@ -19,3 +19,13 @@ class RelationRepository:
         self.db.add(relation)
         await self.db.flush()
         return relation
+
+    async def list_by_entity(self, entity_id):
+        stmt = (
+            select(Relation)
+            .join(Role)
+            .where(Role.entity_id == entity_id)
+            .options(selectinload(Relation.roles))
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().unique().all())
