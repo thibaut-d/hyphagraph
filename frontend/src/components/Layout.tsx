@@ -1,27 +1,20 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { AppBar, Toolbar, Typography, Container } from "@mui/material";
+import { ReactNode } from "react";
 
-export default function Layout() {
+export function Layout({ children }: { children: ReactNode }) {
   return (
-    <div style={{ padding: "1.5rem", fontFamily: "sans-serif" }}>
-      <nav style={{ marginBottom: "1rem" }}>
-        <NavLink to="/" end style={{ marginRight: "1rem" }}>
-          Home
-        </NavLink>
-        <NavLink to="/sources" style={{ marginRight: "1rem" }}>
-          Sources
-        </NavLink>
-        <NavLink to="/entities" style={{ marginRight: "1rem" }}>
-          Entities
-        </NavLink>
-        <NavLink to="/relations" style={{ marginRight: "1rem" }}>
-          Relations
-        </NavLink>
-        <NavLink to="/inferences">
-          Inferences
-        </NavLink>
-      </nav>
+    <>
+      <AppBar position="static">
+        <Toolbar>
+          <Typography variant="h6">
+            HyphaGraph
+          </Typography>
+        </Toolbar>
+      </AppBar>
 
-      <Outlet />
-    </div>
+      <Container maxWidth="lg" sx={{ mt: 4 }}>
+        {children}
+      </Container>
+    </>
   );
 }
