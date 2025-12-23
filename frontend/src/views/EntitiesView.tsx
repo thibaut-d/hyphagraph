@@ -1,24 +1,44 @@
 import { useEffect, useState } from "react";
-import { apiGet } from "../api/client";
-import { Entity } from "../types/domain";
+import { listEntities } from "../api/entities";
+import { EntityRead } from "../types/entity";
+import { Link as RouterLink } from "react-router-dom";
 
-export default function EntitiesView() {
-  const [entities, setEntities] = useState<Entity[]>([]);
+import {
+  Typography,
+  List,
+  ListItem,
+  ListItemText,
+  Link,
+  Paper,
+} from "@mui/material";
+
+export function EntitiesView() {
+  const [entities, setEntities] = useState<EntityRead[]>([]);
 
   useEffect(() => {
-    apiGet<Entity[]>("/entities").then(setEntities).catch(console.error);
+    listEntities().then(setEntities);
   }, []);
 
   return (
-    <section>
-      <h2>Entities</h2>
-      <ul>
-        {entities.map(e => (
-          <li key={e.id}>
-            {e.label} ({e.kind})
-          </li>
+    <Paper sx={{ p: 2 }}>
+      <Typography variant="h5" gutterBottom>
+        Entities
+      </Typography>
+
+      <List>
+        {entities.map((e) => (
+          <ListItem key={e.id}>
+            <ListItemText
+              primary={
+                <Link component={RouterLink} to={`/entities/${e.id}`}>
+                  {e.label}
+                </Link>
+              }
+              secondary={e.kind}
+            />
+          </ListItem>
         ))}
-      </ul>
-    </section>
+      </List>
+    </Paper>
   );
 }
