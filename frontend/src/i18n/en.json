@@ -23,5 +23,8 @@
     "trust": "Trust level",
     "untitled": "Untitled source",
     "view_entity": "View entity"
+  },
+  "relation": {
+    "create": "Create relation"
   }
 }
