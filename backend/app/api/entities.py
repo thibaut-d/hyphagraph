@@ -14,10 +14,10 @@ router = APIRouter(prefix="/entities", tags=["entities"])
 async def create_entity(
     payload: EntityWrite,
     db: AsyncSession = Depends(get_db),
+    user=Depends(current_user),
 ):
     service = EntityService(db)
     return await service.create(payload)
-
 
 @router.get("/{entity_id}", response_model=EntityRead)
 async def get_entity(
