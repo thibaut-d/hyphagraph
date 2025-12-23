@@ -1,144 +1,153 @@
-# System architecture & design rationale
+# Architecture
 
-This document describes the **global architecture** of the project:
-- components
+This document describes the **system architecture** of HyphaGraph.
+
+It focuses on:
+- component responsibilities
 - data flows
-- responsibilities
-- design constraints
+- architectural choices
+- non-negotiable constraints
 
-The architecture is designed to enforce **epistemic safety by construction**:
-invalid knowledge states should be **hard or impossible to represent**.
-
----
-
-## 1. Architectural goals
-
-This system is designed to:
-
-1. Model **document-based assertions**, not opinions
-2. Preserve **context and contradiction**
-3. Enable **computed (not authored) syntheses**
-4. Reduce **LLM hallucinations**
-5. Minimize **energy and compute costs**
-6. Remain **domain-agnostic**
-
-These goals directly drive the architectural choices below.
+It intentionally avoids:
+- database schema definitions (see `DATABASE_SCHEMA.md`)
+- philosophical or scientific motivation (see `README.md`)
 
 ---
 
-## 2. High-level architecture
+## 1. Architectural intent
 
-```
-            ┌─────────────────────┐
-            │      Documents      │
-            │ (PDF, text, HTML)   │
-            └─────────┬───────────┘
-                      │
-                      ▼
-            ┌─────────────────────┐
-            │  Assertion Extract  │
-            │  (Human or LLM)     │
-            └─────────┬───────────┘
-                      │
-                      ▼
-┌──────────────┐        ┌─────────────────────┐
-│   Frontend   │◀──────│     FastAPI API     │
-│   (React)    │        │  Domain Services    │
-└──────────────┘        └─────────┬───────────┘
-                                  │
-                                  ▼
-                       ┌─────────────────────┐
-                       │     PostgreSQL      │
-                       │  Hypergraph store   │
-                       └─────────┬───────────┘
-                                 │
-                                 ▼
-                       ┌─────────────────────┐
-                       │ Derived Claims &    │
-                       │ Aggregation Engine  │
-                       └─────────┬───────────┘
-                                 │
-                                 ▼
-                       ┌─────────────────────┐
-                       │   Explanation /     │
-                       │   LLM Formatting    │
-                       └─────────────────────┘
+The architecture is designed to ensure that:
+
+- document-grounded claims are the only source of facts
+- contradictions are preserved, not hidden
+- syntheses are always computable and explainable
+- AI components are constrained and replaceable
+- no component becomes epistemically authoritative
+
+The system favors **clarity, auditability, and determinism** over cleverness.
+
+---
+
+## 2. High-level system overview
 
 ```
 
+┌──────────────┐
+│  Documents   │
+│ (PDF, HTML)  │
+└──────┬───────┘
+       │
+       ▼
+┌────────────────────┐
+│ Ingestion &        │
+│ Claim Extraction   │◄── Human or LLM
+└─────────┬──────────┘
+          │
+          ▼
+┌────────────────────┐
+│     FastAPI        │
+│  Domain Services   │◄── Frontend (React)
+└─────────┬──────────┘
+          │
+          ▼
+┌────────────────────┐
+│   PostgreSQL       │
+│ Source of Truth    │
+└─────────┬──────────┘
+          │
+          ▼
+┌────────────────────┐
+│  Inference &       │
+│  Aggregation       │
+└─────────┬──────────┘
+          │
+          ▼
+┌────────────────────┐
+│ Explanation &      │
+│ LLM Formatting     │
+└────────────────────┘
+
+```
+
 ---
 
-## 3. Core components
+## 3. Core components and responsibilities
 
 ### 3.1 PostgreSQL — Source of truth
 
-PostgreSQL is the **single source of truth**.
+PostgreSQL stores all **authoritative data**:
 
-It stores:
-- documents
-- concepts
-- assertions (hyper-edges)
-- incidence tables
-- optional cached derived claims
+- sources (documents)
+- entities
+- relations (claims)
+- roles
+- optional cached inference artifacts
 
-Why PostgreSQL:
-- strong referential integrity
-- transactional safety
-- auditable history
-- efficient analytical joins
-- deterministic behavior
+Design rationale:
+- strong transactional guarantees
+- explicit constraints
+- auditability
+- predictable performance
 
-Graph databases are *not* used as primary storage.
+No other system may introduce new semantics.
 
 ---
 
-### 3.2 Hypergraph representation
+### 3.2 FastAPI — Domain boundary
 
-The hypergraph is implemented explicitly using relational tables:
-
-- `assertion` represents a hyper-edge
-- `assertion_concept` represents hyper-edge incidence
-- roles encode semantic meaning
-
-There is **no implicit graph logic**.
-All semantics are explicit and inspectable.
-
----
-
-### 3.3 FastAPI — Domain boundary
-
-FastAPI acts as the **epistemic gatekeeper**.
+FastAPI acts as the **domain boundary and orchestrator**.
 
 Responsibilities:
-- validate inputs (human or AI)
-- enforce invariants
-- expose deterministic APIs
-- orchestrate domain services
+- input validation (human and AI)
+- invariant enforcement
+- domain service orchestration
+- deterministic APIs
 
 FastAPI does **not**:
-- write syntheses
-- decide consensus
-- embed reasoning logic in routes
-
-All reasoning lives in services.
+- perform inference implicitly
+- store syntheses as facts
+- embed domain logic in controllers
 
 ---
 
-### 3.4 Domain services
+### 3.3 Domain services
 
-Domain services implement:
-- aggregation
-- scoring
-- contextual filtering
-- explainability
+Domain services implement all **reasoning and aggregation logic**.
 
 Characteristics:
 - deterministic
 - side-effect free
-- reproducible
+- recomputable
 - testable in isolation
 
-Services never modify base assertions.
+Typical responsibilities:
+- scope resolution
+- claim filtering
+- weighting and aggregation
+- uncertainty computation
+- traceability generation
+
+Services never mutate base claims.
+
+---
+
+### 3.4 LLM integration
+
+LLMs are integrated as **stateless, non-authoritative workers**.
+
+Allowed usage:
+- document parsing
+- claim extraction
+- terminology normalization
+- explanation and formatting of computed outputs
+
+Disallowed usage:
+- reasoning
+- consensus building
+- contradiction resolution
+- fact storage
+
+LLMs never write directly to the database.
 
 ---
 
@@ -148,31 +157,14 @@ The frontend is a **presentation and editing layer**.
 
 Responsibilities:
 - document ingestion
-- assertion editing and review
-- visualization of derived claims
-- traceability and explanation UI
+- claim review and correction
+- visualization of computed outputs
+- evidence traceability
 
-The frontend is **never authoritative**.
-It cannot hide uncertainty or override backend logic.
-
----
-
-### 3.6 LLM integration layer
-
-LLMs are integrated as **stateless workers**.
-
-They are used for:
-- document parsing
-- assertion extraction
-- terminology normalization
-- explanation and summarization of computed results
-
-They are **not** used for:
-- reasoning
-- consensus building
-- contradiction resolution
-
-LLMs never persist knowledge directly.
+The frontend cannot:
+- override backend logic
+- hide uncertainty
+- introduce implicit conclusions
 
 ---
 
@@ -181,91 +173,77 @@ LLMs never persist knowledge directly.
 ### 4.1 Ingestion
 
 1. A document is registered
-2. Assertions are created:
-   - manually
-   - or via LLM-assisted extraction
-3. Assertions are validated
-4. Assertions are stored immutably
+2. Claims are extracted (human or LLM-assisted)
+3. Claims are validated against invariants
+4. Claims are stored immutably
 
-At this stage, **no synthesis exists**.
+At this stage, no synthesis exists.
 
 ---
 
-### 4.2 Aggregation
+### 4.2 Inference
 
-1. A query defines a scope (set of concepts + roles)
-2. Matching assertions are retrieved
-3. Aggregation rules are applied:
-   - weighting
-   - grouping
-   - uncertainty estimation
-4. A derived claim is produced (optionally cached)
+1. A query defines a scope
+2. Matching claims are retrieved
+3. Aggregation and inference rules are applied
+4. Results are produced (optionally cached)
 
-Derived claims can always be recomputed.
+All inferred outputs must be recomputable.
 
 ---
 
 ### 4.3 Explanation
 
-For any derived claim, the system can produce:
-- contributing assertions
-- weights and scores
-- aggregation rules used
-- uncertainty metrics
+For any computed output, the system can expose:
+- contributing claims
+- weights and rules applied
+- uncertainty and contradictions
 
-This is mandatory for trust and auditability.
+Explainability is mandatory, not optional.
 
 ---
 
-## 5. Architectural invariants (non-negotiable)
+## 5. Architectural invariants
 
-### 5.1 No synthesis persistence
+These constraints must always hold:
 
 - No human-written synthesis is stored
-- No LLM-generated conclusion is authoritative
-- Only assertions and computable artifacts exist
+- No LLM-generated output is authoritative
+- Claims are immutable in meaning
+- All conclusions must be explainable
+- Hidden certainty is considered a bug
+
+Violating these invariants is a design error.
 
 ---
 
-### 5.2 Assertion immutability
+## 6. Extension points
 
-Assertions:
-- belong to exactly one document
-- do not change meaning over time
-- may only be corrected for factual errors
+### 6.1 Reasoning engines (TypeDB)
 
----
+TypeDB may be used as a **secondary reasoning engine** for:
+- explicit role-based inference
+- logical rule evaluation
+- contradiction detection
 
-### 5.3 Explicit uncertainty
-
-Every derived output must:
-- expose uncertainty
-- expose evidence distribution
-- expose contradiction when present
-
-Hidden certainty is a bug.
+It operates on projections from PostgreSQL and is disposable.
 
 ---
 
-## 6. Extensibility strategy
+### 6.2 Graph engines (Neo4j, etc.)
 
-### 6.1 Graph databases (Neo4j, etc.)
-
-Graph engines may be added for:
+Graph databases may be used for:
 - exploration
 - visualization
 - graph algorithms
 
-They must:
-- be projections from PostgreSQL
-- contain no original semantics
-- be disposable
+They are strictly derived views and contain no original semantics.
 
 ---
 
-### 6.2 Analytical engines (DuckDB, Parquet)
+### 6.3 Analytical engines
 
-Analytical engines may be used for:
+Engines such as DuckDB or Parquet may be used for:
 - large-scale aggregation
 - benchmarking
 - offline analysis
@@ -274,36 +252,10 @@ They do not replace PostgreSQL.
 
 ---
 
-### 6.3 Domain expansion
+## 7. Guiding rule
 
-New domains must:
-- reuse the same primitives
-- express complexity via assertions
-- avoid schema forks
-
-The architecture is intentionally domain-agnostic.
-
----
-
-## 7. Why this architecture matters
-
-This architecture ensures that:
-
-- Knowledge is **explicit**
-- Reasoning is **auditable**
-- AI is **constrained**
-- Costs are **controlled**
-- Contradictions are **first-class**
-
-It is designed not to be impressive,
-but to be **reliable, explainable, and scalable**.
-
----
-
-## 8. Guiding architectural principle
-
-> **If a conclusion cannot be recomputed and explained,
+> **If a result cannot be recomputed and explained,
 > it does not belong in the system.**
 
-This principle overrides all others.
+This rule overrides all architectural decisions.
 
