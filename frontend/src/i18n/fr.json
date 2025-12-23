@@ -9,5 +9,10 @@
   "common": {
     "loading": "Chargement…",
     "confidence": "Confiance"
+  },
+  "search": {
+    "title": "Recherche",
+    "placeholder": "Rechercher des entités",
+    "no_results": "Aucun résultat"
   }
 }
