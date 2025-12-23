@@ -9,5 +9,10 @@
   "common": {
     "loading": "Loading…",
     "confidence": "Confidence"
+  },
+  "search": {
+    "title": "Search",
+    "placeholder": "Search entities",
+    "no_results": "No results"
   }
 }
