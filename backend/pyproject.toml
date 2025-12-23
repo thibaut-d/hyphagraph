@@ -2,7 +2,7 @@
 name = "hyphagraph-backend"
 version = "0.1.0"
 description = "HyphaGraph backend – hypergraph-based evidence engine"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 
 dependencies = [
     # --- Web / API ---
@@ -51,7 +51,7 @@ ignore = ["E501"]
 known-first-party = ["app"]
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 strict = true
 ignore_missing_imports = true
 
