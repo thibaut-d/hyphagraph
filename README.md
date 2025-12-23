@@ -1,47 +1,62 @@
 # HyphaGraph
 
-Hypergraph-based Evidence Knowledge System
+**Hypergraph-based Evidence Knowledge System**
+
+HyphaGraph is a research-oriented system designed to transform
+document-based knowledge into a **computable, auditable, and explainable
+knowledge graph**.
+
+It is built around a simple idea:
+
+> **Knowledge should not be written.  
+> It should be derived from documented statements.**
+
+---
 
 ## 1. Vision & scientific motivation
 
 ### 1.1 The core problem
 
-Across medicine, AI research, engineering, and enterprise knowledge, we face the same structural issue:
+Across medicine, AI research, engineering, and enterprise knowledge,
+we face the same structural limitations:
 
-- Knowledge is primarily stored as **documents** (papers, guidelines, reports).
-- Usable knowledge is produced via **human-written syntheses** (recommendations, reviews, wiki pages).
+- Knowledge primarily exists as **documents**  
+  (papers, guidelines, reports, notices).
+- Usable knowledge is produced as **human-written syntheses**  
+  (reviews, recommendations, wiki pages).
 - When evidence is complex or contradictory, syntheses become:
-  - partial or biased,
+  - subjective or biased,
   - slow to update,
   - hard to audit,
-  - prone to authority or opinion conflicts.
+  - difficult to trace back to sources.
 
-Large Language Models amplify this problem:
-- they are excellent at producing fluent syntheses,
-- but structurally **over-confident**,
-- and vulnerable to hallucinations when asked to merge multiple sources.
+Large Language Models amplify this issue:
+- they generate fluent summaries,
+- but are structurally **over-confident**,
+- and prone to hallucinations when merging sources directly.
 
-The fundamental mistake is the same everywhere:
+The underlying mistake is always the same:
 
-> **We store syntheses instead of storing what the documents actually say.**
+> **We store conclusions instead of storing what documents actually say.**
 
 ---
 
 ### 1.2 The paradigm shift
 
-This project proposes a different approach:
+HyphaGraph proposes a different model:
 
 > **Humans and AI do not write knowledge.**  
-> **They model assertions derived from documents.**  
+> **They model document-grounded statements.**  
 > **All syntheses are computed, not authored.**
 
 Concretely:
-- Every document (study, guideline, notice, report) produces one or more **assertions**.
-- Assertions may contradict each other.
-- The system never resolves contradictions by opinion.
-- Instead, it derives **weighted conclusions** using explicit, auditable rules.
+- Documents are treated as **sources**, not knowledge.
+- Each document produces one or more **claims**.
+- Claims may contradict each other.
+- Contradictions are preserved, not resolved by opinion.
+- The system derives **weighted, explainable syntheses** using explicit rules.
 
-This turns knowledge into a **calculable object**.
+Knowledge becomes a **computable object**, not a narrative artifact.
 
 ---
 
@@ -49,318 +64,193 @@ This turns knowledge into a **calculable object**.
 
 ### 2.1 Limits of binary graphs
 
-Traditional knowledge graphs rely on binary relations:
+Most knowledge graphs rely on binary relations:
 
 ```
 
 Drug → Effect
 Disease → Symptom
 
-````
+```
 
-Scientific conclusions are never binary. A real conclusion always depends on multiple dimensions:
+Scientific and technical conclusions are never binary.
+They always depend on multiple dimensions, such as:
+- intervention,
+- condition,
+- population,
+- methodology,
+- outcome,
+- magnitude,
+- uncertainty.
 
-- intervention
-- population
-- condition
-- methodology
-- outcome
-- magnitude
-- uncertainty
-
-Encoding this in binary graphs leads to:
+Encoding this complexity in binary graphs leads to:
 - loss of context,
-- edge proliferation,
+- edge explosion,
 - implicit assumptions,
-- fragile or misleading syntheses.
+- fragile or misleading conclusions.
 
 ---
 
-### 2.2 Hypergraph model
+### 2.2 Hypergraph approach
 
-A **hypergraph** allows a single relation (hyper-edge) to connect **multiple nodes simultaneously**.
+A **hypergraph** allows a single relation to connect **multiple entities at once**.
 
-In this system:
+In HyphaGraph:
 
-> **One hyper-edge = one scientific assertion.**
+> **One hyper-edge represents one document-grounded claim.**
 
-A hyper-edge captures *all* elements required to preserve the meaning of a conclusion.
-
-This is the key enabler for:
-- explicit context,
+This preserves:
+- full context,
+- explicit roles,
 - coexistence of contradictions,
-- safe aggregation,
 - traceability to sources.
 
----
-
-## 3. Core data model
-
-### 3.1 Document
-
-A document is the only legitimate source of assertions.
-
-```text
-Document
-- id
-- type            # study, guideline, notice, report, etc.
-- title
-- authors
-- year
-- source          # journal, agency, publisher
-- trust_level     # prior trust (e.g. guideline > single study)
-- metadata        # free structured metadata
-````
-
-No assertion can exist without a document.
+Hypergraphs are the minimal structure required to model real-world evidence
+without distortion.
 
 ---
 
-### 3.2 Concept
+## 3. Conceptual architecture
 
-Concepts are stable entities of the domain. They do not carry truth.
+HyphaGraph is structured around a clear separation of concerns:
 
-```text
-Concept
-- id
-- type        # drug, disease, symptom, outcome, population, method...
-- label
-- synonyms
-- ontology_ref (optional)
-```
+- **Sources**  
+  Documents that state something (studies, guidelines, reports).
+- **Entities**  
+  Stable domain objects (drugs, diseases, symptoms, populations, methods).
+- **Relations (claims)**  
+  What a source states about entities, in a given context.
+- **Inference**  
+  What the system computes from multiple claims.
 
----
+> The database stores *statements*, not *beliefs*.
 
-### 3.3 Assertion (hyper-edge)
-
-The central object of the system.
-
-```text
-Assertion
-- id
-- document_id
-- assertion_type     # effect, mechanism, risk, indication...
-- direction          # positive, negative, null, mixed
-- effect_size        # optional structured value
-- local_confidence   # derived from document quality
-- notes              # factual notes only
-```
-
-Assertions never represent consensus. They represent *what one document states*.
+The full logical schema is defined in  
+`DATABASE_SCHEMA.md`.
 
 ---
 
-### 3.4 AssertionConcept (hypergraph incidence)
+## 4. Role of AI in the system
 
-This table materializes the hypergraph.
+AI is deliberately **constrained**.
 
-```text
-AssertionConcept
-- assertion_id
-- concept_id
-- role
-```
+### 4.1 What AI is allowed to do
 
-Typical roles:
+- Read documents.
+- Extract explicit, factual statements.
+- Map statements into structured claims.
+- Rephrase computed results for human readability.
+- Generate explanations from traceable evidence.
 
-* intervention
-* condition
-* outcome
-* population
-* methodology
-* exclusion
+### 4.2 What AI is not allowed to do
 
-Roles are mandatory and remove semantic ambiguity.
+- Invent claims.
+- Merge documents directly.
+- Decide consensus.
+- Override scoring or inference rules.
+- Act as an authority.
 
----
-
-### 3.5 DerivedClaim (computed, optional)
-
-A derived claim is a cached result of aggregation.
-
-```text
-DerivedClaim
-- id
-- scope_hash
-- score
-- uncertainty
-- last_computed_at
-```
-
-Derived claims:
-
-* are never edited by humans,
-* can be deleted and recomputed at any time,
-* exist purely for performance and UX.
+This constraint is a design choice to:
+- reduce hallucinations,
+- preserve auditability,
+- keep humans in control of interpretation.
 
 ---
 
-## 4. Worked example: Plaquenil & inflammation
-
-### 4.1 Study A
-
-* Population: Polyarthrite rhumatoïde
-* Methodology: Randomized double-blind placebo-controlled trial
-* Cohort: 200 patients
-* Result: ≥30% inflammation reduction in 80% of patients
-
-This produces one assertion hyper-edge:
-
-* intervention: Plaquenil
-* condition: Polyarthrite rhumatoïde
-* outcome: Inflammation ↓
-* methodology: RCT
-
----
-
-### 4.2 Study B
-
-* Population: Fibromyalgia
-* Methodology: Placebo-controlled
-* Cohort: 40 patients
-* Result: improvement in 10%, no response in others
-
-This produces a *different* assertion hyper-edge:
-
-* intervention: Plaquenil
-* condition: Fibromyalgia
-* outcome: Inflammation ↓
-
-No contradiction exists. These are distinct contextual facts.
-
----
-
-### 4.3 Derived synthesis (example)
-
-Computed view:
-
-* Plaquenil → inflammation ↓
-
-  * Polyarthrite rhumatoïde: strong evidence
-  * Fibromyalgia: heterogeneous / weak evidence
-
-The synthesis is:
-
-* explainable,
-* reversible,
-* source-linked.
-
----
-
-## 5. Role of AI in the system
-
-AI is deliberately constrained.
-
-### 5.1 What AI is allowed to do
-
-* read a document
-* extract factual conclusions
-* map them into structured assertions
-* optionally rephrase computed results for readability
-
-### 5.2 What AI is not allowed to do
-
-* invent assertions
-* merge documents directly
-* decide consensus
-* override scoring rules
-
-This structural constraint dramatically reduces hallucinations.
-
----
-
-## 6. Technical stack (initial)
+## 5. Technical overview
 
 ### Backend
 
-* FastAPI
-* PostgreSQL
+- **PostgreSQL**  
+  Used as the source-of-truth hypergraph store:
+  - transactional safety,
+  - strong consistency,
+  - auditability,
+  - efficient analytical queries.
 
-PostgreSQL is used as the **source of truth hypergraph**, leveraging:
+- **FastAPI**  
+  For APIs, ingestion pipelines, inference orchestration, and LLM integration.
 
-* relational integrity,
-* transactional safety,
-* auditability,
-* analytical joins.
+---
+
+### Reasoning layer
+
+- **TypeDB (planned / optional)**  
+  Used as a reasoning engine:
+  - explicit roles,
+  - n-ary relations,
+  - logical inference rules,
+  - contradiction detection.
+
+PostgreSQL stores the facts.  
+TypeDB reasons about their implications.
 
 ---
 
 ### Frontend
 
-* React
+- **React**
 
-The UI supports:
-
-* document ingestion
-* assertion editing / review
-* computed synthesis visualization
-* explanation and traceability
+The UI focuses on:
+- document ingestion,
+- claim review and correction,
+- computed syntheses,
+- explanations and traceability.
 
 ---
 
 ### LLM integration
 
-A pluggable API layer supports multiple LLM providers:
-
-* ChatGPT
-* Gemini
-* Mistral AI
+A pluggable LLM layer supports multiple providers (e.g. ChatGPT, Gemini, Mistral).
 
 LLMs are used exclusively for:
+- extraction,
+- formatting,
+- explanation.
 
-* extraction
-* formatting
-* explanation
-
-Never as authoritative reasoning engines.
-
----
-
-### Future extensions
-
-* Neo4j (or equivalent) for graph algorithms and exploration
-* DuckDB / Parquet for large-scale analytical aggregation
-* Rule-learning and confidence calibration
+Never as the source of truth.
 
 ---
 
-## 7. Why this is more than a knowledge graph
+## 6. Why this is not “just another knowledge graph”
 
-This system is not a wiki.
-It is not a traditional knowledge graph.
+HyphaGraph is not:
+- a wiki,
+- a recommendation engine,
+- a traditional knowledge graph.
 
 It is:
 
-> **A system where knowledge is derived from weighted assertions, not written opinions.**
+> **A system where knowledge is derived from weighted, document-grounded claims,
+> rather than written opinions.**
 
 This enables:
-
-* explicit contradiction handling
-* reproducible syntheses
-* safer AI usage
-* reduced energy consumption
-* domain-independent applicability
+- explicit contradiction handling,
+- reproducible syntheses,
+- safer AI usage,
+- strong explainability,
+- domain-independent applicability.
 
 ---
 
-## 8. Scope
+## 7. Scope & disclaimer
 
 This repository is a **proof of concept**.
 
-The goal is to demonstrate:
+Its goals are to demonstrate:
+- conceptual soundness,
+- architectural viability,
+- advantages of hypergraph-based reasoning.
 
-* feasibility,
-* scientific soundness,
-* architectural advantages.
-
-Not to deliver medical recommendations.
+It is **not** intended to deliver medical, legal, or operational recommendations.
 
 ---
 
-## 9. Summary
+## 8. Summary
 
-* Assertions replace authored syntheses
-* Hypergraphs preserve full context
-* AI is constrained, not empowered
-* Knowledge becomes computable
+- Documents are sources, not knowledge.
+- Claims are stored, not conclusions.
+- Hypergraphs preserve full context.
+- AI is constrained by design.
+- Knowledge becomes computable.
 
