@@ -1,5 +1,4 @@
-import { ReactNode } from "react";
-import { Link as RouterLink, useLocation } from "react-router-dom";
+import { Link as RouterLink, Outlet, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import i18n from "i18next";
 
@@ -15,10 +14,6 @@ import {
 } from "@mui/material";
 import LanguageIcon from "@mui/icons-material/Language";
 
-type Props = {
-  children: ReactNode;
-};
-
 const menuItems = [
   { key: "menu.home", path: "/" },
   { key: "menu.entities", path: "/entities" },
@@ -27,7 +22,7 @@ const menuItems = [
   { key: "menu.account", path: "/account" },
 ];
 
-export function Layout({ children }: Props) {
+export function Layout() {
   const location = useLocation();
   const { t } = useTranslation();
 
@@ -39,27 +34,22 @@ export function Layout({ children }: Props) {
     <>
       <AppBar position="static">
         <Toolbar>
-          {/* Logo / title */}
+          {/* Title */}
           <Typography
             variant="h6"
             component={RouterLink}
             to="/"
-            sx={{
-              mr: 4,
-              color: "inherit",
-              textDecoration: "none",
-            }}
+            sx={{ mr: 4, color: "inherit", textDecoration: "none" }}
           >
             HyphaGraph
           </Typography>
 
-          {/* Main navigation */}
+          {/* Main menu */}
           <Box sx={{ flexGrow: 1 }}>
             {menuItems.map((item) => {
               const isActive =
                 location.pathname === item.path ||
-                (item.path !== "/" &&
-                  location.pathname.startsWith(item.path));
+                (item.path !== "/" && location.pathname.startsWith(item.path));
 
               return (
                 <Button
@@ -87,9 +77,9 @@ export function Layout({ children }: Props) {
         </Toolbar>
       </AppBar>
 
-      {/* Page content */}
+      {/* Content */}
       <Container maxWidth="lg" sx={{ mt: 4 }}>
-        {children}
+        <Outlet />
       </Container>
     </>
   );
