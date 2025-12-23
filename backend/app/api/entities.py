@@ -5,6 +5,7 @@ from uuid import UUID
 from app.database import get_db
 from app.schemas.entity import EntityWrite, EntityRead
 from app.services.entity_service import EntityService
+from app.auth.dependencies import current_user
 
 router = APIRouter(prefix="/entities", tags=["entities"])
 
