@@ -9,6 +9,10 @@ app = FastAPI(
     debug=settings.ENV == "development",
 )
 
+from app.api import auth
+
+app.include_router(auth.router)
+
 # --- CORS (dev only; safe behind Caddy) ---
 app.add_middleware(
     CORSMiddleware,
