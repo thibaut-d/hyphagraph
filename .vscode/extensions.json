@@ -1,0 +1,20 @@
+{
+  "recommendations": [
+    // Python
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+
+    // Ruff
+    "charliermarsh.ruff",
+
+    // FastAPI / JSON
+    "redhat.vscode-yaml",
+
+    // TypeScript / React
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+
+    // Docker
+    "ms-azuretools.vscode-docker"
+  ]
+}
