@@ -1,0 +1,13 @@
+{
+  "menu": {
+    "home": "Home",
+    "entities": "Entities",
+    "sources": "Sources",
+    "search": "Search",
+    "account": "My account"
+  },
+  "common": {
+    "loading": "Loading…",
+    "confidence": "Confidence"
+  }
+}
