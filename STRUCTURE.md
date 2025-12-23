@@ -1,103 +1,106 @@
 # Project's structure
 
 ```
-hypergraph/
+hyphagraph/
 │
-├── README.md                    # Vision, scientific rationale, overview
-├── CODE_GUIDE.md                # How to write code (developer rules)
+├── README.md                    # Vision, motivation, overview
+├── CODE_CONVENTIONS.md          # Contributor rules (short, strict)
 ├── ARCHITECTURE.md              # System architecture & invariants
 ├── DATABASE_SCHEMA.md           # Logical data model (human-readable)
 │
 ├── backend/
-│   ├── README.md                # Backend-specific setup & conventions
-│   ├── pyproject.toml           # uv config
+│   ├── README.md                # Backend setup & local dev
+│   ├── pyproject.toml           # uv / deps
+│   │
 │   ├── app/
 │   │   ├── main.py              # FastAPI entrypoint
 │   │   ├── config.py            # Settings, env vars, feature flags
-│   │   │
+│   │
 │   │   ├── api/                 # HTTP layer (no domain logic)
 │   │   │   ├── __init__.py
-│   │   │   ├── documents.py     # CRUD for Document
-│   │   │   ├── concepts.py      # CRUD for Concept
-│   │   │   ├── assertions.py    # CRUD for Assertion & AssertionConcept
-│   │   │   ├── derived_claims.py# Read-only access to computed claims
+│   │   │   ├── sources.py       # CRUD for Source
+│   │   │   ├── entities.py      # CRUD for Entity
+│   │   │   ├── relations.py     # CRUD for Relation + Roles
+│   │   │   ├── inferences.py    # Read-only access to computed results
 │   │   │   └── explain.py       # Explainability endpoints
 │   │   │
-│   │   ├── schemas/             # Pydantic models (I/O validation)
-│   │   │   ├── document.py
-│   │   │   ├── concept.py
-│   │   │   ├── assertion.py
-│   │   │   ├── derived_claim.py
+│   │   ├── schemas/             # Pydantic I/O models
+│   │   │   ├── source.py
+│   │   │   ├── entity.py
+│   │   │   ├── relation.py
+│   │   │   ├── role.py
+│   │   │   ├── inference.py
 │   │   │   └── explanation.py
 │   │   │
 │   │   ├── models/              # ORM models (no logic)
-│   │   │   ├── document.py
-│   │   │   ├── concept.py
-│   │   │   ├── assertion.py
-│   │   │   ├── assertion_concept.py
-│   │   │   └── derived_claim.py
+│   │   │   ├── source.py
+│   │   │   ├── entity.py
+│   │   │   ├── relation.py
+│   │   │   ├── role.py
+│   │   │   └── inference_cache.py
 │   │   │
 │   │   ├── repositories/        # DB access only
-│   │   │   ├── document_repo.py
-│   │   │   ├── concept_repo.py
-│   │   │   ├── assertion_repo.py
-│   │   │   └── derived_claim_repo.py
+│   │   │   ├── source_repo.py
+│   │   │   ├── entity_repo.py
+│   │   │   ├── relation_repo.py
+│   │   │   └── inference_repo.py
 │   │   │
 │   │   ├── services/            # Domain logic (pure, deterministic)
-│   │   │   ├── assertion_service.py
-│   │   │   ├── aggregation_service.py
+│   │   │   ├── relation_service.py
+│   │   │   ├── inference_service.py
 │   │   │   ├── scoring_service.py
 │   │   │   ├── explain_service.py
 │   │   │   └── validation_service.py
 │   │   │
-│   │   ├── llm/                 # LLM integration (stateless workers)
+│   │   ├── llm/                 # LLM integration (stateless)
 │   │   │   ├── base.py           # Abstract interface
-│   │   │   ├── openai.py         # ChatGPT adapter
-│   │   │   ├── gemini.py         # Gemini adapter
-│   │   │   ├── mistral.py        # Mistral adapter
-│   │   │   └── prompts/          # Prompt templates (versioned)
-│   │   │       ├── extract_assertions.md
-│   │   │       └── explain_claim.md
+│   │   │   ├── openai.py
+│   │   │   ├── gemini.py
+│   │   │   ├── mistral.py
+│   │   │   └── prompts/
+│   │   │       ├── extract_relations.md
+│   │   │       └── explain_inference.md
 │   │   │
-│   │   ├── utils/               # Shared helpers (pure)
-│   │   │   ├── hashing.py        # scope_hash logic
+│   │   ├── utils/               # Shared pure helpers
+│   │   │   ├── hashing.py        # scope_hash / fingerprint logic
 │   │   │   ├── enums.py
 │   │   │   └── logging.py
 │   │   │
 │   │   └── tests/
 │   │       ├── test_invariants.py
-│   │       ├── test_assertions.py
-│   │       ├── test_aggregation.py
+│   │       ├── test_relations.py
+│   │       ├── test_inference.py
 │   │       └── test_explainability.py
 │   │
-│   └── alembic/                 # DB migrations
+│   └── alembic/
 │       └── versions/
 │
 ├── frontend/
-│   ├── README.md                # Frontend architecture & constraints
+│   ├── README.md                # Frontend constraints & data rules
 │   ├── package.json
 │   ├── src/
 │   │   ├── app/                 # App shell, routing
 │   │   ├── api/                 # Typed API clients
-│   │   ├── components/          # UI components (pure)
-│   │   ├── views/               # Pages (Document, Assertion, Claim)
+│   │   ├── components/          # Pure UI components
+│   │   ├── views/               # Pages (Source, Relation, Inference)
 │   │   ├── state/               # State management
 │   │   ├── hooks/               # Data fetching hooks
-│   │   └── types/               # Shared TypeScript types
+│   │   └── types/               # Shared TS types (Entity, Relation…)
 │
 ├── docs/
-│   ├── SCORING.md                # Evidence weighting & aggregation rules
+│   ├── SCORING.md                # Evidence weighting & aggregation
 │   ├── DATA_QUALITY.md           # Validation & review rules
 │   ├── API_CONTRACT.md           # Public API specification
-│   └── GLOSSARY.md               # Domain-agnostic terminology
+│   └── GLOSSARY.md               # Canonical terminology
 │
 ├── scripts/
-│   ├── ingest_documents.py       # Batch document ingestion
-│   ├── run_extraction.py         # LLM-assisted assertion extraction
-│   └── recompute_claims.py       # Deterministic recomputation
+│   ├── ingest_sources.py         # Batch document ingestion
+│   ├── extract_relations.py      # LLM-assisted extraction
+│   └── recompute_inferences.py  # Deterministic recomputation
 │
 ├── .env.example
 ├── .gitignore
-```
 ├── docker-compose.yml
 └── LICENSE
+```
+
