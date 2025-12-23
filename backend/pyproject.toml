@@ -21,7 +21,12 @@ dependencies = [
     "alembic>=1.13",
 
     # --- Utils ---
-    "python-dotenv>=1.0",
+    "python-dotenv>=1.0"
+
+    # --- Auth ---
+    "fastapi-users[sqlalchemy]>=13.0.0",
+    "passlib[bcrypt]>=1.7.4"
+]
 ]
 
 [project.optional-dependencies]
