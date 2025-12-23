@@ -27,4 +27,13 @@
   "relation": {
     "create": "Create relation"
   }
+  "account": {
+    "title": "My account",
+    "login": "Login",
+    "register": "Register",
+    "logout": "Logout",
+    "email": "Email",
+    "password": "Password",
+    "logged_as": "Logged in as"
+  }
 }
