@@ -1,130 +1,221 @@
-# Logical data model (hypergraph-based)
+# Schema
 
-This document describes the **logical database schema**.
-It is **implementation-agnostic** (no SQL) and focuses on structure and meaning.
+This document describes the **canonical logical data model** of the system.
 
-The schema models a **hypergraph of document-based assertions**.
+The model represents a **document-grounded knowledge graph** expressed as a
+**hypergraph of relations with explicit roles**.
 
----
-
-## 1. Document
-
-Represents a source of evidence.
-No assertion may exist without a document.
-
-| Field | Type | Description |
-|------|------|-------------|
-| id | UUID | Primary identifier |
-| type | enum | study, guideline, notice, report, review, etc. |
-| title | text | Document title |
-| authors | text[] | List of authors |
-| year | int | Publication year |
-| source | text | Journal, agency, publisher |
-| url | text | External reference |
-| trust_level | float | Prior trust (e.g. guideline > study) |
-| metadata | json | Optional structured metadata |
-
----
-
-## 2. Concept
-
-Represents a stable domain entity.
-Concepts carry **no truth or causality**.
-
-| Field | Type | Description |
-|------|------|-------------|
-| id | UUID | Primary identifier |
-| type | enum | drug, disease, symptom, outcome, population, method, etc. |
-| label | text | Canonical name |
-| synonyms | text[] | Alternative labels |
-| ontology_ref | text | Optional external ontology ID |
-
----
-
-## 3. Assertion
-
-Represents a **single claim made by one document**.
-This is the hyper-edge.
-
-| Field | Type | Description |
-|------|------|-------------|
-| id | UUID | Primary identifier |
-| document_id | UUID | Source document |
-| assertion_type | enum | effect, mechanism, risk, indication, observation |
-| direction | enum | positive, negative, null, mixed |
-| effect_size | json | Optional structured magnitude |
-| local_confidence | float | Confidence derived from document quality |
-| notes | text | Factual notes only |
-| created_at | timestamp | Creation time |
-
-Assertions are **immutable in meaning**.
-
----
-
-## 4. AssertionConcept (hypergraph incidence)
-
-Links an assertion to multiple concepts with explicit roles.
-This table materializes the hypergraph.
-
-| Field | Type | Description |
-|------|------|-------------|
-| assertion_id | UUID | Linked assertion |
-| concept_id | UUID | Linked concept |
-| role | enum | intervention, condition, outcome, population, methodology, exclusion |
-
-Roles are **mandatory** and remove semantic ambiguity.
-
----
-
-## 5. DerivedClaim (computed, optional)
-
-Cached result of aggregation.
-Never authored by humans.
-
-| Field | Type | Description |
-|------|------|-------------|
-| id | UUID | Primary identifier |
-| scope_hash | text | Hash of concepts + roles defining scope |
-| score | float | Aggregated evidence score |
-| uncertainty | float | Uncertainty / dispersion metric |
-| computed_at | timestamp | Last computation time |
-
-Derived claims can always be deleted and recomputed.
-
----
-
-## 6. (Optional) AssertionExplanation
-
-Stores explainability artifacts for derived claims.
-
-| Field | Type | Description |
-|------|------|-------------|
-| derived_claim_id | UUID | Related derived claim |
-| assertion_id | UUID | Contributing assertion |
-| weight | float | Contribution weight |
-| explanation | text | Human-readable explanation |
-
-This table enables full traceability.
-
----
-
-## 7. Key invariants
-
-- Every Assertion references **exactly one Document**
-- Concepts are reusable and context-free
-- Assertions never encode consensus
-- Synthesis exists only as DerivedClaim
-- Hypergraph semantics are explicit via roles
-
----
-
-## 8. Mental model summary
-
-- **Document** → source
-- **Assertion** → what the document says
-- **Concept** → what it talks about
-- **AssertionConcept** → how it talks about it
-- **DerivedClaim** → what the system computes
+It is designed to be:
+- implementation-agnostic
+- efficiently storable in **PostgreSQL**
+- projectable to **TypeDB**
+- compatible with simplified projections (e.g. Neo4j)
+- friendly to LLM-based synthesis
 
 > Knowledge is not stored.  
-> It is derived.
+> It is derived from documented relations.
+
+---
+
+## Core principles
+
+- **Entities are context-free**
+- **Relations carry meaning**
+- **Roles remove ambiguity**
+- **Sources provide provenance**
+- **Inference is computed, never authored**
+
+---
+
+## 1. Entity
+
+Represents a **stable domain object**.
+
+Entities do not encode truth, causality, or interpretation.
+
+```text
+Entity
+- id : UUID
+- kind : enum
+    (drug, disease, symptom, outcome, population, method, biomarker, etc.)
+- label : text
+- synonyms : text[]
+- ontology_ref : text?
+- metadata : json?
+````
+
+### Notes
+
+* Entities are reusable across all relations
+* Multiple relations may reference the same entity
+* Entities are the anchor points for queries
+
+---
+
+## 2. Source
+
+Represents a **documentary source** from which relations originate.
+
+```text
+Source
+- id : UUID
+- kind : enum
+    (study, guideline, review, report, notice, meta_analysis, etc.)
+- title : text
+- authors : text[]
+- year : int
+- origin : text
+- url : text
+- trust_level : float
+- metadata : json?
+```
+
+### Invariants
+
+* Every relation MUST reference exactly one source
+* No relation exists without provenance
+
+---
+
+## 3. Relation
+
+Represents a **single statement made by a source**.
+
+A relation is the **hyper-edge** of the graph.
+
+```text
+Relation
+- id : UUID
+- kind : enum
+    (effect, risk, mechanism, indication, association, observation)
+- direction : enum
+    (positive, negative, null, mixed)
+- confidence : float
+- notes : text
+- created_at : timestamp
+```
+
+### Semantics
+
+* A relation expresses *what a source claims*
+* Relations are atomic and immutable in meaning
+* Relations do NOT represent consensus or truth
+
+---
+
+## 4. Role
+
+Defines **how entities participate in a relation**.
+
+```text
+Role
+- relation_id : UUID
+- entity_id : UUID
+- role_type : enum
+    (intervention, condition, outcome, population,
+     exposure, comparator, method, exclusion)
+```
+
+### Semantics
+
+* Roles are mandatory
+* A relation may involve any number of entities
+* Role types carry the full semantic meaning
+
+> In TypeDB, roles are native and this table disappears.
+
+---
+
+## 5. Attribute (optional)
+
+Represents **typed values attached to entities or relations**.
+
+```text
+Attribute
+- id : UUID
+- owner_type : enum (entity, relation)
+- owner_id : UUID
+- key : text
+- value : typed (string | number | boolean | json)
+```
+
+### Notes
+
+* Mirrors TypeDB `attribute`
+* Optional if fixed columns are preferred
+* Useful for extensibility without schema churn
+
+---
+
+## 6. Inference (computed)
+
+Represents a **computed interpretation or synthesis**.
+
+```text
+Inference
+- id : UUID
+- scope_hash : text
+- result : json
+- uncertainty : float
+- computed_at : timestamp
+```
+
+### Semantics
+
+* Inferences are never authored by humans
+* They can always be deleted and recomputed
+* They do not represent ground truth
+
+---
+
+## 7. Explanation (optional)
+
+Provides **traceability and explainability** for inferences.
+
+```text
+Explanation
+- inference_id : UUID
+- relation_id : UUID
+- weight : float
+- explanation : text
+```
+
+---
+
+## 8. Key invariants
+
+* Every Relation references exactly one Source
+* Every Relation has at least one Role
+* Entities are context-free and reusable
+* No consensus is stored as a fact
+* All knowledge is derived from relations
+
+---
+
+## 9. Mental model summary
+
+* **Entity** → what exists
+* **Source** → who says something
+* **Relation** → what is said
+* **Role** → how entities are involved
+* **Inference** → what the system computes
+
+---
+
+## 10. TypeDB alignment
+
+This schema is **isomorphic to TypeDB**:
+
+| Logical concept | TypeDB concept      |
+| --------------- | ------------------- |
+| Entity          | entity              |
+| Source          | entity              |
+| Relation        | relation            |
+| Role            | relates             |
+| Attribute       | attribute           |
+| Inference       | query / rule result |
+
+This guarantees a **lossless projection** from PostgreSQL to TypeDB.
+
+
+
