@@ -1,3 +1,6 @@
+# Project's structure
+
+```
 hypergraph/
 │
 ├── README.md                    # Vision, scientific rationale, overview
@@ -95,5 +98,6 @@ hypergraph/
 │
 ├── .env.example
 ├── .gitignore
+```
 ├── docker-compose.yml
 └── LICENSE
