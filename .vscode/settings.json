@@ -47,4 +47,40 @@
     "**/__pycache__": true,
     "**/.pytest_cache": true
   }
+  // --------------------------------------------------
+  // Frontend – ESLint
+  // --------------------------------------------------
+  "eslint.enable": true,
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
+  ],
+
+  // --------------------------------------------------
+  // Frontend – Prettier
+  // --------------------------------------------------
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+
+  // --------------------------------------------------
+  // Format on save
+  // --------------------------------------------------
+  "editor.formatOnSave": true,
+
+  // --------------------------------------------------
+  // Avoid conflicts (important)
+  // --------------------------------------------------
+  "eslint.format.enable": false
 }
