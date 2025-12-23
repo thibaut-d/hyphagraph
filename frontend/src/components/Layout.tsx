@@ -1,5 +1,7 @@
 import { ReactNode } from "react";
 import { Link as RouterLink, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import i18n from "i18next";
 
 import {
   AppBar,
@@ -8,30 +10,56 @@ import {
   Box,
   Button,
   Container,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
+import LanguageIcon from "@mui/icons-material/Language";
+
+type Props = {
+  children: ReactNode;
+};
 
 const menuItems = [
-  { label: "Accueil", path: "/" },
-  { label: "Entities", path: "/entities" },
-  { label: "Sources", path: "/sources" },
-  { label: "Search", path: "/search" },
-  { label: "Mon compte", path: "/account" },
+  { key: "menu.home", path: "/" },
+  { key: "menu.entities", path: "/entities" },
+  { key: "menu.sources", path: "/sources" },
+  { key: "menu.search", path: "/search" },
+  { key: "menu.account", path: "/account" },
 ];
 
-export function Layout({ children }: { children: ReactNode }) {
+export function Layout({ children }: Props) {
   const location = useLocation();
+  const { t } = useTranslation();
+
+  const toggleLanguage = () => {
+    i18n.changeLanguage(i18n.language === "en" ? "fr" : "en");
+  };
 
   return (
     <>
       <AppBar position="static">
         <Toolbar>
-          <Typography variant="h6" sx={{ mr: 4 }}>
+          {/* Logo / title */}
+          <Typography
+            variant="h6"
+            component={RouterLink}
+            to="/"
+            sx={{
+              mr: 4,
+              color: "inherit",
+              textDecoration: "none",
+            }}
+          >
             HyphaGraph
           </Typography>
 
+          {/* Main navigation */}
           <Box sx={{ flexGrow: 1 }}>
             {menuItems.map((item) => {
-              const isActive = location.pathname === item.path;
+              const isActive =
+                location.pathname === item.path ||
+                (item.path !== "/" &&
+                  location.pathname.startsWith(item.path));
 
               return (
                 <Button
@@ -44,14 +72,22 @@ export function Layout({ children }: { children: ReactNode }) {
                     textDecoration: isActive ? "underline" : "none",
                   }}
                 >
-                  {item.label}
+                  {t(item.key)}
                 </Button>
               );
             })}
           </Box>
+
+          {/* Language switch */}
+          <Tooltip title={t("common.change_language", "Change language")}>
+            <IconButton color="inherit" onClick={toggleLanguage}>
+              <LanguageIcon />
+            </IconButton>
+          </Tooltip>
         </Toolbar>
       </AppBar>
 
+      {/* Page content */}
       <Container maxWidth="lg" sx={{ mt: 4 }}>
         {children}
       </Container>
