@@ -1,0 +1,14 @@
+# Caddyfile (development)
+
+:80 {
+
+    # API
+    handle_path /api/* {
+        reverse_proxy api:8000
+    }
+
+    # Everything else -> React dev server
+    handle {
+        reverse_proxy web:3000
+    }
+}
