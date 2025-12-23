@@ -6,6 +6,8 @@ from app.database import get_db
 from app.schemas.source import SourceWrite, SourceRead
 from app.services.source_service import SourceService
 
+from app.auth.dependencies import current_user
+
 router = APIRouter(prefix="/sources", tags=["sources"])
 
 
