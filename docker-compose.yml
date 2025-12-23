@@ -32,8 +32,6 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
       - ./backend:/app
-    ports:
-      - "8000:8000"
     env_file:
       - .env
     depends_on:
@@ -47,8 +45,6 @@ services:
     container_name: hyphagraph-web
     volumes:
       - ./frontend:/app
-    ports:
-      - "3000:3000"
     env_file:
       - .env
     depends_on:
