@@ -14,5 +14,14 @@
     "title": "Recherche",
     "placeholder": "Rechercher des entités",
     "no_results": "Aucun résultat"
+  },
+  "sources": {
+    "title": "Sources",
+    "no_data": "Aucune source",
+    "relations": "Relations",
+    "no_relations": "Aucune relation",
+    "trust": "Niveau de confiance",
+    "untitled": "Source sans titre",
+    "view_entity": "Voir l’entité"
   }
 }
