@@ -23,5 +23,8 @@
     "trust": "Niveau de confiance",
     "untitled": "Source sans titre",
     "view_entity": "Voir l’entité"
+  },
+  "relation": {
+    "create": "Créer une relation"
   }
 }
