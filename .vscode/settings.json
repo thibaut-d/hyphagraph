@@ -1,0 +1,50 @@
+{
+  // --------------------------------------------------
+  // Python
+  // --------------------------------------------------
+  "python.defaultInterpreterPath": "${workspaceFolder}/backend/.venv/bin/python",
+  "python.analysis.typeCheckingMode": "basic",
+  "python.analysis.autoImportCompletions": true,
+
+  // --------------------------------------------------
+  // Ruff (lint + format)
+  // --------------------------------------------------
+  "python.linting.enabled": true,
+  "python.linting.ruffEnabled": true,
+
+  "editor.formatOnSave": true,
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff"
+  },
+
+  // --------------------------------------------------
+  // Imports & formatting
+  // --------------------------------------------------
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": true
+  },
+
+  // --------------------------------------------------
+  // Pytest
+  // --------------------------------------------------
+  "python.testing.pytestEnabled": true,
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestArgs": [
+    "backend/app/tests"
+  ],
+
+  // --------------------------------------------------
+  // TypeScript / React
+  // --------------------------------------------------
+  "typescript.preferences.importModuleSpecifier": "relative",
+  "javascript.preferences.importModuleSpecifier": "relative",
+
+  // --------------------------------------------------
+  // Files
+  // --------------------------------------------------
+  "files.exclude": {
+    "**/.venv": true,
+    "**/__pycache__": true,
+    "**/.pytest_cache": true
+  }
+}
