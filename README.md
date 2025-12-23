@@ -1,4 +1,4 @@
-# hyphagraph
+# HyphaGraph
 
 Hypergraph-based Evidence Knowledge System
 
