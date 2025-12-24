@@ -20,7 +20,9 @@ cd hyphagraph
 
 Create a .env file from the sample:
 
+```
 cp .env.example .env
+```
 
 Defaults are suitable for local development.
 
