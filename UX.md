@@ -38,15 +38,15 @@ and immediately identify where consensus is weak or disputed.
 
 - progressive disclosure of complexity
 
-clear separation between navigation, exploration, and evidence
+- clear separation between navigation, exploration, and evidence
 
 
 
 ---
 
-2. General Design Principles
+## 2. General Design Principles
 
-2.1 Fundamental Rules
+### 2.1 Fundamental Rules
 
 The interface must never hide contradictions
 
@@ -60,81 +60,81 @@ Complexity should be revealed progressively, never imposed upfront
 
 ---
 
-2.2 Clear UI Responsibilities
+### 2.2 Clear UI Responsibilities
 
 UI Element	Responsibility
 
-Main menu	Global navigation
-Pages	Context changes
-Drawer	Filters / point of view
-Cards / tables	Reading & decision
-Detail views	Evidence & audit
+- Main menu	Global navigation
+- Pages	Context changes
+- Drawer	Filters / point of view
+- Cards / tables	Reading & decision
+- Detail views	Evidence & audit
 
 
 
 ---
 
-3. Page Architecture
+## 3. Page Architecture
 
-3.1 Root Pages (Main Menu)
+### 3.1 Root Pages (Main Menu)
 
 Accessible only from the main navigation:
 
-Home → /
+- Home → /
 
-Entities → /entities
+- Entities → /entities
 
-Sources → /sources
+- Sources → /sources
 
-Account → /account
+- Account → /account
 
 
 
 ---
 
-3.2 Contextual Pages (Secondary Navigation)
+### 3.2 Contextual Pages (Secondary Navigation)
 
 Accessible only through interactions within pages:
 
-Entity detail → /entities/:entityId
+- Entity detail → /entities/:entityId
 
-Property detail → /entities/:entityId/properties/:propertyId
+- Property detail → /entities/:entityId/properties/:propertyId
 
-Evidence / hyperedges → /properties/:propertyId/hyperedges
+- Evidence / hyperedges → /properties/:propertyId/hyperedges
 
-Source detail → /sources/:sourceId
+- Source detail → /sources/:sourceId
 
 
 
 ---
 
-4. Main Navigation (Top Navigation)
+## 4. Main Navigation (Top Navigation)
 
-4.1 Objective
+### 4.1 Objective
 
 Allow users to switch global context at any time.
 
-4.2 Expected Content
+### 4.2 Expected Content
 
 Product name / logo (returns to Home)
 
 Navigation links:
 
-Home
+- Home
 
-Entities
+- Entities
 
-Sources
+- Sources
 
-Account
-
-
-Global search entry
-
-User / language access
+- Account
 
 
-4.3 Constraints
+- Global search entry
+
+- User / language access
+
+
+### 4.3 Constraints
 
 Always visible
 
@@ -152,9 +152,9 @@ No hidden access to main pages
 
 ---
 
-5. Drawer (Side Panel)
+## 5. Drawer (Side Panel)
 
-5.1 General Role
+### 5.1 General Role
 
 The drawer is strictly reserved for filters.
 It must never be used for main navigation.
@@ -162,61 +162,61 @@ It must never be used for main navigation.
 
 ---
 
-5.2 Drawer — Entities List (/entities)
+### 5.2 Drawer — Entities List (/entities)
 
-Objective
+#### Objective
 
 Help physicians or experts narrow down relevant entities using clinical or scientific criteria.
 
-Expected Filter Types
+#### Expected Filter Types
 
-Entity type (drug, disease, symptom, etc.)
+- Entity type (drug, disease, symptom, etc.)
 
-Clinical effects / derived properties
+- Clinical effects / derived properties
 
-Level of consensus
+- Level of consensus
 
-Overall evidence quality
+- Overall evidence quality
 
-Time relevance
+- Time relevance
 
 
-Constraints
+#### Constraints
 
-Filters must use domain language
+- Filters must use domain language
 
-Based on derived properties, not free text
+- Based on derived properties, not free text
 
-Filters affect displayed results, not underlying calculations
+- Filters affect displayed results, not underlying calculations
 
 
 
 ---
 
-5.3 Drawer — Entity Detail (/entities/:id)
+### 5.3 Drawer — Entity Detail (/entities/:id)
 
-Objective
+#### Objective
 
 Allow users to change their analytical point of view on a single entity.
 
-Expected Filter Types
+#### Expected Filter Types
 
-Evidence direction (supports / contradicts / heterogeneous)
+- Evidence direction (supports / contradicts / heterogeneous)
 
-Study type
+- Study type
 
-Publication year
+- Publication year
 
-Minimum source authority
+- Minimum source authority
 
 
-Constraints
+#### Constraints
 
 Filters must never change:
 
-consensus status
+- consensus status
 
-computed scores
+- computed scores
 
 
 A clear indication must appear when evidence is hidden by filters
@@ -225,69 +225,69 @@ A clear indication must appear when evidence is hidden by filters
 
 ---
 
-5.4 Drawer — Sources List (/sources)
+### 5.4 Drawer — Sources List (/sources)
 
-Objective
+#### Objective
 
 Support critical reading of the literature.
 
-Expected Filter Types
+#### Expected Filter Types
 
-Study type
+- Study type
 
-Publication year
+- Publication year
 
-Authority score
+- Authority score
 
-Domain / topic
+- Domain / topic
 
-Role in the graph (pillar, supporting, contradictory)
-
-
-
----
-
-6. Pages — Expected Content
-
-6.1 Home
-
-Objective
-
-Quick orientation.
-
-Expected Content
-
-Entry points to Entities
-
-Entry points to Sources
-
-(Optional) recent or highlighted items
+- Role in the graph (pillar, supporting, contradictory)
 
 
 
 ---
 
-6.2 Entities — List
+## 6. Pages — Expected Content
 
-Objective
+### 6.1 Home
 
-Help users identify relevant entities efficiently.
+Objective:
 
-Expected Content
+- Quick orientation.
 
-List of entity cards or rows
+- Expected Content
+
+- Entry points to Entities
+
+- Entry points to Sources
+
+- (Optional) recent or highlighted items
+
+
+
+---
+
+### 6.2 Entities — List
+
+Objective:
+
+- Help users identify relevant entities efficiently.
+
+- Expected Content
+
+- List of entity cards or rows
 
 For each entity:
 
-name
+- name
 
-type
+- type
 
-2–3 key clinical properties
+- 2–3 key clinical properties
 
-consensus level
+- consensus level
 
-global evidence quality indicator
+- global evidence quality indicator
 
 
 Primary action: View entity
@@ -296,7 +296,7 @@ Primary action: View entity
 
 ---
 
-6.3 Entity — Detail
+### 6.3 Entity — Detail
 
 Objective
 
@@ -305,24 +305,24 @@ Answer the question:
 
 Required Sections
 
-Header (name, type)
+- Header (name, type)
 
-Short summary (human or LLM, clearly labeled)
+- Short summary (human or LLM, clearly labeled)
 
-External references (Wikipedia, Vidal, etc.)
+- External references (Wikipedia, Vidal, etc.)
 
-Derived properties with consensus status
+- Derived properties with consensus status
 
-Ranked key sources
+- Ranked key sources
 
 
 Constraints
 
-Clear visual distinction between:
+-Clear visual distinction between:
 
-narrative summary
+- narrative summary
 
-computed conclusions
+- computed conclusions
 
 
 Every property must link to its evidence
@@ -331,67 +331,67 @@ Every property must link to its evidence
 
 ---
 
-6.4 Property — Detail (Drawer or Dialog)
+### 6.4 Property — Detail (Drawer or Dialog)
 
 Objective
 
-Explain how a conclusion is established.
+- Explain how a conclusion is established.
 
-Expected Content
+- Expected Content
 
-Consensus status
+- Consensus status
 
-Score (if shown)
+- Score (if shown)
 
-Known limitations
+- Known limitations
 
-Access to evidence
+- Access to evidence
 
 
 
 ---
 
-6.5 Evidence / Hyperedges
+### 6.5 Evidence / Hyperedges
 
 Objective
 
-Enable scientific audit.
+- Enable scientific audit.
 
-Expected Content
+-Expected Content
 
-Table or list of evidence items
+- Table or list of evidence items
 
-Readable claim
+- Readable claim
 
-Direction (support / contradict)
+- Direction (support / contradict)
 
-Conditions
+-Conditions
 
-Associated source
+-Associated source
 
 
 
 ---
 
-6.6 Sources — List
+### 6.6 Sources — List
 
 Objective
 
-Explore literature independently from entities.
+- Explore literature independently from entities.
 
 Expected Content
 
 Source cards with:
 
-title
+- title
 
-study type
+- study type
 
-year
+- year
 
-authority
+- authority
 
-usage in the graph
+- usage in the graph
 
 
 Action: View source
@@ -400,66 +400,66 @@ Action: View source
 
 ---
 
-6.7 Source — Detail
+### 6.7 Source — Detail
 
 Objective
 
-Support in-depth critical reading.
+-Support in-depth critical reading.
 
 Expected Content
 
-Full metadata
+- Full metadata
 
-Abstract or summary
+- Abstract or summary
 
-External links
+-External links
 
-Related hyperedges
+- Related hyperedges
 
-Linked entities
+- Linked entities
 
 
 
 ---
 
-7. Freedom Given to the Designer
+### 7. Freedom Given to the Designer
 
 The designer has full freedom regarding:
 
-visual style
+- visual style
 
-typography
+- typography
 
-component choice
+-component choice
 
-layout details
+- layout details
 
-micro-interactions
+-micro-interactions
 
 
 As long as:
 
-page roles are respected
+-page roles are respected
 
-navigation and filters remain clearly separated
+-navigation and filters remain clearly separated
 
-traceability is always visible
+- traceability is always visible
 
-contradictions are never hidden
+- contradictions are never hidden
 
 
 
 ---
 
-8. UX Success Criteria
+### 8. UX Success Criteria
 
 The design is considered successful if:
 
 A physician understands within 30 seconds:
 
-what an entity is
+- what an entity is
 
-whether consensus is strong or weak
+- whether consensus is strong or weak
 
 
 Any claim’s source can be reached in two clicks or fewer
