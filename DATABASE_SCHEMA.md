@@ -38,9 +38,11 @@ Entity
 - label : text
 - names : json
 - summary : json
+```
 
 Example
 
+```json
 {
   "id": "e1",
   "kind": "drug",
@@ -54,11 +56,11 @@ Example
     "fr": "Médicament antalgique et antipyrétique"
   }
 }
-
+```
 
 ---
 
-Source
+## Source
 
 Represents a documentary source from which relations originate.
 
@@ -76,15 +78,15 @@ Source
 
 Invariants
 
-Every Relation MUST reference exactly one Source
+- Every Relation MUST reference exactly one Source
 
-No relation exists without provenance
+- No relation exists without provenance
 
-Metadata is for document-level information only
+- Metadata is for document-level information only
 
 
 Example
-
+```json
 {
   "id": "s1",
   "kind": "study",
@@ -95,14 +97,15 @@ Example
   "url": "https://example.org/study",
   "trust_level": 0.8
 }
-
+```
 
 ---
 
-Relation (Hyper-edge)
+## Relation (Hyper-edge)
 
 Represents a single claim made by a source.
 
+```
 Relation
 - id : UUID
 - kind : text            # effect, mechanism, association…
@@ -111,18 +114,20 @@ Relation
 - scope : json?          # optional contextual qualifiers
 - notes : text
 - created_at : timestamp
+```
 
-Semantics
+### Semantics
 
-A relation expresses what a source claims
+- A relation expresses what a source claims
 
-It does NOT represent consensus or truth
+- It does NOT represent consensus or truth
 
-Confidence reflects source assertion strength, not system belief
+- Confidence reflects source assertion strength, not system belief
 
 
-Example
+### Example
 
+```json
 {
   "id": "r1",
   "kind": "effect",
@@ -134,30 +139,33 @@ Example
   },
   "notes": "Moderate pain reduction observed"
 }
-
+```
 
 ---
 
-Role
+## Role
 
 Defines how entities participate in a relation.
 
+```
 Role
 - relation_id : UUID
 - entity_id : UUID
 - role_type : text
+```
 
-Semantics
+### Semantics
 
-Roles are mandatory
+- Roles are mandatory
 
-A relation may involve any number of entities
+- A relation may involve any number of entities
 
-Role types carry the full semantic meaning
+- Role types carry the full semantic meaning
 
 
-Example
+### Example
 
+```
 [
   {
     "relation_id": "r1",
@@ -170,70 +178,78 @@ Example
     "role_type": "outcome"
   }
 ]
+```
 
 Where e2 might be an entity:
 
+```json
 {
   "id": "e2",
   "kind": "symptom",
   "label": "chronic pain"
 }
-
+```
 
 ---
 
-Attribute
+## Attribute
 
 Represents typed values attached to entities or relations.
 
+```
 Attribute
 - id : UUID
 - owner_type : enum (entity, relation)
 - owner_id : UUID
 - key : text
 - value : typed (string | number | boolean | json)
+```
 
-Rules
+### Rules
 
-Attributes MUST NOT encode multi-entity claims or causality
+- Attributes MUST NOT encode multi-entity claims or causality
 
-They are descriptive or qualifying only
+- They are descriptive or qualifying only
 
 
-Example
+###Example
 
+```json
 {
   "owner_type": "entity",
   "owner_id": "e1",
   "key": "atc_code",
   "value": "N02BE01"
 }
-
+```
 
 ---
 
-Inference (Computed)
+### Inference (Computed)
 
 Represents a computed synthesis or interpretation.
 
+```
 Inference
 - id : UUID
 - scope_hash : text
 - result : json
 - uncertainty : float
 - computed_at : timestamp
+```
 
-Semantics
+### Semantics
 
-Never authored by humans
+- Never authored by humans
 
-Fully disposable and recomputable
+- Fully disposable and recomputable
 
-Does NOT represent ground truth
+- Does NOT represent ground truth
 
 
-Example
+### Example
 
+```
 {
   "id": "i1",
   "scope_hash": "drug:e1|symptom:e2",
@@ -244,52 +260,52 @@ Example
   },
   "uncertainty": 0.4
 }
-
-
----
-
-Key invariants (Summary)
-
-Every Relation references exactly one Source
-
-Every Relation has at least one Role
-
-Entities are context-free and reusable
-
-No consensus is stored as fact
-
-All knowledge is derived from relations
-
-
+```
 
 ---
 
-Mental model
+## Key invariants (Summary)
 
-Entity → what exists
+- Every Relation references exactly one Source
 
-Source → who says something
+- Every Relation has at least one Role
 
-Relation → what is said
+- Entities are context-free and reusable
 
-Role → how entities are involved
+- No consensus is stored as fact
 
-Inference → what the system computes
+- All knowledge is derived from relations
 
 
 
 ---
 
-TypeDB alignment
+## Mental model
+
+- Entity → what exists
+
+- Source → who says something
+
+- Relation → what is said
+
+- Role → how entities are involved
+
+- Inference → what the system computes
+
+
+
+---
+
+## TypeDB alignment
 
 Logical concept	TypeDB concept
 
-Entity	entity
-Source	entity
-Relation	relation
-Role	relates
-Attribute	attribute
-Inference	query / rule result
+- Entity	→ entity
+- Source →	entity
+- Relation → 	relation
+- Role	 → relates
+- Attribute	 → attribute
+- Inference → 	query / rule result
 
 
 This schema guarantees a lossless projection from PostgreSQL to TypeDB and supports auditable, explainable knowledge synthesis.
