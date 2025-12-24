@@ -1,256 +1,96 @@
 # HyphaGraph
 
-**Hypergraph-based Evidence Knowledge System**
+HyphaGraph is an experimental knowledge system based on hypergraphs, designed to transform documents into auditable, traceable, and computable knowledge instead of opaque summaries.
 
-HyphaGraph is a research-oriented system designed to transform
-document-based knowledge into a **computable, auditable, and explainable
-knowledge graph**.
+This repository is a proof of concept.
 
-It is built around a simple idea:
-
-> **Knowledge should not be written.  
-> It should be derived from documented statements.**
 
 ---
 
-## 1. Vision & scientific motivation
+What problem does it solve?
 
-### 1.1 The core problem
+Most knowledge systems store information as documents or free-form summaries.
+This makes knowledge:
 
-Across medicine, AI research, engineering, and enterprise knowledge,
-we face the same structural limitations:
+hard to audit,
 
-- Knowledge primarily exists as **documents**  
-  (papers, guidelines, reports, notices).
-- Usable knowledge is produced as **human-written syntheses**  
-  (reviews, recommendations, wiki pages).
-- When evidence is complex or contradictory, syntheses become:
-  - subjective or biased,
-  - slow to update,
-  - hard to audit,
-  - difficult to trace back to sources.
+hard to update,
 
-Large Language Models amplify this issue:
-- they generate fluent summaries,
-- but are structurally **over-confident**,
-- and prone to hallucinations when merging sources directly.
+hard to reason over,
 
-The underlying mistake is always the same:
+and prone to subjective interpretation.
 
-> **We store conclusions instead of storing what documents actually say.**
 
----
+HyphaGraph takes a different approach:
+it extracts explicit factual statements (“claims”) from documents and represents them as a structured hypergraph, preserving sources, context, and contradictions.
 
-### 1.2 The paradigm shift
+Typical use cases include:
 
-HyphaGraph proposes a different model:
+scientific literature analysis
 
-> **Humans and AI do not write knowledge.**  
-> **They model document-grounded statements.**  
-> **All syntheses are computed, not authored.**
+medical or technical knowledge curation
 
-Concretely:
-- Documents are treated as **sources**, not knowledge.
-- Each document produces one or more **claims**.
-- Claims may contradict each other.
-- Contradictions are preserved, not resolved by opinion.
-- The system derives **weighted, explainable syntheses** using explicit rules.
+comparison of contradictory sources
 
-Knowledge becomes a **computable object**, not a narrative artifact.
+explainable AI-assisted synthesis
+
+
 
 ---
 
-## 2. Why hypergraphs are essential
+Project status
 
-### 2.1 Limits of binary graphs
+⚠️ Experimental / Proof of concept
 
-Most knowledge graphs rely on binary relations:
+Not production-ready
 
-```
+Data model and APIs are still evolving
 
-Drug → Effect
-Disease → Symptom
+Intended for exploration, research, and prototyping
 
-```
 
-Scientific and technical conclusions are never binary.
-They always depend on multiple dimensions, such as:
-- intervention,
-- condition,
-- population,
-- methodology,
-- outcome,
-- magnitude,
-- uncertainty.
-
-Encoding this complexity in binary graphs leads to:
-- loss of context,
-- edge explosion,
-- implicit assumptions,
-- fragile or misleading conclusions.
 
 ---
 
-### 2.2 Hypergraph approach
+Quick start
 
-A **hypergraph** allows a single relation to connect **multiple entities at once**.
+To get started with the project, read the following files in this order:
 
-In HyphaGraph:
+1. GETTING_STARTED.md
+Setup instructions and local development workflow
 
-> **One hyper-edge represents one document-grounded claim.**
 
-This preserves:
-- full context,
-- explicit roles,
-- coexistence of contradictions,
-- traceability to sources.
+2. ARCHITECTURE.md
+Data model, hypergraph concepts, and system design
 
-Hypergraphs are the minimal structure required to model real-world evidence
-without distortion.
 
----
+3. PROJECT.md
+Scientific motivation, conceptual foundations, and detailed rationale
 
-## 3. Conceptual architecture
 
-HyphaGraph is structured around a clear separation of concerns:
 
-- **Sources**  
-  Documents that state something (studies, guidelines, reports).
-- **Entities**  
-  Stable domain objects (drugs, diseases, symptoms, populations, methods).
-- **Relations (claims)**  
-  What a source states about entities, in a given context.
-- **Inference**  
-  What the system computes from multiple claims.
-
-> The database stores *statements*, not *beliefs*.
-
-The full logical schema is defined in  
-`DATABASE_SCHEMA.md`.
 
 ---
 
-## 4. Role of AI in the system
+Tech stack
 
-AI is deliberately **constrained**.
+Backend: FastAPI, PostgreSQL
 
-### 4.1 What AI is allowed to do
+Frontend: React
 
-- Read documents.
-- Extract explicit, factual statements.
-- Map statements into structured claims.
-- Rephrase computed results for human readability.
-- Generate explanations from traceable evidence.
+LLM (optional): used in a constrained way for claim extraction and structuring
+(not for generating conclusions)
 
-### 4.2 What AI is not allowed to do
-
-- Invent claims.
-- Merge documents directly.
-- Decide consensus.
-- Override scoring or inference rules.
-- Act as an authority.
-
-This constraint is a design choice to:
-- reduce hallucinations,
-- preserve auditability,
-- keep humans in control of interpretation.
 
 ---
 
-## 5. Technical overview
+Contributing
 
-### Backend
+Contributions are welcome.
 
-- **PostgreSQL**  
-  Used as the source-of-truth hypergraph store:
-  - transactional safety,
-  - strong consistency,
-  - auditability,
-  - efficient analytical queries.
-
-- **FastAPI**  
-  For APIs, ingestion pipelines, inference orchestration, and LLM integration.
+Before contributing, please read the Markdown files containing essential documentation.
 
 ---
 
-### Reasoning layer
-
-- **TypeDB (planned / optional)**  
-  Used as a reasoning engine:
-  - explicit roles,
-  - n-ary relations,
-  - logical inference rules,
-  - contradiction detection.
-
-PostgreSQL stores the facts.  
-TypeDB reasons about their implications.
-
----
-
-### Frontend
-
-- **React**
-
-The UI focuses on:
-- document ingestion,
-- claim review and correction,
-- computed syntheses,
-- explanations and traceability.
-
----
-
-### LLM integration
-
-A pluggable LLM layer supports multiple providers (e.g. ChatGPT, Gemini, Mistral).
-
-LLMs are used exclusively for:
-- extraction,
-- formatting,
-- explanation.
-
-Never as the source of truth.
-
----
-
-## 6. Why this is not “just another knowledge graph”
-
-HyphaGraph is not:
-- a wiki,
-- a recommendation engine,
-- a traditional knowledge graph.
-
-It is:
-
-> **A system where knowledge is derived from weighted, document-grounded claims,
-> rather than written opinions.**
-
-This enables:
-- explicit contradiction handling,
-- reproducible syntheses,
-- safer AI usage,
-- strong explainability,
-- domain-independent applicability.
-
----
-
-## 7. Scope & disclaimer
-
-This repository is a **proof of concept**.
-
-Its goals are to demonstrate:
-- conceptual soundness,
-- architectural viability,
-- advantages of hypergraph-based reasoning.
-
-It is **not** intended to deliver medical, legal, or operational recommendations.
-
----
-
-## 8. Summary
-
-- Documents are sources, not knowledge.
-- Claims are stored, not conclusions.
-- Hypergraphs preserve full context.
-- AI is constrained by design.
-- Knowledge becomes computable.
+This project relies on explicit structure and traceability — shortcuts and undocumented assumptions are discouraged.
 
