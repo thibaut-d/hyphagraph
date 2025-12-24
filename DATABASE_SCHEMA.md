@@ -27,7 +27,7 @@ It is designed to be:
 
 ---
 
-## 1. Entity
+## Entity
 
 Represents a **stable domain object**.
 
@@ -38,7 +38,7 @@ Entity
 - id : UUID
 - kind : text
 - label : text
-- synonyms : text[]
+- names : json 
 ````
 
 ### Notes
@@ -47,9 +47,27 @@ Entity
 * Multiple relations may reference the same entity
 * Entities are the anchor points for queries
 
+Names can be a multilingual JSON dict:
+
+```json
+{
+  "de": ["Main name", "Synonym", ...],
+  "en": ["Main name", "Synonym", ...],
+  "fr": ["Main name", "Synonym", ...],
+}
+```
+
+Or a list when the names are not multilingual.
+
+```json
+["Generic name", "Brand 1", "Brand 2"]
+```
+
+the first element of the active (or fallback) language list will be used as a display name.
+
 ---
 
-## 2. Source
+## Source
 
 Represents a **documentary source** from which relations originate.
 
@@ -70,10 +88,11 @@ Source
 
 * Every relation MUST reference exactly one source
 * No relation exists without provenance
+* Metadata is used for display only (ex: citation JSON). Please use attributes for structured Hyper Edge data that can be included in queries.
 
 ---
 
-## 3. Relation
+## Relation
 
 Represents a **single statement made by a source**.
 
@@ -97,7 +116,7 @@ Relation
 
 ---
 
-## 4. Role
+## Role
 
 Defines **how entities participate in a relation**.
 
@@ -118,7 +137,7 @@ Role
 
 ---
 
-## 5. Attribute
+## Attribute
 
 Represents **typed values attached to entities or relations**.
 
@@ -149,7 +168,7 @@ Attributes can store multilingual descriptions in JSON :
 
 ---
 
-## 6. Inference (computed)
+## Inference (computed)
 
 Represents a **computed interpretation or synthesis**.
 
@@ -168,23 +187,10 @@ Inference
 * They can always be deleted and recomputed
 * They do not represent ground truth
 
----
-
-## 7. Explanation (optional)
-
-Provides **traceability and explainability** for inferences.
-
-```text
-Explanation
-- inference_id : UUID
-- relation_id : UUID
-- weight : float
-- explanation : text
-```
 
 ---
 
-## 8. Key invariants
+## Key invariants
 
 * Every Relation references exactly one Source
 * Every Relation has at least one Role
@@ -194,7 +200,7 @@ Explanation
 
 ---
 
-## 9. Mental model summary
+## Mental model summary
 
 * **Entity** → what exists
 * **Source** → who says something
@@ -204,7 +210,7 @@ Explanation
 
 ---
 
-## 10. TypeDB alignment
+## TypeDB alignment
 
 This schema is **isomorphic to TypeDB**:
 
