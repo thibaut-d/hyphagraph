@@ -40,7 +40,7 @@ Entity
 - summary : json
 ```
 
-Example
+### Example
 
 ```json
 {
@@ -64,6 +64,7 @@ Example
 
 Represents a documentary source from which relations originate.
 
+```text
 Source
 - id : UUID
 - kind : text            # study, review, guideline, case_report…
@@ -75,8 +76,9 @@ Source
 - trust_level : float
 - summary : json
 - metadata : json
+```
 
-Invariants
+### Invariants
 
 - Every Relation MUST reference exactly one Source
 
@@ -85,7 +87,8 @@ Invariants
 - Metadata is for document-level information only
 
 
-Example
+### Example
+
 ```json
 {
   "id": "s1",
@@ -105,7 +108,7 @@ Example
 
 Represents a single claim made by a source.
 
-```
+```text
 Relation
 - id : UUID
 - kind : text            # effect, mechanism, association…
@@ -147,7 +150,7 @@ Relation
 
 Defines how entities participate in a relation.
 
-```
+```text
 Role
 - relation_id : UUID
 - entity_id : UUID
@@ -165,7 +168,7 @@ Role
 
 ### Example
 
-```
+```json
 [
   {
     "relation_id": "r1",
@@ -196,7 +199,7 @@ Where e2 might be an entity:
 
 Represents typed values attached to entities or relations.
 
-```
+```text
 Attribute
 - id : UUID
 - owner_type : enum (entity, relation)
@@ -229,7 +232,7 @@ Attribute
 
 Represents a computed synthesis or interpretation.
 
-```
+```text
 Inference
 - id : UUID
 - scope_hash : text
@@ -249,7 +252,7 @@ Inference
 
 ### Example
 
-```
+```json
 {
   "id": "i1",
   "scope_hash": "drug:e1|symptom:e2",
