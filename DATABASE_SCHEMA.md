@@ -88,7 +88,9 @@ Source
 
 * Every relation MUST reference exactly one source
 * No relation exists without provenance
-* Metadata is used for display only (ex: citation JSON). Please use attributes for structured Hyper Edge data that can be included in queries.
+* Metadata is used for arbitrary document metadata display only (ex: citation JSON).
+* Please use Attributes for descriptions and common domain data.
+* Please use Relations to link with existing Entities.
 
 ---
 
