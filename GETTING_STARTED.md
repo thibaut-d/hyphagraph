@@ -11,9 +11,10 @@
 
 ## 1. Clone the repository
 
+```
 git clone https://github.com/your-org/hyphagraph.git
 cd hyphagraph
-
+```
 
 ## 2. Environment variables
 
