@@ -38,7 +38,8 @@ Entity
 - id : UUID
 - kind : text
 - label : text
-- names : json 
+- names : json
+- summary : json
 ````
 
 ### Notes
@@ -65,6 +66,16 @@ Or a list when the names are not multilingual.
 
 the first element of the active (or fallback) language list will be used as a display name.
 
+Summary is a multilingual JSON dict:
+
+```json
+{
+  "de": "Description in German",
+  "en": "Description in English",
+  "fr": "Description in French"
+}
+```
+
 ---
 
 ## Source
@@ -81,7 +92,8 @@ Source
 - origin : text
 - url : text
 - trust_level : float
-- metadata : json?
+- summary : json
+- metadata : json
 ```
 
 ### Invariants
@@ -103,9 +115,9 @@ A relation is the **hyper-edge** of the graph.
 ```text
 Relation
 - id : UUID
-- kind : text
-- direction : text
+- kind : text (effect, drug, mechanism...)
 - confidence : float
+- direction : text (supports, uncertain, contradict...)
 - notes : text
 - created_at : timestamp
 ```
@@ -133,7 +145,7 @@ Role
 
 * Roles are mandatory
 * A relation may involve any number of entities
-* Role types carry the full semantic meaning
+* Role types carry the full semantic meaning, including direction 
 
 > In TypeDB, roles are native and this table disappears.
 
@@ -152,13 +164,13 @@ Attribute
 - value : typed (string | number | boolean | json)
 ```
 
-Attributes can store multilingual descriptions in JSON :
+Attributes can store multilingual texts in JSON :
 
 ```json
 {
-  "de": "Description in German",
-  "en": "Description in English",
-  "fr": "Description in French"
+  "de": "Text in German",
+  "en": "Text in English",
+  "fr": "Text in French"
 }
 ```
 
