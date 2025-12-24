@@ -1,19 +1,17 @@
-# Schema
+# Canonical Logical Data Model
 
-This document describes the **canonical logical data model** of the system.
+This document defines the **canonical, implementation-agnostic data model** for a
+**document-grounded knowledge hypergraph**.
 
-The model represents a **document-grounded knowledge graph** expressed as a
-**hypergraph of relations with explicit roles**.
+> **Knowledge is not stored.  
+> It is derived from documented relations.**
 
-It is designed to be:
-- implementation-agnostic
-- efficiently storable in **PostgreSQL**
-- projectable to **TypeDB**
-- compatible with simplified projections (e.g. Neo4j)
-- friendly to LLM-based synthesis
-
-> Knowledge is not stored.  
-> It is derived from documented relations.
+The model is designed to be:
+- auditable and provenance-first
+- efficiently storable in PostgreSQL
+- isomorphic to TypeDB
+- compatible with simplified graph projections
+- safe and effective for LLM-based synthesis
 
 ---
 
@@ -31,7 +29,7 @@ It is designed to be:
 
 Represents a **stable domain object**.
 
-Entities do not encode truth, causality, or interpretation.
+Entities never encode truth, causality, or interpretation.
 
 ```text
 Entity
@@ -40,204 +38,258 @@ Entity
 - label : text
 - names : json
 - summary : json
-````
 
-### Notes
+Example
 
-* Entities are reusable across all relations
-* Multiple relations may reference the same entity
-* Entities are the anchor points for queries
-
-Names can be a multilingual JSON dict:
-
-```json
 {
-  "de": ["Main name", "Synonym", ...],
-  "en": ["Main name", "Synonym", ...],
-  "fr": ["Main name", "Synonym", ...],
+  "id": "e1",
+  "kind": "drug",
+  "label": "paracetamol",
+  "names": {
+    "en": ["Paracetamol", "Acetaminophen"],
+    "fr": ["Paracétamol"]
+  },
+  "summary": {
+    "en": "Analgesic and antipyretic drug",
+    "fr": "Médicament antalgique et antipyrétique"
+  }
 }
-```
 
-Or a list when the names are not multilingual.
-
-```json
-["Generic name", "Brand 1", "Brand 2"]
-```
-
-the first element of the active (or fallback) language list will be used as a display name.
-
-Summary is a multilingual JSON dict:
-
-```json
-{
-  "de": "Description in German",
-  "en": "Description in English",
-  "fr": "Description in French"
-}
-```
 
 ---
 
-## Source
+Source
 
-Represents a **documentary source** from which relations originate.
+Represents a documentary source from which relations originate.
 
-```text
 Source
 - id : UUID
-- kind : text
+- kind : text            # study, review, guideline, case_report…
 - title : text
 - authors : text[]
 - year : int
-- origin : text
+- origin : text          # journal, organization, publisher
 - url : text
 - trust_level : float
 - summary : json
 - metadata : json
-```
 
-### Invariants
+Invariants
 
-* Every relation MUST reference exactly one source
-* No relation exists without provenance
-* Metadata is used for arbitrary document metadata display only (ex: citation JSON).
-* Please use Attributes for descriptions and common domain data.
-* Please use Relations to link with existing Entities.
+Every Relation MUST reference exactly one Source
+
+No relation exists without provenance
+
+Metadata is for document-level information only
+
+
+Example
+
+{
+  "id": "s1",
+  "kind": "study",
+  "title": "Efficacy of Paracetamol for Chronic Pain",
+  "authors": ["Doe J.", "Smith A."],
+  "year": 2022,
+  "origin": "Journal of Pain Research",
+  "url": "https://example.org/study",
+  "trust_level": 0.8
+}
+
 
 ---
 
-## Relation
+Relation (Hyper-edge)
 
-Represents a **single statement made by a source**.
+Represents a single claim made by a source.
 
-A relation is the **hyper-edge** of the graph.
-
-```text
 Relation
 - id : UUID
-- kind : text (effect, drug, mechanism...)
-- confidence : float
-- direction : text (supports, uncertain, contradict...)
+- kind : text            # effect, mechanism, association…
+- direction : text       # supports, contradicts, uncertain
+- confidence : float     # strength of assertion by the source
+- scope : json?          # optional contextual qualifiers
 - notes : text
 - created_at : timestamp
-```
 
-### Semantics
+Semantics
 
-* A relation expresses *what a source claims*
-* Relations are atomic and immutable in meaning
-* Relations do NOT represent consensus or truth
+A relation expresses what a source claims
+
+It does NOT represent consensus or truth
+
+Confidence reflects source assertion strength, not system belief
+
+
+Example
+
+{
+  "id": "r1",
+  "kind": "effect",
+  "direction": "supports",
+  "confidence": 0.7,
+  "scope": {
+    "population": "adults",
+    "condition": "chronic use"
+  },
+  "notes": "Moderate pain reduction observed"
+}
+
 
 ---
 
-## Role
+Role
 
-Defines **how entities participate in a relation**.
+Defines how entities participate in a relation.
 
-```text
 Role
 - relation_id : UUID
 - entity_id : UUID
 - role_type : text
-```
 
-### Semantics
+Semantics
 
-* Roles are mandatory
-* A relation may involve any number of entities
-* Role types carry the full semantic meaning, including direction 
+Roles are mandatory
 
-> In TypeDB, roles are native and this table disappears.
+A relation may involve any number of entities
+
+Role types carry the full semantic meaning
+
+
+Example
+
+[
+  {
+    "relation_id": "r1",
+    "entity_id": "e1",
+    "role_type": "agent"
+  },
+  {
+    "relation_id": "r1",
+    "entity_id": "e2",
+    "role_type": "outcome"
+  }
+]
+
+Where e2 might be an entity:
+
+{
+  "id": "e2",
+  "kind": "symptom",
+  "label": "chronic pain"
+}
+
 
 ---
 
-## Attribute
+Attribute
 
-Represents **typed values attached to entities or relations**.
+Represents typed values attached to entities or relations.
 
-```text
 Attribute
 - id : UUID
 - owner_type : enum (entity, relation)
 - owner_id : UUID
 - key : text
 - value : typed (string | number | boolean | json)
-```
 
-Attributes can store multilingual texts in JSON :
+Rules
 
-```json
+Attributes MUST NOT encode multi-entity claims or causality
+
+They are descriptive or qualifying only
+
+
+Example
+
 {
-  "de": "Text in German",
-  "en": "Text in English",
-  "fr": "Text in French"
+  "owner_type": "entity",
+  "owner_id": "e1",
+  "key": "atc_code",
+  "value": "N02BE01"
 }
-```
 
-### Notes
-
-* Mirrors TypeDB `attribute`
-* Optional if fixed columns are preferred
-* Useful for extensibility without schema churn
 
 ---
 
-## Inference (computed)
+Inference (Computed)
 
-Represents a **computed interpretation or synthesis**.
+Represents a computed synthesis or interpretation.
 
-```text
 Inference
 - id : UUID
 - scope_hash : text
 - result : json
 - uncertainty : float
 - computed_at : timestamp
-```
 
-### Semantics
+Semantics
 
-* Inferences are never authored by humans
-* They can always be deleted and recomputed
-* They do not represent ground truth
+Never authored by humans
+
+Fully disposable and recomputable
+
+Does NOT represent ground truth
+
+
+Example
+
+{
+  "id": "i1",
+  "scope_hash": "drug:e1|symptom:e2",
+  "result": {
+    "summary": {
+      "en": "Evidence for pain reduction is mixed, with modest benefit in adults."
+    }
+  },
+  "uncertainty": 0.4
+}
 
 
 ---
 
-## Key invariants
+Key invariants (Summary)
 
-* Every Relation references exactly one Source
-* Every Relation has at least one Role
-* Entities are context-free and reusable
-* No consensus is stored as a fact
-* All knowledge is derived from relations
+Every Relation references exactly one Source
+
+Every Relation has at least one Role
+
+Entities are context-free and reusable
+
+No consensus is stored as fact
+
+All knowledge is derived from relations
+
+
 
 ---
 
-## Mental model summary
+Mental model
 
-* **Entity** → what exists
-* **Source** → who says something
-* **Relation** → what is said
-* **Role** → how entities are involved
-* **Inference** → what the system computes
+Entity → what exists
+
+Source → who says something
+
+Relation → what is said
+
+Role → how entities are involved
+
+Inference → what the system computes
+
+
 
 ---
 
-## TypeDB alignment
+TypeDB alignment
 
-This schema is **isomorphic to TypeDB**:
+Logical concept	TypeDB concept
 
-| Logical concept | TypeDB concept      |
-| --------------- | ------------------- |
-| Entity          | entity              |
-| Source          | entity              |
-| Relation        | relation            |
-| Role            | relates             |
-| Attribute       | attribute           |
-| Inference       | query / rule result |
-
-This guarantees a **lossless projection** from PostgreSQL to TypeDB for deeper analysis.
+Entity	entity
+Source	entity
+Relation	relation
+Role	relates
+Attribute	attribute
+Inference	query / rule result
 
 
-
+This schema guarantees a lossless projection from PostgreSQL to TypeDB and supports auditable, explainable knowledge synthesis.
