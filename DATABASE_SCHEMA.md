@@ -36,12 +36,9 @@ Entities do not encode truth, causality, or interpretation.
 ```text
 Entity
 - id : UUID
-- kind : enum
-    (drug, disease, symptom, outcome, population, method, biomarker, etc.)
+- kind : text
 - label : text
 - synonyms : text[]
-- ontology_ref : text?
-- metadata : json?
 ````
 
 ### Notes
@@ -59,8 +56,7 @@ Represents a **documentary source** from which relations originate.
 ```text
 Source
 - id : UUID
-- kind : enum
-    (study, guideline, review, report, notice, meta_analysis, etc.)
+- kind : text
 - title : text
 - authors : text[]
 - year : int
@@ -86,10 +82,8 @@ A relation is the **hyper-edge** of the graph.
 ```text
 Relation
 - id : UUID
-- kind : enum
-    (effect, risk, mechanism, indication, association, observation)
-- direction : enum
-    (positive, negative, null, mixed)
+- kind : text
+- direction : text
 - confidence : float
 - notes : text
 - created_at : timestamp
@@ -111,9 +105,7 @@ Defines **how entities participate in a relation**.
 Role
 - relation_id : UUID
 - entity_id : UUID
-- role_type : enum
-    (intervention, condition, outcome, population,
-     exposure, comparator, method, exclusion)
+- role_type : text
 ```
 
 ### Semantics
@@ -126,7 +118,7 @@ Role
 
 ---
 
-## 5. Attribute (optional)
+## 5. Attribute
 
 Represents **typed values attached to entities or relations**.
 
@@ -137,6 +129,16 @@ Attribute
 - owner_id : UUID
 - key : text
 - value : typed (string | number | boolean | json)
+```
+
+Attributes can store multilingual descriptions in JSON :
+
+```json
+{
+  "de": "Description in German",
+  "en": "Description in English",
+  "fr": "Description in French"
+}
 ```
 
 ### Notes
@@ -215,7 +217,7 @@ This schema is **isomorphic to TypeDB**:
 | Attribute       | attribute           |
 | Inference       | query / rule result |
 
-This guarantees a **lossless projection** from PostgreSQL to TypeDB.
+This guarantees a **lossless projection** from PostgreSQL to TypeDB for deeper analysis.
 
 
 
