@@ -1,6 +1,6 @@
 # 📘 Design Brief — HyphaGraph (MVP)
 
-## 0. Page Tree
+## 0. Content overview
 
 ```
 HyphaGraph — Page Tree (MVP)
