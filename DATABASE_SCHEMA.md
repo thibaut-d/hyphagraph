@@ -67,15 +67,15 @@ Represents a documentary source from which relations originate.
 ```text
 Source
 - id : UUID
-- kind : text            # study, review, guideline, case_report…
+- kind : text             # study, review, guideline, case_report…
 - title : text
-- authors : text[]
-- year : int
-- origin : text          # journal, organization, publisher
+- authors : text[]?
+- year : int?
+- origin : text?          # journal, organization, publisher
 - url : text
-- trust_level : float
-- summary : json
-- metadata : json
+- trust_level : float?
+- summary : json?         #i18n
+- metadata : json?
 ```
 
 ### Invariants
@@ -111,11 +111,11 @@ Represents a single claim made by a source.
 ```text
 Relation
 - id : UUID
-- kind : text            # effect, mechanism, association…
-- direction : text       # supports, contradicts, uncertain
-- confidence : float     # strength of assertion by the source
+- kind : text?           # effect, mechanism, association…
+- direction : text?      # supports, contradicts, uncertain
+- confidence : float?    # strength of assertion by the source
 - scope : json?          # optional contextual qualifiers
-- notes : text
+- notes : json?          # i18n
 - created_at : timestamp
 ```
 
