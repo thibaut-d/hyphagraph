@@ -7,52 +7,52 @@ This repository is a proof of concept.
 
 ---
 
-What problem does it solve?
+## What problem does it solve?
 
 Most knowledge systems store information as documents or free-form summaries.
 This makes knowledge:
 
-hard to audit,
+- hard to audit,
 
-hard to update,
+- hard to update,
 
-hard to reason over,
+- hard to reason over,
 
-and prone to subjective interpretation.
+- and prone to subjective interpretation.
 
 
 HyphaGraph takes a different approach:
 it extracts explicit factual statements (“claims”) from documents and represents them as a structured hypergraph, preserving sources, context, and contradictions.
 
-Typical use cases include:
+### Typical use cases include:
 
-scientific literature analysis
+- scientific literature analysis
 
-medical or technical knowledge curation
+- medical or technical knowledge curation
 
-comparison of contradictory sources
+- comparison of contradictory sources
 
-explainable AI-assisted synthesis
-
-
-
----
-
-Project status
-
-⚠️ Experimental / Proof of concept
-
-Not production-ready
-
-Data model and APIs are still evolving
-
-Intended for exploration, research, and prototyping
+- explainable AI-assisted synthesis
 
 
 
 ---
 
-Quick start
+## Project status
+
+- ⚠️ Experimental / Proof of concept
+
+- Not production-ready
+
+- Data model and APIs are still evolving
+
+- Intended for exploration, research, and prototyping
+
+
+
+---
+
+## Quick start
 
 To get started with the project, read the following files in this order:
 
@@ -72,25 +72,20 @@ Scientific motivation, conceptual foundations, and detailed rationale
 
 ---
 
-Tech stack
+## Tech stack
 
-Backend: FastAPI, PostgreSQL
+- Backend: FastAPI, PostgreSQL
 
-Frontend: React
+- Frontend: React
 
-LLM (optional): used in a constrained way for claim extraction and structuring
+- LLM (optional): used in a constrained way for claim extraction and structuring
 (not for generating conclusions)
 
 
 ---
 
-Contributing
+## Contributing
 
 Contributions are welcome.
 
 Before contributing, please read the Markdown files containing essential documentation.
-
----
-
-This project relies on explicit structure and traceability — shortcuts and undocumented assumptions are discouraged.
-
