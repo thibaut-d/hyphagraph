@@ -193,6 +193,8 @@ RelationRoleRevision
 - relation_revision_id : UUID
 - entity_id : UUID
 - role_type : text
+- weight : float?        # computed inference relations only
+- coverage : float?      # computed inference relations only
 ```
 
 ### Semantics
@@ -274,14 +276,46 @@ Attribute
 
 Represents a computed synthesis or interpretation.
 
+An inference is a relation but the source ID is system.
+
 ```text
-Inference
+Relation
 - id : UUID
+- source_id : UUID # of the source "system"
+- created_at : timestamp
+```
+
+The source is the engine used for computation.
+
+```text
+Source
+- id : UUID
+- kind : "system"
+- title : "HyphaGraph inference engine v0.0.1"
+```
+
+The details live in a separated table than revisions.
+
+```text
+ComputedRelation
+- relation_id : UUID        # PK, FK → Relation.id
 - scope_hash : text
-- result : json
+- model_version : text
 - uncertainty : float
 - computed_at : timestamp
 ```
+
+We use the same table for roles but we make use of optional per rôle weight and coverage.
+
+```text
+RelationRoleRevision
+- relation_revision_id : UUID
+- entity_id : UUID
+- role_type : text
+- weight : float?        # computed relations only
+- coverage : float?     # computed relations only
+```
+
 
 ### Semantics
 
