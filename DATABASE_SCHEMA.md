@@ -215,7 +215,7 @@ Attribute
 - They are descriptive or qualifying only
 
 
-###Example
+### Example
 
 ```json
 {
@@ -264,6 +264,44 @@ Inference
   "uncertainty": 0.4
 }
 ```
+---
+
+## UI Categories
+
+Used for display and navigation between Entities, not for semantic inference. Each site can have it's own UI catégories.
+
+```text
+UiCategory
+- id : UUID
+- slug : text
+- labels : json             # i18n
+- description : json?       # i18n
+- order : int
+```
+
+### Semantics
+
+- The slugs is lower case with no special characters.
+
+- No sources for UI Categories. It is just a few basic wide categories designed to help user find what they are seeking. 
+
+- Examples : Drugs, Biological Mechanisms, Diseases, Effects...
+
+
+### Examples 
+
+```json
+{
+  "id": "c1",
+  "slug": "drug",
+  "labels": {
+    "en": "Drugs",
+    "fr": "Médicaments"
+  },
+  "order": 10,
+}
+```
+
 
 ---
 
