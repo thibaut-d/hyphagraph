@@ -170,7 +170,7 @@ RelationRevision
 ```json
 {
   "id": "rr1",
-  relation_id": "r1",
+  "relation_id": "r1",
   "kind": "effect",
   "direction": "supports",
   "confidence": 0.7,
