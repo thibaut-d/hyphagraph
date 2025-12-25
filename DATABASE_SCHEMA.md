@@ -34,17 +34,29 @@ Entities never encode truth, causality, or interpretation.
 ```text
 Entity
 - id : UUID
+- created_at : timestamp
+```
+
+```text
+EntityRevision
+- id : UUID
+- entity_id : UUID
 - ui_category_id : UUID?
-- label : text
-- names : json?
-- summary : json?
+- slug : text
+- names : json?               # i18n lists
+- summary : json?             # i18n 
+- created_with_llm : text?    # LLM name
+- created_by_user_id : UUID?
+- created_at : timestamp
+- is_current : bool
 ```
 
 ### Example
 
 ```json
 {
-  "id": "e1",
+  "id": "er1"
+  "entity_id": "e1",
   "ui_category_id": "e_drug",
   "label": "paracetamol",
   "names": {
@@ -54,7 +66,8 @@ Entity
   "summary": {
     "en": "Analgesic and antipyretic drug",
     "fr": "Médicament antalgique et antipyrétique"
-  }
+  },
+  ...
 }
 ```
 
@@ -67,6 +80,13 @@ Represents a documentary source from which relations originate.
 ```text
 Source
 - id : UUID
+- created_at : timestamp
+```
+
+```text
+SourceRevision
+- id : UUID
+- source_id : UUID
 - kind : text             # study, review, guideline, case_report…
 - title : text
 - authors : text[]?
@@ -74,8 +94,12 @@ Source
 - origin : text?          # journal, organization, publisher
 - url : text
 - trust_level : float?
-- summary : json?         #i18n
+- summary : json?         # i18n
 - metadata : json?
+- created_with_llm : text?
+- created_by_user_id : UUID?
+- created_at : timestamp
+- is_current : bool
 ```
 
 ### Invariants
@@ -91,14 +115,16 @@ Source
 
 ```json
 {
-  "id": "s1",
+  "id": "rs1",
+  "source_id": "s1",
   "kind": "study",
   "title": "Efficacy of Paracetamol for Chronic Pain",
   "authors": ["Doe J.", "Smith A."],
   "year": 2022,
   "origin": "Journal of Pain Research",
   "url": "https://example.org/study",
-  "trust_level": 0.8
+  "trust_level": 0.8,
+  ...
 }
 ```
 
@@ -108,15 +134,26 @@ Source
 
 Represents a single claim made by a source.
 
-```text
+```
 Relation
 - id : UUID
+- source_id : UUID
+- created_at : timestamp
+```
+
+```text
+RelationRevision
+- id : UUID
+- relation_id : UUID
 - kind : text?           # effect, mechanism, association…
 - direction : text?      # supports, contradicts, uncertain
 - confidence : float?    # strength of assertion by the source
 - scope : json?          # optional contextual qualifiers
 - notes : json?          # i18n
+- created_by : enum (human | llm)
+- created_by_user_id : UUID?
 - created_at : timestamp
+- is_current : bool
 ```
 
 ### Semantics
@@ -132,7 +169,8 @@ Relation
 
 ```json
 {
-  "id": "r1",
+  "id": "rr1",
+  relation_id": "r1",
   "kind": "effect",
   "direction": "supports",
   "confidence": 0.7,
@@ -140,19 +178,19 @@ Relation
     "population": "adults",
     "condition": "chronic use"
   },
-  "notes": "Moderate pain reduction observed"
+  "notes": "Moderate pain reduction observed",
+  ...
 }
 ```
 
----
 
-## Role
+### Relation Role
 
 Defines how entities participate in a relation.
 
 ```text
-Role
-- relation_id : UUID
+RelationRoleRevision
+- relation_revision_id : UUID
 - entity_id : UUID
 - role_type : text
 ```
@@ -213,6 +251,10 @@ Attribute
 - Attributes MUST NOT encode multi-entity claims or causality
 
 - They are descriptive or qualifying only
+
+- Can store external identifiers, URLs...
+
+- Not debatable nor really supposed to change so not versionned
 
 
 ### Example
