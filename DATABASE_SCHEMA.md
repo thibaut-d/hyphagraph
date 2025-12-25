@@ -350,3 +350,53 @@ Logical concept	TypeDB concept
 
 
 This schema guarantees a lossless projection from PostgreSQL to TypeDB and supports auditable, explainable knowledge synthesis.
+
+---
+
+## Users
+
+### Users schema 
+
+We use FastAPI Users extension.
+
+```
+User
+- id : UUID
+- email : text (unique, indexed)
+- hashed_password : text
+- is_active : bool
+- is_verified : bool
+- is_superuser : bool
+- created_at : timestamp
+```
+
+For now we rely on JWT only.
+
+### User profile 
+
+```
+UserProfile
+- user_id: UUID
+- display_name: text
+- avatar_url: text?
+- locale: text?
+- bio: json?         # i18n
+```
+
+### OAuth (not MVP)
+
+We plan to support OAuth at some point of time.
+
+```
+OAuthAccount
+- id
+- user_id           # our internal user
+- provider          # google | github | orcid
+- external_id       # stable ID from provider
+- created_at
+```
+
+
+
+
+
