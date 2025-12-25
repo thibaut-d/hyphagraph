@@ -150,7 +150,7 @@ RelationRevision
 - confidence : float?    # strength of assertion by the source
 - scope : json?          # optional contextual qualifiers
 - notes : json?          # i18n
-- created_by : enum (human | llm)
+- created_with_llm : text?
 - created_by_user_id : UUID?
 - created_at : timestamp
 - is_current : bool
@@ -290,6 +290,8 @@ Inference
 - Fully disposable and recomputable
 
 - Does NOT represent ground truth
+
+- The summary is an LLM generated human readable synthesis 
 
 
 ### Example
