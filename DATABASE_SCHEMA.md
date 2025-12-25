@@ -410,6 +410,7 @@ User
 - is_verified : bool
 - is_superuser : bool
 - created_at : timestamp
+- last_login_at : timestamp?
 ```
 
 For now we rely on JWT only.
