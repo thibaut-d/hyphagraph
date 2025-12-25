@@ -34,10 +34,10 @@ Entities never encode truth, causality, or interpretation.
 ```text
 Entity
 - id : UUID
-- kind : text
+- ui_category_id : UUID?
 - label : text
-- names : json
-- summary : json
+- names : json?
+- summary : json?
 ```
 
 ### Example
@@ -45,7 +45,7 @@ Entity
 ```json
 {
   "id": "e1",
-  "kind": "drug",
+  "ui_category_id": "e_drug",
   "label": "paracetamol",
   "names": {
     "en": ["Paracetamol", "Acetaminophen"],
