@@ -3,51 +3,7 @@
 ## 0. Content overview
 
 ```
-HyphaGraph — Page Tree (MVP)
-===========================
 
-/
-├── Home
-│
-├── Entities
-│   └── /entities
-│       ├── Entity List
-│       │
-│       └── Entity Detail
-│           └── /entities/:entityId
-│               ├── Summary
-│               ├── External References
-│               ├── Derived Properties
-│               │   └── Property Detail (drawer / dialog)
-│               │       └── /entities/:entityId/properties/:propertyId
-│               │           └── Evidence (Hyperedges)
-│               │               └── /properties/:propertyId/hyperedges
-│               │                   └── Source Detail
-│               │                       └── /sources/:sourceId
-│               │
-│               └── Ranked Sources
-│                   └── Source Detail
-│                       └── /sources/:sourceId
-│
-├── Sources
-│   └── /sources
-│       ├── Source List
-│       │
-│       └── Source Detail
-│           └── /sources/:sourceId
-│               ├── Metadata
-│               ├── Abstract / Summary
-│               ├── Related Entities
-│               │   └── Entity Detail
-│               │       └── /entities/:entityId
-│               │
-│               └── Related Evidence (Hyperedges)
-│
-└── Account
-    └── /account
-        ├── Profile
-        ├── Preferences
-        └── (Future: Contributions / Roles)
 ```
 
 ## 1. Context and Product Vision
