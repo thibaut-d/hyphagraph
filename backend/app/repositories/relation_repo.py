@@ -1,8 +1,10 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from uuid import UUID
 
 from app.models.relation import Relation
+from app.models.role import Role
 
 
 class RelationRepository:
@@ -20,7 +22,16 @@ class RelationRepository:
         await self.db.flush()
         return relation
 
-    async def list_by_entity(self, entity_id):
+    async def list_by_source(self, source_id: UUID) -> list[Relation]:
+        stmt = (
+            select(Relation)
+            .where(Relation.source_id == source_id)
+            .options(selectinload(Relation.roles))
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def list_by_entity(self, entity_id: UUID) -> list[Relation]:
         stmt = (
             select(Relation)
             .join(Role)

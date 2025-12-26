@@ -43,7 +43,6 @@ EntityRevision
 - entity_id : UUID
 - ui_category_id : UUID?
 - slug : text
-- names : json?               # i18n lists
 - summary : json?             # i18n 
 - created_with_llm : text?    # LLM name
 - created_by_user_id : UUID?
@@ -55,20 +54,33 @@ EntityRevision
 
 ```json
 {
-  "id": "er1"
+  "id": "er1",
   "entity_id": "e1",
   "ui_category_id": "e_drug",
-  "label": "paracetamol",
-  "names": {
-    "en": ["Paracetamol", "Acetaminophen"],
-    "fr": ["Paracétamol"]
-  },
+  "slug": "paracetamol",
   "summary": {
     "en": "Analgesic and antipyretic drug",
     "fr": "Médicament antalgique et antipyrétique"
   },
-  ...
+  "created_with_llm": null,
+  "created_by_user_id": "u1",
+  "created_at": "2024-01-15T10:30:00Z",
+  "is_current": true
 }
+```
+---
+
+## Terms and Alias
+
+Represents the different names of entities that can displayed on the UI or searched in documents.
+
+```text
+EntityTerm
+- id : UUID
+- entity_id : UUID
+- term : text
+- language : text?          # fr/en/NULL (NULL = international)
+- display_order : int?      # smallest = printed first (nullable)
 ```
 
 ---
@@ -124,7 +136,17 @@ SourceRevision
   "origin": "Journal of Pain Research",
   "url": "https://example.org/study",
   "trust_level": 0.8,
-  ...
+  "summary": {
+    "en": "A randomized controlled trial examining paracetamol efficacy"
+  },
+  "metadata": {
+    "doi": "10.1234/jpr.2022.001",
+    "pubmed_id": "12345678"
+  },
+  "created_with_llm": "gpt-4",
+  "created_by_user_id": "u1",
+  "created_at": "2024-01-15T10:30:00Z",
+  "is_current": true
 }
 ```
 
@@ -205,6 +227,20 @@ RelationRoleRevision
 
 - Role types carry the full semantic meaning
 
+### Revision Strategy
+
+A change in a relation revision always produces a new atomic claim, even if only the phrasing or confidence changed.
+Roles are duplicated to preserve the exact claim boundary.
+
+
+- Roles are tied to specific relation revisions via `relation_revision_id`
+
+- When a relation is revised, all roles are duplicated for the new revision, even if unchanged
+
+- This creates a complete snapshot of the relation at each revision point
+
+- Trade-off: Data duplication ensures complete auditability and simplifies querying (no need to reconstruct historical state from deltas)
+
 
 ### Example
 
@@ -246,6 +282,8 @@ Attribute
 - owner_id : UUID
 - key : text
 - value : typed (string | number | boolean | json)
+- created_at : timestamp
+- updated_at : timestamp?
 ```
 
 ### Rules
@@ -254,9 +292,11 @@ Attribute
 
 - They are descriptive or qualifying only
 
-- Can store external identifiers, URLs...
+- Can store external identifiers (DOI, PubMed IDs, ATC codes), URLs, or other metadata
 
-- Not debatable nor really supposed to change so not versionned
+- Attributes are generally stable but can be corrected if external identifiers change or errors are discovered
+
+- Unlike entities and relations, attributes are not versioned - updates replace the previous value with a timestamp
 
 
 ### Example
@@ -305,6 +345,24 @@ ComputedRelation
 - computed_at : timestamp
 ```
 
+### Scope Hash Algorithm
+
+The `scope_hash` provides a deterministic identifier for a specific inference query scope.
+
+**Algorithm:**
+1. Collect all entities and their roles from the query scope
+2. Sort entities by UUID to ensure deterministic ordering
+3. Create canonical representation: `"role1:entity_id1|role2:entity_id2|..."`
+4. Compute: `SHA256(canonical_representation)`
+5. Store as hex string
+
+**Example:**
+- Query scope: drug `e1` with symptom `e2`
+- Canonical form: `"agent:e1|outcome:e2"` (alphabetically sorted by role)
+- Hash: `SHA256("agent:e1|outcome:e2")`
+
+This allows efficient lookup of cached inferences for identical query scopes.
+
 We use the same table for roles but we make use of optional per rôle weight and coverage.
 
 ```text
@@ -346,7 +404,7 @@ RelationRoleRevision
 
 ## UI Categories
 
-Used for display and navigation between Entities, not for semantic inference. Each site can have it's own UI catégories.
+Used for display and navigation between Entities, not for semantic inference. Each site can have its own UI categories.
 
 ```text
 UiCategory
@@ -355,15 +413,19 @@ UiCategory
 - labels : json             # i18n
 - description : json?       # i18n
 - order : int
+- created_at : timestamp
+- updated_at : timestamp?
 ```
 
 ### Semantics
 
-- The slugs is lower case with no special characters.
+- The slug is lower case with no special characters.
 
-- No sources for UI Categories. It is just a few basic wide categories designed to help user find what they are seeking. 
+- No sources for UI Categories. It is just a few basic wide categories designed to help users find what they are seeking.
 
-- Examples : Drugs, Biological Mechanisms, Diseases, Effects...
+- Examples: Drugs, Biological Mechanisms, Diseases, Effects...
+
+- While UI categories are not expected to change frequently, timestamps allow tracking when categories are added or modified for UI evolution.
 
 
 ### Examples 
@@ -383,7 +445,68 @@ UiCategory
 
 ---
 
-## Key invariants (Summary)
+## Database Constraints
+
+### Foreign Key Constraints
+
+- `EntityRevision.entity_id` → `Entity.id`
+- `EntityRevision.ui_category_id` → `UiCategory.id` (nullable)
+- `EntityRevision.created_by_user_id` → `User.id` (nullable)
+- `EntityTerm.entity_id` → `Entity.id`
+- `SourceRevision.source_id` → `Source.id`
+- `SourceRevision.created_by_user_id` → `User.id` (nullable)
+- `RelationRevision.relation_id` → `Relation.id`
+- `RelationRevision.created_by_user_id` → `User.id` (nullable)
+- `Relation.source_id` → `Source.id` (NOT NULL - every relation must have a source)
+- `RelationRoleRevision.relation_revision_id` → `RelationRevision.id`
+- `RelationRoleRevision.entity_id` → `Entity.id`
+- `ComputedRelation.relation_id` → `Relation.id`
+- `Attribute.owner_id` → `Entity.id` OR `Relation.id` (depending on `owner_type`)
+- `UserProfile.user_id` → `User.id`
+- `OAuthAccount.user_id` → `User.id`
+
+### Unique Constraints
+
+- `Entity.id` (primary key)
+- `EntityRevision.id` (primary key)
+- `Source.id` (primary key)
+- `SourceRevision.id` (primary key)
+- `Relation.id` (primary key)
+- `RelationRevision.id` (primary key)
+- `UiCategory.id` (primary key)
+- `UiCategory.slug` (unique - no duplicate category slugs)
+- `User.email` (unique - one account per email)
+- `EntityTerm(entity_id, term, language)` (composite unique - same term can't appear twice for same entity/language)
+- Only one `is_current = true` per `entity_id` in `EntityRevision`
+- Only one `is_current = true` per `source_id` in `SourceRevision`
+- Only one `is_current = true` per `relation_id` in `RelationRevision`
+
+### Check Constraints
+
+- `SourceRevision.trust_level` ∈ [0, 1] (if not null)
+- `RelationRevision.confidence` ∈ [0, 1] (if not null)
+- `ComputedRelation.uncertainty` ∈ [0, 1]
+- `RelationRoleRevision.weight` ∈ [-1, 1] (if not null)
+- `RelationRoleRevision.coverage` >= 0 (if not null)
+- `UiCategory.order` >= 0
+- `EntityTerm.display_order` >= 0 (if not null)
+- `Attribute.owner_type` ∈ {'entity', 'relation'}
+
+### Indexed Fields (Performance)
+
+- `EntityRevision.entity_id` + `is_current` (for fetching current revision)
+- `SourceRevision.source_id` + `is_current` (for fetching current revision)
+- `RelationRevision.relation_id` + `is_current` (for fetching current revision)
+- `Relation.source_id` (for finding all relations from a source)
+- `RelationRoleRevision.entity_id` (for finding all relations involving an entity)
+- `RelationRoleRevision.relation_revision_id` (for fetching roles)
+- `ComputedRelation.scope_hash` (for lookup of cached inferences)
+- `EntityTerm.term` (for search/autocomplete)
+- `User.email` (for authentication)
+
+---
+
+## Key Invariants (Summary)
 
 - Every Relation references exactly one Source
 
@@ -395,7 +518,7 @@ UiCategory
 
 - All knowledge is derived from relations
 
-
+- Each entity/source/relation has exactly one current revision (`is_current = true`)
 
 ---
 
@@ -464,16 +587,25 @@ UserProfile
 
 ### OAuth (not MVP)
 
-We plan to support OAuth at some point of time.
+We plan to support OAuth at some point in time.
 
-```
+```text
 OAuthAccount
-- id
-- user_id           # our internal user
-- provider          # google | github | orcid
-- external_id       # stable ID from provider
-- created_at
+- id : UUID
+- user_id : UUID                    # FK → User.id
+- provider : text                   # google | github | orcid
+- external_id : text                # stable ID from provider
+- access_token : text?              # encrypted
+- refresh_token : text?             # encrypted
+- token_expires_at : timestamp?
+- created_at : timestamp
+- updated_at : timestamp?
 ```
+
+### Constraints
+
+- Unique constraint on `(provider, external_id)` - one external account maps to one HyphaGraph user
+- A user can have multiple OAuth providers linked
 
 
 

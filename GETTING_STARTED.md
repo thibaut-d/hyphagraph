@@ -42,11 +42,23 @@ This starts:
 
 ## 4. Initialize the database (first run)
 
+The database schema is managed with Alembic migrations.
+
 In another terminal:
 
 ```
 cd backend
 alembic upgrade head
+```
+
+This will create all tables with the correct schema, indexes, and constraints.
+
+**Note:** If you need to reset the database:
+
+```
+cd backend
+alembic downgrade base  # Drop all tables
+alembic upgrade head     # Recreate from scratch
 ```
 
 
@@ -93,7 +105,7 @@ POST http://localhost/api/sources
 Create a relation (hyper-edge):
 
 ```
-POST http://localhost:8000/relations
+POST http://localhost/api/relations
 {
   "source_id": "<source_id>",
   "kind": "effect",
@@ -112,7 +124,7 @@ POST http://localhost:8000/relations
 Query all relations involving an entity:
 
 ```
-GET http://localhost:8000/inferences/entity/<entity_id>
+GET http://localhost/api/inferences/entity/<entity_id>
 ```
 
 This returns a structured, traceable view of assertions — no synthesis, no consensus.

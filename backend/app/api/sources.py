@@ -19,6 +19,12 @@ async def create_source(
     service = SourceService(db)
     return await service.create(payload)
 
+@router.get("/", response_model=list[SourceRead])
+async def list_sources(
+    db: AsyncSession = Depends(get_db),
+):
+    service = SourceService(db)
+    return await service.list_all()
 
 @router.get("/{source_id}", response_model=SourceRead)
 async def get_source(

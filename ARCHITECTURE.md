@@ -10,7 +10,7 @@ It focuses on:
 
 It intentionally avoids:
 - database schema definitions (see `DATABASE_SCHEMA.md`)
-- philosophical or scientific motivation (see `README.md`)
+- philosophical or scientific motivation (see `PROJECT.md`)
 
 ---
 
@@ -217,9 +217,91 @@ Violating these invariants is a design error.
 
 ---
 
-## 6. Extension points
+## 6. Authentication & Authorization
 
-### 6.1 Reasoning engines (TypeDB)
+HyphaGraph uses a **custom, explicit JWT-based authentication system** instead of third-party authentication frameworks.
+
+### 6.1 Design rationale
+
+We do NOT use FastAPI Users or similar frameworks because:
+- FastAPI Users is in maintenance mode
+- We prefer explicit, auditable authentication logic
+- Framework abstractions introduce coupling and hidden complexity
+- Authentication is security-critical and must be fully transparent
+
+### 6.2 Authentication architecture
+
+**User model (minimal):**
+- id: UUID (primary key)
+- email: str (unique)
+- hashed_password: str
+- is_active: bool
+- is_superuser: bool
+- created_at: datetime
+
+No premature role systems or unnecessary fields.
+
+**JWT-based flow:**
+- OAuth2 password flow (standard FastAPI pattern)
+- Access tokens only (no refresh tokens unless explicitly justified)
+- Token signing with python-jose
+- Password hashing with passlib[bcrypt]
+
+**Key endpoints:**
+- POST /auth/register - create new user
+- POST /auth/login - obtain JWT access token
+- GET /auth/me - get current user info
+
+**Integration:**
+- `get_current_user` dependency for protected endpoints
+- Explicit user_id passed to services for provenance tracking
+- User information stored in EntityRevision.created_by_user_id, etc.
+
+### 6.3 Authorization strategy
+
+**Explicit over magical:**
+- No role-based access control (RBAC) frameworks
+- No permission inheritance systems
+- Authorization implemented as readable Python functions
+
+**Permission helper pattern:**
+```python
+def can_create_entity(user: User) -> bool:
+    return user.is_active
+
+def can_edit_relation(user: User, relation: Relation) -> bool:
+    return user.is_active and (user.is_superuser or relation.created_by_user_id == user.id)
+
+def can_publish_inference(user: User) -> bool:
+    return user.is_active and user.is_superuser
+```
+
+**Integration with provenance:**
+- All create operations accept optional user_id parameter
+- Revision system tracks who created what
+- User information enables audit trails and attribution
+
+**Security constraints:**
+- Authentication logic isolated in dedicated module
+- No tight coupling between auth and domain models
+- Authorization checks explicit at API boundary
+- Permission logic testable in isolation
+
+### 6.4 Non-goals
+
+We explicitly do NOT implement:
+- OAuth providers (Google, GitHub, etc.)
+- Organization or multi-tenant logic
+- Complex role hierarchies
+- Permission frameworks
+
+These may be added later if clearly justified, but the default is simplicity.
+
+---
+
+## 7. Extension points
+
+### 7.1 Reasoning engines (TypeDB)
 
 TypeDB may be used as a **secondary reasoning engine** for:
 - explicit role-based inference
@@ -230,7 +312,7 @@ It operates on projections from PostgreSQL and is disposable.
 
 ---
 
-### 6.2 Graph engines (Neo4j, etc.)
+### 7.2 Graph engines (Neo4j, etc.)
 
 Graph databases may be used for:
 - exploration
@@ -241,7 +323,7 @@ They are strictly derived views and contain no original semantics.
 
 ---
 
-### 6.3 Analytical engines
+### 7.3 Analytical engines
 
 Engines such as DuckDB or Parquet may be used for:
 - large-scale aggregation
@@ -252,7 +334,7 @@ They do not replace PostgreSQL.
 
 ---
 
-## 7. Guiding rule
+## 8. Guiding rule
 
 > **If a result cannot be recomputed and explained,
 > it does not belong in the system.**

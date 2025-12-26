@@ -19,6 +19,14 @@ async def create_relation(
     service = RelationService(db)
     return await service.create(payload)
 
+@router.get("/by-source/{source_id}", response_model=list[RelationRead])
+async def list_relations_by_source(
+    source_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    service = RelationService(db)
+    return await service.list_by_source(source_id)
+
 @router.get("/{relation_id}", response_model=RelationRead)
 async def get_relation(
     relation_id: UUID,

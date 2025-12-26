@@ -19,6 +19,13 @@ async def create_entity(
     service = EntityService(db)
     return await service.create(payload)
 
+@router.get("/", response_model=list[EntityRead])
+async def list_entities(
+    db: AsyncSession = Depends(get_db),
+):
+    service = EntityService(db)
+    return await service.list_all()
+
 @router.get("/{entity_id}", response_model=EntityRead)
 async def get_entity(
     entity_id: UUID,

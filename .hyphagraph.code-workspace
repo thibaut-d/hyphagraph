@@ -1,0 +1,11 @@
+{
+  "folders": [
+    {
+      "name": "hyphagraph",
+      "path": "."
+    }
+  ],
+  "settings": {
+    "python.defaultInterpreterPath": "backend/.venv/bin/python"
+  }
+}

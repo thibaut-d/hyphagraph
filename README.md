@@ -56,16 +56,32 @@ it extracts explicit factual statements (“claims”) from documents and repres
 
 To get started with the project, read the following files in this order:
 
-1. GETTING_STARTED.md
-Setup instructions and local development workflow
+1. **GETTING_STARTED.md**
+   Setup instructions and local development workflow
 
+2. **AUTHENTICATION.md**
+   Authentication system implementation and API usage
 
-2. ARCHITECTURE.md
-Data model, hypergraph concepts, and system design
+3. **PROJECT.md**
+   Scientific motivation, conceptual foundations, and detailed rationale
 
+4. **ARCHITECTURE.md**
+   System architecture, component responsibilities, and design constraints
 
-3. PROJECT.md
-Scientific motivation, conceptual foundations, and detailed rationale
+5. **DATABASE_SCHEMA.md**
+   Canonical logical data model and schema definitions
+
+6. **COMPUTED_RELATIONS.md**
+   Inference model and mathematical formulas for knowledge derivation
+
+7. **CODE_GUIDE.md**
+   Coding guidelines and best practices
+
+8. **STRUCTURE.md**
+   Project file structure and organization
+
+9. **UX.md**
+   Design brief and user experience principles
 
 
 
@@ -74,9 +90,15 @@ Scientific motivation, conceptual foundations, and detailed rationale
 
 ## Tech stack
 
-- Backend: FastAPI, PostgreSQL
+- Backend: FastAPI, PostgreSQL, SQLAlchemy (async)
 
 - Frontend: React
+
+- Authentication: Custom JWT-based system (OAuth2 password flow)
+  - **Note**: We do NOT use FastAPI Users or similar authentication frameworks
+  - Rationale: FastAPI Users is in maintenance mode, and we prefer explicit, auditable authentication logic over framework magic
+  - Simple User model with JWT access tokens
+  - Explicit permission checks for authorization
 
 - LLM (optional): used in a constrained way for claim extraction and structuring
 (not for generating conclusions)

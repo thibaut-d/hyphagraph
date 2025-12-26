@@ -21,12 +21,19 @@ dependencies = [
     "alembic>=1.13",
 
     # --- Utils ---
-    "python-dotenv>=1.0"
+    "python-dotenv>=1.0",
 
-    # --- Auth ---
-    "fastapi-users[sqlalchemy]>=13.0.0",
-    "passlib[bcrypt]>=1.7.4"
-]
+    # --- Auth (custom JWT, NOT FastAPI Users) ---
+    "python-jose[cryptography]>=3.3",
+    "passlib[bcrypt]>=1.7.4",
+    "python-multipart>=0.0.6",
+
+    # --- Rate Limiting ---
+    "slowapi>=0.1.9",
+
+    # --- Email ---
+    "aiosmtplib>=3.0",  # Async SMTP client
+    "email-validator>=2.1",  # Email validation
 ]
 
 [project.optional-dependencies]

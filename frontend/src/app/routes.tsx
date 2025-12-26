@@ -9,6 +9,10 @@ import { SourceDetailView } from "../views/SourceDetailView";
 import { SearchView } from "../views/SearchView";
 import { AccountView } from "../views/AccountView";
 import { CreateRelationView } from "../views/CreateRelationView";
+import RequestPasswordResetView from "../views/RequestPasswordResetView";
+import ResetPasswordView from "../views/ResetPasswordView";
+import VerifyEmailView from "../views/VerifyEmailView";
+import ResendVerificationView from "../views/ResendVerificationView";
 
 export const router = createBrowserRouter([
   {
@@ -26,6 +30,10 @@ export const router = createBrowserRouter([
       { path: "search", element: <SearchView /> },
 
       { path: "account", element: <AccountView /> },
+      { path: "forgot-password", element: <RequestPasswordResetView /> },
+      { path: "reset-password", element: <ResetPasswordView /> },
+      { path: "verify-email", element: <VerifyEmailView /> },
+      { path: "resend-verification", element: <ResendVerificationView /> },
 
       { path: "relations/new", element: <CreateRelationView /> },
     ],

@@ -9,9 +9,25 @@ from app.config import settings
 from app.models.base import Base
 
 # Import ALL models so Alembic sees them
-from app.models.source import Source
+# Base tables
 from app.models.entity import Entity
+from app.models.source import Source
 from app.models.relation import Relation
+from app.models.user import User
+
+# Revision tables
+from app.models.entity_revision import EntityRevision
+from app.models.source_revision import SourceRevision
+from app.models.relation_revision import RelationRevision
+
+# Supporting tables
+from app.models.ui_category import UiCategory
+from app.models.entity_term import EntityTerm
+from app.models.attribute import Attribute
+from app.models.relation_role_revision import RelationRoleRevision
+from app.models.computed_relation import ComputedRelation
+
+# Legacy tables (backward compatibility)
 from app.models.role import Role
 from app.models.inference_cache import InferenceCache
 
