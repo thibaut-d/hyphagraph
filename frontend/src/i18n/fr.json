@@ -14,7 +14,9 @@
     "delete": "Supprimer",
     "deleting": "Suppression...",
     "not_found": "Introuvable",
-    "error": "Une erreur s'est produite"
+    "error": "Une erreur s'est produite",
+    "back_to_entity": "Retour à l'entité",
+    "no_data": "Aucune donnée"
   },
   "search": {
     "title": "Recherche",
@@ -191,5 +193,23 @@
     "delete_permanently": "Supprimer définitivement",
     "deleting": "Suppression...",
     "delete_failed": "Échec de la suppression du compte"
+  },
+  "explanation": {
+    "title": "Explication de l'inférence",
+    "header": "Explication de l'inférence",
+    "role_type": "Rôle",
+    "score": "Score",
+    "confidence": "Confiance",
+    "disagreement": "Désaccord",
+    "loading": "Génération de l'explication...",
+    "summary_title": "Résumé",
+    "confidence_breakdown": "Décomposition de la confiance",
+    "contradictions_title": "Preuves contradictoires",
+    "high_disagreement": "Désaccord élevé détecté - les sources se contredisent de manière significative",
+    "moderate_disagreement": "Désaccord modéré détecté parmi les sources",
+    "contradictions_note": "Les sources ci-dessous montrent des preuves opposées. Examinez-les attentivement pour comprendre le tableau complet.",
+    "source_evidence": "Preuves des sources",
+    "source_evidence_desc": "Cliquez sur n'importe quelle source pour voir ses détails complets",
+    "scope_filter": "Filtre de portée appliqué"
   }
 }

@@ -1,3 +1,4 @@
+import { Link as RouterLink } from "react-router-dom";
 import {
   Typography,
   Card,
@@ -7,7 +8,9 @@ import {
   Box,
   LinearProgress,
   Alert,
+  Button,
 } from "@mui/material";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { InferenceRead, RoleInference } from "../types/inference";
 
 function ScoreBar({ score }: { score: number | null }) {
@@ -48,15 +51,32 @@ function ScoreBar({ score }: { score: number | null }) {
   );
 }
 
-function RoleInferenceCard({ roleInference }: { roleInference: RoleInference }) {
+function RoleInferenceCard({
+  roleInference,
+  entityId
+}: {
+  roleInference: RoleInference;
+  entityId: string;
+}) {
   const { role_type, score, coverage, confidence, disagreement } = roleInference;
 
   return (
     <Card variant="outlined">
       <CardContent>
-        <Typography variant="h6" gutterBottom>
-          {role_type}
-        </Typography>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
+          <Typography variant="h6">
+            {role_type}
+          </Typography>
+          <Button
+            component={RouterLink}
+            to={`/explain/${entityId}/${role_type}`}
+            size="small"
+            startIcon={<HelpOutlineIcon />}
+            variant="outlined"
+          >
+            Explain
+          </Button>
+        </Stack>
 
         <Stack spacing={2}>
           {/* Main inference score */}
@@ -113,7 +133,11 @@ export function InferenceBlock({ inference }: { inference: InferenceRead }) {
           </Typography>
           <Stack spacing={2}>
             {inference.role_inferences.map((roleInf) => (
-              <RoleInferenceCard key={roleInf.role_type} roleInference={roleInf} />
+              <RoleInferenceCard
+                key={roleInf.role_type}
+                roleInference={roleInf}
+                entityId={inference.entity_id}
+              />
             ))}
           </Stack>
         </Box>

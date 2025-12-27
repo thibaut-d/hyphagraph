@@ -14,7 +14,9 @@
     "delete": "Delete",
     "deleting": "Deleting...",
     "not_found": "Not found",
-    "error": "An error occurred"
+    "error": "An error occurred",
+    "back_to_entity": "Back to Entity",
+    "no_data": "No data"
   },
   "search": {
     "title": "Search",
@@ -191,5 +193,23 @@
     "delete_permanently": "Delete Permanently",
     "deleting": "Deleting...",
     "delete_failed": "Failed to delete account"
+  },
+  "explanation": {
+    "title": "Inference Explanation",
+    "header": "Inference Explanation",
+    "role_type": "Role",
+    "score": "Score",
+    "confidence": "Confidence",
+    "disagreement": "Disagreement",
+    "loading": "Generating explanation...",
+    "summary_title": "Summary",
+    "confidence_breakdown": "Confidence Breakdown",
+    "contradictions_title": "Contradictory Evidence",
+    "high_disagreement": "High disagreement detected - sources significantly contradict each other",
+    "moderate_disagreement": "Some disagreement detected among sources",
+    "contradictions_note": "The sources below show opposing evidence. Review them carefully to understand the full picture.",
+    "source_evidence": "Source Evidence",
+    "source_evidence_desc": "Click on any source to view its full details",
+    "scope_filter": "Applied Scope Filter"
   }
 }
