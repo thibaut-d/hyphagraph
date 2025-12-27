@@ -59,12 +59,35 @@ For each approved step:
 * Implement code
 * Run tests & linters
 * Report results clearly
+* **Commit work after each significant step**
 
 ❌ No stubs
-❌ No “we’ll do it later”
+❌ No "we'll do it later"
 ❌ No unfinished paths
 
 If the scope is too large: **stop and propose next steps**.
+
+#### Commit Discipline (Mandatory)
+
+AI agents **MUST commit work regularly** to prevent loss and maintain clear history:
+
+* **Commit after each significant step** (feature complete, tests passing, refactoring done)
+* **Never accumulate dozens of uncommitted files** - commit work incrementally
+* **Use descriptive commit messages** that explain what and why
+* **Include proper attribution** in commit messages (Claude Code + Happy)
+* **Push commits regularly** to remote repository for backup
+
+**When to commit:**
+- Feature implementation complete with passing tests
+- Refactoring or cleanup complete
+- Bug fix complete and verified
+- Before starting a new major task
+- At natural breaking points in work
+
+**Bad practice:** Working for hours with 50+ uncommitted files
+**Good practice:** Committing every 30-60 minutes as logical units complete
+
+If you forget to commit and accumulate too much work, stop and create well-organized commits that group related changes together.
 
 ---
 
