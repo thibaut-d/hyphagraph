@@ -14,9 +14,19 @@ class InferenceService:
         self.db = db
         self.repo = RelationRepository(db)
 
-    async def infer_for_entity(self, entity_id: UUID) -> InferenceRead:
+    async def infer_for_entity(
+        self,
+        entity_id: UUID,
+        scope_filter: Optional[dict] = None
+    ) -> InferenceRead:
         """
-        Compute inferences for an entity.
+        Compute inferences for an entity, optionally filtered by scope.
+
+        Args:
+            entity_id: Entity to compute inferences for
+            scope_filter: Optional dict of scope attributes to filter by.
+                         Only relations matching ALL specified scope attributes will be included.
+                         Example: {"population": "adults", "condition": "chronic_pain"}
 
         Returns:
             - Grouped relations by kind
@@ -25,6 +35,10 @@ class InferenceService:
         from app.schemas.inference import RoleInference
 
         relations = await self.repo.list_by_entity(entity_id)
+
+        # Apply scope filtering if specified
+        if scope_filter:
+            relations = [rel for rel in relations if self._matches_scope(rel, scope_filter)]
 
         # Group relations by kind for display
         grouped = defaultdict(list)
@@ -261,3 +275,54 @@ class InferenceService:
 
         disagreement = 1 - (abs(signed_sum) / absolute_sum)
         return disagreement
+
+    def _matches_scope(self, relation, scope_filter: dict) -> bool:
+        """
+        Check if a relation matches the given scope filter.
+
+        Args:
+            relation: Relation model with revisions
+            scope_filter: Dict of scope attributes to match (AND logic)
+
+        Returns:
+            True if relation's scope contains all filter attributes with matching values
+
+        Matching logic:
+            - If relation has no scope (None), it does NOT match any filter
+            - All filter attributes must exist in relation scope
+            - All filter values must match exactly
+            - Extra attributes in relation scope are ignored (subset matching)
+
+        Examples:
+            filter: {"population": "adults"}
+            scope: {"population": "adults", "condition": "chronic"} → True
+            scope: {"population": "children"} → False
+            scope: None → False
+
+            filter: {"population": "adults", "condition": "chronic"}
+            scope: {"population": "adults", "condition": "chronic", "dosage": "high"} → True
+            scope: {"population": "adults"} → False (missing condition)
+        """
+        # Get current revision
+        if not relation.revisions:
+            return False
+
+        current_rev = next((r for r in relation.revisions if r.is_current), None)
+        if not current_rev:
+            return False
+
+        # Get scope from revision
+        relation_scope = current_rev.scope
+
+        # If relation has no scope, it doesn't match any filter
+        if relation_scope is None:
+            return False
+
+        # Check if all filter attributes match
+        for key, value in scope_filter.items():
+            if key not in relation_scope:
+                return False  # Missing attribute
+            if relation_scope[key] != value:
+                return False  # Value mismatch
+
+        return True  # All filter attributes match
