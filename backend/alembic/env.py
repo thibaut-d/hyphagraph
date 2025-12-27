@@ -26,10 +26,9 @@ from app.models.entity_term import EntityTerm
 from app.models.attribute import Attribute
 from app.models.relation_role_revision import RelationRoleRevision
 from app.models.computed_relation import ComputedRelation
-
-# Legacy tables (backward compatibility)
-from app.models.role import Role
 from app.models.inference_cache import InferenceCache
+from app.models.refresh_token import RefreshToken
+from app.models.audit_log import AuditLog
 
 
 config = context.config
@@ -41,6 +40,8 @@ target_metadata = Base.metadata
 
 
 def run_migrations_online() -> None:
+    import asyncio
+
     connectable = async_engine_from_config(
         {
             "sqlalchemy.url": settings.DATABASE_URL,
@@ -49,7 +50,7 @@ def run_migrations_online() -> None:
         poolclass=pool.NullPool,
     )
 
-    async def do_run_migrations(connection: Connection) -> None:
+    def do_run_migrations(connection: Connection) -> None:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
@@ -59,10 +60,13 @@ def run_migrations_online() -> None:
         with context.begin_transaction():
             context.run_migrations()
 
-    import asyncio
-    asyncio.run(
-        connectable.connect().run_sync(do_run_migrations)
-    )
+    async def run_async_migrations() -> None:
+        async with connectable.connect() as connection:
+            await connection.run_sync(do_run_migrations)
+
+        await connectable.dispose()
+
+    asyncio.run(run_async_migrations())
 
 
 run_migrations_online()

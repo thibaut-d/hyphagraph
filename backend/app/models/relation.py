@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, Float, ForeignKey, DateTime
+from sqlalchemy import ForeignKey, DateTime
 from sqlalchemy.sql import func
 from uuid import UUID
 from app.models.base import Base, UUIDMixin
@@ -26,14 +26,6 @@ class Relation(Base, UUIDMixin):
         server_default=func.now(),
     )
 
-    # DEPRECATED FIELDS (kept for backward compatibility during migration)
-    # TODO: Remove in future migration after data is migrated to revisions
-    kind: Mapped[str | None] = mapped_column(String, nullable=True)
-    direction: Mapped[str | None] = mapped_column(String, nullable=True)
-    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
-    notes: Mapped[str | None] = mapped_column(String)
-    updated_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True))
-
     # Relationships
     source = relationship("Source", back_populates="relations")
 
@@ -42,11 +34,4 @@ class Relation(Base, UUIDMixin):
         back_populates="relation",
         cascade="all, delete-orphan",
         order_by="RelationRevision.created_at.desc()",
-    )
-
-    # Keep old roles relationship for backward compatibility
-    roles = relationship(
-        "Role",
-        back_populates="relation",
-        cascade="all, delete-orphan",
     )
