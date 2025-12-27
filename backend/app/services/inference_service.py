@@ -75,23 +75,24 @@ class InferenceService:
             # Prepare relations data for this role
             relations_data = []
             for rel in relations:
-                # Get relation weight (use confidence if available, default 1.0)
-                relation_weight = rel.confidence if rel.confidence is not None else 1.0
-
                 # Get current revision
                 if rel.revisions:
                     current_rev = next((r for r in rel.revisions if r.is_current), None)
-                    if current_rev and current_rev.roles:
-                        # Find role contribution
-                        role = next((r for r in current_rev.roles if r.role_type == role_type), None)
-                        if role:
-                            # Use role weight if available, otherwise assume positive contribution
-                            contribution = role.weight if role.weight is not None else 1.0
+                    if current_rev:
+                        # Get relation weight (use confidence from revision if available, default 1.0)
+                        relation_weight = current_rev.confidence if current_rev.confidence is not None else 1.0
 
-                            relations_data.append({
-                                "weight": relation_weight,
-                                "roles": {role_type: contribution}
-                            })
+                        if current_rev.roles:
+                            # Find role contribution
+                            role = next((r for r in current_rev.roles if r.role_type == role_type), None)
+                            if role:
+                                # Use role weight if available, otherwise assume positive contribution
+                                contribution = role.weight if role.weight is not None else 1.0
+
+                                relations_data.append({
+                                    "weight": relation_weight,
+                                    "roles": {role_type: contribution}
+                                })
 
             # Compute aggregated inference
             if relations_data:
