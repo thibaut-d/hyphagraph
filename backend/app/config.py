@@ -45,6 +45,10 @@ class Settings(BaseSettings):
     EMAIL_VERIFICATION_REQUIRED: bool = False  # Require email verification for new users
     EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS: int = 24  # Verification token expiry (24 hours)
 
+    # Inference Engine
+    INFERENCE_MODEL_VERSION: str = "v1.0"  # Version of inference model (for cache invalidation)
+    SYSTEM_SOURCE_ID: str | None = None  # UUID of system source (created on startup)
+
     # Flags
     STRICT_VALIDATION: bool = True
     SQL_DEBUG: bool = False

@@ -2,13 +2,17 @@
 Application startup tasks.
 
 Handles initialization tasks that should run when the application starts,
-such as creating the default admin user.
+such as creating the default admin user and system source.
 """
 import logging
+from uuid import uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from app.config import settings
 from app.models.user import User
+from app.models.source import Source
+from app.models.source_revision import SourceRevision
 from app.services.user_service import UserService
 from app.schemas.auth import UserRegister
 
@@ -74,6 +78,62 @@ async def create_admin_user(db: AsyncSession) -> None:
         # The admin can be created manually or via migrations
 
 
+async def create_system_source(db: AsyncSession) -> None:
+    """
+    Create system source for computed relations if it doesn't exist.
+
+    The system source is used as the provenance for all computed inferences.
+    Its ID is stored in settings.SYSTEM_SOURCE_ID.
+
+    This function is idempotent - it's safe to call multiple times.
+
+    Args:
+        db: Database session
+    """
+    try:
+        # Check if system source already exists
+        if settings.SYSTEM_SOURCE_ID:
+            from uuid import UUID
+            stmt = select(Source).where(Source.id == UUID(settings.SYSTEM_SOURCE_ID))
+            result = await db.execute(stmt)
+            existing = result.scalar_one_or_none()
+
+            if existing:
+                logger.info(f"System source already exists: {settings.SYSTEM_SOURCE_ID}")
+                return
+
+        # Create system source
+        logger.info("Creating system source for computed inferences...")
+
+        source = Source(id=uuid4())
+        db.add(source)
+        await db.flush()
+
+        # Create source revision
+        revision = SourceRevision(
+            source_id=source.id,
+            kind="system",
+            title="HyphaGraph Inference Engine",
+            url="https://github.com/yourusername/hyphagraph",
+            year=2025,
+            origin="system",
+            trust_level=1.0,  # Maximum trust for system computations
+            is_current=True,
+        )
+        db.add(revision)
+        await db.commit()
+
+        logger.info(f"System source created: {source.id}")
+        logger.info(f"Set SYSTEM_SOURCE_ID={source.id} in your .env file to persist across restarts")
+
+        # Note: We can't update settings.SYSTEM_SOURCE_ID here as it's immutable
+        # The admin needs to add it to .env manually
+
+    except Exception as e:
+        logger.error(f"Failed to create system source: {e}")
+        await db.rollback()
+
+
 async def run_startup_tasks(db: AsyncSession) -> None:
     """
     Run all startup tasks.
@@ -84,5 +144,6 @@ async def run_startup_tasks(db: AsyncSession) -> None:
     logger.info("Running startup tasks...")
 
     await create_admin_user(db)
+    await create_system_source(db)
 
     logger.info("Startup tasks completed")

@@ -80,6 +80,7 @@ from app.models.source_revision import SourceRevision  # noqa: F401
 from app.models.relation import Relation  # noqa: F401
 from app.models.relation_revision import RelationRevision  # noqa: F401
 from app.models.relation_role_revision import RelationRoleRevision  # noqa: F401
+from app.models.computed_relation import ComputedRelation  # noqa: F401
 
 # Use SQLite for testing (in-memory)
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
@@ -128,3 +129,44 @@ async def db_session() -> AsyncSession:
 
     # Cleanup
     await engine.dispose()
+
+
+@pytest_asyncio.fixture
+async def system_source(db_session: AsyncSession):
+    """
+    Create a system source for computed inferences.
+
+    Sets SYSTEM_SOURCE_ID in settings for tests that use caching.
+
+    Returns:
+        Source: The system source
+    """
+    from uuid import uuid4
+
+    # Create system source
+    source = Source(id=uuid4())
+    db_session.add(source)
+    await db_session.flush()
+
+    # Create source revision
+    revision = SourceRevision(
+        source_id=source.id,
+        kind="system",
+        title="Test Inference Engine",
+        url="https://test.example.com",
+        year=2025,
+        origin="test",
+        trust_level=1.0,
+        is_current=True,
+    )
+    db_session.add(revision)
+    await db_session.flush()
+
+    # Set in settings
+    original_system_source_id = settings.SYSTEM_SOURCE_ID
+    settings.SYSTEM_SOURCE_ID = str(source.id)
+
+    yield source
+
+    # Restore original setting
+    settings.SYSTEM_SOURCE_ID = original_system_source_id
