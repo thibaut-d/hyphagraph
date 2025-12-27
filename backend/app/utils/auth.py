@@ -1,20 +1,16 @@
 """
 Authentication utilities for JWT token handling and password hashing.
 
-Uses python-jose for JWT and passlib for password hashing.
+Uses python-jose for JWT and bcrypt for password hashing.
 NO third-party auth frameworks.
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from uuid import UUID, uuid4
 import secrets
+import bcrypt
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from app.config import settings
-
-
-# Password hashing context (bcrypt)
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def hash_password(password: str) -> str:
@@ -25,9 +21,19 @@ def hash_password(password: str) -> str:
         password: Plain text password
 
     Returns:
-        Hashed password string
+        Hashed password string (bcrypt hash)
+
+    Note:
+        Bcrypt has a 72-byte limit. Passwords are truncated to 72 bytes
+        before hashing to prevent errors.
     """
-    return pwd_context.hash(password)
+    # Truncate to 72 bytes (bcrypt limit)
+    password_bytes = password.encode('utf-8')[:72]
+    # Generate salt and hash
+    salt = bcrypt.gensalt(rounds=12)
+    hashed = bcrypt.hashpw(password_bytes, salt)
+    # Return as string
+    return hashed.decode('utf-8')
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -40,8 +46,15 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
     Returns:
         True if password matches, False otherwise
+
+    Note:
+        Truncates to 72 bytes to match hashing behavior.
     """
-    return pwd_context.verify(plain_password, hashed_password)
+    # Truncate to 72 bytes (bcrypt limit)
+    password_bytes = plain_password.encode('utf-8')[:72]
+    hashed_bytes = hashed_password.encode('utf-8')
+    # Verify using bcrypt
+    return bcrypt.checkpw(password_bytes, hashed_bytes)
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -59,9 +72,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
     # Set expiration time
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
     to_encode.update({"exp": expire})
 
@@ -111,15 +124,25 @@ def hash_refresh_token(token: str) -> str:
     """
     Hash a refresh token for secure storage in the database.
 
-    Uses the same bcrypt context as passwords for consistency.
+    Uses bcrypt for consistency with password hashing.
 
     Args:
         token: Plain refresh token string
 
     Returns:
-        Hashed token string
+        Hashed token string (bcrypt hash)
+
+    Note:
+        Bcrypt has a 72-byte limit. Tokens are truncated to 72 bytes
+        before hashing to prevent errors.
     """
-    return pwd_context.hash(token)
+    # Truncate to 72 bytes (bcrypt limit)
+    token_bytes = token.encode('utf-8')[:72]
+    # Generate salt and hash
+    salt = bcrypt.gensalt(rounds=12)
+    hashed = bcrypt.hashpw(token_bytes, salt)
+    # Return as string
+    return hashed.decode('utf-8')
 
 
 def verify_refresh_token(plain_token: str, hashed_token: str) -> bool:
@@ -132,5 +155,12 @@ def verify_refresh_token(plain_token: str, hashed_token: str) -> bool:
 
     Returns:
         True if token matches, False otherwise
+
+    Note:
+        Truncates to 72 bytes to match hashing behavior.
     """
-    return pwd_context.verify(plain_token, hashed_token)
+    # Truncate to 72 bytes (bcrypt limit)
+    token_bytes = plain_token.encode('utf-8')[:72]
+    hashed_bytes = hashed_token.encode('utf-8')
+    # Verify using bcrypt
+    return bcrypt.checkpw(token_bytes, hashed_bytes)

@@ -114,3 +114,98 @@ class RelationService:
             result.append(relation_to_read(relation, current_revision))
 
         return result
+
+    async def update(self, relation_id: str, payload: RelationWrite, user_id=None) -> RelationRead:
+        """
+        Update a relation by creating a new revision.
+
+        The base Relation remains immutable. This creates a new RelationRevision
+        with is_current=True and marks the old revision as is_current=False.
+
+        Note: The source_id in the base Relation cannot be changed.
+        """
+        # 1. Structural validation
+        validate_relation(payload)
+
+        try:
+            # 2. Verify relation exists
+            relation = await self.repo.get_by_id(relation_id)
+            if not relation:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Relation not found",
+                )
+
+            # Verify source_id hasn't changed (it's immutable)
+            if payload.source_id != relation.source_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Cannot change source_id of an existing relation",
+                )
+
+            # 3. Create new revision with updated data
+            revision_data = relation_revision_from_write(payload)
+            if user_id:
+                revision_data['created_by_user_id'] = user_id
+
+            revision = await create_new_revision(
+                db=self.db,
+                revision_class=RelationRevision,
+                parent_id_field='relation_id',
+                parent_id=relation.id,
+                revision_data=revision_data,
+                set_as_current=True,
+            )
+
+            # 4. Create role revisions (snapshot of roles for this revision)
+            for role_data in payload.roles:
+                role_revision = RelationRoleRevision(
+                    relation_revision_id=revision.id,
+                    entity_id=role_data.entity_id,
+                    role_type=role_data.role_type,
+                    weight=role_data.weight,
+                    coverage=role_data.coverage,
+                )
+                self.db.add(role_revision)
+
+            await self.db.flush()  # Ensure roles are created
+
+            # 5. Commit transaction
+            await self.db.commit()
+
+            # 6. Refresh to get the roles relationship populated
+            await self.db.refresh(revision, ['roles'])
+
+            # 7. Return Read
+            return relation_to_read(relation, revision)
+
+        except HTTPException:
+            raise
+        except Exception:
+            await self.db.rollback()
+            raise
+
+    async def delete(self, relation_id: str) -> None:
+        """
+        Delete a relation and all its revisions.
+
+        Note: This is a hard delete. Consider implementing soft delete
+        by adding a deleted_at field if needed.
+        """
+        try:
+            relation = await self.repo.get_by_id(relation_id)
+            if not relation:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Relation not found",
+                )
+
+            # Delete the relation (cascade should handle revisions and role revisions)
+            await self.repo.delete(relation)
+            await self.db.commit()
+
+        except HTTPException:
+            raise
+        except Exception:
+            await self.db.rollback()
+            raise

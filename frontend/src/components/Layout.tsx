@@ -14,17 +14,20 @@ import {
 } from "@mui/material";
 import LanguageIcon from "@mui/icons-material/Language";
 
+import { ProfileMenu } from "./ProfileMenu";
+import { useAuthContext } from "../auth/AuthContext";
+
 const menuItems = [
   { key: "menu.home", path: "/" },
   { key: "menu.entities", path: "/entities" },
   { key: "menu.sources", path: "/sources" },
   { key: "menu.search", path: "/search" },
-  { key: "menu.account", path: "/account" },
 ];
 
 export function Layout() {
   const location = useLocation();
   const { t } = useTranslation();
+  const { user } = useAuthContext();
 
   const toggleLanguage = () => {
     i18n.changeLanguage(i18n.language === "en" ? "fr" : "en");
@@ -74,6 +77,23 @@ export function Layout() {
               <LanguageIcon />
             </IconButton>
           </Tooltip>
+
+          {/* Profile menu or login button */}
+          {user ? (
+            <Box sx={{ ml: 2 }}>
+              <ProfileMenu />
+            </Box>
+          ) : (
+            <Button
+              component={RouterLink}
+              to="/account"
+              color="inherit"
+              variant="outlined"
+              sx={{ ml: 2 }}
+            >
+              {t("auth.login", "Login")}
+            </Button>
+          )}
         </Toolbar>
       </AppBar>
 

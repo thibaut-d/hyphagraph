@@ -6,7 +6,7 @@ from app.database import get_db
 from app.schemas.inference import InferenceRead
 from app.services.inference_service import InferenceService
 
-router = APIRouter(prefix="/inferences", tags=["inferences"])
+router = APIRouter()
 
 
 @router.get("/entity/{entity_id}", response_model=InferenceRead)

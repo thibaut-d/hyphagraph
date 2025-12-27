@@ -4,7 +4,8 @@ from sqlalchemy.orm import selectinload
 from uuid import UUID
 
 from app.models.relation import Relation
-from app.models.role import Role
+from app.models.relation_revision import RelationRevision
+from app.models.relation_role_revision import RelationRoleRevision
 
 
 class RelationRepository:
@@ -26,17 +27,38 @@ class RelationRepository:
         stmt = (
             select(Relation)
             .where(Relation.source_id == source_id)
-            .options(selectinload(Relation.roles))
+            .options(
+                selectinload(Relation.revisions).selectinload(RelationRevision.roles)
+            )
         )
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
     async def list_by_entity(self, entity_id: UUID) -> list[Relation]:
+        """Find all relations involving an entity via RelationRoleRevision."""
+        # Get relation IDs via RelationRoleRevision
+        stmt_ids = (
+            select(Relation.id)
+            .join(RelationRevision)
+            .join(RelationRoleRevision)
+            .where(RelationRoleRevision.entity_id == entity_id)
+        )
+        result = await self.db.execute(stmt_ids)
+        relation_ids = [row[0] for row in result.all()]
+
+        if not relation_ids:
+            return []
+
+        # Fetch full relations with eager loading
         stmt = (
             select(Relation)
-            .join(Role)
-            .where(Role.entity_id == entity_id)
-            .options(selectinload(Relation.roles))
+            .where(Relation.id.in_(relation_ids))
+            .options(
+                selectinload(Relation.revisions).selectinload(RelationRevision.roles)
+            )
         )
         result = await self.db.execute(stmt)
         return list(result.scalars().unique().all())
+
+    async def delete(self, relation: Relation) -> None:
+        await self.db.delete(relation)

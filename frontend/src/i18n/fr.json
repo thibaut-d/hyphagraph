@@ -8,12 +8,47 @@
   },
   "common": {
     "loading": "Chargement…",
-    "confidence": "Confiance"
+    "confidence": "Confiance",
+    "cancel": "Annuler",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "deleting": "Suppression...",
+    "not_found": "Introuvable",
+    "error": "Une erreur s'est produite"
   },
   "search": {
     "title": "Recherche",
     "placeholder": "Rechercher des entités",
     "no_results": "Aucun résultat"
+  },
+  "entities": {
+    "title": "Entités",
+    "create": "Créer une entité"
+  },
+  "entity": {
+    "inference": "Assertions liées",
+    "delete_confirm_title": "Supprimer l'entité",
+    "delete_confirm_message": "Êtes-vous sûr de vouloir supprimer cette entité ? Cette action ne peut pas être annulée."
+  },
+  "create_entity": {
+    "title": "Créer une entité",
+    "description": "Créer une nouvelle entité dans le graphe de connaissances. Le slug est un identifiant unique pour cette entité.",
+    "slug": "Slug",
+    "slug_help": "Un identifiant unique (ex: personne-albert-einstein)",
+    "slug_required": "Le slug est requis",
+    "summary_en": "Résumé (Anglais)",
+    "summary_fr": "Résumé (Français)",
+    "summary_help": "Description optionnelle de cette entité",
+    "create": "Créer l'entité",
+    "creating": "Création en cours...",
+    "error": "Échec de la création de l'entité"
+  },
+  "edit_entity": {
+    "title": "Modifier l'entité",
+    "description": "Mettre à jour les informations de l'entité. Le slug est l'identifiant unique de cette entité.",
+    "save": "Enregistrer les modifications",
+    "saving": "Enregistrement...",
+    "error": "Échec de la mise à jour de l'entité"
   },
   "sources": {
     "title": "Sources",
@@ -22,11 +57,72 @@
     "no_relations": "Aucune relation",
     "trust": "Niveau de confiance",
     "untitled": "Source sans titre",
-    "view_entity": "Voir l’entité"
+    "view_entity": "Voir l'entité",
+    "create": "Créer une source"
+  },
+  "source": {
+    "delete_confirm_title": "Supprimer la source",
+    "delete_confirm_message": "Êtes-vous sûr de vouloir supprimer cette source ? Cela supprimera également toutes les relations qui lui sont associées. Cette action ne peut pas être annulée."
+  },
+  "create_source": {
+    "title": "Créer une source",
+    "description": "Créer une nouvelle source pour le graphe de connaissances. Les sources sont des références qui fournissent les fondations pour les relations et les affirmations.",
+    "kind": "Type",
+    "kind_article": "Article",
+    "kind_book": "Livre",
+    "kind_website": "Site web",
+    "kind_report": "Rapport",
+    "kind_video": "Vidéo",
+    "kind_podcast": "Podcast",
+    "kind_dataset": "Jeu de données",
+    "kind_other": "Autre",
+    "title_label": "Titre",
+    "title_required": "Le titre est requis",
+    "url_label": "URL",
+    "url_required": "L'URL est requise",
+    "url_help": "Lien vers le document source ou la page web",
+    "authors": "Auteurs",
+    "authors_help": "Liste d'auteurs séparés par des virgules",
+    "year": "Année",
+    "year_help": "Année de publication",
+    "origin": "Origine",
+    "origin_help": "Éditeur, journal ou plateforme",
+    "trust_level": "Niveau de confiance",
+    "trust_level_help": "0 à 1 (0,5 = neutre)",
+    "summary_en": "Résumé (Anglais)",
+    "summary_fr": "Résumé (Français)",
+    "summary_help": "Brève description optionnelle",
+    "create": "Créer la source",
+    "creating": "Création en cours...",
+    "error": "Échec de la création de la source"
+  },
+  "edit_source": {
+    "title": "Modifier la source",
+    "description": "Mettre à jour les informations de la source. Les sources fournissent les fondations pour les relations et les affirmations.",
+    "save": "Enregistrer les modifications",
+    "saving": "Enregistrement...",
+    "error": "Échec de la mise à jour de la source"
   },
   "relation": {
-    "create": "Créer une relation"
-  }
+    "create": "Créer une relation",
+    "delete_confirm_title": "Supprimer la relation",
+    "delete_confirm_message": "Êtes-vous sûr de vouloir supprimer cette relation ? Cette action ne peut pas être annulée."
+  },
+  "relations": {
+    "title": "Relations",
+    "view_by_source": "Les relations sont actuellement organisées par source. Pour voir les relations, veuillez visiter la page Sources et sélectionner une source.",
+    "no_global_list": "Aucune liste globale de relations disponible",
+    "explanation": "Les relations dans ce système sont liées aux sources. Chaque relation doit provenir d'une source spécifique, garantissant la traçabilité et la confiance.",
+    "browse_sources": "Parcourir les sources"
+  },
+  "edit_relation": {
+    "title": "Modifier la relation",
+    "description": "Mettre à jour les détails de la relation. Notez que la source ne peut pas être modifiée.",
+    "source_immutable": "Source",
+    "save": "Enregistrer les modifications",
+    "saving": "Enregistrement...",
+    "error": "Échec de la mise à jour de la relation"
+  },
   "account": {
     "title": "Mon compte",
     "login": "Connexion",
@@ -35,5 +131,65 @@
     "email": "Email",
     "password": "Mot de passe",
     "logged_as": "Connecté en tant que"
+  },
+  "auth": {
+    "login": "Connexion",
+    "logout": "Déconnexion",
+    "register": "Créer un compte"
+  },
+  "profile": {
+    "signed_in": "Connecté",
+    "my_profile": "Mon Profil",
+    "change_password": "Changer le mot de passe",
+    "settings": "Paramètres",
+    "logout": "Déconnexion",
+    "email_label": "Adresse e-mail",
+    "user_id": "ID utilisateur",
+    "account_actions": "Actions du compte"
+  },
+  "change_password": {
+    "title": "Changer le mot de passe",
+    "description": "Entrez votre mot de passe actuel et choisissez un nouveau mot de passe. Votre nouveau mot de passe doit contenir au moins 8 caractères.",
+    "current_password": "Mot de passe actuel",
+    "new_password": "Nouveau mot de passe",
+    "confirm_password": "Confirmer le nouveau mot de passe",
+    "password_requirements": "Minimum 8 caractères",
+    "change_password": "Changer le mot de passe",
+    "changing": "Modification en cours...",
+    "success": "Mot de passe modifié avec succès ! Redirection...",
+    "error": "Échec de la modification du mot de passe",
+    "passwords_dont_match": "Les mots de passe ne correspondent pas",
+    "password_too_short": "Le mot de passe doit contenir au moins 8 caractères"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "email_settings": "Paramètres e-mail",
+    "email_address": "Adresse e-mail",
+    "email_help": "Vous devrez peut-être vérifier votre nouvelle adresse e-mail",
+    "update_email": "Mettre à jour l'e-mail",
+    "updating": "Mise à jour...",
+    "email_updated": "Adresse e-mail mise à jour avec succès",
+    "email_unchanged": "Adresse e-mail inchangée",
+    "invalid_email": "Veuillez entrer une adresse e-mail valide",
+    "update_failed": "Échec de la mise à jour de l'e-mail",
+    "danger_zone": "Zone dangereuse",
+    "deactivate_account": "Désactiver le compte",
+    "deactivate_warning": "Désactivez temporairement votre compte sans supprimer vos données. Vous pouvez le réactiver plus tard en vous reconnectant.",
+    "deactivate_account_button": "Désactiver mon compte",
+    "confirm_deactivate": "Confirmer la désactivation du compte",
+    "deactivate_confirmation": "Êtes-vous sûr de vouloir désactiver votre compte ? Votre compte sera temporairement désactivé, mais vous pourrez le réactiver en vous reconnectant. Vos données seront préservées.",
+    "email_to_deactivate": "Compte :",
+    "deactivate_confirm_button": "Désactiver le compte",
+    "deactivating": "Désactivation...",
+    "deactivate_failed": "Échec de la désactivation du compte",
+    "delete_account": "Supprimer le compte",
+    "delete_warning": "Une fois que vous supprimez votre compte, il n'y a pas de retour en arrière possible. Cette action est permanente et supprimera toutes vos données.",
+    "delete_account_button": "Supprimer mon compte",
+    "confirm_delete": "Confirmer la suppression du compte",
+    "delete_confirmation": "Êtes-vous absolument sûr de vouloir supprimer votre compte ? Cette action ne peut pas être annulée et toutes vos données seront définitivement supprimées.",
+    "email_to_delete": "Compte :",
+    "delete_permanently": "Supprimer définitivement",
+    "deleting": "Suppression...",
+    "delete_failed": "Échec de la suppression du compte"
   }
 }

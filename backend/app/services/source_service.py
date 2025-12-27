@@ -87,3 +87,67 @@ class SourceService:
             result.append(source_to_read(source, current_revision))
 
         return result
+
+    async def update(self, source_id: str, payload: SourceWrite, user_id=None) -> SourceRead:
+        """
+        Update a source by creating a new revision.
+
+        The base Source remains immutable. This creates a new SourceRevision
+        with is_current=True and marks the old revision as is_current=False.
+        """
+        try:
+            # Verify source exists
+            source = await self.repo.get_by_id(source_id)
+            if not source:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Source not found",
+                )
+
+            # Create new revision with updated data
+            revision_data = source_revision_from_write(payload)
+            if user_id:
+                revision_data['created_by_user_id'] = user_id
+
+            revision = await create_new_revision(
+                db=self.db,
+                revision_class=SourceRevision,
+                parent_id_field='source_id',
+                parent_id=source.id,
+                revision_data=revision_data,
+                set_as_current=True,
+            )
+
+            await self.db.commit()
+            return source_to_read(source, revision)
+
+        except HTTPException:
+            raise
+        except Exception:
+            await self.db.rollback()
+            raise
+
+    async def delete(self, source_id: str) -> None:
+        """
+        Delete a source and all its revisions.
+
+        Note: This is a hard delete. Consider implementing soft delete
+        by adding a deleted_at field if needed.
+        """
+        try:
+            source = await self.repo.get_by_id(source_id)
+            if not source:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Source not found",
+                )
+
+            # Delete the source (cascade should handle revisions)
+            await self.repo.delete(source)
+            await self.db.commit()
+
+        except HTTPException:
+            raise
+        except Exception:
+            await self.db.rollback()
+            raise

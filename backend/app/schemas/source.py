@@ -18,7 +18,7 @@ class SourceWrite(Schema):
     url: str
     trust_level: Optional[float] = None
     summary: Optional[dict] = None  # i18n: {"en": "...", "fr": "..."}
-    metadata: Optional[dict] = None  # doi, pubmed_id, etc.
+    source_metadata: Optional[dict] = None  # doi, pubmed_id, etc.
     created_with_llm: Optional[str] = None
 
 
@@ -34,7 +34,7 @@ class SourceRevisionRead(Schema):
     url: str
     trust_level: Optional[float] = None
     summary: Optional[dict] = None
-    metadata: Optional[dict] = None
+    source_metadata: Optional[dict] = None
     created_with_llm: Optional[str] = None
     created_by_user_id: Optional[UUID] = None
     created_at: datetime
@@ -59,7 +59,7 @@ class SourceRead(Schema):
     url: str
     trust_level: Optional[float] = None
     summary: Optional[dict] = None
-    metadata: Optional[dict] = None
+    source_metadata: Optional[dict] = None
 
 
 class SourceWithHistory(SourceRead):

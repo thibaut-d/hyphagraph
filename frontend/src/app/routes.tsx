@@ -1,14 +1,24 @@
 import { createBrowserRouter } from "react-router-dom";
 import { Layout } from "../components/Layout";
+import { ProtectedRoute } from "../components/ProtectedRoute";
 
 import { HomeView } from "../views/HomeView";
 import { EntitiesView } from "../views/EntitiesView";
 import { EntityDetailView } from "../views/EntityDetailView";
+import { CreateEntityView } from "../views/CreateEntityView";
+import { EditEntityView } from "../views/EditEntityView";
 import { SourcesView } from "../views/SourcesView";
 import { SourceDetailView } from "../views/SourceDetailView";
+import { CreateSourceView } from "../views/CreateSourceView";
+import { EditSourceView } from "../views/EditSourceView";
 import { SearchView } from "../views/SearchView";
 import { AccountView } from "../views/AccountView";
+import { ProfileView } from "../views/ProfileView";
+import { ChangePasswordView } from "../views/ChangePasswordView";
+import { SettingsView } from "../views/SettingsView";
 import { CreateRelationView } from "../views/CreateRelationView";
+import { EditRelationView } from "../views/EditRelationView";
+import RelationsView from "../views/RelationsView";
 import RequestPasswordResetView from "../views/RequestPasswordResetView";
 import ResetPasswordView from "../views/ResetPasswordView";
 import VerifyEmailView from "../views/VerifyEmailView";
@@ -22,20 +32,29 @@ export const router = createBrowserRouter([
       { index: true, element: <HomeView /> },
 
       { path: "entities", element: <EntitiesView /> },
+      { path: "entities/new", element: <ProtectedRoute><CreateEntityView /></ProtectedRoute> },
       { path: "entities/:id", element: <EntityDetailView /> },
+      { path: "entities/:id/edit", element: <ProtectedRoute><EditEntityView /></ProtectedRoute> },
 
       { path: "sources", element: <SourcesView /> },
+      { path: "sources/new", element: <ProtectedRoute><CreateSourceView /></ProtectedRoute> },
       { path: "sources/:id", element: <SourceDetailView /> },
+      { path: "sources/:id/edit", element: <ProtectedRoute><EditSourceView /></ProtectedRoute> },
 
       { path: "search", element: <SearchView /> },
 
       { path: "account", element: <AccountView /> },
+      { path: "profile", element: <ProfileView /> },
+      { path: "change-password", element: <ChangePasswordView /> },
+      { path: "settings", element: <SettingsView /> },
       { path: "forgot-password", element: <RequestPasswordResetView /> },
       { path: "reset-password", element: <ResetPasswordView /> },
       { path: "verify-email", element: <VerifyEmailView /> },
       { path: "resend-verification", element: <ResendVerificationView /> },
 
-      { path: "relations/new", element: <CreateRelationView /> },
+      { path: "relations", element: <RelationsView /> },
+      { path: "relations/new", element: <ProtectedRoute><CreateRelationView /></ProtectedRoute> },
+      { path: "relations/:id/edit", element: <ProtectedRoute><EditRelationView /></ProtectedRoute> },
     ],
   },
 ]);

@@ -27,62 +27,37 @@ def relation_revision_from_write(payload: RelationWrite) -> dict:
 
 
 def relation_to_read(
-    relation: Relation, current_revision: RelationRevision = None
+    relation: Relation, current_revision: RelationRevision
 ) -> RelationRead:
     """
     ORM → Read
 
     Combines base relation + current revision data.
-    Falls back to deprecated fields if no revision exists.
     """
-    if current_revision:
-        # Convert role revisions to read schema
-        roles = [
-            RoleRevisionRead(
-                id=role.id,
-                relation_revision_id=role.relation_revision_id,
-                entity_id=role.entity_id,
-                role_type=role.role_type,
-                weight=role.weight,
-                coverage=role.coverage,
-            )
-            for role in current_revision.roles
-        ]
-
-        return RelationRead(
-            id=relation.id,
-            created_at=relation.created_at,
-            source_id=relation.source_id,
-            kind=current_revision.kind,
-            direction=current_revision.direction,
-            confidence=current_revision.confidence,
-            scope=current_revision.scope,
-            notes=current_revision.notes,
-            roles=roles,
+    # Convert role revisions to read schema
+    roles = [
+        RoleRevisionRead(
+            id=role.id,
+            relation_revision_id=role.relation_revision_id,
+            entity_id=role.entity_id,
+            role_type=role.role_type,
+            weight=role.weight,
+            coverage=role.coverage,
         )
-    else:
-        # Fallback to legacy fields and legacy roles table
-        from app.schemas.role import RoleRead
+        for role in current_revision.roles
+    ]
 
-        legacy_roles = [
-            RoleRead(
-                entity_id=role.entity_id,
-                role_type=role.role_type,
-            )
-            for role in relation.roles
-        ]
-
-        return RelationRead(
-            id=relation.id,
-            created_at=relation.created_at,
-            source_id=relation.source_id,
-            kind=relation.kind,
-            direction=relation.direction,
-            confidence=relation.confidence,
-            scope=None,
-            notes={"en": relation.notes} if relation.notes else None,
-            roles=legacy_roles,
-        )
+    return RelationRead(
+        id=relation.id,
+        created_at=relation.created_at,
+        source_id=relation.source_id,
+        kind=current_revision.kind,
+        direction=current_revision.direction,
+        confidence=current_revision.confidence,
+        scope=current_revision.scope,
+        notes=current_revision.notes,
+        roles=roles,
+    )
 
 
 def relation_revision_to_read(revision: RelationRevision) -> RelationRevisionRead:

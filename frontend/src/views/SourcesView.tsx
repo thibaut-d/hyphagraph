@@ -10,7 +10,10 @@ import {
   ListItemText,
   Link,
   Stack,
+  Box,
+  Button,
 } from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
 
 import { listSources } from "../api/sources";
 import { SourceRead } from "../types/source";
@@ -24,12 +27,22 @@ export function SourcesView() {
   }, []);
 
   return (
-    <Paper sx={{ p: 3 }}>
-      <Stack spacing={2}>
-        <Typography variant="h5">
+    <Stack spacing={2}>
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <Typography variant="h4">
           {t("sources.title", "Sources")}
         </Typography>
+        <Button
+          component={RouterLink}
+          to="/sources/new"
+          variant="contained"
+          startIcon={<AddIcon />}
+        >
+          {t("sources.create", "Create Source")}
+        </Button>
+      </Box>
 
+      <Paper sx={{ p: 3 }}>
         <List>
           {sources.map((s) => (
             <ListItem key={s.id}>
@@ -55,7 +68,7 @@ export function SourcesView() {
             {t("sources.no_data", "No sources")}
           </Typography>
         )}
-      </Stack>
-    </Paper>
+      </Paper>
+    </Stack>
   );
 }

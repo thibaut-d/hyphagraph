@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from fastapi import HTTPException, status
 from uuid import UUID
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.schemas.auth import UserRegister, UserRead, UserUpdate
 from app.repositories.user_repo import UserRepository
@@ -80,6 +80,7 @@ class UserService:
                 email=user.email,
                 is_active=user.is_active,
                 is_superuser=user.is_superuser,
+                is_verified=user.is_verified,
                 created_at=user.created_at,
             )
 
@@ -112,6 +113,7 @@ class UserService:
             email=user.email,
             is_active=user.is_active,
             is_superuser=user.is_superuser,
+            is_verified=user.is_verified,
             created_at=user.created_at,
         )
 
@@ -199,12 +201,56 @@ class UserService:
                 email=user.email,
                 is_active=user.is_active,
                 is_superuser=user.is_superuser,
+                is_verified=user.is_verified,
                 created_at=user.created_at,
             )
 
         except HTTPException:
             await self.db.rollback()
             raise
+        except Exception:
+            await self.db.rollback()
+            raise
+
+    async def deactivate(self, user_id: UUID) -> None:
+        """
+        Deactivate a user account (soft delete).
+
+        Sets is_active to False and revokes all refresh tokens.
+        User can reactivate by logging in again.
+
+        Args:
+            user_id: User UUID
+
+        Raises:
+            HTTPException 404: If user not found
+        """
+        user = await self.repo.get_by_id(user_id)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+
+        try:
+            # Set user as inactive
+            user.is_active = False
+            await self.repo.update(user)
+
+            # Revoke all active refresh tokens for this user
+            stmt = select(RefreshToken).where(
+                RefreshToken.user_id == user_id,
+                RefreshToken.is_revoked == False
+            )
+            result = await self.db.execute(stmt)
+            active_tokens = result.scalars().all()
+
+            for token in active_tokens:
+                token.is_revoked = True
+                token.revoked_at = datetime.now(timezone.utc)
+
+            await self.db.commit()
+
         except Exception:
             await self.db.rollback()
             raise
@@ -239,6 +285,8 @@ class UserService:
         """
         Authenticate user with email and password.
 
+        If user is inactive (deactivated), reactivates the account on successful login.
+
         Args:
             email: User email
             password: Plain text password
@@ -248,7 +296,6 @@ class UserService:
 
         Raises:
             HTTPException 401: If credentials invalid
-            HTTPException 403: If user inactive
         """
         user = await self.repo.get_by_email(email)
 
@@ -260,12 +307,16 @@ class UserService:
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        # Check if user is active
+        # Reactivate user if they were deactivated
         if not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Inactive user account"
-            )
+            try:
+                user.is_active = True
+                await self.repo.update(user)
+                await self.db.commit()
+                await self.db.refresh(user)
+            except Exception:
+                await self.db.rollback()
+                raise
 
         return user
 
@@ -329,7 +380,7 @@ class UserService:
         token_hash = hash_refresh_token(refresh_token)
 
         # Calculate expiration
-        expires_at = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+        expires_at = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
 
         try:
             # Store refresh token in database
@@ -366,7 +417,7 @@ class UserService:
         # Query all active, non-expired refresh tokens
         stmt = select(RefreshToken).where(
             RefreshToken.is_revoked == False,
-            RefreshToken.expires_at > datetime.utcnow()
+            RefreshToken.expires_at > datetime.now(timezone.utc)
         )
         result = await self.db.execute(stmt)
         all_tokens = result.scalars().all()
@@ -436,7 +487,7 @@ class UserService:
         try:
             # Revoke the token
             matched_token.is_revoked = True
-            matched_token.revoked_at = datetime.utcnow()
+            matched_token.revoked_at = datetime.now(timezone.utc)
             await self.db.commit()
 
         except Exception:
@@ -466,7 +517,7 @@ class UserService:
         try:
             # Generate new verification token
             token = generate_verification_token()
-            expires_at = datetime.utcnow() + timedelta(
+            expires_at = datetime.now(timezone.utc) + timedelta(
                 hours=settings.EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS
             )
 
@@ -508,7 +559,7 @@ class UserService:
 
         # Check if token expired
         if user.verification_token_expires_at is None or \
-           user.verification_token_expires_at < datetime.utcnow():
+           user.verification_token_expires_at < datetime.now(timezone.utc):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Verification token has expired"
@@ -528,6 +579,7 @@ class UserService:
                 email=user.email,
                 is_active=user.is_active,
                 is_superuser=user.is_superuser,
+                is_verified=user.is_verified,
                 created_at=user.created_at,
             )
 
@@ -556,7 +608,7 @@ class UserService:
         try:
             # Generate reset token
             token = generate_verification_token()  # Same secure token generation
-            expires_at = datetime.utcnow() + timedelta(hours=1)  # 1 hour expiry
+            expires_at = datetime.now(timezone.utc) + timedelta(hours=1)  # 1 hour expiry
 
             # Update user with reset token
             user.reset_token = token
@@ -597,7 +649,7 @@ class UserService:
 
         # Check if token expired
         if user.reset_token_expires_at is None or \
-           user.reset_token_expires_at < datetime.utcnow():
+           user.reset_token_expires_at < datetime.now(timezone.utc):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Reset token has expired"
@@ -617,6 +669,7 @@ class UserService:
                 email=user.email,
                 is_active=user.is_active,
                 is_superuser=user.is_superuser,
+                is_verified=user.is_verified,
                 created_at=user.created_at,
             )
 

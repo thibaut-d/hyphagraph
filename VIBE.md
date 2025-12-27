@@ -114,13 +114,58 @@ At major milestones:
 
 ## Testing Rules (Hard Constraints)
 
-* New features must be tested
-* Tests must pass before claiming completion
-* Never say “done” if tests fail
-* Aim for ≥80% coverage once stabilized
+### Test-Driven Development (TDD) - Mandatory
+
+**For all new features, AI agents MUST follow TDD:**
+
+1. **Write tests first** - Before implementing any feature:
+   - Write failing tests that define the expected behavior
+   - Test edge cases, error conditions, and success paths
+   - Ensure tests are comprehensive and meaningful
+
+2. **Implement to pass** - Write the minimum code necessary to make tests pass:
+   - No "extra" features beyond what tests require
+   - Keep implementation simple and focused
+   - Refactor only after tests pass
+
+3. **Verify coverage** - After implementation:
+   - Run full test suite
+   - Check coverage metrics
+   - Add missing tests if coverage is insufficient
+
+### Core Testing Principles
+
+* **New features must be tested** - No exceptions
+* **Tests must pass before claiming completion** - Red/Green/Refactor cycle
+* **Never say "done" if tests fail** - Failing tests = incomplete work
+* **Aim for ≥80% coverage once stabilized** - Minimum acceptable threshold
+* **Backend tests** - Use pytest with fixtures, AAA pattern (Arrange/Act/Assert)
+* **Frontend tests** - Use Vitest + React Testing Library, mock API calls
+* **Integration tests** - Test full workflows end-to-end
+
+### TDD Workflow Example
+
+```python
+# 1. Write test first (RED)
+def test_create_entity_with_valid_slug():
+    entity = entity_service.create(slug="aspirin", kind="drug")
+    assert entity.slug == "aspirin"
+    assert entity.kind == "drug"
+
+# 2. Implement minimal code to pass (GREEN)
+def create(self, slug: str, kind: str) -> Entity:
+    return Entity(slug=slug, kind=kind)
+
+# 3. Refactor if needed (REFACTOR)
+# Add validation, error handling, etc.
+```
+
+### When Tests Cannot Be Written
 
 If something cannot be tested due to missing config:
 👉 check `.env`, Docker Compose, or **ask the human**
+
+Do NOT skip tests. If testing is blocked, implementation is blocked.
 
 ---
 

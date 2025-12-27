@@ -87,3 +87,67 @@ class EntityService:
             result.append(entity_to_read(entity, current_revision))
 
         return result
+
+    async def update(self, entity_id: str, payload: EntityWrite, user_id=None) -> EntityRead:
+        """
+        Update an entity by creating a new revision.
+
+        The base Entity remains immutable. This creates a new EntityRevision
+        with is_current=True and marks the old revision as is_current=False.
+        """
+        try:
+            # Verify entity exists
+            entity = await self.repo.get_by_id(entity_id)
+            if not entity:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Entity not found",
+                )
+
+            # Create new revision with updated data
+            revision_data = entity_revision_from_write(payload)
+            if user_id:
+                revision_data['created_by_user_id'] = user_id
+
+            revision = await create_new_revision(
+                db=self.db,
+                revision_class=EntityRevision,
+                parent_id_field='entity_id',
+                parent_id=entity.id,
+                revision_data=revision_data,
+                set_as_current=True,
+            )
+
+            await self.db.commit()
+            return entity_to_read(entity, revision)
+
+        except HTTPException:
+            raise
+        except Exception:
+            await self.db.rollback()
+            raise
+
+    async def delete(self, entity_id: str) -> None:
+        """
+        Delete an entity and all its revisions.
+
+        Note: This is a hard delete. Consider implementing soft delete
+        by adding a deleted_at field if needed.
+        """
+        try:
+            entity = await self.repo.get_by_id(entity_id)
+            if not entity:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Entity not found",
+                )
+
+            # Delete the entity (cascade should handle revisions)
+            await self.repo.delete(entity)
+            await self.db.commit()
+
+        except HTTPException:
+            raise
+        except Exception:
+            await self.db.rollback()
+            raise

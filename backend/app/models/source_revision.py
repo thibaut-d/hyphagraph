@@ -31,7 +31,7 @@ class SourceRevision(Base, UUIDMixin):
 
     # i18n and metadata
     summary: Mapped[dict | None] = mapped_column(JSON)  # i18n: {"en": "...", "fr": "..."}
-    metadata: Mapped[dict | None] = mapped_column(JSON)  # doi, pubmed_id, etc.
+    source_metadata: Mapped[dict | None] = mapped_column(JSON)  # doi, pubmed_id, etc.
 
     # Provenance tracking
     created_with_llm: Mapped[str | None] = mapped_column(String)  # e.g., "gpt-4", "claude-3"

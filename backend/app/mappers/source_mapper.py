@@ -18,7 +18,7 @@ def source_revision_from_write(payload: SourceWrite) -> dict:
         "url": payload.url,
         "trust_level": payload.trust_level,
         "summary": payload.summary,
-        "metadata": payload.metadata,
+        "source_metadata": payload.source_metadata,
         "created_with_llm": payload.created_with_llm,
     }
 
@@ -42,7 +42,7 @@ def source_to_read(source: Source, current_revision: SourceRevision = None) -> S
             url=current_revision.url,
             trust_level=current_revision.trust_level,
             summary=current_revision.summary,
-            metadata=current_revision.metadata,
+            source_metadata=current_revision.source_metadata,
         )
     else:
         # Fallback to legacy fields (for old data)
@@ -57,7 +57,7 @@ def source_to_read(source: Source, current_revision: SourceRevision = None) -> S
             url=source.url or "",
             trust_level=source.trust_level,
             summary=None,
-            metadata=None,
+            source_metadata=None,
         )
 
 
@@ -74,7 +74,7 @@ def source_revision_to_read(revision: SourceRevision) -> SourceRevisionRead:
         url=revision.url,
         trust_level=revision.trust_level,
         summary=revision.summary,
-        metadata=revision.metadata,
+        source_metadata=revision.source_metadata,
         created_with_llm=revision.created_with_llm,
         created_by_user_id=revision.created_by_user_id,
         created_at=revision.created_at,

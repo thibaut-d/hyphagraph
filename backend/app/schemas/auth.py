@@ -48,6 +48,7 @@ class UserRead(Schema):
     email: str
     is_active: bool
     is_superuser: bool
+    is_verified: bool
     created_at: datetime
 
 

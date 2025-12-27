@@ -24,3 +24,6 @@ class SourceRepository:
         self.db.add(source)
         await self.db.flush()
         return source
+
+    async def delete(self, source: Source) -> None:
+        await self.db.delete(source)

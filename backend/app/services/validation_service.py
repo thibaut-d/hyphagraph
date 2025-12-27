@@ -7,7 +7,7 @@ from app.schemas.role import RoleWrite
 class ValidationError(HTTPException):
     def __init__(self, detail: str):
         super().__init__(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=detail,
         )
 

@@ -192,6 +192,7 @@ async def get_current_user_info(
         email=current_user.email,
         is_active=current_user.is_active,
         is_superuser=current_user.is_superuser,
+        is_verified=current_user.is_verified,
         created_at=current_user.created_at,
     )
 
@@ -339,6 +340,40 @@ async def update_profile(
         HTTPException 400: If email already in use
     """
     return await user_service.update(current_user.id, payload)
+
+
+@router.post("/deactivate", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit(f"{settings.AUTH_RATE_LIMIT_PER_MINUTE}/minute")
+async def deactivate_account(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service),
+):
+    """
+    Deactivate the current user's account (soft delete).
+
+    This action is reversible and will:
+    - Set the user account as inactive (is_active = False)
+    - Revoke all active refresh tokens
+    - Preserve all user data
+
+    User can reactivate by logging in again, which will set is_active back to True.
+
+    Rate limited to prevent accidental rapid deactivations.
+
+    Args:
+        request: FastAPI request (required for rate limiting)
+        current_user: Current authenticated user
+        user_service: User service instance
+
+    Returns:
+        No content (204)
+
+    Raises:
+        HTTPException 429: If rate limit exceeded
+    """
+    await user_service.deactivate(current_user.id)
+    return None
 
 
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)

@@ -83,3 +83,38 @@ export function resendVerificationEmail(email: string): Promise<void> {
     body: JSON.stringify({ email }),
   });
 }
+
+export type ChangePasswordPayload = {
+  current_password: string;
+  new_password: string;
+};
+
+export function changePassword(payload: ChangePasswordPayload): Promise<void> {
+  return apiFetch("/auth/change-password", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export type UpdateProfilePayload = {
+  email?: string;
+};
+
+export function updateProfile(payload: UpdateProfilePayload): Promise<any> {
+  return apiFetch("/auth/me", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deactivateAccount(): Promise<void> {
+  return apiFetch("/auth/deactivate", {
+    method: "POST",
+  });
+}
+
+export function deleteAccount(): Promise<void> {
+  return apiFetch("/auth/me", {
+    method: "DELETE",
+  });
+}
