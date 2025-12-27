@@ -1,0 +1,126 @@
+/**
+ * Tests for CreateEntityView component.
+ *
+ * Tests form validation and submission flow.
+ */
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
+import { CreateEntityView } from '../CreateEntityView';
+import * as entityApi from '../../api/entities';
+
+// Mock the API module
+vi.mock('../../api/entities');
+
+// Mock react-router-dom navigation
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
+
+describe('CreateEntityView', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('renders form with required fields', () => {
+    render(
+      <BrowserRouter>
+        <CreateEntityView />
+      </BrowserRouter>
+    );
+
+    expect(screen.getByLabelText(/slug/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/kind/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /create/i })).toBeInTheDocument();
+  });
+
+  it('validates required slug field', async () => {
+    render(
+      <BrowserRouter>
+        <CreateEntityView />
+      </BrowserRouter>
+    );
+
+    const submitButton = screen.getByRole('button', { name: /create/i });
+    fireEvent.click(submitButton);
+
+    // Form should not submit without slug
+    await waitFor(() => {
+      expect(entityApi.createEntity).not.toHaveBeenCalled();
+    });
+  });
+
+  it('submits form with valid data', async () => {
+    const mockEntity = {
+      id: '123',
+      slug: 'aspirin',
+      kind: 'drug',
+      summaries: {},
+      created_at: new Date().toISOString(),
+    };
+
+    vi.mocked(entityApi.createEntity).mockResolvedValue(mockEntity);
+
+    render(
+      <BrowserRouter>
+        <CreateEntityView />
+      </BrowserRouter>
+    );
+
+    // Fill form
+    const slugInput = screen.getByLabelText(/slug/i);
+    const kindInput = screen.getByLabelText(/kind/i);
+
+    fireEvent.change(slugInput, { target: { value: 'aspirin' } });
+    fireEvent.change(kindInput, { target: { value: 'drug' } });
+
+    // Submit
+    const submitButton = screen.getByRole('button', { name: /create/i });
+    fireEvent.click(submitButton);
+
+    // Verify API call
+    await waitFor(() => {
+      expect(entityApi.createEntity).toHaveBeenCalledWith({
+        slug: 'aspirin',
+        kind: 'drug',
+        summaries: expect.any(Object),
+      });
+    });
+
+    // Verify navigation
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalled();
+    });
+  });
+
+  it('handles API errors gracefully', async () => {
+    vi.mocked(entityApi.createEntity).mockRejectedValue(
+      new Error('Creation failed')
+    );
+
+    render(
+      <BrowserRouter>
+        <CreateEntityView />
+      </BrowserRouter>
+    );
+
+    const slugInput = screen.getByLabelText(/slug/i);
+    const kindInput = screen.getByLabelText(/kind/i);
+
+    fireEvent.change(slugInput, { target: { value: 'test' } });
+    fireEvent.change(kindInput, { target: { value: 'drug' } });
+
+    const submitButton = screen.getByRole('button', { name: /create/i });
+    fireEvent.click(submitButton);
+
+    // Should not navigate on error
+    await waitFor(() => {
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+  });
+});

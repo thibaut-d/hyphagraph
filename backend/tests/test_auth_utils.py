@@ -4,7 +4,7 @@ Unit tests for authentication utilities.
 Tests password hashing, JWT token generation, and refresh token utilities.
 """
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.utils.auth import (
     hash_password,
     verify_password,
@@ -86,7 +86,7 @@ class TestJWTTokens:
 
         # Create token that expired 1 hour ago
         user_id = "123e4567-e89b-12d3-a456-426614174000"
-        expire = datetime.utcnow() - timedelta(hours=1)
+        expire = datetime.now(timezone.utc) - timedelta(hours=1)
         to_encode = {"sub": user_id, "exp": expire}
         expired_token = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 

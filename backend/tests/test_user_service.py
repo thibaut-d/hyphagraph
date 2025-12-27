@@ -5,7 +5,7 @@ Tests user registration, authentication, password management, and token operatio
 """
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 from fastapi import HTTPException
 
@@ -50,7 +50,7 @@ def sample_user():
         is_active=True,
         is_superuser=False,
         is_verified=False,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
     )
 
 
@@ -62,6 +62,14 @@ class TestUserCreation:
         """Successfully create a new user."""
         mock_user_repo.get_by_email.return_value = None  # Email doesn't exist
 
+        # Mock refresh to populate id, created_at, and is_verified
+        def mock_refresh_side_effect(user):
+            user.id = uuid4()
+            user.created_at = datetime.now(timezone.utc)
+            user.is_verified = False
+
+        mock_db.refresh.side_effect = mock_refresh_side_effect
+
         payload = UserRegister(email="new@example.com", password="password123")
 
         with patch("app.services.user_service.hash_password") as mock_hash:
@@ -70,6 +78,8 @@ class TestUserCreation:
 
         assert result.email == "new@example.com"
         assert not result.is_superuser
+        assert result.id is not None
+        assert result.created_at is not None
         mock_user_repo.create.assert_called_once()
         mock_db.commit.assert_called_once()
 
@@ -227,11 +237,11 @@ class TestEmailVerification:
     async def test_verify_email_valid_token(self, user_service, mock_db, sample_user):
         """Verifying email with valid token should succeed."""
         sample_user.verification_token = "valid_token"
-        sample_user.verification_token_expires_at = datetime.utcnow() + timedelta(hours=1)
+        sample_user.verification_token_expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
 
-        mock_result = AsyncMock()
+        mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = sample_user
-        mock_db.execute.return_value = mock_result
+        mock_db.execute = AsyncMock(return_value=mock_result)
 
         result = await user_service.verify_email("valid_token")
 
@@ -243,11 +253,11 @@ class TestEmailVerification:
     async def test_verify_email_expired_token(self, user_service, mock_db, sample_user):
         """Verifying email with expired token should fail."""
         sample_user.verification_token = "expired_token"
-        sample_user.verification_token_expires_at = datetime.utcnow() - timedelta(hours=1)
+        sample_user.verification_token_expires_at = datetime.now(timezone.utc) - timedelta(hours=1)
 
-        mock_result = AsyncMock()
+        mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = sample_user
-        mock_db.execute.return_value = mock_result
+        mock_db.execute = AsyncMock(return_value=mock_result)
 
         with pytest.raises(HTTPException) as exc_info:
             await user_service.verify_email("expired_token")
