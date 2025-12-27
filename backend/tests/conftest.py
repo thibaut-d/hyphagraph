@@ -80,7 +80,6 @@ from app.models.source_revision import SourceRevision  # noqa: F401
 from app.models.relation import Relation  # noqa: F401
 from app.models.relation_revision import RelationRevision  # noqa: F401
 from app.models.relation_role_revision import RelationRoleRevision  # noqa: F401
-from app.models.role import Role  # noqa: F401
 
 # Use SQLite for testing (in-memory)
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
