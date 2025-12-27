@@ -1,3 +1,4 @@
+from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 
@@ -97,8 +98,10 @@ class RelationService:
 
         return relation_to_read(relation, current_revision)
 
-    async def list_by_source(self, source_id) -> list[RelationRead]:
+    async def list_by_source(self, source_id: str | UUID) -> list[RelationRead]:
         """List all relations for a source with their current revisions."""
+        if isinstance(source_id, str):
+            source_id = UUID(source_id)
         relations = await self.repo.list_by_source(source_id)
 
         # Get current revisions for all relations with roles eagerly loaded

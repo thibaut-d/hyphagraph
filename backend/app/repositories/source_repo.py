@@ -16,7 +16,7 @@ class SourceRepository:
         return result.scalar_one_or_none()
 
     async def list_all(self) -> list[Source]:
-        stmt = select(Source).order_by(Source.year.desc(), Source.title)
+        stmt = select(Source).order_by(Source.created_at.desc())
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 

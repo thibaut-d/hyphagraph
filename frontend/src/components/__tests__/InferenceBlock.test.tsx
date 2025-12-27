@@ -5,7 +5,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter } from 'react-router';
 import { InferenceBlock } from '../InferenceBlock';
 
 describe('InferenceBlock', () => {
@@ -21,7 +21,8 @@ describe('InferenceBlock', () => {
       </BrowserRouter>
     );
 
-    expect(screen.getByText(/no inferred/i)).toBeInTheDocument();
+    // Should show Source Evidence header but no relation cards
+    expect(screen.getByText(/source evidence/i)).toBeInTheDocument();
   });
 
   it('groups relations by kind', () => {
@@ -34,6 +35,7 @@ describe('InferenceBlock', () => {
             source_id: 's1',
             kind: 'effect',
             direction: 'positive',
+            confidence: 0.8,
             roles: [],
             created_at: new Date().toISOString(),
           },
@@ -42,6 +44,7 @@ describe('InferenceBlock', () => {
             source_id: 's1',
             kind: 'effect',
             direction: 'negative',
+            confidence: 0.7,
             roles: [],
             created_at: new Date().toISOString(),
           },
@@ -52,6 +55,7 @@ describe('InferenceBlock', () => {
             source_id: 's2',
             kind: 'mechanism',
             direction: 'positive',
+            confidence: 0.9,
             roles: [],
             created_at: new Date().toISOString(),
           },
@@ -69,9 +73,10 @@ describe('InferenceBlock', () => {
     expect(screen.getByText(/effect/i)).toBeInTheDocument();
     expect(screen.getByText(/mechanism/i)).toBeInTheDocument();
 
-    // Should show counts
-    expect(screen.getByText(/2/)).toBeInTheDocument(); // 2 effects
-    expect(screen.getByText(/1/)).toBeInTheDocument(); // 1 mechanism
+    // Should show confidence values
+    expect(screen.getByText(/confidence: 0.8/i)).toBeInTheDocument();
+    expect(screen.getByText(/confidence: 0.7/i)).toBeInTheDocument();
+    expect(screen.getByText(/confidence: 0.9/i)).toBeInTheDocument();
   });
 
   it('handles null inference gracefully', () => {
@@ -81,7 +86,7 @@ describe('InferenceBlock', () => {
       </BrowserRouter>
     );
 
-    // Should not crash
-    expect(screen.queryByText(/effect/i)).not.toBeInTheDocument();
+    // Should not crash - component returns null for null inference
+    expect(screen.queryByText(/source evidence/i)).not.toBeInTheDocument();
   });
 });

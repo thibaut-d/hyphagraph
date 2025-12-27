@@ -159,7 +159,7 @@ class TestRelationService:
 
         # Assert
         assert len(result) == 2
-        assert all(r.source_id == str(source1.id) for r in result)
+        assert all(r.source_id == source1.id for r in result)
 
     async def test_update_relation(self, db_session):
         """Test updating a relation."""
@@ -188,6 +188,7 @@ class TestRelationService:
                 source_id=str(source.id),  # Same source_id
                 kind="mechanism",  # Changed
                 direction="negative",  # Changed
+                confidence=0.8,  # Required field
                 roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
             )
         )
@@ -237,9 +238,11 @@ class TestRelationService:
         """Test updating non-existent relation raises 404."""
         # Arrange
         source_service = SourceService(db_session)
+        entity_service = EntityService(db_session)
         relation_service = RelationService(db_session)
 
         source = await source_service.create(SourceWrite(kind="study", title="Test", url="https://example.com/study"))
+        entity = await entity_service.create(EntityWrite(slug="test", kind="drug"))
 
         # Act & Assert
         with pytest.raises(HTTPException) as exc_info:
@@ -250,7 +253,7 @@ class TestRelationService:
                     kind="effect",
                     confidence=0.9,
                     direction="positive",
-                    roles=[],
+                    roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
                 )
             )
         assert exc_info.value.status_code == 404

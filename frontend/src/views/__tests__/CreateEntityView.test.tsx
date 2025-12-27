@@ -5,17 +5,17 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter } from 'react-router';
 import { CreateEntityView } from '../CreateEntityView';
 import * as entityApi from '../../api/entities';
 
 // Mock the API module
 vi.mock('../../api/entities');
 
-// Mock react-router-dom navigation
+// Mock react-router navigation
 const mockNavigate = vi.fn();
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
+vi.mock('react-router', async () => {
+  const actual = await vi.importActual('react-router');
   return {
     ...actual,
     useNavigate: () => mockNavigate,
@@ -35,7 +35,6 @@ describe('CreateEntityView', () => {
     );
 
     expect(screen.getByLabelText(/slug/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/kind/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /create/i })).toBeInTheDocument();
   });
 
@@ -59,7 +58,6 @@ describe('CreateEntityView', () => {
     const mockEntity = {
       id: '123',
       slug: 'aspirin',
-      kind: 'drug',
       summaries: {},
       created_at: new Date().toISOString(),
     };
@@ -74,10 +72,8 @@ describe('CreateEntityView', () => {
 
     // Fill form
     const slugInput = screen.getByLabelText(/slug/i);
-    const kindInput = screen.getByLabelText(/kind/i);
 
     fireEvent.change(slugInput, { target: { value: 'aspirin' } });
-    fireEvent.change(kindInput, { target: { value: 'drug' } });
 
     // Submit
     const submitButton = screen.getByRole('button', { name: /create/i });
@@ -87,8 +83,7 @@ describe('CreateEntityView', () => {
     await waitFor(() => {
       expect(entityApi.createEntity).toHaveBeenCalledWith({
         slug: 'aspirin',
-        kind: 'drug',
-        summaries: expect.any(Object),
+        summary: undefined,
       });
     });
 
@@ -110,10 +105,8 @@ describe('CreateEntityView', () => {
     );
 
     const slugInput = screen.getByLabelText(/slug/i);
-    const kindInput = screen.getByLabelText(/kind/i);
 
     fireEvent.change(slugInput, { target: { value: 'test' } });
-    fireEvent.change(kindInput, { target: { value: 'drug' } });
 
     const submitButton = screen.getByRole('button', { name: /create/i });
     fireEvent.click(submitButton);

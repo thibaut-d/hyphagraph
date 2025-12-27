@@ -11,6 +11,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.inference_service import InferenceService
+from app.services.source_service import SourceService
 from app.schemas.inference import InferenceRead, RoleInference
 from app.schemas.relation import RelationRead
 from app.schemas.explanation import (
@@ -20,7 +21,6 @@ from app.schemas.explanation import (
     ContradictionDetail,
 )
 from app.repositories.relation_repo import RelationRepository
-from app.repositories.source_repo import SourceRepository
 
 
 class ExplanationService:
@@ -29,8 +29,8 @@ class ExplanationService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.inference_service = InferenceService(db)
+        self.source_service = SourceService(db)
         self.relation_repo = RelationRepository(db)
-        self.source_repo = SourceRepository(db)
 
     async def explain_inference(
         self,
@@ -75,7 +75,7 @@ class ExplanationService:
         )
 
         # 5. Build confidence breakdown
-        confidence_factors = self._build_confidence_breakdown(
+        confidence_factors = await self._build_confidence_breakdown(
             role_inference, contributing_relations
         )
 
@@ -201,7 +201,7 @@ class ExplanationService:
 
         return summary
 
-    def _build_confidence_breakdown(
+    async def _build_confidence_breakdown(
         self,
         role_inference: RoleInference,
         contributing_relations: List[RelationRead],
@@ -246,10 +246,13 @@ class ExplanationService:
                 )
             )
 
-        # Trust levels (if available)
-        trust_levels = [
-            r.source_trust for r in contributing_relations if r.source_trust is not None
-        ]
+        # Trust levels (if available) - fetch from source objects
+        trust_levels = []
+        for relation in contributing_relations:
+            source = await self.source_service.get(relation.source_id)
+            if source and source.trust_level is not None:
+                trust_levels.append(source.trust_level)
+
         if trust_levels:
             avg_trust = sum(trust_levels) / len(trust_levels)
             factors.append(
@@ -321,6 +324,10 @@ class ExplanationService:
         - Role contribution weight
         - Contribution percentage
 
+        Works with both:
+        - Regular source relations (use confidence + direction)
+        - Computed relations (use role.weight if available)
+
         Returns:
             List of SourceContribution objects sorted by contribution percentage
         """
@@ -333,39 +340,66 @@ class ExplanationService:
                 (r for r in (relation.roles or []) if r.role_type == role_type),
                 None,
             )
-            if role and role.weight is not None:
+            if not role:
+                continue
+
+            # Use role.weight if available (computed relations), otherwise use confidence
+            if role.weight is not None:
+                # Computed relation - use weight
                 total_weight += abs(role.weight) * (relation.confidence or 1.0)
+            else:
+                # Regular source relation - use confidence
+                total_weight += relation.confidence or 1.0
 
         # Build source contributions
         for relation in contributing_relations:
-            # Get role weight
+            # Get role for this role_type
             role = next(
                 (r for r in (relation.roles or []) if r.role_type == role_type),
                 None,
             )
 
-            if not role or role.weight is None:
+            if not role:
                 continue
 
+            # Fetch source metadata from database
+            source = await self.source_service.get(relation.source_id)
+            if not source:
+                continue
+
+            # Determine weight and direction
+            if role.weight is not None:
+                # Computed relation - use role weight
+                relation_weight = abs(role.weight) * (relation.confidence or 1.0)
+                direction = "supports" if role.weight > 0 else "contradicts"
+                role_weight_value = role.weight
+            else:
+                # Regular source relation - use confidence + direction field
+                relation_weight = relation.confidence or 1.0
+                direction = relation.direction or "supports"
+                # For display purposes, set role_weight based on direction
+                if direction == "supports":
+                    role_weight_value = relation.confidence or 1.0
+                elif direction == "contradicts":
+                    role_weight_value = -(relation.confidence or 1.0)
+                else:
+                    role_weight_value = 0.0
+
             # Calculate contribution percentage
-            relation_weight = abs(role.weight) * (relation.confidence or 1.0)
             contribution_pct = (
                 (relation_weight / total_weight * 100) if total_weight > 0 else 0
             )
 
-            # Determine direction
-            direction = "supports" if role.weight > 0 else "contradicts"
-
             source_chain.append(
                 SourceContribution(
                     # Source metadata
-                    source_id=relation.source_id,
-                    source_title=relation.source_title or "Unknown",
-                    source_authors=relation.source_authors,
-                    source_year=relation.source_year,
-                    source_kind=relation.source_kind or "unknown",
-                    source_trust=relation.source_trust,
-                    source_url=relation.source_url or "#",
+                    source_id=source.id,
+                    source_title=source.title or "Unknown",
+                    source_authors=source.authors or [],
+                    source_year=source.year,
+                    source_kind=source.kind or "unknown",
+                    source_trust=source.trust_level,
+                    source_url=source.url or "#",
                     # Relation metadata
                     relation_id=relation.id,
                     relation_kind=relation.kind or "unknown",
@@ -373,7 +407,7 @@ class ExplanationService:
                     relation_confidence=relation.confidence or 1.0,
                     relation_scope=relation.scope,
                     # Contribution analysis
-                    role_weight=role.weight,
+                    role_weight=role_weight_value,
                     contribution_percentage=contribution_pct,
                 )
             )

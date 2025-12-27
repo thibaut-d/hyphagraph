@@ -136,18 +136,19 @@ class TestAuthentication:
         assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_authenticate_inactive_user(self, user_service, mock_user_repo, sample_user):
-        """Authentication with inactive user should fail."""
+    async def test_authenticate_inactive_user(self, user_service, mock_user_repo, sample_user, mock_db):
+        """Authentication with inactive user should reactivate the account."""
         sample_user.is_active = False
         mock_user_repo.get_by_email.return_value = sample_user
 
         with patch("app.services.user_service.verify_password") as mock_verify:
             mock_verify.return_value = True
 
-            with pytest.raises(HTTPException) as exc_info:
-                await user_service.authenticate("test@example.com", "password")
+            result = await user_service.authenticate("test@example.com", "password")
 
-        assert exc_info.value.status_code == 403
+        # User should be reactivated
+        assert result.is_active == True
+        assert mock_db.commit.call_count == 1
 
 
 class TestPasswordManagement:

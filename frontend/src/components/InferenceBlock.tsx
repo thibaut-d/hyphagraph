@@ -122,7 +122,11 @@ function RoleInferenceCard({
   );
 }
 
-export function InferenceBlock({ inference }: { inference: InferenceRead }) {
+export function InferenceBlock({ inference }: { inference: InferenceRead | null }) {
+  if (!inference) {
+    return null;
+  }
+
   return (
     <Stack spacing={3}>
       {/* Computed Inference Scores */}

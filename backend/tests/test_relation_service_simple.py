@@ -83,7 +83,8 @@ class TestRelationServiceSimple:
             source_id=different_source_id,
             kind="effect",
             direction="positive",
-            roles=[]
+            confidence=0.9,
+            roles=[RoleRevisionWrite(role_type="drug", entity_id=uuid4())]
         )
 
         # Act & Assert

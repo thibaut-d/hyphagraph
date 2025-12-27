@@ -13,12 +13,17 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      'react-router-dom': 'react-router'
+    }
+  },
   test: {
     // Test environment (jsdom for React component testing)
     environment: 'jsdom',
 
     // Global test setup files
-    // setupFiles: ['./src/test/setup.ts'],
+    setupFiles: ['./src/test/setup.ts'],
 
     // Test file patterns
     include: ['**/*.{test,spec}.{ts,tsx}'],

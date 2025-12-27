@@ -83,7 +83,8 @@ class TestRelationServiceMocked:
             source_id=str(different_source_id),
             kind="effect",
             direction="positive",
-            roles=[]
+            confidence=0.9,
+            roles=[RoleWrite(role_type="drug", entity_id=str(uuid4()))]
         )
 
         # Act & Assert
@@ -104,7 +105,8 @@ class TestRelationServiceMocked:
             source_id=str(uuid4()),
             kind="effect",
             direction="positive",
-            roles=[]
+            confidence=0.9,
+            roles=[RoleWrite(role_type="drug", entity_id=str(uuid4()))]
         )
 
         # Act & Assert
@@ -131,5 +133,6 @@ class TestRelationServiceMocked:
         result = await service.list_by_source(str(source_id))
 
         # Assert
-        mock_repo.list_by_source.assert_called_once_with(str(source_id))
+        # Service converts string to UUID before calling repository
+        mock_repo.list_by_source.assert_called_once_with(source_id)
         assert mock_to_read.call_count == 2
