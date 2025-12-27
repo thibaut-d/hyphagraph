@@ -138,3 +138,260 @@ class TestInferenceService:
         # Assert
         assert result.entity_id == fake_id
         assert result.relations_by_kind == {}
+
+
+@pytest.mark.asyncio
+class TestScopeFiltering:
+    """Test scope-based filtering for inferences."""
+
+    async def test_filter_by_exact_scope_match(self, db_session):
+        """Test filtering relations by exact scope match."""
+        # Arrange
+        entity_service = EntityService(db_session)
+        source_service = SourceService(db_session)
+        relation_service = RelationService(db_session)
+        inference_service = InferenceService(db_session)
+
+        entity = await entity_service.create(EntityWrite(slug="aspirin", kind="drug"))
+        source = await source_service.create(SourceWrite(kind="study", title="Test", url="https://example.com/test"))
+
+        # Create relation with adults scope
+        await relation_service.create(
+            RelationWrite(
+                source_id=str(source.id),
+                kind="effect",
+                confidence=0.9,
+                direction="positive",
+                scope={"population": "adults"},
+                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
+            )
+        )
+
+        # Create relation with children scope
+        await relation_service.create(
+            RelationWrite(
+                source_id=str(source.id),
+                kind="effect",
+                confidence=0.8,
+                direction="positive",
+                scope={"population": "children"},
+                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
+            )
+        )
+
+        # Act - filter for adults only
+        result = await inference_service.infer_for_entity(
+            entity.id,
+            scope_filter={"population": "adults"}
+        )
+
+        # Assert - should only get the adults relation
+        assert result.entity_id == entity.id
+        assert "effect" in result.relations_by_kind
+        assert len(result.relations_by_kind["effect"]) == 1
+        assert result.relations_by_kind["effect"][0].scope == {"population": "adults"}
+
+    async def test_filter_by_partial_scope_match(self, db_session):
+        """Test filtering with partial scope match (subset matching)."""
+        # Arrange
+        entity_service = EntityService(db_session)
+        source_service = SourceService(db_session)
+        relation_service = RelationService(db_session)
+        inference_service = InferenceService(db_session)
+
+        entity = await entity_service.create(EntityWrite(slug="drug", kind="drug"))
+        source = await source_service.create(SourceWrite(kind="study", title="Test", url="https://example.com/test"))
+
+        # Create relation with multiple scope attributes
+        await relation_service.create(
+            RelationWrite(
+                source_id=str(source.id),
+                kind="effect",
+                confidence=0.9,
+                direction="positive",
+                scope={"population": "adults", "condition": "chronic_pain", "dosage": "high"},
+                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
+            )
+        )
+
+        # Create relation with different scope
+        await relation_service.create(
+            RelationWrite(
+                source_id=str(source.id),
+                kind="effect",
+                confidence=0.7,
+                direction="positive",
+                scope={"population": "adults", "condition": "acute_pain"},
+                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
+            )
+        )
+
+        # Act - filter for chronic pain only (partial match)
+        result = await inference_service.infer_for_entity(
+            entity.id,
+            scope_filter={"condition": "chronic_pain"}
+        )
+
+        # Assert - should only get the chronic pain relation
+        assert len(result.relations_by_kind["effect"]) == 1
+        assert result.relations_by_kind["effect"][0].scope["condition"] == "chronic_pain"
+
+    async def test_filter_no_scope_vs_empty_scope(self, db_session):
+        """Test that relations with no scope are included when no filter is specified."""
+        # Arrange
+        entity_service = EntityService(db_session)
+        source_service = SourceService(db_session)
+        relation_service = RelationService(db_session)
+        inference_service = InferenceService(db_session)
+
+        entity = await entity_service.create(EntityWrite(slug="drug", kind="drug"))
+        source = await source_service.create(SourceWrite(kind="study", title="Test", url="https://example.com/test"))
+
+        # Create relation with no scope (general applicability)
+        await relation_service.create(
+            RelationWrite(
+                source_id=str(source.id),
+                kind="effect",
+                confidence=0.9,
+                direction="positive",
+                scope=None,
+                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
+            )
+        )
+
+        # Create relation with specific scope
+        await relation_service.create(
+            RelationWrite(
+                source_id=str(source.id),
+                kind="effect",
+                confidence=0.8,
+                direction="positive",
+                scope={"population": "adults"},
+                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
+            )
+        )
+
+        # Act - no filter (should get both)
+        result_no_filter = await inference_service.infer_for_entity(entity.id)
+
+        # Assert
+        assert len(result_no_filter.relations_by_kind["effect"]) == 2
+
+        # Act - with filter (should exclude general relation)
+        result_with_filter = await inference_service.infer_for_entity(
+            entity.id,
+            scope_filter={"population": "adults"}
+        )
+
+        # Assert - should only get the scoped relation
+        assert len(result_with_filter.relations_by_kind["effect"]) == 1
+
+    async def test_filter_multiple_scope_attributes(self, db_session):
+        """Test filtering with multiple scope attributes (AND logic)."""
+        # Arrange
+        entity_service = EntityService(db_session)
+        source_service = SourceService(db_session)
+        relation_service = RelationService(db_session)
+        inference_service = InferenceService(db_session)
+
+        entity = await entity_service.create(EntityWrite(slug="drug", kind="drug"))
+        source = await source_service.create(SourceWrite(kind="study", title="Test", url="https://example.com/test"))
+
+        # Relation 1: adults + chronic
+        await relation_service.create(
+            RelationWrite(
+                source_id=str(source.id),
+                kind="effect",
+                confidence=0.9,
+                direction="positive",
+                scope={"population": "adults", "condition": "chronic_pain"},
+                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
+            )
+        )
+
+        # Relation 2: adults + acute
+        await relation_service.create(
+            RelationWrite(
+                source_id=str(source.id),
+                kind="effect",
+                confidence=0.8,
+                direction="positive",
+                scope={"population": "adults", "condition": "acute_pain"},
+                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
+            )
+        )
+
+        # Relation 3: children + chronic
+        await relation_service.create(
+            RelationWrite(
+                source_id=str(source.id),
+                kind="effect",
+                confidence=0.7,
+                direction="positive",
+                scope={"population": "children", "condition": "chronic_pain"},
+                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
+            )
+        )
+
+        # Act - filter for adults AND chronic pain
+        result = await inference_service.infer_for_entity(
+            entity.id,
+            scope_filter={"population": "adults", "condition": "chronic_pain"}
+        )
+
+        # Assert - should only get relation 1
+        assert len(result.relations_by_kind["effect"]) == 1
+        assert result.relations_by_kind["effect"][0].scope == {"population": "adults", "condition": "chronic_pain"}
+
+    async def test_scope_affects_inference_scores(self, db_session):
+        """Test that scope filtering affects computed inference scores."""
+        # Arrange
+        entity_service = EntityService(db_session)
+        source_service = SourceService(db_session)
+        relation_service = RelationService(db_session)
+        inference_service = InferenceService(db_session)
+
+        entity = await entity_service.create(EntityWrite(slug="drug", kind="drug"))
+        source = await source_service.create(SourceWrite(kind="study", title="Test", url="https://example.com/test"))
+
+        # Create positive relation for adults
+        await relation_service.create(
+            RelationWrite(
+                source_id=str(source.id),
+                kind="effect",
+                confidence=0.9,
+                direction="positive",
+                scope={"population": "adults"},
+                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id), weight=0.8)],
+            )
+        )
+
+        # Create negative relation for children
+        await relation_service.create(
+            RelationWrite(
+                source_id=str(source.id),
+                kind="effect",
+                confidence=0.9,
+                direction="negative",
+                scope={"population": "children"},
+                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id), weight=-0.7)],
+            )
+        )
+
+        # Act - inference for all (should have mixed/contradictory evidence)
+        result_all = await inference_service.infer_for_entity(entity.id)
+
+        # Act - inference for adults only (should be clearly positive)
+        result_adults = await inference_service.infer_for_entity(
+            entity.id,
+            scope_filter={"population": "adults"}
+        )
+
+        # Assert - adults-only inference should have higher positive score
+        assert len(result_adults.role_inferences) > 0
+        drug_inference_adults = next(r for r in result_adults.role_inferences if r.role_type == "drug")
+
+        # Score should be positive for adults scope
+        assert drug_inference_adults.score > 0
+        # Coverage should be lower (only 1 relation)
+        assert drug_inference_adults.coverage < result_all.role_inferences[0].coverage if result_all.role_inferences else True
