@@ -1,14 +1,15 @@
 import { renderHook, act } from '@testing-library/react';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useDebounce } from '../useDebounce';
 
 describe('useDebounce', () => {
   beforeEach(() => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
-    jest.runOnlyPendingTimers();
-    jest.useRealTimers();
+    vi.runOnlyPendingTimers();
+    vi.useRealTimers();
   });
 
   it('should return initial value immediately', () => {
@@ -32,13 +33,13 @@ describe('useDebounce', () => {
 
     // Fast-forward time by 299ms (not enough)
     act(() => {
-      jest.advanceTimersByTime(299);
+      vi.advanceTimersByTime(299);
     });
     expect(result.current).toBe('initial');
 
     // Fast-forward remaining 1ms
     act(() => {
-      jest.advanceTimersByTime(1);
+      vi.advanceTimersByTime(1);
     });
     expect(result.current).toBe('updated');
   });
@@ -52,13 +53,13 @@ describe('useDebounce', () => {
     // First change
     rerender({ value: 'change1' });
     act(() => {
-      jest.advanceTimersByTime(150);
+      vi.advanceTimersByTime(150);
     });
 
     // Second change before debounce completes
     rerender({ value: 'change2' });
     act(() => {
-      jest.advanceTimersByTime(150);
+      vi.advanceTimersByTime(150);
     });
 
     // Should still be initial (timer was reset)
@@ -66,7 +67,7 @@ describe('useDebounce', () => {
 
     // Complete the debounce period
     act(() => {
-      jest.advanceTimersByTime(150);
+      vi.advanceTimersByTime(150);
     });
     expect(result.current).toBe('change2');
   });
@@ -80,12 +81,12 @@ describe('useDebounce', () => {
     rerender({ value: 'updated', delay: 500 });
 
     act(() => {
-      jest.advanceTimersByTime(499);
+      vi.advanceTimersByTime(499);
     });
     expect(result.current).toBe('initial');
 
     act(() => {
-      jest.advanceTimersByTime(1);
+      vi.advanceTimersByTime(1);
     });
     expect(result.current).toBe('updated');
   });
@@ -100,7 +101,7 @@ describe('useDebounce', () => {
 
     rerender({ value: 456 });
     act(() => {
-      jest.advanceTimersByTime(300);
+      vi.advanceTimersByTime(300);
     });
     expect(result.current).toBe(456);
   });
@@ -118,7 +119,7 @@ describe('useDebounce', () => {
 
     rerender({ value: obj2 });
     act(() => {
-      jest.advanceTimersByTime(300);
+      vi.advanceTimersByTime(300);
     });
     expect(result.current).toBe(obj2);
   });
