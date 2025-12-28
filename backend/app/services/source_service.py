@@ -4,7 +4,7 @@ from fastapi import HTTPException, status
 from typing import Optional, Tuple
 
 from app.schemas.source import SourceWrite, SourceRead
-from app.schemas.filters import SourceFilters
+from app.schemas.filters import SourceFilters, SourceFilterOptions
 from app.repositories.source_repo import SourceRepository
 from app.models.source import Source
 from app.models.source_revision import SourceRevision
@@ -210,3 +210,33 @@ class SourceService:
         except Exception:
             await self.db.rollback()
             raise
+
+    async def get_filter_options(self) -> SourceFilterOptions:
+        """
+        Get available filter options for sources.
+
+        Returns distinct values for filterable fields using efficient database aggregation.
+        This avoids fetching all records when populating filter UI controls.
+
+        Returns:
+            SourceFilterOptions with available kinds and year range
+        """
+        # Get distinct kinds (only from current revisions)
+        kind_query = select(SourceRevision.kind).distinct().where(
+            SourceRevision.is_current == True
+        )
+        kinds_result = await self.db.execute(kind_query)
+        kinds = [k for (k,) in kinds_result.all() if k is not None]
+
+        # Get min/max year using aggregation (only from current revisions)
+        year_query = select(
+            func.min(SourceRevision.year),
+            func.max(SourceRevision.year)
+        ).where(SourceRevision.is_current == True)
+        year_result = await self.db.execute(year_query)
+        min_year, max_year = year_result.one()
+
+        return SourceFilterOptions(
+            kinds=sorted(kinds),
+            year_range=(min_year, max_year) if min_year and max_year else None,
+        )

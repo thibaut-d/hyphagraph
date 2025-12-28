@@ -4,7 +4,7 @@ Filter schemas for query parameters.
 These schemas define the structure of filter parameters for list endpoints.
 """
 
-from typing import Optional, List
+from typing import Optional, List, Tuple
 from pydantic import BaseModel, Field
 
 
@@ -126,4 +126,24 @@ class SourceFilters(BaseModel):
         description="Number of results to skip",
         ge=0,
         json_schema_extra={"example": 0}
+    )
+
+
+class SourceFilterOptions(BaseModel):
+    """
+    Available filter options for sources.
+
+    This provides metadata about what filter values are available,
+    useful for populating UI filter controls without fetching all records.
+    """
+    kinds: List[str] = Field(
+        ...,
+        description="Available source kinds (distinct values)",
+        json_schema_extra={"example": ["article", "book", "website"]}
+    )
+
+    year_range: Optional[Tuple[int, int]] = Field(
+        None,
+        description="Minimum and maximum publication years [min, max]",
+        json_schema_extra={"example": [1995, 2024]}
     )

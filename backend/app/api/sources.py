@@ -5,12 +5,29 @@ from typing import Optional, List
 
 from app.database import get_db
 from app.schemas.source import SourceWrite, SourceRead
-from app.schemas.filters import SourceFilters
+from app.schemas.filters import SourceFilters, SourceFilterOptions
 from app.schemas.pagination import PaginatedResponse
 from app.services.source_service import SourceService
 from app.dependencies.auth import get_current_user
 
 router = APIRouter()
+
+@router.get("/filter-options", response_model=SourceFilterOptions)
+async def get_source_filter_options(
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get available filter options for sources.
+
+    Returns distinct values for filterable fields without fetching full records.
+    Useful for populating filter UI controls efficiently.
+
+    Returns:
+        - **kinds**: List of distinct source kinds
+        - **year_range**: Minimum and maximum publication years [min, max]
+    """
+    service = SourceService(db)
+    return await service.get_filter_options()
 
 @router.post("/", response_model=SourceRead)
 async def create_source(

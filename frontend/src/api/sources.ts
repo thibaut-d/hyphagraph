@@ -32,6 +32,11 @@ export interface PaginatedResponse<T> {
   offset: number;
 }
 
+export interface SourceFilterOptions {
+  kinds: string[];
+  year_range: [number, number] | null;
+}
+
 export function listSources(filters?: SourceFilters): Promise<PaginatedResponse<SourceRead>> {
   const params = new URLSearchParams();
 
@@ -93,4 +98,8 @@ export function deleteSource(id: string): Promise<void> {
   return apiFetch(`/sources/${id}`, {
     method: "DELETE",
   });
+}
+
+export function getSourceFilterOptions(): Promise<SourceFilterOptions> {
+  return apiFetch("/sources/filter-options");
 }

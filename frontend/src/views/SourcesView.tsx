@@ -19,22 +19,53 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import FilterListIcon from "@mui/icons-material/FilterList";
 
-import { listSources, SourceFilters } from "../api/sources";
+import { listSources, SourceFilters, getSourceFilterOptions, SourceFilterOptions } from "../api/sources";
 import { SourceRead } from "../types/source";
 import { FilterDrawer, FilterSection, CheckboxFilter, RangeFilter, SearchFilter } from "../components/filters";
 import { ScrollToTop } from "../components/ScrollToTop";
 import { useFilterDrawer } from "../hooks/useFilterDrawer";
 import { usePersistedFilters } from "../hooks/usePersistedFilters";
-import { deriveFilterOptions, deriveRange } from "../utils/filterUtils";
 import { useDebounce } from "../hooks/useDebounce";
 import { useInfiniteScroll } from "../hooks/useInfiniteScroll";
 
 const PAGE_SIZE = 50;
+const FILTER_OPTIONS_CACHE_KEY = 'source-filter-options-cache';
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+interface CachedFilterOptions {
+  data: SourceFilterOptions;
+  timestamp: number;
+}
+
+function getCachedFilterOptions(): SourceFilterOptions | null {
+  const cached = localStorage.getItem(FILTER_OPTIONS_CACHE_KEY);
+  if (!cached) return null;
+
+  try {
+    const { data, timestamp }: CachedFilterOptions = JSON.parse(cached);
+    if (Date.now() - timestamp > CACHE_TTL) {
+      localStorage.removeItem(FILTER_OPTIONS_CACHE_KEY);
+      return null;
+    }
+    return data;
+  } catch {
+    localStorage.removeItem(FILTER_OPTIONS_CACHE_KEY);
+    return null;
+  }
+}
+
+function setCachedFilterOptions(options: SourceFilterOptions) {
+  const cached: CachedFilterOptions = {
+    data: options,
+    timestamp: Date.now()
+  };
+  localStorage.setItem(FILTER_OPTIONS_CACHE_KEY, JSON.stringify(cached));
+}
 
 export function SourcesView() {
   const { t } = useTranslation();
   const [sources, setSources] = useState<SourceRead[]>([]);
-  const [allSources, setAllSources] = useState<SourceRead[]>([]);
+  const [filterOptions, setFilterOptions] = useState<SourceFilterOptions | null>(null);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -55,14 +86,22 @@ export function SourcesView() {
     closeDrawer,
   } = useFilterDrawer();
 
-  // Fetch all sources once for filter options
+  // Fetch filter options once with caching
   useEffect(() => {
-    listSources({ limit: 1000, offset: 0 }).then(response => setAllSources(response.items));
+    const cached = getCachedFilterOptions();
+    if (cached) {
+      setFilterOptions(cached);
+    } else {
+      getSourceFilterOptions().then(options => {
+        setFilterOptions(options);
+        setCachedFilterOptions(options);
+      });
+    }
   }, []);
 
-  // Derive filter options from all sources
-  const kindOptions = useMemo(() => deriveFilterOptions(allSources, 'kind'), [allSources]);
-  const yearRange = useMemo(() => deriveRange(allSources, 'year'), [allSources]);
+  // Extract filter options
+  const kindOptions = filterOptions?.kinds || [];
+  const yearRange = filterOptions?.year_range || null;
 
   // Debounce search to reduce server load during typing
   const debouncedSearch = useDebounce(filters.search, 300);
