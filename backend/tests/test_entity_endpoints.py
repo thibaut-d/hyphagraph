@@ -185,3 +185,77 @@ class TestEntityEndpoints:
                 assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
         finally:
             app.dependency_overrides.clear()
+
+    async def test_list_entities_with_search_filter(self, override_get_db):
+        """Test searching entities by slug."""
+        app.dependency_overrides[get_db] = override_get_db
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                response = await client.get("/api/entities/?search=test")
+                assert response.status_code == status.HTTP_200_OK
+                data = response.json()
+                assert isinstance(data, list)
+                # Results should contain 'test' in slug (case-insensitive)
+                for entity in data:
+                    slug = entity.get('slug', '').lower()
+                    assert 'test' in slug
+        finally:
+            app.dependency_overrides.clear()
+
+    async def test_list_entities_with_combined_filters(self, override_get_db):
+        """Test combining multiple filters (AND logic between filter types)."""
+        app.dependency_overrides[get_db] = override_get_db
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                test_category_id = str(uuid4())
+                response = await client.get(f"/api/entities/?ui_category_id={test_category_id}&search=test")
+                assert response.status_code == status.HTTP_200_OK
+                data = response.json()
+                assert isinstance(data, list)
+                # Results should match ALL filters
+                for entity in data:
+                    assert entity.get('ui_category_id') == test_category_id
+                    slug = entity.get('slug', '').lower()
+                    assert 'test' in slug
+        finally:
+            app.dependency_overrides.clear()
+
+    async def test_list_entities_with_ui_category_filter(self, override_get_db):
+        """Test filtering entities by UI category ID."""
+        app.dependency_overrides[get_db] = override_get_db
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                test_category_id = str(uuid4())
+                response = await client.get(f"/api/entities/?ui_category_id={test_category_id}")
+                assert response.status_code == status.HTTP_200_OK
+                data = response.json()
+                assert isinstance(data, list)
+                # All returned entities should have matching ui_category_id if any exist
+                for entity in data:
+                    assert entity.get('ui_category_id') == test_category_id
+        finally:
+            app.dependency_overrides.clear()
+
+    async def test_list_entities_search_too_long(self, override_get_db):
+        """Test that search parameter validates max length."""
+        app.dependency_overrides[get_db] = override_get_db
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                # Search term longer than 100 characters should be rejected
+                long_search = "a" * 101
+                response = await client.get(f"/api/entities/?search={long_search}")
+                assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        finally:
+            app.dependency_overrides.clear()
+
+    async def test_list_entities_empty_filters(self, override_get_db):
+        """Test that empty filter values are ignored."""
+        app.dependency_overrides[get_db] = override_get_db
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                response = await client.get("/api/entities/?search=")
+                assert response.status_code == status.HTTP_200_OK
+                data = response.json()
+                assert isinstance(data, list)
+        finally:
+            app.dependency_overrides.clear()

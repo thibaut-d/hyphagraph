@@ -1,7 +1,11 @@
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, or_
 from fastapi import HTTPException, status
+from typing import Optional
+from uuid import UUID
 
 from app.schemas.entity import EntityWrite, EntityRead
+from app.schemas.filters import EntityFilters
 from app.repositories.entity_repo import EntityRepository
 from app.models.entity import Entity
 from app.models.entity_revision import EntityRevision
@@ -71,22 +75,40 @@ class EntityService:
 
         return entity_to_read(entity, current_revision)
 
-    async def list_all(self) -> list[EntityRead]:
-        """List all entities with their current revisions."""
-        entities = await self.repo.list_all()
+    async def list_all(self, filters: Optional[EntityFilters] = None) -> list[EntityRead]:
+        """
+        List all entities with their current revisions, optionally filtered.
 
-        # Get current revisions for all entities
-        result = []
-        for entity in entities:
-            current_revision = await get_current_revision(
-                db=self.db,
-                revision_class=EntityRevision,
-                parent_id_field='entity_id',
-                parent_id=entity.id,
-            )
-            result.append(entity_to_read(entity, current_revision))
+        Filters are applied to the current revision data:
+        - ui_category_id: Filter by UI category (OR logic)
+        - search: Case-insensitive search in slug
+        """
+        # Build query for entities with their current revisions
+        query = (
+            select(Entity, EntityRevision)
+            .join(EntityRevision, Entity.id == EntityRevision.entity_id)
+            .where(EntityRevision.is_current == True)
+        )
 
-        return result
+        # Apply filters if provided
+        if filters:
+            # Filter by UI category (OR logic)
+            if filters.ui_category_id:
+                # Convert string UUIDs to UUID objects
+                category_uuids = [UUID(cat_id) for cat_id in filters.ui_category_id]
+                query = query.where(EntityRevision.ui_category_id.in_(category_uuids))
+
+            # Search in slug (case-insensitive)
+            if filters.search:
+                search_term = f"%{filters.search.lower()}%"
+                query = query.where(EntityRevision.slug.ilike(search_term))
+
+        # Execute query
+        result_rows = await self.db.execute(query)
+        results = result_rows.all()
+
+        # Convert to EntityRead objects
+        return [entity_to_read(entity, revision) for entity, revision in results]
 
     async def update(self, entity_id: str, payload: EntityWrite, user_id=None) -> EntityRead:
         """

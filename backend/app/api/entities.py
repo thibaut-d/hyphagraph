@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
+from typing import Optional, List
 
 from app.database import get_db
 from app.schemas.entity import EntityWrite, EntityRead
+from app.schemas.filters import EntityFilters
 from app.services.entity_service import EntityService
 from app.dependencies.auth import get_current_user
 
@@ -21,10 +23,19 @@ async def create_entity(
 
 @router.get("/", response_model=list[EntityRead])
 async def list_entities(
+    ui_category_id: Optional[List[str]] = Query(None, description="Filter by UI category"),
+    search: Optional[str] = Query(None, description="Search in slug", max_length=100),
     db: AsyncSession = Depends(get_db),
 ):
+    """
+    List entities with optional filters.
+
+    - **ui_category_id**: Filter by UI category (multiple values use OR logic)
+    - **search**: Case-insensitive search in slug
+    """
     service = EntityService(db)
-    return await service.list_all()
+    filters = EntityFilters(ui_category_id=ui_category_id, search=search)
+    return await service.list_all(filters=filters)
 
 @router.get("/{entity_id}", response_model=EntityRead)
 async def get_entity(

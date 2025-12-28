@@ -1,7 +1,10 @@
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, or_, and_, cast, String
 from fastapi import HTTPException, status
+from typing import Optional
 
 from app.schemas.source import SourceWrite, SourceRead
+from app.schemas.filters import SourceFilters
 from app.repositories.source_repo import SourceRepository
 from app.models.source import Source
 from app.models.source_revision import SourceRevision
@@ -71,22 +74,59 @@ class SourceService:
 
         return source_to_read(source, current_revision)
 
-    async def list_all(self) -> list[SourceRead]:
-        """List all sources with their current revisions."""
-        sources = await self.repo.list_all()
+    async def list_all(self, filters: Optional[SourceFilters] = None) -> list[SourceRead]:
+        """
+        List all sources with their current revisions, optionally filtered.
 
-        # Get current revisions for all sources
-        result = []
-        for source in sources:
-            current_revision = await get_current_revision(
-                db=self.db,
-                revision_class=SourceRevision,
-                parent_id_field='source_id',
-                parent_id=source.id,
-            )
-            result.append(source_to_read(source, current_revision))
+        Filters are applied to the current revision data:
+        - kind: Filter by kind field (OR logic for multiple values)
+        - year_min/year_max: Filter by publication year range
+        - trust_level_min/trust_level_max: Filter by trust level range
+        - search: Case-insensitive search in title, authors, or origin
+        """
+        # Build query for sources with their current revisions
+        query = (
+            select(Source, SourceRevision)
+            .join(SourceRevision, Source.id == SourceRevision.source_id)
+            .where(SourceRevision.is_current == True)
+        )
 
-        return result
+        # Apply filters if provided
+        if filters:
+            # Filter by kind (OR logic)
+            if filters.kind:
+                query = query.where(SourceRevision.kind.in_(filters.kind))
+
+            # Filter by year range
+            if filters.year_min is not None:
+                query = query.where(SourceRevision.year >= filters.year_min)
+            if filters.year_max is not None:
+                query = query.where(SourceRevision.year <= filters.year_max)
+
+            # Filter by trust level range
+            if filters.trust_level_min is not None:
+                query = query.where(SourceRevision.trust_level >= filters.trust_level_min)
+            if filters.trust_level_max is not None:
+                query = query.where(SourceRevision.trust_level <= filters.trust_level_max)
+
+            # Search in title, authors, or origin (case-insensitive)
+            if filters.search:
+                search_term = f"%{filters.search.lower()}%"
+                # Convert authors array to string for searching
+                query = query.where(
+                    or_(
+                        SourceRevision.title.ilike(search_term),
+                        SourceRevision.origin.ilike(search_term),
+                        cast(SourceRevision.authors, String).ilike(search_term),
+                    )
+                )
+
+        # Execute query
+        result_rows = await self.db.execute(query)
+        results = result_rows.all()
+
+        # Convert to SourceRead objects
+        return [source_to_read(source, revision) for source, revision in results]
 
     async def update(self, source_id: str, payload: SourceWrite, user_id=None) -> SourceRead:
         """
