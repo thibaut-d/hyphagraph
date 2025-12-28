@@ -80,66 +80,336 @@ VS Code will:
 - expose ready-to-use tasks (Run → Tasks)
 
 
-## 6. First API call (example)
+## 6. Authentication (Create your first user)
 
-Create an entity:
+HyphaGraph uses **custom JWT-based authentication** (not FastAPI Users).
 
+### Option A: Register a new user
+
+```bash
+curl -X POST http://localhost/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "your-email@example.com",
+    "password": "your-secure-password"
+  }'
 ```
-POST http://localhost/api/entities
+
+### Option B: Use default admin account
+
+The system creates a default admin on startup:
+- Email: `admin@example.com`
+- Password: `changeme123`
+
+**⚠️ Change this in production!**
+
+### Login and get access token
+
+```bash
+curl -X POST http://localhost/api/auth/login \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=admin@example.com&password=changeme123"
+```
+
+Returns:
+```json
 {
-  "kind": "drug",
-  "label": "hydroxychloroquine"
+  "access_token": "eyJhbGci...",
+  "token_type": "bearer"
 }
 ```
 
-Create a source:
+### Use token in requests
 
+Include in Authorization header:
+```bash
+curl -H "Authorization: Bearer <access_token>" \
+  http://localhost/api/auth/me
 ```
+
+For complete authentication documentation, see **AUTHENTICATION.md**.
+
+
+## 7. First API call (example)
+
+Now you can create entities, sources, and relations:
+
+### Create an entity
+
+```bash
+POST http://localhost/api/entities
+Authorization: Bearer <your_token>
+Content-Type: application/json
+
+{
+  "slug": "hydroxychloroquine",
+  "ui_category_id": "<category_id>",
+  "summary": {
+    "en": "Antimalarial drug"
+  },
+  "terms": [
+    {"term": "hydroxychloroquine", "language": "en"},
+    {"term": "HCQ", "language": null}
+  ]
+}
+```
+
+### Create a source
+
+```bash
 POST http://localhost/api/sources
+Authorization: Bearer <your_token>
+Content-Type: application/json
+
 {
   "kind": "study",
-  "title": "Study A",
-  "year": 2020,
-  "trust_level": 0.8
+  "title": "Efficacy Study A",
+  "authors": ["Smith J.", "Doe A."],
+  "year": 2023,
+  "origin": "Journal of Medicine",
+  "url": "https://example.org/study",
+  "trust_level": 0.8,
+  "summary": {
+    "en": "Randomized controlled trial"
+  }
 }
 ```
 
-Create a relation (hyper-edge):
+### Create a relation (hyper-edge)
 
-```
+```bash
 POST http://localhost/api/relations
+Authorization: Bearer <your_token>
+Content-Type: application/json
+
 {
-  "source_id": "<source_id>",
+  "source_id": "<source_uuid>",
   "kind": "effect",
-  "direction": "positive",
+  "direction": "supports",
   "confidence": 0.7,
+  "scope": {
+    "population": "adults",
+    "condition": "chronic use"
+  },
+  "notes": {
+    "en": "Moderate efficacy observed"
+  },
   "roles": [
-    { "entity_id": "<entity_id>", "role_type": "intervention" },
-    { "entity_id": "<entity_id>", "role_type": "outcome" }
+    {
+      "entity_id": "<drug_entity_uuid>",
+      "role_type": "agent"
+    },
+    {
+      "entity_id": "<symptom_entity_uuid>",
+      "role_type": "outcome"
+    }
   ]
 }
 ```
 
 
-## 7. Minimal inference
+## 8. Minimal inference
 
 Query all relations involving an entity:
 
-```
-GET http://localhost/api/inferences/entity/<entity_id>
+```bash
+GET http://localhost/api/inferences/entity/<entity_uuid>
+Authorization: Bearer <your_token>
 ```
 
 This returns a structured, traceable view of assertions — no synthesis, no consensus.
 
 
+## 9. Running tests
+
+### Backend tests
+
+```bash
+cd backend
+
+# All tests
+pytest
+
+# With coverage
+pytest --cov=app --cov-report=html --cov-report=term-missing
+
+# Specific test file
+pytest tests/test_auth_endpoints.py
+
+# Verbose
+pytest -vv
+```
+
+### Frontend tests
+
+```bash
+cd frontend
+
+# Run tests
+npm test
+
+# With UI
+npm run test:ui
+
+# With coverage
+npm run test:coverage
+```
+
+For complete testing documentation, see **TESTING.md**.
+
+
+## 10. API Documentation
+
+Once running, visit:
+
+- **Swagger UI**: http://localhost/api/docs
+- **ReDoc**: http://localhost/api/redoc
+
+These provide interactive API documentation with request/response examples.
+
+
+## Troubleshooting
+
+### "Could not connect to database"
+
+```bash
+# Check database is running
+docker compose ps db
+
+# Check database logs
+docker compose logs db
+
+# Restart database
+docker compose restart db
+```
+
+### "Migrations not applied"
+
+```bash
+cd backend
+alembic upgrade head
+```
+
+### "Port already in use"
+
+```bash
+# Check what's using port 80
+# On Linux/Mac:
+sudo lsof -i :80
+
+# On Windows:
+netstat -ano | findstr :80
+
+# Stop conflicting service or change port in docker-compose.yml
+```
+
+### Reset everything
+
+```bash
+# Stop and remove all containers and volumes
+docker compose down -v
+
+# Rebuild and restart
+docker compose up --build -d
+
+# Reapply migrations
+cd backend
+alembic upgrade head
+```
+
+
+## Development workflow
+
+### Typical session
+
+```bash
+# Start services
+docker compose up -d
+
+# Watch logs
+docker compose logs -f api web
+
+# Make code changes (auto-reload enabled)
+
+# Run tests
+cd backend && pytest
+cd frontend && npm test
+
+# Create migration if models changed
+cd backend
+alembic revision --autogenerate -m "Add new field"
+alembic upgrade head
+```
+
+### Before committing
+
+```bash
+# Backend checks
+cd backend
+pytest --cov=app
+ruff check .
+ruff format .
+mypy app/
+
+# Frontend checks
+cd frontend
+npm test
+npm run lint
+npm run format
+```
+
+
+## Production considerations
+
+**⚠️ This is a proof of concept. NOT production-ready.**
+
+If deploying anyway, you MUST:
+
+1. Change all default passwords (`ADMIN_PASSWORD`, `POSTGRES_PASSWORD`)
+2. Generate secure secrets:
+   ```bash
+   python -c "import secrets; print(secrets.token_urlsafe(32))"
+   ```
+   Set as `SECRET_KEY` and `JWT_SECRET_KEY` in `.env`
+3. Enable HTTPS (Caddy with Let's Encrypt)
+4. Configure proper CORS origins
+5. Enable rate limiting and monitoring
+6. Set up PostgreSQL backups
+7. Configure email service (SMTP)
+8. Set `ENV=production` in `.env`
+
+See **ARCHITECTURE.md** for security constraints.
+
+
 ## Notes
 
-The backend is schemaless by design (no domain rules hardcoded).
+- The backend is schemaless by design (no domain rules hardcoded)
+- All "knowledge" is derived at query time
+- The database is the single source of truth
+- LLMs are optional and never authoritative
+- Authentication uses custom JWT (not FastAPI Users)
+- All syntheses are computed, not authored
 
-All “knowledge” is derived at query time.
 
-The database is the single source of truth.
+## Next steps
 
-LLMs are optional and never authoritative.
+After setup, read these documents in order:
+
+1. **AUTHENTICATION.md** - Authentication system implementation
+2. **PROJECT.md** - Scientific motivation and vision
+3. **ARCHITECTURE.md** - System architecture
+4. **DATABASE_SCHEMA.md** - Data model
+5. **CODE_GUIDE.md** - Coding guidelines
+6. **TESTING.md** - Testing strategies
+7. **UX.md** - Design principles
+
+
+## Getting help
+
+- **API Docs**: http://localhost/api/docs
+- **Documentation**: Check markdown files at repository root
+- **Architecture Questions**: See `ARCHITECTURE.md`
+- **Code Questions**: See `CODE_GUIDE.md`
+- **Issues**: Report on GitHub
 
 

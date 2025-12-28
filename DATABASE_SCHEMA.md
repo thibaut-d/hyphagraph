@@ -556,9 +556,15 @@ This schema guarantees a lossless projection from PostgreSQL to TypeDB and suppo
 
 ## Users
 
-### Users schema 
+### Users schema
 
-We use FastAPI Users extension.
+We use a **custom JWT-based authentication system** instead of third-party frameworks.
+
+**Design rationale:**
+- FastAPI Users is in maintenance mode (no active development)
+- Authentication is security-critical and must be fully transparent
+- We prefer explicit, auditable code over framework magic
+- See `AUTHENTICATION.md` for complete implementation details
 
 ```
 User
@@ -566,13 +572,20 @@ User
 - email : text (unique, indexed)
 - hashed_password : text
 - is_active : bool
-- is_verified : bool
 - is_superuser : bool
 - created_at : timestamp
-- last_login_at : timestamp?
 ```
 
-For now we rely on JWT only.
+**Authentication:**
+- OAuth2 password flow with JWT access tokens
+- Password hashing with bcrypt (passlib)
+- Token signing with python-jose
+- 30-minute token expiration (configurable)
+
+**Authorization:**
+- Explicit permission functions (no RBAC frameworks)
+- Owner-based permissions with superuser override
+- See `app/utils/permissions.py` for all permission checks
 
 ### User profile 
 

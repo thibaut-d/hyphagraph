@@ -193,6 +193,221 @@ Authorization: Bearer <access_token>
 - `401 Unauthorized`: Invalid or missing token
 - `403 Forbidden`: User is inactive
 
+### POST /auth/refresh
+
+Refresh access token using refresh token.
+
+**Request Body**:
+```json
+{
+  "refresh_token": "..."
+}
+```
+
+**Response** (200 OK):
+```json
+{
+  "access_token": "new_access_token...",
+  "token_type": "bearer"
+}
+```
+
+**Errors**:
+- `401 Unauthorized`: Invalid or expired refresh token
+- `403 Forbidden`: Revoked refresh token
+
+### POST /auth/logout
+
+Revoke refresh token (logout).
+
+**Headers**:
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body**:
+```json
+{
+  "refresh_token": "..."
+}
+```
+
+**Response** (200 OK):
+```json
+{
+  "message": "Logged out successfully"
+}
+```
+
+### POST /auth/change-password
+
+Change user password (requires current password).
+
+**Headers**:
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body**:
+```json
+{
+  "current_password": "oldpassword123",
+  "new_password": "newpassword456"
+}
+```
+
+**Response** (200 OK):
+```json
+{
+  "message": "Password changed successfully"
+}
+```
+
+**Errors**:
+- `400 Bad Request`: Current password incorrect
+- `422 Unprocessable Entity`: New password validation failed
+
+### PUT /auth/me
+
+Update user profile.
+
+**Headers**:
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body**:
+```json
+{
+  "email": "newemail@example.com"
+}
+```
+
+**Response** (200 OK):
+```json
+{
+  "id": "uuid",
+  "email": "newemail@example.com",
+  "is_active": true,
+  "is_superuser": false,
+  "created_at": "2024-12-27T10:00:00Z"
+}
+```
+
+### POST /auth/deactivate
+
+Deactivate user account (soft delete).
+
+**Headers**:
+```
+Authorization: Bearer <access_token>
+```
+
+**Response** (200 OK):
+```json
+{
+  "message": "Account deactivated successfully"
+}
+```
+
+### DELETE /auth/me
+
+Permanently delete user account.
+
+**Headers**:
+```
+Authorization: Bearer <access_token>
+```
+
+**Response** (200 OK):
+```json
+{
+  "message": "Account deleted successfully"
+}
+```
+
+### POST /auth/verify-email
+
+Verify email address with token.
+
+**Request Body**:
+```json
+{
+  "token": "verification_token_from_email"
+}
+```
+
+**Response** (200 OK):
+```json
+{
+  "message": "Email verified successfully"
+}
+```
+
+**Errors**:
+- `400 Bad Request`: Invalid or expired token
+
+### POST /auth/resend-verification
+
+Resend email verification.
+
+**Request Body**:
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+**Response** (200 OK):
+```json
+{
+  "message": "Verification email sent"
+}
+```
+
+### POST /auth/request-password-reset
+
+Request password reset email.
+
+**Request Body**:
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+**Response** (200 OK):
+```json
+{
+  "message": "Password reset email sent if account exists"
+}
+```
+
+Note: Always returns success to prevent user enumeration.
+
+### POST /auth/reset-password
+
+Reset password with token from email.
+
+**Request Body**:
+```json
+{
+  "token": "reset_token_from_email",
+  "new_password": "newsecurepassword"
+}
+```
+
+**Response** (200 OK):
+```json
+{
+  "message": "Password reset successfully"
+}
+```
+
+**Errors**:
+- `400 Bad Request`: Invalid or expired token
+- `422 Unprocessable Entity`: Password validation failed
+
 ---
 
 ## Usage Examples
@@ -514,34 +729,70 @@ UPDATE users SET is_active = true WHERE email = 'user@example.com';
 
 ---
 
+## Additional Features Implemented
+
+### Refresh Tokens ✅
+- **Implemented**: Stateful refresh tokens with database storage
+- 7-day expiration (configurable via `REFRESH_TOKEN_EXPIRE_DAYS`)
+- Token revocation mechanism (logout)
+- Stored as bcrypt hash in `refresh_tokens` table
+- See `app/models/refresh_token.py`
+
+### Email Verification ✅
+- **Implemented**: Full email verification flow
+- Verification tokens with 24-hour expiration
+- Configurable via `EMAIL_ENABLED` and `EMAIL_VERIFICATION_REQUIRED`
+- SMTP integration with aiosmtplib
+- Endpoints: `/auth/verify-email`, `/auth/resend-verification`
+- See `app/utils/email.py`
+
+### Password Reset ✅
+- **Implemented**: Secure password reset flow
+- Reset tokens with expiration
+- Email-based token delivery
+- Prevents user enumeration (always returns success)
+- Endpoints: `/auth/request-password-reset`, `/auth/reset-password`
+
+### Account Management ✅
+- **Implemented**: Complete account management
+- Profile updates (`PUT /auth/me`)
+- Password changes (`POST /auth/change-password`)
+- Account deactivation - soft delete (`POST /auth/deactivate`)
+- Account deletion - hard delete (`DELETE /auth/me`)
+
+### Audit Logging ✅
+- **Implemented**: Security event logging
+- Tracks: registration, login, password changes, account deletion
+- Stored in `audit_log` table
+- See `app/models/audit_log.py` and `app/utils/audit.py`
+
+### Rate Limiting ✅
+- **Implemented**: SlowAPI integration
+- 5 requests/minute on auth endpoints (configurable)
+- 60 requests/minute on general API
+- See `app/utils/rate_limit.py`
+
 ## Future Enhancements
 
 Potential additions (NOT currently implemented):
 
-### Email Verification
-- Send verification email on registration
-- Require email confirmation before activation
-- Add `email_verified` field
-
-### Password Reset
-- POST /auth/forgot-password
-- Email reset token
-- POST /auth/reset-password
-
-### Refresh Tokens
-- Longer-lived refresh tokens
-- Token rotation
-- Revocation mechanism
-
 ### Multi-Factor Authentication
-- TOTP support
+- TOTP support (Time-based One-Time Password)
 - Backup codes
 - Recovery options
+- SMS verification
 
 ### OAuth Providers
 - Google OAuth
 - GitHub OAuth
 - Microsoft OAuth
+- ORCID (for researchers)
+
+### Advanced Session Management
+- Multiple device tracking
+- Device fingerprinting
+- Trusted device management
+- Session history
 
 **Important**: These features should only be added if clearly justified and implemented with the same explicit, auditable approach.
 
