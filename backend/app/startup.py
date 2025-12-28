@@ -124,10 +124,10 @@ async def create_system_source(db: AsyncSession) -> None:
         await db.commit()
 
         logger.info(f"System source created: {source.id}")
-        logger.info(f"Set SYSTEM_SOURCE_ID={source.id} in your .env file to persist across restarts")
+        logger.info(f"Set SYSTEM_SOURCE_ID={source.id} in your .env.test file to persist across restarts")
 
         # Note: We can't update settings.SYSTEM_SOURCE_ID here as it's immutable
-        # The admin needs to add it to .env manually
+        # The admin needs to add it to .env.test manually
 
     except Exception as e:
         logger.error(f"Failed to create system source: {e}")

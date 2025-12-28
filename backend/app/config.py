@@ -54,7 +54,8 @@ class Settings(BaseSettings):
     SQL_DEBUG: bool = False
 
     model_config = ConfigDict(
-        env_file=".env",
+        env_file=".env.test",  # Test configuration (not tracked by git)
+        env_file_encoding="utf-8",
         case_sensitive=True
     )
 

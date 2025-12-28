@@ -211,5 +211,22 @@
     "source_evidence": "Source Evidence",
     "source_evidence_desc": "Click on any source to view its full details",
     "scope_filter": "Applied Scope Filter"
+  },
+  "filters": {
+    "title": "Filters",
+    "clear_all": "Clear All",
+    "active_count": "{{count}} active filter",
+    "active_count_plural": "{{count}} active filters",
+    "showing_results": "Showing {{count}} of {{total}} results",
+    "no_results": "No items match the current filters",
+    "entity_type": "Entity Type",
+    "category": "Category",
+    "study_type": "Study Type",
+    "year_range": "Publication Year",
+    "trust_level": "Authority Score",
+    "select_all": "Select All",
+    "deselect_all": "Deselect All",
+    "min": "Min",
+    "max": "Max"
   }
 }

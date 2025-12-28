@@ -211,5 +211,22 @@
     "source_evidence": "Preuves des sources",
     "source_evidence_desc": "Cliquez sur n'importe quelle source pour voir ses détails complets",
     "scope_filter": "Filtre de portée appliqué"
+  },
+  "filters": {
+    "title": "Filtres",
+    "clear_all": "Tout effacer",
+    "active_count": "{{count}} filtre actif",
+    "active_count_plural": "{{count}} filtres actifs",
+    "showing_results": "Affichage de {{count}} sur {{total}} résultats",
+    "no_results": "Aucun élément ne correspond aux filtres actuels",
+    "entity_type": "Type d'entité",
+    "category": "Catégorie",
+    "study_type": "Type d'étude",
+    "year_range": "Année de publication",
+    "trust_level": "Score d'autorité",
+    "select_all": "Tout sélectionner",
+    "deselect_all": "Tout désélectionner",
+    "min": "Min",
+    "max": "Max"
   }
 }
