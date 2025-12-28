@@ -14,28 +14,28 @@ import {
   Button,
   Badge,
   Alert,
+  CircularProgress,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import FilterListIcon from "@mui/icons-material/FilterList";
 
-import { listSources } from "../api/sources";
+import { listSources, SourceFilters } from "../api/sources";
 import { SourceRead } from "../types/source";
-import { FilterDrawer, FilterSection, CheckboxFilter, RangeFilter, YearRangeFilter } from "../components/filters";
+import { FilterDrawer, FilterSection, CheckboxFilter, RangeFilter, SearchFilter } from "../components/filters";
 import { useFilterDrawer } from "../hooks/useFilterDrawer";
 import { usePersistedFilters } from "../hooks/usePersistedFilters";
-import { useClientSideFilter } from "../hooks/useClientSideFilter";
-import { sourcesFilterConfig } from "../config/filterConfigs";
 import { deriveFilterOptions, deriveRange } from "../utils/filterUtils";
 
 export function SourcesView() {
   const { t } = useTranslation();
   const [sources, setSources] = useState<SourceRead[]>([]);
+  const [allSources, setAllSources] = useState<SourceRead[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Filter state with localStorage persistence
   const {
     filters,
     setFilter,
-    clearFilter,
     clearAllFilters,
     activeFilterCount,
   } = usePersistedFilters('sources-filters');
@@ -47,20 +47,51 @@ export function SourcesView() {
     closeDrawer,
   } = useFilterDrawer();
 
+  // Fetch all sources once for filter options
   useEffect(() => {
-    listSources().then(setSources);
+    listSources().then(setAllSources);
   }, []);
 
-  // Derive filter options from loaded sources
-  const kindOptions = useMemo(() => deriveFilterOptions(sources, 'kind'), [sources]);
-  const yearRange = useMemo(() => deriveRange(sources, 'year'), [sources]);
+  // Derive filter options from all sources
+  const kindOptions = useMemo(() => deriveFilterOptions(allSources, 'kind'), [allSources]);
+  const yearRange = useMemo(() => deriveRange(allSources, 'year'), [allSources]);
 
-  // Apply filters
-  const { filteredItems: filteredSources, hiddenCount } = useClientSideFilter(
-    sources,
-    filters,
-    sourcesFilterConfig
-  );
+  // Fetch sources with server-side filtering
+  useEffect(() => {
+    setIsLoading(true);
+
+    const apiFilters: SourceFilters = {};
+
+    if (filters.kind && Array.isArray(filters.kind)) {
+      apiFilters.kind = filters.kind;
+    }
+
+    if (filters.year && Array.isArray(filters.year) && filters.year.length === 2) {
+      const [min, max] = filters.year;
+      // Only send year filters if they differ from the full range
+      if (!yearRange || min !== yearRange[0] || max !== yearRange[1]) {
+        apiFilters.year_min = min;
+        apiFilters.year_max = max;
+      }
+    }
+
+    if (filters.trust_level && Array.isArray(filters.trust_level) && filters.trust_level.length === 2) {
+      const [min, max] = filters.trust_level;
+      // Only send trust level filters if they differ from defaults
+      if (min !== 0 || max !== 1) {
+        apiFilters.trust_level_min = min;
+        apiFilters.trust_level_max = max;
+      }
+    }
+
+    if (filters.search && typeof filters.search === 'string') {
+      apiFilters.search = filters.search;
+    }
+
+    listSources(apiFilters)
+      .then(setSources)
+      .finally(() => setIsLoading(false));
+  }, [filters, yearRange]);
 
   return (
     <Stack spacing={2}>
@@ -89,48 +120,55 @@ export function SourcesView() {
         </Stack>
       </Box>
 
-      {/* Warning when filters are active */}
+      {/* Info when filters are active */}
       {activeFilterCount > 0 && (
         <Alert severity="info" onClose={clearAllFilters}>
           {t(
-            "filters.showing_results",
-            "Showing {{count}} of {{total}} results",
-            { count: filteredSources.length, total: sources.length }
+            "filters.active_count",
+            "{{count}} filter(s) active",
+            { count: activeFilterCount }
           )}
-          {hiddenCount > 0 && ` (${hiddenCount} hidden by filters)`}
+          {" - "}
+          {t(
+            "filters.showing_filtered_results",
+            "Showing {{count}} result(s)",
+            { count: sources.length }
+          )}
         </Alert>
       )}
 
       <Paper sx={{ p: 3 }}>
-        <List>
-          {filteredSources.map((s) => (
-            <ListItem key={s.id}>
-              <ListItemText
-                primary={
-                  <Link component={RouterLink} to={`/sources/${s.id}`}>
-                    {s.title ?? s.id}
-                  </Link>
-                }
-                secondary={[
-                  s.kind,
-                  s.year && `(${s.year})`,
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-              />
-            </ListItem>
-          ))}
-        </List>
-
-        {filteredSources.length === 0 && sources.length === 0 && (
-          <Typography color="text.secondary">
-            {t("sources.no_data", "No sources")}
-          </Typography>
+        {isLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <List>
+            {sources.map((s) => (
+              <ListItem key={s.id}>
+                <ListItemText
+                  primary={
+                    <Link component={RouterLink} to={`/sources/${s.id}`}>
+                      {s.title ?? s.id}
+                    </Link>
+                  }
+                  secondary={[
+                    s.kind,
+                    s.year && `(${s.year})`,
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                />
+              </ListItem>
+            ))}
+          </List>
         )}
 
-        {filteredSources.length === 0 && sources.length > 0 && (
+        {!isLoading && sources.length === 0 && (
           <Typography color="text.secondary">
-            {t("filters.no_results", "No sources match the current filters")}
+            {activeFilterCount > 0
+              ? t("filters.no_results", "No sources match the current filters")
+              : t("sources.no_data", "No sources")}
           </Typography>
         )}
       </Paper>
@@ -153,11 +191,13 @@ export function SourcesView() {
 
         {yearRange && (
           <FilterSection title={t("filters.year_range", "Publication Year")}>
-            <YearRangeFilter
+            <RangeFilter
               min={yearRange[0]}
               max={yearRange[1]}
+              step={1}
               value={filters.year || yearRange}
               onChange={(value) => setFilter('year', value)}
+              formatValue={(v) => v.toString()}
             />
           </FilterSection>
         )}
@@ -170,6 +210,14 @@ export function SourcesView() {
             value={filters.trust_level || [0, 1]}
             onChange={(value) => setFilter('trust_level', value)}
             formatValue={(v) => v.toFixed(1)}
+          />
+        </FilterSection>
+
+        <FilterSection title={t("filters.search", "Search")}>
+          <SearchFilter
+            value={(filters.search as string) || ''}
+            onChange={(value) => setFilter('search', value)}
+            placeholder={t("filters.search_placeholder_sources", "Search title, authors, origin...")}
           />
         </FilterSection>
       </FilterDrawer>

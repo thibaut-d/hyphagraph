@@ -1,5 +1,5 @@
-import { useEffect, useState, useMemo } from "react";
-import { listEntities } from "../api/entities";
+import { useEffect, useState } from "react";
+import { listEntities, EntityFilters } from "../api/entities";
 import { EntityRead } from "../types/entity";
 import { Link as RouterLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -16,26 +16,24 @@ import {
   Stack,
   Badge,
   Alert,
+  CircularProgress,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import FilterListIcon from "@mui/icons-material/FilterList";
 
-import { FilterDrawer, FilterSection, CheckboxFilter } from "../components/filters";
+import { FilterDrawer, FilterSection, SearchFilter } from "../components/filters";
 import { useFilterDrawer } from "../hooks/useFilterDrawer";
 import { usePersistedFilters } from "../hooks/usePersistedFilters";
-import { useClientSideFilter } from "../hooks/useClientSideFilter";
-import { entitiesFilterConfig } from "../config/filterConfigs";
-import { deriveFilterOptions } from "../utils/filterUtils";
 
 export function EntitiesView() {
   const { t } = useTranslation();
   const [entities, setEntities] = useState<EntityRead[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Filter state with localStorage persistence
   const {
     filters,
     setFilter,
-    clearFilter,
     clearAllFilters,
     activeFilterCount,
   } = usePersistedFilters('entities-filters');
@@ -47,19 +45,24 @@ export function EntitiesView() {
     closeDrawer,
   } = useFilterDrawer();
 
+  // Fetch entities with server-side filtering
   useEffect(() => {
-    listEntities().then(setEntities);
-  }, []);
+    setIsLoading(true);
 
-  // Derive filter options from loaded entities
-  const kindOptions = useMemo(() => deriveFilterOptions(entities, 'kind'), [entities]);
+    const apiFilters: EntityFilters = {};
 
-  // Apply filters
-  const { filteredItems: filteredEntities, hiddenCount } = useClientSideFilter(
-    entities,
-    filters,
-    entitiesFilterConfig
-  );
+    if (filters.search && typeof filters.search === 'string') {
+      apiFilters.search = filters.search;
+    }
+
+    if (filters.ui_category_id && Array.isArray(filters.ui_category_id)) {
+      apiFilters.ui_category_id = filters.ui_category_id;
+    }
+
+    listEntities(apiFilters)
+      .then(setEntities)
+      .finally(() => setIsLoading(false));
+  }, [filters]);
 
   return (
     <Stack spacing={2}>
@@ -88,33 +91,52 @@ export function EntitiesView() {
         </Stack>
       </Box>
 
-      {/* Warning when filters are active */}
+      {/* Info when filters are active */}
       {activeFilterCount > 0 && (
         <Alert severity="info" onClose={clearAllFilters}>
           {t(
-            "filters.showing_results",
-            "Showing {{count}} of {{total}} results",
-            { count: filteredEntities.length, total: entities.length }
+            "filters.active_count",
+            "{{count}} filter(s) active",
+            { count: activeFilterCount }
           )}
-          {hiddenCount > 0 && ` (${hiddenCount} hidden by filters)`}
+          {" - "}
+          {t(
+            "filters.showing_filtered_results",
+            "Showing {{count}} result(s)",
+            { count: entities.length }
+          )}
         </Alert>
       )}
 
       <Paper sx={{ p: 2 }}>
-        <List>
-          {filteredEntities.map((e) => (
-            <ListItem key={e.id}>
-              <ListItemText
-                primary={
-                  <Link component={RouterLink} to={`/entities/${e.id}`}>
-                    {e.label}
-                  </Link>
-                }
-                secondary={e.kind}
-              />
-            </ListItem>
-          ))}
-        </List>
+        {isLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <List>
+            {entities.map((e) => (
+              <ListItem key={e.id}>
+                <ListItemText
+                  primary={
+                    <Link component={RouterLink} to={`/entities/${e.id}`}>
+                      {e.label}
+                    </Link>
+                  }
+                  secondary={e.kind}
+                />
+              </ListItem>
+            ))}
+          </List>
+        )}
+
+        {!isLoading && entities.length === 0 && (
+          <Typography color="text.secondary" sx={{ p: 2 }}>
+            {activeFilterCount > 0
+              ? t("filters.no_results", "No entities match the current filters")
+              : t("entities.no_data", "No entities")}
+          </Typography>
+        )}
       </Paper>
 
       {/* Filter Drawer */}
@@ -125,11 +147,11 @@ export function EntitiesView() {
         activeFilterCount={activeFilterCount}
         onClearAll={clearAllFilters}
       >
-        <FilterSection title={t("filters.entity_type", "Entity Type")}>
-          <CheckboxFilter
-            options={kindOptions}
-            value={filters.kind || []}
-            onChange={(value) => setFilter('kind', value)}
+        <FilterSection title={t("filters.search", "Search")}>
+          <SearchFilter
+            value={(filters.search as string) || ''}
+            onChange={(value) => setFilter('search', value)}
+            placeholder={t("filters.search_placeholder", "Search by slug...")}
           />
         </FilterSection>
       </FilterDrawer>

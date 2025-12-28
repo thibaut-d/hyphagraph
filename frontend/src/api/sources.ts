@@ -14,8 +14,44 @@ export interface SourceWrite {
   created_with_llm?: string;
 }
 
-export function listSources(): Promise<SourceRead[]> {
-  return apiFetch("/sources");
+export interface SourceFilters {
+  kind?: string[];
+  year_min?: number;
+  year_max?: number;
+  trust_level_min?: number;
+  trust_level_max?: number;
+  search?: string;
+}
+
+export function listSources(filters?: SourceFilters): Promise<SourceRead[]> {
+  const params = new URLSearchParams();
+
+  if (filters?.kind) {
+    filters.kind.forEach(k => params.append('kind', k));
+  }
+
+  if (filters?.year_min !== undefined) {
+    params.append('year_min', filters.year_min.toString());
+  }
+
+  if (filters?.year_max !== undefined) {
+    params.append('year_max', filters.year_max.toString());
+  }
+
+  if (filters?.trust_level_min !== undefined) {
+    params.append('trust_level_min', filters.trust_level_min.toString());
+  }
+
+  if (filters?.trust_level_max !== undefined) {
+    params.append('trust_level_max', filters.trust_level_max.toString());
+  }
+
+  if (filters?.search) {
+    params.append('search', filters.search);
+  }
+
+  const queryString = params.toString();
+  return apiFetch(`/sources${queryString ? `?${queryString}` : ''}`);
 }
 
 export function getSource(id: string): Promise<SourceRead> {

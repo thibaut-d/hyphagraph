@@ -12,8 +12,24 @@ export interface EntityWrite {
   ontology_ref?: string;
 }
 
-export function listEntities(): Promise<EntityRead[]> {
-  return apiFetch("/entities");
+export interface EntityFilters {
+  ui_category_id?: string[];
+  search?: string;
+}
+
+export function listEntities(filters?: EntityFilters): Promise<EntityRead[]> {
+  const params = new URLSearchParams();
+
+  if (filters?.ui_category_id) {
+    filters.ui_category_id.forEach(id => params.append('ui_category_id', id));
+  }
+
+  if (filters?.search) {
+    params.append('search', filters.search);
+  }
+
+  const queryString = params.toString();
+  return apiFetch(`/entities${queryString ? `?${queryString}` : ''}`);
 }
 
 export function getEntity(id: string): Promise<EntityRead> {
