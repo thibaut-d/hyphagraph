@@ -1,0 +1,64 @@
+# Docker Compose configuration for E2E testing
+# This creates an isolated environment for running E2E tests
+# Strategy: Fresh database per test run for complete isolation
+
+services:
+  db:
+    image: postgres:16
+    container_name: hyphagraph-e2e-db
+    environment:
+      POSTGRES_USER: hyphagraph_test
+      POSTGRES_PASSWORD: hyphagraph_test_password
+      POSTGRES_DB: hyphagraph_test
+    ports:
+      - "5433:5432"  # Different port to avoid conflicts
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hyphagraph_test -d hyphagraph_test"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    tmpfs:
+      - /var/lib/postgresql/data  # Use tmpfs for faster DB operations in tests
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hyphagraph-e2e-api
+    command: sh -c "uv run alembic upgrade head && uv run uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    ports:
+      - "8001:8000"  # Different port to avoid conflicts
+    environment:
+      # Override production settings for testing
+      DATABASE_URL: postgresql+asyncpg://hyphagraph_test:hyphagraph_test_password@db:5432/hyphagraph_test
+      SECRET_KEY: test-secret-key-for-e2e-testing-only
+      ENVIRONMENT: test
+      # Admin user credentials (must match test-data.ts)
+      ADMIN_EMAIL: admin@example.com
+      ADMIN_PASSWORD: changeme123
+      # SMTP settings - use a test SMTP service or disable email
+      SMTP_HOST: localhost
+      SMTP_PORT: 1025
+      SMTP_USERNAME: ""
+      SMTP_PASSWORD: ""
+      SMTP_FROM_EMAIL: "test@example.com"
+      # Disable email verification for tests
+      REQUIRE_EMAIL_VERIFICATION: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: hyphagraph-e2e-web
+    ports:
+      - "3001:3000"  # Different port to avoid conflicts
+    environment:
+      VITE_API_URL: http://localhost:8001/api
+    depends_on:
+      - api
+
+# No volumes for E2E - we want ephemeral storage
+# Data is recreated for each test run

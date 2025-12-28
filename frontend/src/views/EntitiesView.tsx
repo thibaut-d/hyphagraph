@@ -169,10 +169,10 @@ export function EntitiesView() {
                   <ListItemText
                     primary={
                       <Link component={RouterLink} to={`/entities/${e.id}`}>
-                        {e.label}
+                        {e.slug}
                       </Link>
                     }
-                    secondary={e.kind}
+                    secondary={e.summary?.en || e.kind}
                   />
                 </ListItem>
               ))}

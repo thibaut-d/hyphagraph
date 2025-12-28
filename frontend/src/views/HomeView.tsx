@@ -95,7 +95,7 @@ function StatCard({
   );
 }
 
-export default function HomeView() {
+export function HomeView() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [stats, setStats] = useState<Stats>({

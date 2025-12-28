@@ -17,6 +17,7 @@ type AuthContextValue = {
   user: User | null;
   token: string | null;
   refreshToken: string | null;
+  loading: boolean;
   login: (token: string, refreshToken: string) => void;
   logout: () => void;
 };
@@ -31,6 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.getItem("refresh_token"),
   );
   const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState<boolean>(!!localStorage.getItem("auth_token"));
 
   // Listen for storage changes (token refresh from API client)
   useEffect(() => {
@@ -55,12 +57,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!token) {
       setUser(null);
+      setLoading(false);
       return;
     }
 
+    setLoading(true);
     getMe()
-      .then(setUser)
-      .catch(() => logout());
+      .then((userData: any) => {
+        setUser(userData as User);
+        setLoading(false);
+      })
+      .catch(() => {
+        logout();
+        setLoading(false);
+      });
   }, [token]);
 
   const login = (newToken: string, newRefreshToken: string) => {
@@ -88,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, refreshToken, login, logout }}>
+    <AuthContext.Provider value={{ user, token, refreshToken, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

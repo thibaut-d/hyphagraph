@@ -55,6 +55,7 @@ def upgrade() -> None:
         sa.Column('expires_at', sa.DateTime(timezone=True), nullable=False),
         sa.Column('is_revoked', sa.Boolean(), nullable=False, server_default='false'),
         sa.Column('created_at', sa.DateTime(timezone=True), nullable=False, server_default=text('now()')),
+        sa.Column('revoked_at', sa.DateTime(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
     )
     op.create_index('ix_refresh_tokens_user_id', 'refresh_tokens', ['user_id'])
@@ -101,7 +102,7 @@ def upgrade() -> None:
         sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
     )
     op.create_index('ix_ui_categories_slug', 'ui_categories', ['slug'], unique=True)
-    op.create_check_constraint('ck_ui_categories_order', 'ui_categories', 'order >= 0')
+    op.create_check_constraint('ck_ui_categories_order', 'ui_categories', '"order" >= 0')
 
     # Entity Revisions
     op.create_table(

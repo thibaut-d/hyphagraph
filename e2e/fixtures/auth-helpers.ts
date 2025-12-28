@@ -1,0 +1,176 @@
+/**
+ * Authentication Helpers for E2E Tests
+ *
+ * Provides reusable authentication flows for Playwright tests
+ */
+
+import { Page } from '@playwright/test';
+import { ADMIN_USER } from './test-data';
+
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+
+/**
+ * Login via the UI
+ */
+export async function loginViaUI(
+  page: Page,
+  email: string,
+  password: string
+): Promise<void> {
+  // Navigate to account page (where login form is)
+  await page.goto('/account');
+
+  // Fill in credentials
+  await page.getByLabel(/email/i).fill(email);
+  await page.getByLabel(/password/i).fill(password);
+
+  // Click login button
+  await page.getByRole('button', { name: /login/i }).click();
+
+  // Wait for successful login (user info should appear)
+  await page.waitForSelector('text=Logged in as', { timeout: 5000 });
+}
+
+/**
+ * Login as admin via the UI
+ */
+export async function loginAsAdmin(page: Page): Promise<void> {
+  await loginViaUI(page, ADMIN_USER.email, ADMIN_USER.password);
+}
+
+/**
+ * Login via API and set auth state
+ * This is faster than UI login for tests that don't need to test the login flow
+ */
+export async function loginViaAPI(
+  page: Page,
+  email: string,
+  password: string
+): Promise<{ accessToken: string; refreshToken: string }> {
+  const API_URL = process.env.API_URL || 'http://localhost:8000';
+
+  // Login via API
+  const response = await page.request.post(`${API_URL}/api/auth/login`, {
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    form: {
+      username: email,
+      password: password,
+    },
+  });
+
+  if (!response.ok()) {
+    throw new Error(`Login failed: ${response.status()}`);
+  }
+
+  const { access_token, refresh_token } = await response.json();
+
+  // Set auth state in localStorage
+  await page.goto(BASE_URL);
+  await page.evaluate(
+    ({ accessToken, refreshToken }) => {
+      localStorage.setItem('auth_token', accessToken);
+      localStorage.setItem('refresh_token', refreshToken);
+    },
+    { accessToken: access_token, refreshToken: refresh_token }
+  );
+
+  return {
+    accessToken: access_token,
+    refreshToken: refresh_token,
+  };
+}
+
+/**
+ * Login as admin via API
+ */
+export async function loginAsAdminViaAPI(page: Page): Promise<{ accessToken: string; refreshToken: string }> {
+  return loginViaAPI(page, ADMIN_USER.email, ADMIN_USER.password);
+}
+
+/**
+ * Logout via the UI
+ */
+export async function logoutViaUI(page: Page): Promise<void> {
+  // Go to account page
+  await page.goto('/account');
+
+  // Click logout button
+  await page.getByRole('button', { name: /logout/i }).click();
+
+  // Wait for login form to appear
+  await page.waitForSelector('text=Login');
+}
+
+/**
+ * Clear authentication state
+ */
+export async function clearAuthState(page: Page): Promise<void> {
+  await page.goto(BASE_URL);
+  await page.evaluate(() => {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('refresh_token');
+  });
+}
+
+/**
+ * Check if user is authenticated
+ */
+export async function isAuthenticated(page: Page): Promise<boolean> {
+  await page.goto(BASE_URL);
+  const hasToken = await page.evaluate(() => {
+    return !!localStorage.getItem('auth_token');
+  });
+  return hasToken;
+}
+
+/**
+ * Register a new user via the UI
+ */
+export async function registerViaUI(
+  page: Page,
+  email: string,
+  password: string
+): Promise<void> {
+  // Navigate to account page
+  await page.goto('/account');
+
+  // Fill in registration form
+  await page.getByLabel(/email/i).fill(email);
+  await page.getByLabel(/password/i).fill(password);
+
+  // Click register button
+  await page.getByRole('button', { name: /register/i }).click();
+
+  // Wait for success message
+  await page.waitForSelector('text=Registration Successful', { timeout: 5000 });
+}
+
+/**
+ * Register a new user via API
+ */
+export async function registerViaAPI(
+  page: Page,
+  email: string,
+  password: string
+): Promise<{ id: string; email: string }> {
+  const API_URL = process.env.API_URL || 'http://localhost:8000';
+
+  const response = await page.request.post(`${API_URL}/api/auth/register`, {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: {
+      email,
+      password,
+    },
+  });
+
+  if (!response.ok()) {
+    const error = await response.text();
+    throw new Error(`Registration failed: ${error}`);
+  }
+
+  return response.json();
+}

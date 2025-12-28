@@ -20,7 +20,7 @@ def upgrade() -> None:
 
     # Indexes on entity_revisions for entity filtering
     op.create_index(
-        'ix_entity_revisions_is_current',
+        'ix_entity_revisions_is_current_only',
         'entity_revisions',
         ['is_current'],
         unique=False
@@ -40,7 +40,7 @@ def upgrade() -> None:
 
     # Indexes on source_revisions for source filtering
     op.create_index(
-        'ix_source_revisions_is_current',
+        'ix_source_revisions_is_current_only',
         'source_revisions',
         ['is_current'],
         unique=False
@@ -104,9 +104,9 @@ def downgrade() -> None:
     op.drop_index('ix_source_revisions_trust_level', table_name='source_revisions')
     op.drop_index('ix_source_revisions_year', table_name='source_revisions')
     op.drop_index('ix_source_revisions_kind', table_name='source_revisions')
-    op.drop_index('ix_source_revisions_is_current', table_name='source_revisions')
+    op.drop_index('ix_source_revisions_is_current_only', table_name='source_revisions')
 
     # Drop entity_revisions indexes
     op.drop_index('ix_entity_revisions_slug', table_name='entity_revisions')
     op.drop_index('ix_entity_revisions_ui_category_id', table_name='entity_revisions')
-    op.drop_index('ix_entity_revisions_is_current', table_name='entity_revisions')
+    op.drop_index('ix_entity_revisions_is_current_only', table_name='entity_revisions')

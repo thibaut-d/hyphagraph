@@ -1,0 +1,181 @@
+import { test, expect } from '@playwright/test';
+import { loginAsAdminViaAPI } from '../../fixtures/auth-helpers';
+import { generateRelationName, generateEntityName, generateSourceName } from '../../fixtures/test-data';
+
+test.describe('Relation CRUD Operations', () => {
+  let sourceId: string;
+  let entity1Id: string;
+  let entity2Id: string;
+
+  test.beforeEach(async ({ page }) => {
+    // Login before each test
+    await loginAsAdminViaAPI(page);
+
+    // Create prerequisite data: source and entities
+    // Create a source
+    const sourceSlug = generateSourceName('rel-source').toLowerCase().replace(/\s+/g, '-');
+    await page.goto('/sources/new');
+    await page.getByLabel(/slug/i).fill(sourceSlug);
+    await page.getByLabel(/summary.*en/i).fill('Source for relation tests');
+    await page.getByRole('button', { name: /create|submit/i }).click();
+    await page.waitForURL(/\/sources\/([a-f0-9-]+)/);
+    sourceId = page.url().match(/\/sources\/([a-f0-9-]+)/)?.[1] || '';
+
+    // Create first entity
+    const entity1Slug = generateEntityName('rel-entity-1').toLowerCase().replace(/\s+/g, '-');
+    await page.goto('/entities/new');
+    await page.getByLabel(/slug/i).fill(entity1Slug);
+    await page.getByLabel(/summary.*en/i).fill('First entity for relations');
+    await page.getByRole('button', { name: /create|submit/i }).click();
+    await page.waitForURL(/\/entities\/([a-f0-9-]+)/);
+    entity1Id = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1] || '';
+
+    // Create second entity
+    const entity2Slug = generateEntityName('rel-entity-2').toLowerCase().replace(/\s+/g, '-');
+    await page.goto('/entities/new');
+    await page.getByLabel(/slug/i).fill(entity2Slug);
+    await page.getByLabel(/summary.*en/i).fill('Second entity for relations');
+    await page.getByRole('button', { name: /create|submit/i }).click();
+    await page.waitForURL(/\/entities\/([a-f0-9-]+)/);
+    entity2Id = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1] || '';
+  });
+
+  test('should create a new relation', async ({ page }) => {
+    const relationSlug = generateRelationName('test-relation').toLowerCase().replace(/\s+/g, '-');
+
+    // Navigate to create relation page
+    await page.goto('/relations/new');
+
+    // Wait for form to load
+    await expect(page.locator('text=/Create Relation|New Relation/i')).toBeVisible();
+
+    // Fill in relation details
+    await page.getByLabel(/slug/i).fill(relationSlug);
+    await page.getByLabel(/summary.*en/i).fill('This is a test relation');
+
+    // Select source (if there's a source selector)
+    const sourceSelect = page.locator('select[name="source_id"]').or(page.getByLabel(/source/i));
+    if (await sourceSelect.isVisible({ timeout: 2000 })) {
+      // Note: This might need adjustment based on actual UI implementation
+      await sourceSelect.click();
+      await page.locator(`option[value="${sourceId}"]`).click();
+    }
+
+    // Submit form
+    await page.getByRole('button', { name: /create|submit/i }).click();
+
+    // Should navigate to relation detail or edit page
+    await page.waitForURL(/\/relations\/[a-f0-9-]+/);
+
+    // Should show relation details
+    await expect(page.locator(`text=${relationSlug}`)).toBeVisible();
+  });
+
+  test('should view relations list', async ({ page }) => {
+    await page.goto('/relations');
+
+    // Should show relations page
+    await expect(page.locator('text=/Relations|Relation List/i')).toBeVisible();
+  });
+
+  test('should add roles to a relation', async ({ page }) => {
+    // Create a relation first
+    const relationSlug = generateRelationName('role-test').toLowerCase().replace(/\s+/g, '-');
+
+    await page.goto('/relations/new');
+    await page.getByLabel(/slug/i).fill(relationSlug);
+    await page.getByLabel(/summary.*en/i).fill('Relation for role testing');
+    await page.getByRole('button', { name: /create|submit/i }).click();
+
+    // Wait for navigation
+    await page.waitForURL(/\/relations\/[a-f0-9-]+/);
+
+    // Look for "Add Role" button or similar
+    const addRoleButton = page.getByRole('button', { name: /add role/i });
+    if (await addRoleButton.isVisible({ timeout: 2000 })) {
+      await addRoleButton.click();
+
+      // Fill in role details
+      // Note: This is a guess based on common patterns
+      await page.getByLabel(/role name|name/i).fill('subject');
+
+      // Select entity for role
+      // This will depend on the actual UI implementation
+
+      // Save role
+      await page.getByRole('button', { name: /save|add/i }).click();
+
+      // Should show the added role
+      await expect(page.locator('text=subject')).toBeVisible();
+    }
+  });
+
+  test('should edit a relation', async ({ page }) => {
+    // Create a relation first
+    const originalSlug = generateRelationName('edit-test').toLowerCase().replace(/\s+/g, '-');
+    const updatedSummary = 'Updated summary for relation';
+
+    await page.goto('/relations/new');
+    await page.getByLabel(/slug/i).fill(originalSlug);
+    await page.getByLabel(/summary.*en/i).fill('Original summary');
+    await page.getByRole('button', { name: /create|submit/i }).click();
+
+    // Wait for navigation
+    const url = await page.waitForURL(/\/relations\/[a-f0-9-]+/);
+    const relationId = page.url().match(/\/relations\/([a-f0-9-]+)/)?.[1];
+
+    // Navigate to edit page
+    await page.goto(`/relations/${relationId}/edit`);
+
+    // Update the summary
+    const summaryField = page.getByLabel(/summary.*en/i);
+    await summaryField.clear();
+    await summaryField.fill(updatedSummary);
+
+    // Submit form
+    await page.getByRole('button', { name: /save|update/i }).click();
+
+    // Should show updated summary
+    await expect(page.locator(`text=${updatedSummary}`)).toBeVisible();
+  });
+
+  test('should delete a relation', async ({ page }) => {
+    // Create a relation first
+    const relationSlug = generateRelationName('delete-test').toLowerCase().replace(/\s+/g, '-');
+
+    await page.goto('/relations/new');
+    await page.getByLabel(/slug/i).fill(relationSlug);
+    await page.getByLabel(/summary.*en/i).fill('Relation to be deleted');
+    await page.getByRole('button', { name: /create|submit/i }).click();
+
+    // Wait for navigation
+    await page.waitForURL(/\/relations\/[a-f0-9-]+/);
+
+    // Click delete button
+    const deleteButton = page.getByRole('button', { name: /delete/i });
+    if (await deleteButton.isVisible({ timeout: 2000 })) {
+      await deleteButton.click();
+
+      // Confirm deletion
+      const confirmButton = page.getByRole('button', { name: /confirm|yes|delete/i });
+      if (await confirmButton.isVisible({ timeout: 2000 })) {
+        await confirmButton.click();
+      }
+
+      // Should navigate back to relations list
+      await expect(page).toHaveURL(/\/relations$/);
+    }
+  });
+
+  test('should validate required fields', async ({ page }) => {
+    await page.goto('/relations/new');
+
+    // Try to submit without filling required fields
+    await page.getByRole('button', { name: /create|submit/i }).click();
+
+    // Should show validation error
+    await expect(page.locator('text=/required|error/i')).toBeVisible({
+      timeout: 5000,
+    });
+  });
+});

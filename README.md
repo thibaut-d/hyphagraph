@@ -106,6 +106,53 @@ To get started with the project, read the following files in this order:
 
 ---
 
+## Testing
+
+### Unit & Integration Tests
+
+**Backend (pytest)**:
+```bash
+cd backend
+pytest
+```
+
+**Frontend (Vitest)**:
+```bash
+cd frontend
+npm test
+```
+
+### E2E Tests (Playwright)
+
+End-to-end tests cover complete user workflows across the entire stack.
+
+**Quick Start**:
+```bash
+# Install dependencies
+cd e2e
+npm install
+
+# Start E2E environment
+cd ..
+docker-compose -f docker-compose.e2e.yml up -d
+
+# Run tests
+cd e2e
+npm test
+```
+
+**Test Coverage**:
+- Authentication flows (login, registration, password reset)
+- Entity CRUD operations
+- Source CRUD operations
+- Relation CRUD operations
+- Inference viewing and filtering
+- Explanation trace visualization
+
+See `e2e/README.md` for detailed documentation.
+
+---
+
 ## Contributing
 
 Contributions are welcome.

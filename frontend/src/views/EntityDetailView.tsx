@@ -27,6 +27,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import CloseIcon from "@mui/icons-material/Close";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 import { getEntity, deleteEntity } from "../api/entities";
 import { getInferenceForEntity, ScopeFilter } from "../api/inferences";
@@ -35,11 +36,10 @@ import { EntityRead } from "../types/entity";
 import { InferenceRead } from "../types/inference";
 
 import { InferenceBlock } from "../components/InferenceBlock";
-import { resolveLabel } from "../utils/i18nLabel";
 
 export function EntityDetailView() {
   const { id } = useParams<{ id: string }>();
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const [entity, setEntity] = useState<EntityRead | null>(null);
@@ -140,53 +140,58 @@ export function EntityDetailView() {
     );
   }
 
-  const label = resolveLabel(
-    entity.label,
-    entity.label_i18n,
-    i18n.language,
-  );
-
   return (
     <Stack spacing={3}>
       {/* Header */}
       <Paper sx={{ p: 3 }}>
-        <Stack
-          direction="row"
-          justifyContent="space-between"
-          alignItems="center"
-        >
-          <div>
-            <Typography variant="h4">{label}</Typography>
-            <Typography variant="subtitle2" color="text.secondary">
-              {entity.kind}
-            </Typography>
-          </div>
-
+        <Stack spacing={2}>
           <Box sx={{ display: "flex", gap: 1 }}>
-            <IconButton
-              component={RouterLink}
-              to={`/entities/${entity.id}/edit`}
-              color="primary"
-              title={t("common.edit", "Edit")}
-            >
-              <EditIcon />
-            </IconButton>
-            <IconButton
-              onClick={() => setDeleteDialogOpen(true)}
-              color="error"
-              title={t("common.delete", "Delete")}
-            >
-              <DeleteIcon />
-            </IconButton>
             <Button
               component={RouterLink}
-              to={`/relations/new?entity_id=${entity.id}`}
-              variant="contained"
-              startIcon={<AddIcon />}
+              to="/entities"
+              startIcon={<ArrowBackIcon />}
             >
-              {t("relation.create", "Create relation")}
+              {t("common.back", "Back")}
             </Button>
           </Box>
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="center"
+          >
+            <div>
+              <Typography variant="h4">{entity.slug}</Typography>
+              <Typography variant="subtitle2" color="text.secondary">
+                {entity.summary?.en || entity.kind}
+              </Typography>
+            </div>
+
+            <Box sx={{ display: "flex", gap: 1 }}>
+              <Button
+                component={RouterLink}
+                to={`/entities/${entity.id}/edit`}
+                color="primary"
+                startIcon={<EditIcon />}
+              >
+                {t("common.edit", "Edit")}
+              </Button>
+              <Button
+                onClick={() => setDeleteDialogOpen(true)}
+                color="error"
+                startIcon={<DeleteIcon />}
+              >
+                {t("common.delete", "Delete")}
+              </Button>
+              <Button
+                component={RouterLink}
+                to={`/relations/new?entity_id=${entity.id}`}
+                variant="contained"
+                startIcon={<AddIcon />}
+              >
+                {t("relation.create", "Create relation")}
+              </Button>
+            </Box>
+          </Stack>
         </Stack>
       </Paper>
 
@@ -322,7 +327,7 @@ export function EntityDetailView() {
             )}
           </DialogContentText>
           <Typography variant="body2" sx={{ mt: 2, fontWeight: 600 }}>
-            {label}
+            {entity.slug}
           </Typography>
         </DialogContent>
         <DialogActions>

@@ -1,6 +1,11 @@
 export interface EntityRead {
   id: string;
-  kind: string;
-  label: string;
-  label_i18n?: Record<string, string>;
+  created_at: string;
+  slug: string;
+  summary?: { [lang: string]: string };
+  ui_category_id?: string;
+  kind?: string;
+  label?: string;
+  synonyms?: string[];
+  ontology_ref?: string;
 }
