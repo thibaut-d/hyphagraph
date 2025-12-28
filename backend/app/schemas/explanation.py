@@ -5,7 +5,7 @@ Provides detailed explanations of computed inferences,
 including source chain, confidence breakdown, and contradictions.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List, Dict, Any
 from uuid import UUID
 
@@ -39,8 +39,7 @@ class SourceContribution(BaseModel):
         description="Percentage of total evidence this source contributes",
     )
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ContradictionDetail(BaseModel):
@@ -59,8 +58,7 @@ class ContradictionDetail(BaseModel):
         description="Measure of disagreement between sources (0-1)",
     )
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ConfidenceFactor(BaseModel):
@@ -79,8 +77,7 @@ class ConfidenceFactor(BaseModel):
         description="Human-readable explanation of what this factor means",
     )
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ExplanationRead(BaseModel):
@@ -124,5 +121,4 @@ class ExplanationRead(BaseModel):
         description="Scope filter applied to this explanation",
     )
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
