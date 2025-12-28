@@ -100,11 +100,11 @@ describe('EntityDetailView', () => {
       (getInferenceForEntity as any).mockResolvedValue(mockInference);
     });
 
-    it('displays entity label and kind', async () => {
+    it('displays entity slug and kind', async () => {
       renderWithRouter('123e4567-e89b-12d3-a456-426614174000');
 
       await waitFor(() => {
-        expect(screen.getByText('Aspirin')).toBeInTheDocument();
+        expect(screen.getByText('aspirin')).toBeInTheDocument();
         expect(screen.getByText('drug')).toBeInTheDocument();
       });
     });
@@ -113,7 +113,7 @@ describe('EntityDetailView', () => {
       renderWithRouter('123e4567-e89b-12d3-a456-426614174000');
 
       await waitFor(() => {
-        const editButton = screen.getByTitle(/edit/i);
+        const editButton = screen.getByRole('link', { name: /edit/i });
         expect(editButton).toBeInTheDocument();
       });
     });
@@ -122,7 +122,7 @@ describe('EntityDetailView', () => {
       renderWithRouter('123e4567-e89b-12d3-a456-426614174000');
 
       await waitFor(() => {
-        const deleteButton = screen.getByTitle(/delete/i);
+        const deleteButton = screen.getByRole('button', { name: /delete/i });
         expect(deleteButton).toBeInTheDocument();
       });
     });
@@ -155,7 +155,7 @@ describe('EntityDetailView', () => {
       renderWithRouter('123e4567-e89b-12d3-a456-426614174000');
 
       await waitFor(() => {
-        const deleteButton = screen.getByTitle(/delete/i);
+        const deleteButton = screen.getByRole('button', { name: /delete/i });
         fireEvent.click(deleteButton);
       });
 
@@ -169,7 +169,8 @@ describe('EntityDetailView', () => {
       renderWithRouter('123e4567-e89b-12d3-a456-426614174000');
 
       await waitFor(() => {
-        fireEvent.click(screen.getByTitle(/delete/i));
+        const deleteButton = screen.getByRole('button', { name: /delete/i });
+        fireEvent.click(deleteButton);
       });
 
       await waitFor(() => {
@@ -187,18 +188,21 @@ describe('EntityDetailView', () => {
 
       renderWithRouter('123e4567-e89b-12d3-a456-426614174000');
 
+      // Click the main delete button to open dialog
       await waitFor(() => {
-        fireEvent.click(screen.getByTitle(/delete/i));
+        const deleteButton = screen.getByRole('button', { name: /delete/i });
+        fireEvent.click(deleteButton);
       });
 
+      // Wait for dialog to open and click the confirm delete button
       await waitFor(() => {
-        const deleteButtons = screen.getAllByText(/delete/i);
-        // Find the delete button in the dialog (not the title)
-        const confirmButton = deleteButtons.find(
-          (btn) => btn.tagName === 'BUTTON'
-        );
-        if (confirmButton) fireEvent.click(confirmButton);
+        expect(screen.getByText(/delete entity/i)).toBeInTheDocument();
       });
+
+      const deleteButtons = screen.getAllByRole('button', { name: /delete/i });
+      // The confirm button is the second one (first is the main delete button, second is in dialog)
+      const confirmButton = deleteButtons[deleteButtons.length - 1];
+      fireEvent.click(confirmButton);
 
       await waitFor(() => {
         expect(deleteEntity).toHaveBeenCalledWith('123e4567-e89b-12d3-a456-426614174000');
