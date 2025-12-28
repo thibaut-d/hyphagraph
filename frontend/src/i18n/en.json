@@ -195,6 +195,12 @@
     "deleting": "Deleting...",
     "delete_failed": "Failed to delete account"
   },
+  "inferences": {
+    "title": "Computed Inferences",
+    "showing": "Showing {{count}} of {{total}} entities with inferences",
+    "loading": "Loading entities...",
+    "noEntities": "No entities found. Create entities and relations to see computed inferences."
+  },
   "explanation": {
     "title": "Inference Explanation",
     "header": "Inference Explanation",

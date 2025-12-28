@@ -195,6 +195,12 @@
     "deleting": "Suppression...",
     "delete_failed": "Échec de la suppression du compte"
   },
+  "inferences": {
+    "title": "Inférences calculées",
+    "showing": "Affichage de {{count}} sur {{total}} entités avec inférences",
+    "loading": "Chargement des entités...",
+    "noEntities": "Aucune entité trouvée. Créez des entités et des relations pour voir les inférences calculées."
+  },
   "explanation": {
     "title": "Explication de l'inférence",
     "header": "Explication de l'inférence",
