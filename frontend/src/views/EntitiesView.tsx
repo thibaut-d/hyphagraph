@@ -33,6 +33,7 @@ const PAGE_SIZE = 50;
 export function EntitiesView() {
   const { t } = useTranslation();
   const [entities, setEntities] = useState<EntityRead[]>([]);
+  const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [offset, setOffset] = useState(0);
@@ -80,15 +81,16 @@ export function EntitiesView() {
     }
 
     try {
-      const newEntities = await listEntities(apiFilters);
+      const response = await listEntities(apiFilters);
 
       if (currentOffset === 0) {
-        setEntities(newEntities);
+        setEntities(response.items);
       } else {
-        setEntities(prev => [...prev, ...newEntities]);
+        setEntities(prev => [...prev, ...response.items]);
       }
 
-      setHasMore(newEntities.length === PAGE_SIZE);
+      setTotal(response.total);
+      setHasMore(currentOffset + response.items.length < response.total);
     } finally {
       setIsLoading(false);
     }
@@ -148,8 +150,8 @@ export function EntitiesView() {
           {" - "}
           {t(
             "filters.showing_filtered_results",
-            "Showing {{count}} result(s)",
-            { count: entities.length }
+            "Showing {{current}} of {{total}} result(s)",
+            { current: entities.length, total }
           )}
         </Alert>
       )}

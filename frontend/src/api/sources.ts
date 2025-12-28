@@ -21,9 +21,18 @@ export interface SourceFilters {
   trust_level_min?: number;
   trust_level_max?: number;
   search?: string;
+  limit?: number;
+  offset?: number;
 }
 
-export function listSources(filters?: SourceFilters): Promise<SourceRead[]> {
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export function listSources(filters?: SourceFilters): Promise<PaginatedResponse<SourceRead>> {
   const params = new URLSearchParams();
 
   if (filters?.kind) {
@@ -48,6 +57,14 @@ export function listSources(filters?: SourceFilters): Promise<SourceRead[]> {
 
   if (filters?.search) {
     params.append('search', filters.search);
+  }
+
+  if (filters?.limit !== undefined) {
+    params.append('limit', filters.limit.toString());
+  }
+
+  if (filters?.offset !== undefined) {
+    params.append('offset', filters.offset.toString());
   }
 
   const queryString = params.toString();

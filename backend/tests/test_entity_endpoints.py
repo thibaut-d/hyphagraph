@@ -194,9 +194,11 @@ class TestEntityEndpoints:
                 response = await client.get("/api/entities/?search=test")
                 assert response.status_code == status.HTTP_200_OK
                 data = response.json()
-                assert isinstance(data, list)
+                assert 'items' in data
+                assert 'total' in data
+                assert isinstance(data['items'], list)
                 # Results should contain 'test' in slug (case-insensitive)
-                for entity in data:
+                for entity in data['items']:
                     slug = entity.get('slug', '').lower()
                     assert 'test' in slug
         finally:
@@ -211,9 +213,11 @@ class TestEntityEndpoints:
                 response = await client.get(f"/api/entities/?ui_category_id={test_category_id}&search=test")
                 assert response.status_code == status.HTTP_200_OK
                 data = response.json()
-                assert isinstance(data, list)
+                assert 'items' in data
+                assert 'total' in data
+                assert isinstance(data['items'], list)
                 # Results should match ALL filters
-                for entity in data:
+                for entity in data['items']:
                     assert entity.get('ui_category_id') == test_category_id
                     slug = entity.get('slug', '').lower()
                     assert 'test' in slug
@@ -229,9 +233,11 @@ class TestEntityEndpoints:
                 response = await client.get(f"/api/entities/?ui_category_id={test_category_id}")
                 assert response.status_code == status.HTTP_200_OK
                 data = response.json()
-                assert isinstance(data, list)
+                assert 'items' in data
+                assert 'total' in data
+                assert isinstance(data['items'], list)
                 # All returned entities should have matching ui_category_id if any exist
-                for entity in data:
+                for entity in data['items']:
                     assert entity.get('ui_category_id') == test_category_id
         finally:
             app.dependency_overrides.clear()
@@ -256,7 +262,9 @@ class TestEntityEndpoints:
                 response = await client.get("/api/entities/?search=")
                 assert response.status_code == status.HTTP_200_OK
                 data = response.json()
-                assert isinstance(data, list)
+                assert 'items' in data
+                assert 'total' in data
+                assert isinstance(data['items'], list)
         finally:
             app.dependency_overrides.clear()
 
@@ -268,9 +276,15 @@ class TestEntityEndpoints:
                 response = await client.get("/api/entities/")
                 assert response.status_code == status.HTTP_200_OK
                 data = response.json()
-                assert isinstance(data, list)
+                assert 'items' in data
+                assert 'total' in data
+                assert 'limit' in data
+                assert 'offset' in data
+                assert isinstance(data['items'], list)
                 # Default limit is 50, so results should be <= 50
-                assert len(data) <= 50
+                assert len(data['items']) <= 50
+                assert data['limit'] == 50
+                assert data['offset'] == 0
         finally:
             app.dependency_overrides.clear()
 
@@ -282,8 +296,11 @@ class TestEntityEndpoints:
                 response = await client.get("/api/entities/?limit=10")
                 assert response.status_code == status.HTTP_200_OK
                 data = response.json()
-                assert isinstance(data, list)
-                assert len(data) <= 10
+                assert 'items' in data
+                assert 'total' in data
+                assert isinstance(data['items'], list)
+                assert len(data['items']) <= 10
+                assert data['limit'] == 10
         finally:
             app.dependency_overrides.clear()
 
@@ -296,16 +313,18 @@ class TestEntityEndpoints:
                 response1 = await client.get("/api/entities/?limit=5&offset=0")
                 assert response1.status_code == status.HTTP_200_OK
                 page1 = response1.json()
+                assert 'items' in page1
 
                 # Get second page
                 response2 = await client.get("/api/entities/?limit=5&offset=5")
                 assert response2.status_code == status.HTTP_200_OK
                 page2 = response2.json()
+                assert 'items' in page2
 
                 # Pages should be different (if enough data exists)
-                if len(page1) == 5 and len(page2) > 0:
-                    page1_ids = {e['id'] for e in page1}
-                    page2_ids = {e['id'] for e in page2}
+                if len(page1['items']) == 5 and len(page2['items']) > 0:
+                    page1_ids = {e['id'] for e in page1['items']}
+                    page2_ids = {e['id'] for e in page2['items']}
                     assert page1_ids.isdisjoint(page2_ids)
         finally:
             app.dependency_overrides.clear()

@@ -15,9 +15,18 @@ export interface EntityWrite {
 export interface EntityFilters {
   ui_category_id?: string[];
   search?: string;
+  limit?: number;
+  offset?: number;
 }
 
-export function listEntities(filters?: EntityFilters): Promise<EntityRead[]> {
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export function listEntities(filters?: EntityFilters): Promise<PaginatedResponse<EntityRead>> {
   const params = new URLSearchParams();
 
   if (filters?.ui_category_id) {
@@ -26,6 +35,14 @@ export function listEntities(filters?: EntityFilters): Promise<EntityRead[]> {
 
   if (filters?.search) {
     params.append('search', filters.search);
+  }
+
+  if (filters?.limit !== undefined) {
+    params.append('limit', filters.limit.toString());
+  }
+
+  if (filters?.offset !== undefined) {
+    params.append('offset', filters.offset.toString());
   }
 
   const queryString = params.toString();

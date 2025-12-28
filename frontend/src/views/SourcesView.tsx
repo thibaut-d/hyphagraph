@@ -35,6 +35,7 @@ export function SourcesView() {
   const { t } = useTranslation();
   const [sources, setSources] = useState<SourceRead[]>([]);
   const [allSources, setAllSources] = useState<SourceRead[]>([]);
+  const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [offset, setOffset] = useState(0);
@@ -56,7 +57,7 @@ export function SourcesView() {
 
   // Fetch all sources once for filter options
   useEffect(() => {
-    listSources().then(setAllSources);
+    listSources({ limit: 1000, offset: 0 }).then(response => setAllSources(response.items));
   }, []);
 
   // Derive filter options from all sources
@@ -109,15 +110,16 @@ export function SourcesView() {
     }
 
     try {
-      const newSources = await listSources(apiFilters);
+      const response = await listSources(apiFilters);
 
       if (currentOffset === 0) {
-        setSources(newSources);
+        setSources(response.items);
       } else {
-        setSources(prev => [...prev, ...newSources]);
+        setSources(prev => [...prev, ...response.items]);
       }
 
-      setHasMore(newSources.length === PAGE_SIZE);
+      setTotal(response.total);
+      setHasMore(currentOffset + response.items.length < response.total);
     } finally {
       setIsLoading(false);
     }
@@ -177,8 +179,8 @@ export function SourcesView() {
           {" - "}
           {t(
             "filters.showing_filtered_results",
-            "Showing {{count}} result(s)",
-            { count: sources.length }
+            "Showing {{current}} of {{total}} result(s)",
+            { current: sources.length, total }
           )}
         </Alert>
       )}
