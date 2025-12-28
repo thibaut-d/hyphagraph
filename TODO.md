@@ -1,7 +1,7 @@
 # HyphaGraph TODO — Refined Priorities
 
-**Last Updated**: 2025-12-28
-**Status**: Phase 1 Complete - All Tests Passing! (Backend 251/251 ✅ + Frontend 278/278 ✅ = 529/529 ✅)
+**Last Updated**: 2025-12-29
+**Status**: Phase 1 In Progress - Documentation Reorganized (Backend 251/251 ✅ + Frontend 272/278 ⚠️ = 523/529)
 **Graph Visualization**: ❌ **NOT MVP** (per project requirements)
 
 ---
@@ -17,7 +17,73 @@
 - **i18n Support** - English + French (26 translation keys added today)
 - **Test Infrastructure** - pytest + Vitest setup, **529/529 tests passing (100%)** ✅ (251 backend + 278 frontend)
 
-### 🚧 Recent Progress (2025-12-28 Session 2)
+### 🚧 Recent Progress (2025-12-29 Session 4)
+- **Documentation Reorganization**: ✅ **COMPLETE**
+  - ✅ Created `./doc/` directory for technical documentation
+  - ✅ Moved 7 documentation files to `doc/`:
+    - AUTH_SETUP.md → doc/AUTH_SETUP.md
+    - AUTHENTICATION.md → doc/AUTHENTICATION.md
+    - COMPUTED_RELATIONS.md → doc/COMPUTED_RELATIONS.md
+    - E2E_TESTING_GUIDE.md → doc/E2E_TESTING_GUIDE.md
+    - ENTITY_CRUD_IMPLEMENTATION.md → doc/ENTITY_CRUD_IMPLEMENTATION.md
+    - TESTING.md → doc/TESTING.md
+    - CODE_GUIDE.md → doc/CODE_GUIDE.md
+  - ✅ Moved 2 test result files to `.temp/`:
+    - E2E_DOCKER_TEST_RESULTS.md → .temp/E2E_DOCKER_TEST_RESULTS.md
+    - E2E_TEST_SUMMARY.md → .temp/E2E_TEST_SUMMARY.md
+  - ✅ Root directory now contains only high-level documentation (9 files):
+    - ARCHITECTURE.md, DATABASE_SCHEMA.md, GETTING_STARTED.md
+    - PROJECT.md, README.md, STRUCTURE.md
+    - TODO.md, UX.md, VIBE.md
+
+- **Test Status Review**: ⚠️ **6 FRONTEND TESTS FAILING**
+  - ✅ Backend: 251/251 tests passing (100%)
+  - ⚠️ Frontend: 272/278 tests passing (97.8%)
+  - ❌ 6 EntityDetailView tests failing (test expectations don't match implementation)
+    - Tests look for buttons by title attribute
+    - Implementation uses text content only
+    - Need to fix test expectations to match UI implementation
+
+### 🚧 Previous Progress (2025-12-28 Session 3)
+- **E2E Testing Setup**: ✅ **INFRASTRUCTURE COMPLETE**
+  - ✅ Set up Playwright 1.57.0 for E2E testing
+  - ✅ Created Docker Compose E2E environment (isolated ports: DB 5433, API 8001, Frontend 3001)
+  - ✅ Configured test credentials and admin user creation
+  - ✅ Created comprehensive E2E_TESTING_GUIDE.md documentation
+  - ✅ Created rebuild-and-test scripts (Windows .bat + Linux/Mac .sh)
+  - ✅ Fixed database migration: Added missing `revoked_at` column to refresh_tokens table
+  - ✅ Fixed API URL configuration: Added `/api` prefix to VITE_API_URL
+
+- **Critical Authentication Fix**: ✅ **RACE CONDITION RESOLVED**
+  - ✅ **Problem**: Protected routes redirecting immediately before auth could load
+  - ✅ **Root Cause**: `user` was null while async `getMe()` call was in flight
+  - ✅ **Solution**: Added `loading` state to AuthContext
+    - Initialize `loading = true` when token exists in localStorage
+    - Show spinner in ProtectedRoute while loading
+    - Only redirect after loading completes and user is still null
+  - ✅ **Impact**: This fix will improve ALL test suites, not just entities
+
+- **Entity CRUD Implementation**: ✅ **ALL PAGES READY**
+  - ✅ Updated entity type definitions to match backend (slug, summary, created_at)
+  - ✅ Modified EntitiesView to display `slug` instead of `label`
+  - ✅ Modified EntityDetailView to display `slug` and added Back button
+  - ✅ Verified CreateEntityView and EditEntityView forms have correct labels
+  - ✅ Fixed trailing slash inconsistency in createEntity API call
+  - ✅ Fixed TypeScript type errors in AuthContext
+  - ✅ Removed unused imports (resolveLabel, i18n)
+  - ✅ All 9 entity CRUD E2E tests should now pass
+
+- **Documentation**: ✅ **COMPREHENSIVE GUIDES CREATED**
+  - ✅ E2E_TESTING_GUIDE.md (498 lines)
+    - Prerequisites, quick start, environment setup
+    - Running tests in various modes (UI, headed, specific browsers)
+    - Debugging with traces and reports
+    - Writing new tests with examples
+    - Troubleshooting common issues
+    - Best practices and command reference
+  - ✅ ENTITY_CRUD_IMPLEMENTATION.md (detailed implementation notes)
+
+### 🚧 Previous Session Progress (2025-12-28 Session 2)
 - **Cache Bug Fix**: ✅ **CRITICAL FIX** - Fixed inference cache conversion
   - ✅ Implemented `_convert_cached_to_inference_read()` method (69 lines)
   - ✅ Cache was storing but never returning results (just had `pass` statement)
@@ -202,9 +268,9 @@ These features are **essential to deliver the core promise** of HyphaGraph:
 - ✅ `frontend/src/views/__tests__/CreateRelationView.test.tsx` - 22 comprehensive tests
 
 **Acceptance Criteria**:
-- ✅ All backend tests passing (217/217 = 100%) - **COMPLETE**
-- ✅ Frontend component tests created (159 tests passing - 100%) - **COMPLETE** (2025-12-28)
-- ❌ E2E tests for critical paths (auth, entity CRUD) - **Next Priority**
+- ✅ All backend tests passing (251/251 = 100%) - **COMPLETE**
+- ⚠️ Frontend component tests created (272/278 = 97.8%) - **6 tests need fixing**
+- ❌ E2E tests for critical paths (auth, entity CRUD) - **Infrastructure ready, need execution**
 - ❌ CI/CD pipeline green
 
 ---
@@ -395,21 +461,44 @@ These features are **important for production readiness** but not blocking MVP:
 
 #### 10. **E2E Testing** ⭐
 **Priority**: MEDIUM
+**Status**: ✅ **INFRASTRUCTURE COMPLETE** (2025-12-28), tests ready to run
 **Rationale**: Catch integration bugs before production
 
-**Deliverables**:
-- [ ] Set up Playwright or Cypress
-- [ ] Write critical path E2E tests (auth flow, create entity/source/relation)
-- [ ] Add visual regression testing
-- [ ] Set up CI/CD pipeline for automated testing
-- [ ] Test protected routes and auth flows
-- [ ] Test inference display and explanation views (when implemented)
+**Completed (2025-12-28)**:
+- ✅ Set up Playwright 1.57.0
+- ✅ Created Docker Compose E2E environment (docker-compose.e2e.yml)
+- ✅ Wrote critical path E2E tests:
+  - ✅ `e2e/tests/entities/crud.spec.ts` - Entity CRUD (9 tests)
+  - ✅ `e2e/tests/auth/login.spec.ts` - Authentication flows
+  - ✅ `e2e/tests/sources/crud.spec.ts` - Source CRUD
+  - ✅ `e2e/tests/relations/crud.spec.ts` - Relation CRUD
+  - ✅ `e2e/tests/inferences/display.spec.ts` - Inference display
+  - ✅ `e2e/tests/explanations/trace.spec.ts` - Explanation tracing
+- ✅ Created comprehensive E2E_TESTING_GUIDE.md (498 lines)
+- ✅ Created automated test scripts (rebuild-and-test.sh/bat)
+- ✅ Fixed authentication race condition (critical for all E2E tests)
+- ✅ Fixed entity CRUD pages to match test requirements
 
-**Files to create**:
-- `e2e/auth.spec.ts` - Authentication flows
-- `e2e/entity.spec.ts` - Entity CRUD
-- `e2e/source.spec.ts` - Source CRUD
-- `playwright.config.ts` or `cypress.config.ts`
+**Remaining Deliverables**:
+- [ ] Run tests and verify all pass
+- [ ] Add visual regression testing (optional)
+- [ ] Set up CI/CD pipeline for automated testing
+- [ ] Add more test coverage for edge cases
+
+**Files Created**:
+- ✅ `playwright.config.ts` - Playwright configuration
+- ✅ `docker-compose.e2e.yml` - Isolated test environment
+- ✅ `e2e/fixtures/auth-helpers.ts` - Authentication utilities
+- ✅ `e2e/fixtures/test-data.ts` - Test credentials and helpers
+- ✅ `E2E_TESTING_GUIDE.md` - Comprehensive documentation
+- ✅ `rebuild-and-test.sh` - Linux/Mac test script
+- ✅ `rebuild-and-test.bat` - Windows test script
+
+**Next Steps**:
+1. Run `rebuild-and-test.bat` (Windows) or `rebuild-and-test.sh` (Linux/Mac)
+2. Verify all entity CRUD tests pass (expected: 9/9)
+3. Debug and fix any remaining test failures
+4. Run full test suite across all features
 
 ---
 
@@ -673,7 +762,7 @@ Per UX.md and PROJECT.md, all development must preserve:
 
 ## 📊 Current Metrics
 
-### Test Coverage
+### Test Coverage (Updated 2025-12-29)
 - **Backend**: ✅ **251/251 tests passing (100%)** - **COMPLETE**
   - Auth: 100% coverage ✅ (all tests passing)
   - Inference: 100% coverage ✅ (36 comprehensive tests)
@@ -681,34 +770,36 @@ Per UX.md and PROJECT.md, all development must preserve:
   - Explainability: 100% coverage ✅ (29 tests passing)
   - Entity/Source/Relation services: 100% coverage ✅
   - Endpoint integration: 100% coverage ✅ (26 tests)
-  - Pagination: 100% coverage ✅ (5 tests fixed today)
-- **Frontend**: ✅ **278/278 tests passing (100%)** - **COMPLETE** (2025-12-28)
+  - Pagination: 100% coverage ✅
+- **Frontend**: ⚠️ **272/278 tests passing (97.8%)** - **6 tests failing**
   - API tests: 7 tests ✅
-  - Component tests: 152 tests ✅ (EntityDetailView, SourceDetailView, CreateEntityView, CreateSourceView, CreateRelationView, ExplanationView)
-  - Hook tests: 119 tests ✅ (useDebounce, useInfiniteScroll, usePersistedFilters, useFilterDrawer - all fixed today)
-- **E2E**: None - **Next Priority**
+  - Component tests: 146/152 tests ✅ (6 EntityDetailView tests failing)
+  - Hook tests: 119 tests ✅ (useDebounce, useInfiniteScroll, usePersistedFilters, useFilterDrawer)
+- **E2E**: Infrastructure ready - **Needs execution**
 
-### Code Quality
+### Code Quality (Updated 2025-12-29)
 - Type safety: ✅ Full (Python type hints + TypeScript)
 - Architecture: ✅ Clean service layer
-- Documentation: ✅ Comprehensive (8+ markdown docs)
-- Test coverage: ✅ **529/529 tests passing (100%)**
-- UI completeness: ✅ All major views implemented (InferencesView, HomeView added today)
+- Documentation: ✅ Comprehensive and reorganized (9 root docs + 7 in doc/ + 2 in .temp/)
+- Test coverage: ⚠️ **523/529 tests passing (98.9%)**
+- UI completeness: ✅ All major views implemented (InferencesView, HomeView, Entity/Source CRUD)
 
-### Technical Debt
-- ✅ Frontend component tests - **COMPLETE** (278/278 passing)
-- ✅ Frontend hook tests - **COMPLETE** (13 Jest→Vitest conversions today)
-- ✅ Stub views - **COMPLETE** (InferencesView, HomeView implemented today)
-- ✅ Cache bug - **FIXED** (critical performance issue resolved today)
-- ❌ No E2E tests - **Next Priority**
+### Technical Debt (Updated 2025-12-29)
+- ⚠️ 6 EntityDetailView tests failing - **Need to fix test expectations**
+- ✅ Frontend component tests - **MOSTLY COMPLETE** (272/278 passing, 97.8%)
+- ✅ Frontend hook tests - **COMPLETE**
+- ✅ Stub views - **COMPLETE** (InferencesView, HomeView implemented)
+- ✅ Cache bug - **FIXED** (critical performance issue resolved)
+- ❌ E2E tests - **Infrastructure ready, needs execution**
 - ❌ No CI/CD pipeline
+- ⚠️ Pydantic deprecation warnings - **Need to migrate to ConfigDict**
 - **Graph visualization: Explicitly deferred (NOT MVP)**
 
 ---
 
 ## 🎉 Conclusion
 
-HyphaGraph has achieved **Phase 1 completion**! The system now demonstrates:
+HyphaGraph is **near Phase 1 completion**! The system now demonstrates:
 
 ✅ **Complete authentication** with JWT, refresh tokens, email verification
 ✅ **Full CRUD operations** with immutable revision history
@@ -718,20 +809,28 @@ HyphaGraph has achieved **Phase 1 completion**! The system now demonstrates:
 ✅ **Inference Engine** - Full mathematical model implementation with 36 tests
 ✅ **Inference Caching** - Performance optimized with scope-based cache (5 tests)
 ✅ **Explainability System** - Natural language explanations with source tracing (29 tests)
-✅ **Complete UI** - All major views implemented (InferencesView, HomeView added today)
-✅ **100% Test Coverage** - All 529 tests passing (251 backend + 278 frontend)
+✅ **Complete UI** - All major views implemented (InferencesView, HomeView, Entity/Source CRUD)
+⚠️ **98.9% Test Coverage** - 523/529 tests passing (251 backend + 272 frontend)
 
-**Phase 1 Status**: ✅ **COMPLETE** (Backend + Frontend + UI)
+**Phase 1 Status**: ⚠️ **98.9% COMPLETE** (6 frontend tests need fixing)
 
-HyphaGraph has successfully transformed from a **solid knowledge capture system** into a **computable, auditable knowledge synthesis platform** with a **complete, production-ready user interface** that delivers on its core promise.
+HyphaGraph has successfully transformed from a **solid knowledge capture system** into a **computable, auditable knowledge synthesis platform** with a **complete user interface** that delivers on its core promise.
 
-**Testing Achievement** (2025-12-28):
-- ✅ Backend: 251/251 tests passing (100%)
-- ✅ Frontend: 278/278 tests passing (100%)
-- ✅ Total: 529/529 tests passing (100%)
-- ✅ Critical cache bug fixed (performance improvement)
-- ✅ 13 test failures resolved (Jest → Vitest conversion)
-- ✅ All stub views implemented (InferencesView 318 lines, HomeView 357 lines)
+**Current Session Achievements** (2025-12-29 Session 4):
+- ✅ Documentation reorganized - 7 docs moved to `doc/`, 2 to `.temp/`
+- ✅ Root directory cleaned up - only 9 high-level docs remain
+- ⚠️ Test status review - identified 6 failing frontend tests
+- ⚠️ Identified Pydantic deprecation warnings in explanation schemas
+
+**Previous Session Achievements** (2025-12-28 Session 3):
+- Set up complete E2E testing infrastructure with Playwright
+- Fixed critical authentication race condition (impacts ALL tests)
+- Implemented entity CRUD pages to match test requirements
+- Created comprehensive E2E_TESTING_GUIDE.md (498 lines)
+- Fixed database migration (added revoked_at column)
+- Fixed API URL configuration with /api prefix
+- Created automated test scripts for Windows and Linux/Mac
+- **Total: 3 commits pushed to remote**
 
 **Session Achievements** (2025-12-28 Session 2):
 - Fixed critical cache conversion bug (69 lines)
@@ -743,11 +842,15 @@ HyphaGraph has successfully transformed from a **solid knowledge capture system*
 - Removed outdated stub code
 - **Total: 6 commits pushed to remote**
 
+**Immediate Priorities** (Complete Phase 1):
+1. **Fix 6 failing EntityDetailView tests** - Test expectations don't match implementation (30 min)
+2. **Fix Pydantic deprecation warnings** - Migrate to ConfigDict in explanation schemas (15 min)
+3. **Run E2E tests** - Infrastructure ready, verify entity CRUD works (1-2 hours)
+
 **Next Priority** (Phase 2 - Enhanced Usability):
-1. **E2E Tests** - Critical path testing (auth, CRUD workflows)
-2. **Filter Drawers** - Expert-friendly filtering (1 week)
-3. **UX-Critical Views** - Property detail, evidence, synthesis, disagreements (1 week)
-4. **Global Search** - Full-text search with highlighting (3-5 days)
+1. **Filter Drawers** - Expert-friendly filtering (1 week)
+2. **UX-Critical Views** - Property detail, evidence, synthesis, disagreements (1 week)
+3. **Global Search** - Full-text search with highlighting (3-5 days)
 
 **Then Phase 3** (Production Readiness):
 - Entity Terms & UI Categories (3-4 days)
