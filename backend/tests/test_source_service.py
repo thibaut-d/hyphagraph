@@ -97,11 +97,12 @@ class TestSourceService:
         await service.create(SourceWrite(kind="review", title="Review 1", url="https://example.com/test"))
 
         # Act
-        result = await service.list_all()
+        items, total = await service.list_all()
 
         # Assert
-        assert len(result) >= 2
-        titles = {s.title for s in result}
+        assert len(items) >= 2
+        assert total >= 2
+        titles = {s.title for s in items}
         assert "Study 1" in titles
         assert "Review 1" in titles
 
@@ -172,7 +173,7 @@ class TestSourceService:
         await service.create(SourceWrite(kind="review", title="Review A", url="https://example.com/test"))
 
         # Act
-        all_sources = await service.list_all()
+        all_sources, total = await service.list_all()
         studies = [s for s in all_sources if s.kind == "study"]
 
         # Assert

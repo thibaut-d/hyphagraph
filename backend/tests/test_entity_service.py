@@ -87,11 +87,12 @@ class TestEntityService:
         await service.create(EntityWrite(slug="disease1", kind="disease"))
 
         # Act
-        result = await service.list_all()
+        items, total = await service.list_all()
 
         # Assert
-        assert len(result) == 3
-        slugs = {e.slug for e in result}
+        assert len(items) == 3
+        assert total == 3
+        slugs = {e.slug for e in items}
         assert slugs == {"drug1", "drug2", "disease1"}
 
     async def test_list_all_empty(self, db_session):
@@ -100,10 +101,11 @@ class TestEntityService:
         service = EntityService(db_session)
 
         # Act
-        result = await service.list_all()
+        items, total = await service.list_all()
 
         # Assert
-        assert result == []
+        assert items == []
+        assert total == 0
 
     async def test_update_entity(self, db_session):
         """Test updating an entity creates new revision."""

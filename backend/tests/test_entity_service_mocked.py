@@ -137,12 +137,16 @@ class TestEntityServiceMocked:
         service = EntityService(mock_db)
         service.repo = mock_repo
 
-        # Mock repository returning entities
-        mock_repo.list_all.return_value = [sample_entity]
+        # Mock database execute for count query
+        count_result = MagicMock()
+        count_result.scalar = MagicMock(return_value=1)
 
-        # Mock get_current_revision
-        mock_get_revision = AsyncMock(return_value=sample_revision)
-        monkeypatch.setattr("app.services.entity_service.get_current_revision", mock_get_revision)
+        # Mock database execute for items query
+        items_result = MagicMock()
+        items_result.all = MagicMock(return_value=[(sample_entity, sample_revision)])
+
+        # Mock db.execute to return different results for count and items queries
+        mock_db.execute = AsyncMock(side_effect=[count_result, items_result])
 
         # Mock entity_to_read
         mock_to_read = MagicMock(return_value=EntityRead(
@@ -155,11 +159,12 @@ class TestEntityServiceMocked:
         monkeypatch.setattr("app.services.entity_service.entity_to_read", mock_to_read)
 
         # Act
-        result = await service.list_all()
+        items, total = await service.list_all()
 
         # Assert
-        assert len(result) == 1
-        assert result[0].slug == "aspirin"
+        assert len(items) == 1
+        assert total == 1
+        assert items[0].slug == "aspirin"
 
     async def test_create_entity_rollback_on_error(self, mock_db, monkeypatch):
         """Test that create rolls back on error."""
