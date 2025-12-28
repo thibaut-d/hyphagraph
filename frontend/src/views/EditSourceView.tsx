@@ -18,6 +18,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 import { getSource, updateSource, SourceWrite } from "../api/sources";
 import { SourceRead } from "../types/source";
+import { invalidateSourceFilterCache } from "../utils/cacheUtils";
 
 const SOURCE_KINDS = [
   "article",
@@ -111,6 +112,9 @@ export function EditSourceView() {
       };
 
       await updateSource(id, payload);
+
+      // Invalidate filter options cache since we updated a source
+      invalidateSourceFilterCache();
 
       // Navigate back to the source detail page
       navigate(`/sources/${id}`);

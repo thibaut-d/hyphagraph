@@ -27,6 +27,7 @@ import { getSource, deleteSource } from "../api/sources";
 import { listRelationsBySource, deleteRelation } from "../api/relations";
 import { SourceRead } from "../types/source";
 import { RelationRead } from "../types/relation";
+import { invalidateSourceFilterCache } from "../utils/cacheUtils";
 
 export function SourceDetailView() {
   const { id } = useParams<{ id: string }>();
@@ -54,6 +55,10 @@ export function SourceDetailView() {
     setDeleting(true);
     try {
       await deleteSource(id);
+
+      // Invalidate filter options cache since we deleted a source
+      invalidateSourceFilterCache();
+
       navigate("/sources");
     } catch (error) {
       console.error("Failed to delete source:", error);

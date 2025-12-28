@@ -12,6 +12,11 @@ import * as sourceApi from '../../api/sources';
 // Mock the API module
 vi.mock('../../api/sources');
 
+// Mock cache utils
+vi.mock('../../utils/cacheUtils', () => ({
+  invalidateSourceFilterCache: vi.fn(),
+}));
+
 // Mock react-router navigation
 const mockNavigate = vi.fn();
 vi.mock('react-router', async () => {

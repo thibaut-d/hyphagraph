@@ -21,6 +21,11 @@ vi.mock('../../api/relations', () => ({
   deleteRelation: vi.fn(),
 }));
 
+// Mock cache utils
+vi.mock('../../utils/cacheUtils', () => ({
+  invalidateSourceFilterCache: vi.fn(),
+}));
+
 import { getSource, deleteSource } from '../../api/sources';
 import { listRelationsBySource, deleteRelation } from '../../api/relations';
 

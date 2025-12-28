@@ -16,6 +16,7 @@ import {
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 import { createSource, SourceWrite } from "../api/sources";
+import { invalidateSourceFilterCache } from "../utils/cacheUtils";
 
 const SOURCE_KINDS = [
   "article",
@@ -82,6 +83,9 @@ export function CreateSourceView() {
       };
 
       const created = await createSource(payload);
+
+      // Invalidate filter options cache since we added a new source
+      invalidateSourceFilterCache();
 
       // Navigate to the created source
       navigate(`/sources/${created.id}`);
