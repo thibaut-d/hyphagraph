@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, func
 from fastapi import HTTPException, status
-from typing import Optional
+from typing import Optional, Tuple
 from uuid import UUID
 
 from app.schemas.entity import EntityWrite, EntityRead
@@ -75,7 +75,7 @@ class EntityService:
 
         return entity_to_read(entity, current_revision)
 
-    async def list_all(self, filters: Optional[EntityFilters] = None) -> list[EntityRead]:
+    async def list_all(self, filters: Optional[EntityFilters] = None) -> Tuple[list[EntityRead], int]:
         """
         List all entities with their current revisions, optionally filtered and paginated.
 
@@ -84,9 +84,12 @@ class EntityService:
         - search: Case-insensitive search in slug
         - limit: Maximum number of results to return
         - offset: Number of results to skip
+
+        Returns:
+            Tuple of (items, total_count)
         """
-        # Build query for entities with their current revisions
-        query = (
+        # Build base query for entities with their current revisions
+        base_query = (
             select(Entity, EntityRevision)
             .join(EntityRevision, Entity.id == EntityRevision.entity_id)
             .where(EntityRevision.is_current == True)
@@ -98,24 +101,33 @@ class EntityService:
             if filters.ui_category_id:
                 # Convert string UUIDs to UUID objects
                 category_uuids = [UUID(cat_id) for cat_id in filters.ui_category_id]
-                query = query.where(EntityRevision.ui_category_id.in_(category_uuids))
+                base_query = base_query.where(EntityRevision.ui_category_id.in_(category_uuids))
 
             # Search in slug (case-insensitive)
             if filters.search:
                 search_term = f"%{filters.search.lower()}%"
-                query = query.where(EntityRevision.slug.ilike(search_term))
+                base_query = base_query.where(EntityRevision.slug.ilike(search_term))
 
-        # Apply pagination
+        # Count total results before pagination
+        count_query = select(func.count()).select_from(
+            base_query.subquery()
+        )
+        total_result = await self.db.execute(count_query)
+        total = total_result.scalar() or 0
+
+        # Apply pagination to items query
         limit = filters.limit if filters else 50
         offset = filters.offset if filters else 0
-        query = query.limit(limit).offset(offset)
+        items_query = base_query.limit(limit).offset(offset)
 
-        # Execute query
-        result_rows = await self.db.execute(query)
+        # Execute items query
+        result_rows = await self.db.execute(items_query)
         results = result_rows.all()
 
         # Convert to EntityRead objects
-        return [entity_to_read(entity, revision) for entity, revision in results]
+        items = [entity_to_read(entity, revision) for entity, revision in results]
+
+        return items, total
 
     async def update(self, entity_id: str, payload: EntityWrite, user_id=None) -> EntityRead:
         """

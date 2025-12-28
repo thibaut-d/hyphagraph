@@ -6,6 +6,7 @@ from typing import Optional, List
 from app.database import get_db
 from app.schemas.entity import EntityWrite, EntityRead
 from app.schemas.filters import EntityFilters
+from app.schemas.pagination import PaginatedResponse
 from app.services.entity_service import EntityService
 from app.dependencies.auth import get_current_user
 
@@ -21,7 +22,7 @@ async def create_entity(
     service = EntityService(db)
     return await service.create(payload)
 
-@router.get("/", response_model=list[EntityRead])
+@router.get("/", response_model=PaginatedResponse[EntityRead])
 async def list_entities(
     ui_category_id: Optional[List[str]] = Query(None, description="Filter by UI category"),
     search: Optional[str] = Query(None, description="Search in slug", max_length=100),
@@ -31,6 +32,8 @@ async def list_entities(
 ):
     """
     List entities with optional filters and pagination.
+
+    Returns paginated results with total count.
 
     - **ui_category_id**: Filter by UI category (multiple values use OR logic)
     - **search**: Case-insensitive search in slug
@@ -44,7 +47,13 @@ async def list_entities(
         limit=limit,
         offset=offset
     )
-    return await service.list_all(filters=filters)
+    items, total = await service.list_all(filters=filters)
+    return PaginatedResponse(
+        items=items,
+        total=total,
+        limit=limit,
+        offset=offset
+    )
 
 @router.get("/{entity_id}", response_model=EntityRead)
 async def get_entity(

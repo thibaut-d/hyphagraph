@@ -22,6 +22,7 @@ import AddIcon from "@mui/icons-material/Add";
 import FilterListIcon from "@mui/icons-material/FilterList";
 
 import { FilterDrawer, FilterSection, SearchFilter } from "../components/filters";
+import { ScrollToTop } from "../components/ScrollToTop";
 import { useFilterDrawer } from "../hooks/useFilterDrawer";
 import { usePersistedFilters } from "../hooks/usePersistedFilters";
 import { useDebounce } from "../hooks/useDebounce";
@@ -221,6 +222,9 @@ export function EntitiesView() {
           />
         </FilterSection>
       </FilterDrawer>
+
+      {/* Scroll to top button */}
+      <ScrollToTop />
     </Stack>
   );
 }

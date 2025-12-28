@@ -6,6 +6,7 @@ from typing import Optional, List
 from app.database import get_db
 from app.schemas.source import SourceWrite, SourceRead
 from app.schemas.filters import SourceFilters
+from app.schemas.pagination import PaginatedResponse
 from app.services.source_service import SourceService
 from app.dependencies.auth import get_current_user
 
@@ -20,7 +21,7 @@ async def create_source(
     service = SourceService(db)
     return await service.create(payload)
 
-@router.get("/", response_model=list[SourceRead])
+@router.get("/", response_model=PaginatedResponse[SourceRead])
 async def list_sources(
     kind: Optional[List[str]] = Query(None, description="Filter by source kind"),
     year_min: Optional[int] = Query(None, description="Minimum publication year", ge=1000, le=9999),
@@ -34,6 +35,8 @@ async def list_sources(
 ):
     """
     List sources with optional filters and pagination.
+
+    Returns paginated results with total count.
 
     - **kind**: Filter by kind (multiple values use OR logic)
     - **year_min/year_max**: Filter by publication year range
@@ -53,7 +56,13 @@ async def list_sources(
         limit=limit,
         offset=offset,
     )
-    return await service.list_all(filters=filters)
+    items, total = await service.list_all(filters=filters)
+    return PaginatedResponse(
+        items=items,
+        total=total,
+        limit=limit,
+        offset=offset
+    )
 
 @router.get("/{source_id}", response_model=SourceRead)
 async def get_source(

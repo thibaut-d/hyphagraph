@@ -22,6 +22,7 @@ import FilterListIcon from "@mui/icons-material/FilterList";
 import { listSources, SourceFilters } from "../api/sources";
 import { SourceRead } from "../types/source";
 import { FilterDrawer, FilterSection, CheckboxFilter, RangeFilter, SearchFilter } from "../components/filters";
+import { ScrollToTop } from "../components/ScrollToTop";
 import { useFilterDrawer } from "../hooks/useFilterDrawer";
 import { usePersistedFilters } from "../hooks/usePersistedFilters";
 import { deriveFilterOptions, deriveRange } from "../utils/filterUtils";
@@ -287,6 +288,9 @@ export function SourcesView() {
           />
         </FilterSection>
       </FilterDrawer>
+
+      {/* Scroll to top button */}
+      <ScrollToTop />
     </Stack>
   );
 }

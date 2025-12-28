@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_, and_, cast, String
+from sqlalchemy import select, or_, and_, cast, String, func
 from fastapi import HTTPException, status
-from typing import Optional
+from typing import Optional, Tuple
 
 from app.schemas.source import SourceWrite, SourceRead
 from app.schemas.filters import SourceFilters
@@ -74,7 +74,7 @@ class SourceService:
 
         return source_to_read(source, current_revision)
 
-    async def list_all(self, filters: Optional[SourceFilters] = None) -> list[SourceRead]:
+    async def list_all(self, filters: Optional[SourceFilters] = None) -> Tuple[list[SourceRead], int]:
         """
         List all sources with their current revisions, optionally filtered and paginated.
 
@@ -85,9 +85,12 @@ class SourceService:
         - search: Case-insensitive search in title, authors, or origin
         - limit: Maximum number of results to return
         - offset: Number of results to skip
+
+        Returns:
+            Tuple of (items, total_count)
         """
-        # Build query for sources with their current revisions
-        query = (
+        # Build base query for sources with their current revisions
+        base_query = (
             select(Source, SourceRevision)
             .join(SourceRevision, Source.id == SourceRevision.source_id)
             .where(SourceRevision.is_current == True)
@@ -97,25 +100,25 @@ class SourceService:
         if filters:
             # Filter by kind (OR logic)
             if filters.kind:
-                query = query.where(SourceRevision.kind.in_(filters.kind))
+                base_query = base_query.where(SourceRevision.kind.in_(filters.kind))
 
             # Filter by year range
             if filters.year_min is not None:
-                query = query.where(SourceRevision.year >= filters.year_min)
+                base_query = base_query.where(SourceRevision.year >= filters.year_min)
             if filters.year_max is not None:
-                query = query.where(SourceRevision.year <= filters.year_max)
+                base_query = base_query.where(SourceRevision.year <= filters.year_max)
 
             # Filter by trust level range
             if filters.trust_level_min is not None:
-                query = query.where(SourceRevision.trust_level >= filters.trust_level_min)
+                base_query = base_query.where(SourceRevision.trust_level >= filters.trust_level_min)
             if filters.trust_level_max is not None:
-                query = query.where(SourceRevision.trust_level <= filters.trust_level_max)
+                base_query = base_query.where(SourceRevision.trust_level <= filters.trust_level_max)
 
             # Search in title, authors, or origin (case-insensitive)
             if filters.search:
                 search_term = f"%{filters.search.lower()}%"
                 # Convert authors array to string for searching
-                query = query.where(
+                base_query = base_query.where(
                     or_(
                         SourceRevision.title.ilike(search_term),
                         SourceRevision.origin.ilike(search_term),
@@ -123,17 +126,26 @@ class SourceService:
                     )
                 )
 
-        # Apply pagination
+        # Count total results before pagination
+        count_query = select(func.count()).select_from(
+            base_query.subquery()
+        )
+        total_result = await self.db.execute(count_query)
+        total = total_result.scalar() or 0
+
+        # Apply pagination to items query
         limit = filters.limit if filters else 50
         offset = filters.offset if filters else 0
-        query = query.limit(limit).offset(offset)
+        items_query = base_query.limit(limit).offset(offset)
 
-        # Execute query
-        result_rows = await self.db.execute(query)
+        # Execute items query
+        result_rows = await self.db.execute(items_query)
         results = result_rows.all()
 
         # Convert to SourceRead objects
-        return [source_to_read(source, revision) for source, revision in results]
+        items = [source_to_read(source, revision) for source, revision in results]
+
+        return items, total
 
     async def update(self, source_id: str, payload: SourceWrite, user_id=None) -> SourceRead:
         """

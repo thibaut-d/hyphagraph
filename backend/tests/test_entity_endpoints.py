@@ -259,3 +259,83 @@ class TestEntityEndpoints:
                 assert isinstance(data, list)
         finally:
             app.dependency_overrides.clear()
+
+    async def test_list_entities_pagination_default(self, override_get_db):
+        """Test pagination with default values."""
+        app.dependency_overrides[get_db] = override_get_db
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                response = await client.get("/api/entities/")
+                assert response.status_code == status.HTTP_200_OK
+                data = response.json()
+                assert isinstance(data, list)
+                # Default limit is 50, so results should be <= 50
+                assert len(data) <= 50
+        finally:
+            app.dependency_overrides.clear()
+
+    async def test_list_entities_pagination_custom_limit(self, override_get_db):
+        """Test pagination with custom limit."""
+        app.dependency_overrides[get_db] = override_get_db
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                response = await client.get("/api/entities/?limit=10")
+                assert response.status_code == status.HTTP_200_OK
+                data = response.json()
+                assert isinstance(data, list)
+                assert len(data) <= 10
+        finally:
+            app.dependency_overrides.clear()
+
+    async def test_list_entities_pagination_with_offset(self, override_get_db):
+        """Test pagination with offset."""
+        app.dependency_overrides[get_db] = override_get_db
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                # Get first page
+                response1 = await client.get("/api/entities/?limit=5&offset=0")
+                assert response1.status_code == status.HTTP_200_OK
+                page1 = response1.json()
+
+                # Get second page
+                response2 = await client.get("/api/entities/?limit=5&offset=5")
+                assert response2.status_code == status.HTTP_200_OK
+                page2 = response2.json()
+
+                # Pages should be different (if enough data exists)
+                if len(page1) == 5 and len(page2) > 0:
+                    page1_ids = {e['id'] for e in page1}
+                    page2_ids = {e['id'] for e in page2}
+                    assert page1_ids.isdisjoint(page2_ids)
+        finally:
+            app.dependency_overrides.clear()
+
+    async def test_list_entities_pagination_limit_too_high(self, override_get_db):
+        """Test that limit over 100 is rejected."""
+        app.dependency_overrides[get_db] = override_get_db
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                response = await client.get("/api/entities/?limit=101")
+                assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        finally:
+            app.dependency_overrides.clear()
+
+    async def test_list_entities_pagination_limit_zero(self, override_get_db):
+        """Test that limit of 0 is rejected."""
+        app.dependency_overrides[get_db] = override_get_db
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                response = await client.get("/api/entities/?limit=0")
+                assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        finally:
+            app.dependency_overrides.clear()
+
+    async def test_list_entities_pagination_negative_offset(self, override_get_db):
+        """Test that negative offset is rejected."""
+        app.dependency_overrides[get_db] = override_get_db
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                response = await client.get("/api/entities/?offset=-1")
+                assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        finally:
+            app.dependency_overrides.clear()
