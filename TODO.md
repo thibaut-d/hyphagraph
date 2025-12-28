@@ -791,9 +791,9 @@ Per UX.md and PROJECT.md, all development must preserve:
 - ✅ Frontend hook tests - **COMPLETE**
 - ✅ Stub views - **COMPLETE** (InferencesView, HomeView implemented)
 - ✅ Cache bug - **FIXED** (critical performance issue resolved)
+- ✅ Pydantic deprecation warnings - **FIXED** (Migrated to ConfigDict)
 - ❌ E2E tests - **Infrastructure ready, needs execution**
 - ❌ No CI/CD pipeline
-- ⚠️ Pydantic deprecation warnings - **Need to migrate to ConfigDict**
 - **Graph visualization: Explicitly deferred (NOT MVP)**
 
 ---
@@ -822,7 +822,7 @@ HyphaGraph has successfully transformed from a **solid knowledge capture system*
 - ✅ Root directory cleaned up - only 9 high-level docs remain
 - ✅ Fixed all 6 failing EntityDetailView tests
 - ✅ Achieved 100% test coverage (529/529 tests passing)
-- ⚠️ Identified Pydantic deprecation warnings in explanation schemas
+- ✅ Fixed Pydantic deprecation warnings - Migrated 4 schemas to ConfigDict
 
 **Previous Session Achievements** (2025-12-28 Session 3):
 - Set up complete E2E testing infrastructure with Playwright
@@ -844,9 +844,8 @@ HyphaGraph has successfully transformed from a **solid knowledge capture system*
 - Removed outdated stub code
 - **Total: 6 commits pushed to remote**
 
-**Immediate Priorities** (Minor Cleanup):
-1. **Fix Pydantic deprecation warnings** - Migrate to ConfigDict in explanation schemas (15 min)
-2. **Run E2E tests** - Infrastructure ready, verify entity CRUD works (1-2 hours)
+**Immediate Priorities** (Optional Verification):
+1. **Run E2E tests** - Infrastructure ready, verify entity CRUD works (1-2 hours)
 
 **Next Priority** (Phase 2 - Enhanced Usability):
 1. **Filter Drawers** - Expert-friendly filtering (1 week)
