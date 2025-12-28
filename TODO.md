@@ -556,6 +556,25 @@ These are **nice-to-have** features for future iterations:
 
 ---
 
+## 🔧 Technical Debt & Refactoring Notes
+
+### ✅ Configuration Management (RESOLVED 2025-12-28)
+**Issue**: `backend/.env` naming ambiguity and `.env.test` tracking - COMPLETED
+- **Previous State**: File contained test-specific configuration but used generic `.env` name
+- **Problem**: Unclear that this was test-only config; could be confused with production `.env`. Later: `.env.test` was gitignored requiring manual recreation
+- **Solution Implemented**: Renamed to `backend/.env.test` for clarity and now tracked in git
+- **Changes Made**:
+  - Renamed `backend/.env` → `backend/.env.test`
+  - Updated `config.py` to load `.env.test`
+  - Updated `.gitignore` to be specific (ignore `.env`, `.env.local`, `.env.production` but track `.env.test`)
+  - Removed `backend/.env.test.sample` (no longer needed since .env.test is tracked)
+  - Updated documentation in AUTH_SETUP.md and GETTING_STARTED.md
+  - Updated startup.py log messages
+- **Rationale**: `.env.test` contains only non-sensitive test data (test database path, test secrets, disabled features) so it's safe and convenient to track it in version control
+- **Status**: ✅ Complete
+
+---
+
 ## 📋 Design Principles (Non-Negotiable)
 
 Per UX.md and PROJECT.md, all development must preserve:

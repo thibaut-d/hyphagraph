@@ -18,11 +18,13 @@ cd hyphagraph
 
 ## 2. Environment variables
 
-Create a .env file from the sample:
+Create a `.env` file from the sample (for Docker Compose):
 
 ```
-cp .env.example .env
+cp .env.sample .env
 ```
+
+The `backend/.env.test` file is already included in the repository with sensible test defaults.
 
 Defaults are suitable for local development.
 

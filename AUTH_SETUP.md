@@ -33,17 +33,21 @@ This installs:
 
 ### 2. Configure Environment
 
-Create or update `backend/.env`:
+The `backend/.env.test` file is already included in the repository with test defaults:
 
 ```bash
-# Database
-DATABASE_URL=postgresql+asyncpg://user:password@localhost/hyphagraph
+# Database - using SQLite for testing
+DATABASE_URL=sqlite+aiosqlite:///./test.db
 
-# Authentication (CRITICAL for production!)
-SECRET_KEY=your-secret-key-here-change-this-in-production
+# Security (test values only!)
+SECRET_KEY=test-secret-key-for-testing-only
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 ```
+
+You can customize this file if needed for your local setup.
+
+**Note**: In production, use environment variables directly instead of `.env.test` files.
 
 **⚠️ Security Warning**: Generate a secure SECRET_KEY for production:
 
