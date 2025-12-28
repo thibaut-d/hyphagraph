@@ -28,15 +28,19 @@ async def list_sources(
     trust_level_min: Optional[float] = Query(None, description="Minimum trust level", ge=0.0, le=1.0),
     trust_level_max: Optional[float] = Query(None, description="Maximum trust level", ge=0.0, le=1.0),
     search: Optional[str] = Query(None, description="Search in title, authors, or origin", max_length=100),
+    limit: int = Query(50, description="Maximum number of results", ge=1, le=100),
+    offset: int = Query(0, description="Number of results to skip", ge=0),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    List sources with optional filters.
+    List sources with optional filters and pagination.
 
     - **kind**: Filter by kind (multiple values use OR logic)
     - **year_min/year_max**: Filter by publication year range
     - **trust_level_min/trust_level_max**: Filter by trust level range
     - **search**: Case-insensitive search in title, authors, or origin
+    - **limit**: Maximum number of results to return (default: 50, max: 100)
+    - **offset**: Number of results to skip for pagination (default: 0)
     """
     service = SourceService(db)
     filters = SourceFilters(
@@ -46,6 +50,8 @@ async def list_sources(
         trust_level_min=trust_level_min,
         trust_level_max=trust_level_max,
         search=search,
+        limit=limit,
+        offset=offset,
     )
     return await service.list_all(filters=filters)
 

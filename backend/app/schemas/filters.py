@@ -8,6 +8,26 @@ from typing import Optional, List
 from pydantic import BaseModel, Field
 
 
+class PaginationParams(BaseModel):
+    """
+    Pagination parameters for list endpoints.
+    """
+    limit: int = Field(
+        50,
+        description="Maximum number of results to return",
+        ge=1,
+        le=100,
+        json_schema_extra={"example": 50}
+    )
+
+    offset: int = Field(
+        0,
+        description="Number of results to skip",
+        ge=0,
+        json_schema_extra={"example": 0}
+    )
+
+
 class EntityFilters(BaseModel):
     """
     Query parameters for filtering entities.
@@ -24,6 +44,21 @@ class EntityFilters(BaseModel):
         None,
         description="Search term for slug (case-insensitive)",
         max_length=100
+    )
+
+    limit: int = Field(
+        50,
+        description="Maximum number of results to return",
+        ge=1,
+        le=100,
+        json_schema_extra={"example": 50}
+    )
+
+    offset: int = Field(
+        0,
+        description="Number of results to skip",
+        ge=0,
+        json_schema_extra={"example": 0}
     )
 
 
@@ -76,4 +111,19 @@ class SourceFilters(BaseModel):
         None,
         description="Search term for title, authors, or origin (case-insensitive)",
         max_length=100
+    )
+
+    limit: int = Field(
+        50,
+        description="Maximum number of results to return",
+        ge=1,
+        le=100,
+        json_schema_extra={"example": 50}
+    )
+
+    offset: int = Field(
+        0,
+        description="Number of results to skip",
+        ge=0,
+        json_schema_extra={"example": 0}
     )

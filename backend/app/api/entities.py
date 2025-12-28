@@ -25,16 +25,25 @@ async def create_entity(
 async def list_entities(
     ui_category_id: Optional[List[str]] = Query(None, description="Filter by UI category"),
     search: Optional[str] = Query(None, description="Search in slug", max_length=100),
+    limit: int = Query(50, description="Maximum number of results", ge=1, le=100),
+    offset: int = Query(0, description="Number of results to skip", ge=0),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    List entities with optional filters.
+    List entities with optional filters and pagination.
 
     - **ui_category_id**: Filter by UI category (multiple values use OR logic)
     - **search**: Case-insensitive search in slug
+    - **limit**: Maximum number of results to return (default: 50, max: 100)
+    - **offset**: Number of results to skip for pagination (default: 0)
     """
     service = EntityService(db)
-    filters = EntityFilters(ui_category_id=ui_category_id, search=search)
+    filters = EntityFilters(
+        ui_category_id=ui_category_id,
+        search=search,
+        limit=limit,
+        offset=offset
+    )
     return await service.list_all(filters=filters)
 
 @router.get("/{entity_id}", response_model=EntityRead)

@@ -76,13 +76,15 @@ class SourceService:
 
     async def list_all(self, filters: Optional[SourceFilters] = None) -> list[SourceRead]:
         """
-        List all sources with their current revisions, optionally filtered.
+        List all sources with their current revisions, optionally filtered and paginated.
 
         Filters are applied to the current revision data:
         - kind: Filter by kind field (OR logic for multiple values)
         - year_min/year_max: Filter by publication year range
         - trust_level_min/trust_level_max: Filter by trust level range
         - search: Case-insensitive search in title, authors, or origin
+        - limit: Maximum number of results to return
+        - offset: Number of results to skip
         """
         # Build query for sources with their current revisions
         query = (
@@ -120,6 +122,11 @@ class SourceService:
                         cast(SourceRevision.authors, String).ilike(search_term),
                     )
                 )
+
+        # Apply pagination
+        limit = filters.limit if filters else 50
+        offset = filters.offset if filters else 0
+        query = query.limit(limit).offset(offset)
 
         # Execute query
         result_rows = await self.db.execute(query)

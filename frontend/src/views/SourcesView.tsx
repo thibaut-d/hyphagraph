@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
@@ -25,12 +25,18 @@ import { FilterDrawer, FilterSection, CheckboxFilter, RangeFilter, SearchFilter 
 import { useFilterDrawer } from "../hooks/useFilterDrawer";
 import { usePersistedFilters } from "../hooks/usePersistedFilters";
 import { deriveFilterOptions, deriveRange } from "../utils/filterUtils";
+import { useDebounce } from "../hooks/useDebounce";
+import { useInfiniteScroll } from "../hooks/useInfiniteScroll";
+
+const PAGE_SIZE = 50;
 
 export function SourcesView() {
   const { t } = useTranslation();
   const [sources, setSources] = useState<SourceRead[]>([]);
   const [allSources, setAllSources] = useState<SourceRead[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [offset, setOffset] = useState(0);
 
   // Filter state with localStorage persistence
   const {
@@ -56,11 +62,24 @@ export function SourcesView() {
   const kindOptions = useMemo(() => deriveFilterOptions(allSources, 'kind'), [allSources]);
   const yearRange = useMemo(() => deriveRange(allSources, 'year'), [allSources]);
 
-  // Fetch sources with server-side filtering
+  // Debounce search to reduce server load during typing
+  const debouncedSearch = useDebounce(filters.search, 300);
+
+  // Reset pagination when filters change
   useEffect(() => {
+    setSources([]);
+    setOffset(0);
+    setHasMore(true);
+  }, [filters.kind, filters.year, filters.trust_level, debouncedSearch]);
+
+  // Fetch sources with server-side filtering and pagination
+  const loadSources = useCallback(async (currentOffset: number) => {
     setIsLoading(true);
 
-    const apiFilters: SourceFilters = {};
+    const apiFilters: SourceFilters = {
+      limit: PAGE_SIZE,
+      offset: currentOffset,
+    };
 
     if (filters.kind && Array.isArray(filters.kind)) {
       apiFilters.kind = filters.kind;
@@ -84,14 +103,40 @@ export function SourcesView() {
       }
     }
 
-    if (filters.search && typeof filters.search === 'string') {
-      apiFilters.search = filters.search;
+    if (debouncedSearch && typeof debouncedSearch === 'string') {
+      apiFilters.search = debouncedSearch;
     }
 
-    listSources(apiFilters)
-      .then(setSources)
-      .finally(() => setIsLoading(false));
-  }, [filters, yearRange]);
+    try {
+      const newSources = await listSources(apiFilters);
+
+      if (currentOffset === 0) {
+        setSources(newSources);
+      } else {
+        setSources(prev => [...prev, ...newSources]);
+      }
+
+      setHasMore(newSources.length === PAGE_SIZE);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [filters.kind, filters.year, filters.trust_level, debouncedSearch, yearRange]);
+
+  useEffect(() => {
+    loadSources(0);
+  }, [loadSources]);
+
+  const handleLoadMore = useCallback(() => {
+    const newOffset = offset + PAGE_SIZE;
+    setOffset(newOffset);
+    loadSources(newOffset);
+  }, [offset, loadSources]);
+
+  const sentinelRef = useInfiniteScroll({
+    onLoadMore: handleLoadMore,
+    isLoading,
+    hasMore,
+  });
 
   return (
     <Stack spacing={2}>
@@ -138,30 +183,51 @@ export function SourcesView() {
       )}
 
       <Paper sx={{ p: 3 }}>
-        {isLoading ? (
+        {sources.length === 0 && isLoading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
             <CircularProgress />
           </Box>
         ) : (
-          <List>
-            {sources.map((s) => (
-              <ListItem key={s.id}>
-                <ListItemText
-                  primary={
-                    <Link component={RouterLink} to={`/sources/${s.id}`}>
-                      {s.title ?? s.id}
-                    </Link>
-                  }
-                  secondary={[
-                    s.kind,
-                    s.year && `(${s.year})`,
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                />
-              </ListItem>
-            ))}
-          </List>
+          <>
+            <List>
+              {sources.map((s) => (
+                <ListItem key={s.id}>
+                  <ListItemText
+                    primary={
+                      <Link component={RouterLink} to={`/sources/${s.id}`}>
+                        {s.title ?? s.id}
+                      </Link>
+                    }
+                    secondary={[
+                      s.kind,
+                      s.year && `(${s.year})`,
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  />
+                </ListItem>
+              ))}
+            </List>
+
+            {/* Infinite scroll sentinel */}
+            <div ref={sentinelRef} style={{ height: '1px' }} />
+
+            {/* Loading indicator for pagination */}
+            {isLoading && sources.length > 0 && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                <CircularProgress size={24} />
+              </Box>
+            )}
+
+            {/* Load more button fallback */}
+            {hasMore && !isLoading && sources.length > 0 && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                <Button variant="outlined" onClick={handleLoadMore}>
+                  {t("common.load_more", "Load More")}
+                </Button>
+              </Box>
+            )}
+          </>
         )}
 
         {!isLoading && sources.length === 0 && (

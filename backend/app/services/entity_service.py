@@ -77,11 +77,13 @@ class EntityService:
 
     async def list_all(self, filters: Optional[EntityFilters] = None) -> list[EntityRead]:
         """
-        List all entities with their current revisions, optionally filtered.
+        List all entities with their current revisions, optionally filtered and paginated.
 
         Filters are applied to the current revision data:
         - ui_category_id: Filter by UI category (OR logic)
         - search: Case-insensitive search in slug
+        - limit: Maximum number of results to return
+        - offset: Number of results to skip
         """
         # Build query for entities with their current revisions
         query = (
@@ -102,6 +104,11 @@ class EntityService:
             if filters.search:
                 search_term = f"%{filters.search.lower()}%"
                 query = query.where(EntityRevision.slug.ilike(search_term))
+
+        # Apply pagination
+        limit = filters.limit if filters else 50
+        offset = filters.offset if filters else 0
+        query = query.limit(limit).offset(offset)
 
         # Execute query
         result_rows = await self.db.execute(query)

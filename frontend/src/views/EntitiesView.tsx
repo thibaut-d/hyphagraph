@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { listEntities, EntityFilters } from "../api/entities";
 import { EntityRead } from "../types/entity";
 import { Link as RouterLink } from "react-router-dom";
@@ -24,11 +24,17 @@ import FilterListIcon from "@mui/icons-material/FilterList";
 import { FilterDrawer, FilterSection, SearchFilter } from "../components/filters";
 import { useFilterDrawer } from "../hooks/useFilterDrawer";
 import { usePersistedFilters } from "../hooks/usePersistedFilters";
+import { useDebounce } from "../hooks/useDebounce";
+import { useInfiniteScroll } from "../hooks/useInfiniteScroll";
+
+const PAGE_SIZE = 50;
 
 export function EntitiesView() {
   const { t } = useTranslation();
   const [entities, setEntities] = useState<EntityRead[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [offset, setOffset] = useState(0);
 
   // Filter state with localStorage persistence
   const {
@@ -45,24 +51,63 @@ export function EntitiesView() {
     closeDrawer,
   } = useFilterDrawer();
 
-  // Fetch entities with server-side filtering
+  // Debounce search to reduce server load during typing
+  const debouncedSearch = useDebounce(filters.search, 300);
+
+  // Reset pagination when filters change
   useEffect(() => {
+    setEntities([]);
+    setOffset(0);
+    setHasMore(true);
+  }, [debouncedSearch, filters.ui_category_id]);
+
+  // Fetch entities with server-side filtering and pagination
+  const loadEntities = useCallback(async (currentOffset: number) => {
     setIsLoading(true);
 
-    const apiFilters: EntityFilters = {};
+    const apiFilters: EntityFilters = {
+      limit: PAGE_SIZE,
+      offset: currentOffset,
+    };
 
-    if (filters.search && typeof filters.search === 'string') {
-      apiFilters.search = filters.search;
+    if (debouncedSearch && typeof debouncedSearch === 'string') {
+      apiFilters.search = debouncedSearch;
     }
 
     if (filters.ui_category_id && Array.isArray(filters.ui_category_id)) {
       apiFilters.ui_category_id = filters.ui_category_id;
     }
 
-    listEntities(apiFilters)
-      .then(setEntities)
-      .finally(() => setIsLoading(false));
-  }, [filters]);
+    try {
+      const newEntities = await listEntities(apiFilters);
+
+      if (currentOffset === 0) {
+        setEntities(newEntities);
+      } else {
+        setEntities(prev => [...prev, ...newEntities]);
+      }
+
+      setHasMore(newEntities.length === PAGE_SIZE);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [debouncedSearch, filters.ui_category_id]);
+
+  useEffect(() => {
+    loadEntities(0);
+  }, [loadEntities]);
+
+  const handleLoadMore = useCallback(() => {
+    const newOffset = offset + PAGE_SIZE;
+    setOffset(newOffset);
+    loadEntities(newOffset);
+  }, [offset, loadEntities]);
+
+  const sentinelRef = useInfiniteScroll({
+    onLoadMore: handleLoadMore,
+    isLoading,
+    hasMore,
+  });
 
   return (
     <Stack spacing={2}>
@@ -109,25 +154,46 @@ export function EntitiesView() {
       )}
 
       <Paper sx={{ p: 2 }}>
-        {isLoading ? (
+        {entities.length === 0 && isLoading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
             <CircularProgress />
           </Box>
         ) : (
-          <List>
-            {entities.map((e) => (
-              <ListItem key={e.id}>
-                <ListItemText
-                  primary={
-                    <Link component={RouterLink} to={`/entities/${e.id}`}>
-                      {e.label}
-                    </Link>
-                  }
-                  secondary={e.kind}
-                />
-              </ListItem>
-            ))}
-          </List>
+          <>
+            <List>
+              {entities.map((e) => (
+                <ListItem key={e.id}>
+                  <ListItemText
+                    primary={
+                      <Link component={RouterLink} to={`/entities/${e.id}`}>
+                        {e.label}
+                      </Link>
+                    }
+                    secondary={e.kind}
+                  />
+                </ListItem>
+              ))}
+            </List>
+
+            {/* Infinite scroll sentinel */}
+            <div ref={sentinelRef} style={{ height: '1px' }} />
+
+            {/* Loading indicator for pagination */}
+            {isLoading && entities.length > 0 && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                <CircularProgress size={24} />
+              </Box>
+            )}
+
+            {/* Load more button fallback */}
+            {hasMore && !isLoading && entities.length > 0 && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                <Button variant="outlined" onClick={handleLoadMore}>
+                  {t("common.load_more", "Load More")}
+                </Button>
+              </Box>
+            )}
+          </>
         )}
 
         {!isLoading && entities.length === 0 && (
