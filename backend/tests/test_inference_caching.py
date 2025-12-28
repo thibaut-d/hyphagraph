@@ -168,6 +168,52 @@ class TestInferenceCaching:
         assert cached_children is not None
         assert cached_adults.relation_id != cached_children.relation_id
 
+    async def test_cache_hit_returns_cached_result(self, db_session, system_source):
+        """Test second computation returns cached result (cache hit)."""
+
+        # Arrange
+        entity_service = EntityService(db_session)
+        source_service = SourceService(db_session)
+        relation_service = RelationService(db_session)
+        inference_service = InferenceService(db_session)
+
+        entity = await entity_service.create(EntityWrite(slug="aspirin", kind="drug"))
+        source = await source_service.create(SourceWrite(kind="study", title="Test", url="https://example.com/test"))
+
+        await relation_service.create(
+            RelationWrite(
+                source_id=str(source.id),
+                kind="effect",
+                confidence=0.9,
+                direction="positive",
+                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id), weight=0.8)],
+            )
+        )
+
+        # Act - first computation (cache miss, stores result)
+        result1 = await inference_service.infer_for_entity(entity.id, use_cache=True)
+        await db_session.commit()  # Ensure cache is persisted
+
+        # Act - second computation (cache hit, should return cached)
+        result2 = await inference_service.infer_for_entity(entity.id, use_cache=True)
+
+        # Assert - both results should be equivalent
+        assert result1.entity_id == result2.entity_id
+        assert len(result1.role_inferences) == len(result2.role_inferences)
+
+        # Verify cached role inference values match
+        role1 = next(r for r in result1.role_inferences if r.role_type == "drug")
+        role2 = next(r for r in result2.role_inferences if r.role_type == "drug")
+
+        assert role1.score == role2.score
+        assert role1.coverage == role2.coverage
+        assert role1.confidence == role2.confidence
+        # Note: disagreement may differ slightly due to caching approximation
+
+        # Verify relations_by_kind is present
+        assert len(result2.relations_by_kind) > 0
+        assert "effect" in result2.relations_by_kind
+
     async def test_uncertainty_from_disagreement(self, db_session, system_source):
         """Test uncertainty is computed from disagreement measure."""
 

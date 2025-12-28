@@ -51,10 +51,12 @@ class InferenceService:
             )
 
             if cached:
-                # Return cached result
-                # Note: We need to convert the cached ComputedRelation back to InferenceRead
-                # For now, we'll skip cache and compute fresh (TODO: implement cache conversion)
-                pass
+                # Return cached result - convert ComputedRelation to InferenceRead
+                return await self._convert_cached_to_inference_read(
+                    entity_id=entity_id,
+                    cached_computed=cached,
+                    scope_filter=scope_filter
+                )
 
         relations = await self.repo.list_by_entity(entity_id)
 
@@ -355,6 +357,75 @@ class InferenceService:
 
         return True  # All filter attributes match
 
+    async def _convert_cached_to_inference_read(
+        self,
+        entity_id: UUID,
+        cached_computed: "ComputedRelation",
+        scope_filter: Optional[dict]
+    ) -> InferenceRead:
+        """
+        Convert a cached ComputedRelation back to InferenceRead format.
+
+        Args:
+            entity_id: Entity the inference is for
+            cached_computed: Cached ComputedRelation from database
+            scope_filter: Scope filter that was used
+
+        Returns:
+            InferenceRead with cached role inferences and fresh relation grouping
+        """
+        from app.schemas.inference import RoleInference
+
+        # Extract role inferences from cached relation's revision roles
+        role_inferences = []
+
+        if cached_computed.relation and cached_computed.relation.revisions:
+            current_rev = next(
+                (r for r in cached_computed.relation.revisions if r.is_current),
+                None
+            )
+
+            if current_rev and current_rev.roles:
+                for role_rev in current_rev.roles:
+                    # Reconstruct RoleInference from cached role revision
+                    # Note: We can't recover the exact disagreement value, so we use
+                    # uncertainty from ComputedRelation as a proxy
+                    role_inferences.append(RoleInference(
+                        role_type=role_rev.role_type,
+                        score=role_rev.weight,  # weight stores the computed score
+                        coverage=role_rev.coverage or 0.0,
+                        confidence=self.compute_confidence(role_rev.coverage or 0.0),
+                        disagreement=cached_computed.uncertainty,  # Use cached uncertainty
+                    ))
+
+        # Still need to fetch and group actual relations for relations_by_kind
+        # (Cache only stores computed scores, not the full relation list)
+        relations = await self.repo.list_by_entity(entity_id)
+
+        # Apply scope filtering if specified
+        if scope_filter:
+            relations = [rel for rel in relations if self._matches_scope(rel, scope_filter)]
+
+        # Group relations by kind for display
+        grouped = defaultdict(list)
+        for rel in relations:
+            current_rev = next(
+                (r for r in rel.revisions if r.is_current),
+                None
+            ) if rel.revisions else None
+
+            relation_read = relation_to_read(rel, current_revision=current_rev)
+
+            kind = current_rev.kind if current_rev else rel.kind
+            if kind:
+                grouped[kind].append(relation_read)
+
+        return InferenceRead(
+            entity_id=entity_id,
+            relations_by_kind=dict(grouped),
+            role_inferences=role_inferences,
+        )
+
     async def _cache_computed_inference(
         self,
         entity_id: UUID,
@@ -377,9 +448,9 @@ class InferenceService:
         from app.models.computed_relation import ComputedRelation
 
         # Check if system source exists
+        # Note: System source is auto-created on startup via app/startup.py
         if not settings.SYSTEM_SOURCE_ID:
             # Cannot cache without system source
-            # TODO: Create system source on startup
             return
 
         system_source_id = UUID(settings.SYSTEM_SOURCE_ID)
