@@ -22,6 +22,7 @@ import FilterListIcon from "@mui/icons-material/FilterList";
 
 import { FilterDrawer, FilterSection, CheckboxFilter } from "../components/filters";
 import { useFilterDrawer } from "../hooks/useFilterDrawer";
+import { usePersistedFilters } from "../hooks/usePersistedFilters";
 import { useClientSideFilter } from "../hooks/useClientSideFilter";
 import { entitiesFilterConfig } from "../config/filterConfigs";
 import { deriveFilterOptions } from "../utils/filterUtils";
@@ -30,16 +31,20 @@ export function EntitiesView() {
   const { t } = useTranslation();
   const [entities, setEntities] = useState<EntityRead[]>([]);
 
-  // Filter drawer state
+  // Filter state with localStorage persistence
   const {
-    isOpen,
-    openDrawer,
-    closeDrawer,
     filters,
     setFilter,
     clearFilter,
     clearAllFilters,
     activeFilterCount,
+  } = usePersistedFilters('entities-filters');
+
+  // Filter drawer UI state
+  const {
+    isOpen,
+    openDrawer,
+    closeDrawer,
   } = useFilterDrawer();
 
   useEffect(() => {

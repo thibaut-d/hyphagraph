@@ -22,6 +22,7 @@ import { listSources } from "../api/sources";
 import { SourceRead } from "../types/source";
 import { FilterDrawer, FilterSection, CheckboxFilter, RangeFilter, YearRangeFilter } from "../components/filters";
 import { useFilterDrawer } from "../hooks/useFilterDrawer";
+import { usePersistedFilters } from "../hooks/usePersistedFilters";
 import { useClientSideFilter } from "../hooks/useClientSideFilter";
 import { sourcesFilterConfig } from "../config/filterConfigs";
 import { deriveFilterOptions, deriveRange } from "../utils/filterUtils";
@@ -30,16 +31,20 @@ export function SourcesView() {
   const { t } = useTranslation();
   const [sources, setSources] = useState<SourceRead[]>([]);
 
-  // Filter drawer state
+  // Filter state with localStorage persistence
   const {
-    isOpen,
-    openDrawer,
-    closeDrawer,
     filters,
     setFilter,
     clearFilter,
     clearAllFilters,
     activeFilterCount,
+  } = usePersistedFilters('sources-filters');
+
+  // Filter drawer UI state
+  const {
+    isOpen,
+    openDrawer,
+    closeDrawer,
   } = useFilterDrawer();
 
   useEffect(() => {
