@@ -15,6 +15,7 @@ import {
 import LanguageIcon from "@mui/icons-material/Language";
 
 import { ProfileMenu } from "./ProfileMenu";
+import { GlobalSearch } from "./GlobalSearch";
 import { useAuthContext } from "../auth/AuthContext";
 
 const menuItems = [
@@ -48,7 +49,7 @@ export function Layout() {
           </Typography>
 
           {/* Main menu */}
-          <Box sx={{ flexGrow: 1 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexGrow: 1 }}>
             {menuItems.map((item) => {
               const isActive =
                 location.pathname === item.path ||
@@ -69,6 +70,11 @@ export function Layout() {
                 </Button>
               );
             })}
+
+            {/* Global Search */}
+            <Box sx={{ ml: "auto" }}>
+              <GlobalSearch />
+            </Box>
           </Box>
 
           {/* Language switch */}
