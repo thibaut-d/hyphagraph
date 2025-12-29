@@ -1,10 +1,10 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import String, Integer, ForeignKey, UniqueConstraint
 from uuid import UUID
-from app.models.base import Base, UUIDMixin
+from app.models.base import Base, UUIDMixin, TimestampMixin
 
 
-class EntityTerm(Base, UUIDMixin):
+class EntityTerm(Base, UUIDMixin, TimestampMixin):
     """
     Represents different names/terms for an entity.
 
