@@ -129,6 +129,46 @@ class SourceFilters(BaseModel):
     )
 
 
+class UICategoryOption(BaseModel):
+    """
+    UI category option with i18n labels.
+    """
+    id: str = Field(..., description="UI category ID")
+    label: dict = Field(..., description="i18n labels (language code -> label)", json_schema_extra={"example": {"en": "Drug", "fr": "Médicament"}})
+
+
+class EntityFilterOptions(BaseModel):
+    """
+    Available filter options for entities.
+
+    This provides metadata about what filter values are available,
+    useful for populating UI filter controls without fetching all records.
+    """
+    ui_categories: List[UICategoryOption] = Field(
+        ...,
+        description="Available UI categories with i18n labels",
+        json_schema_extra={"example": [{"id": "drug-id", "label": {"en": "Drug"}}]}
+    )
+
+    consensus_levels: Optional[Tuple[float, float]] = Field(
+        None,
+        description="Minimum and maximum consensus levels [min, max] from computed inferences",
+        json_schema_extra={"example": [0.0, 1.0]}
+    )
+
+    evidence_quality_range: Optional[Tuple[float, float]] = Field(
+        None,
+        description="Minimum and maximum evidence quality scores [min, max]",
+        json_schema_extra={"example": [0.0, 1.0]}
+    )
+
+    year_range: Optional[Tuple[int, int]] = Field(
+        None,
+        description="Minimum and maximum years from related sources [min, max]",
+        json_schema_extra={"example": [1995, 2024]}
+    )
+
+
 class SourceFilterOptions(BaseModel):
     """
     Available filter options for sources.

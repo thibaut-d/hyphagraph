@@ -358,3 +358,39 @@ class TestEntityEndpoints:
                 assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
         finally:
             app.dependency_overrides.clear()
+
+    async def test_get_entity_filter_options(self, override_get_db):
+        """Test getting available filter options for entities."""
+        app.dependency_overrides[get_db] = override_get_db
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                response = await client.get("/api/entities/filter-options")
+                assert response.status_code == status.HTTP_200_OK
+                data = response.json()
+
+                # Verify response structure
+                assert 'ui_categories' in data
+                assert 'consensus_levels' in data
+                assert 'evidence_quality_range' in data
+                assert 'year_range' in data
+
+                # Verify types
+                assert isinstance(data['ui_categories'], list)
+                # consensus_levels, evidence_quality_range, year_range can be null or tuple
+                if data['consensus_levels'] is not None:
+                    assert isinstance(data['consensus_levels'], list)
+                    assert len(data['consensus_levels']) == 2
+                if data['evidence_quality_range'] is not None:
+                    assert isinstance(data['evidence_quality_range'], list)
+                    assert len(data['evidence_quality_range']) == 2
+                if data['year_range'] is not None:
+                    assert isinstance(data['year_range'], list)
+                    assert len(data['year_range']) == 2
+
+                # Verify ui_categories structure
+                for category in data['ui_categories']:
+                    assert 'id' in category
+                    assert 'label' in category
+                    assert isinstance(category['label'], dict)  # i18n labels
+        finally:
+            app.dependency_overrides.clear()
