@@ -24,6 +24,9 @@ import ResetPasswordView from "../views/ResetPasswordView";
 import VerifyEmailView from "../views/VerifyEmailView";
 import ResendVerificationView from "../views/ResendVerificationView";
 import { ExplanationView } from "../views/ExplanationView";
+import { PropertyDetailView } from "../views/PropertyDetailView";
+import { SynthesisView } from "../views/SynthesisView";
+import { DisagreementsView } from "../views/DisagreementsView";
 
 export const router = createBrowserRouter([
   {
@@ -36,6 +39,9 @@ export const router = createBrowserRouter([
       { path: "entities/new", element: <ProtectedRoute><CreateEntityView /></ProtectedRoute> },
       { path: "entities/:id", element: <EntityDetailView /> },
       { path: "entities/:id/edit", element: <ProtectedRoute><EditEntityView /></ProtectedRoute> },
+      { path: "entities/:id/synthesis", element: <SynthesisView /> },
+      { path: "entities/:id/disagreements", element: <DisagreementsView /> },
+      { path: "entities/:id/properties/:roleType", element: <PropertyDetailView /> },
       { path: "explain/:entityId/:roleType", element: <ExplanationView /> },
 
       { path: "sources", element: <SourcesView /> },
