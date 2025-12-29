@@ -365,6 +365,7 @@ These features are **highly valuable for usability** but the system can function
 - ✅ `frontend/src/components/filters/__tests__/RangeFilter.test.tsx` (5 tests)
 - ✅ `frontend/src/components/filters/__tests__/SearchFilter.test.tsx` (5 tests)
 - ✅ `frontend/src/components/filters/__tests__/YearRangeFilter.test.tsx` (3 tests)
+- ✅ `frontend/src/components/filters/__tests__/EntityDetailFilters.test.tsx` (22 tests) - **NEW** (2025-12-29)
 - ✅ `frontend/src/hooks/useFilterDrawer.ts` (84 lines)
 - ✅ `frontend/src/hooks/usePersistedFilters.ts` (localStorage hook)
 - ✅ `frontend/src/views/EntitiesView.tsx` (301 lines - filter drawer integrated)
