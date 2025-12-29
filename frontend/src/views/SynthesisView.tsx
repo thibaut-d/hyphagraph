@@ -50,7 +50,8 @@ import ErrorIcon from "@mui/icons-material/Error";
 import InfoIcon from "@mui/icons-material/Info";
 
 import { getEntity, EntityRead } from "../api/entities";
-import { getInferences, InferenceRead } from "../api/inferences";
+import { getInferenceForEntity } from "../api/inferences";
+import { InferenceRead } from "../types/inference";
 import { resolveLabel } from "../utils/i18nLabel";
 
 /**
@@ -86,7 +87,7 @@ export function SynthesisView() {
 
     Promise.all([
       getEntity(id),
-      getInferences(id)
+      getInferenceForEntity(id)
     ])
       .then(([entityData, inferenceData]) => {
         setEntity(entityData);
@@ -400,10 +401,10 @@ export function SynthesisView() {
                       "This entity has limited relation types. Consider adding more evidence or relations to improve knowledge coverage."
                     )}
                   </Typography>
-                </CardContent>
-              </Card>
-            )}
-          </Box>
+                </Stack>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Action Buttons */}
           <Divider />
