@@ -16,6 +16,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 import { getEntity, updateEntity, EntityWrite } from "../api/entities";
 import { EntityRead } from "../types/entity";
+import { EntityTermsManager } from "../components/EntityTermsManager";
 
 export function EditEntityView() {
   const { id } = useParams<{ id: string }>();
@@ -157,6 +158,9 @@ export function EditEntityView() {
               multiline
               rows={4}
             />
+
+            {/* Entity Terms Manager */}
+            {id && <EntityTermsManager entityId={id} readonly={saving} />}
 
             <Box sx={{ display: "flex", gap: 2, pt: 2 }}>
               <Button

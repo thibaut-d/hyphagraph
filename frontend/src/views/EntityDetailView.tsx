@@ -36,6 +36,7 @@ import { EntityRead } from "../types/entity";
 import { InferenceRead } from "../types/inference";
 
 import { InferenceBlock } from "../components/InferenceBlock";
+import { EntityTermsDisplay } from "../components/EntityTermsDisplay";
 
 export function EntityDetailView() {
   const { id } = useParams<{ id: string }>();
@@ -159,12 +160,17 @@ export function EntityDetailView() {
             justifyContent="space-between"
             alignItems="center"
           >
-            <div>
+            <Box sx={{ flexGrow: 1 }}>
               <Typography variant="h4">{entity.slug}</Typography>
               <Typography variant="subtitle2" color="text.secondary">
                 {entity.summary?.en || entity.kind}
               </Typography>
-            </div>
+
+              {/* Alternative Names/Aliases */}
+              <Box sx={{ mt: 2 }}>
+                <EntityTermsDisplay entityId={entity.id} />
+              </Box>
+            </Box>
 
             <Box sx={{ display: "flex", gap: 1 }}>
               <Button
