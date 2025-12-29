@@ -118,10 +118,12 @@ class SearchService:
         query_lower = filters.query.lower()
         search_pattern = f"%{query_lower}%"
 
-        # Build base query
+        # Build base query with LEFT JOIN to entity terms
+        # Use DISTINCT to avoid duplicates when entity has multiple matching terms
         base_query = (
             select(Entity, EntityRevision)
             .join(EntityRevision, Entity.id == EntityRevision.entity_id)
+            .outerjoin(EntityTerm, Entity.id == EntityTerm.entity_id)
             .where(EntityRevision.is_current == True)
         )
 
@@ -148,14 +150,25 @@ class SearchService:
                 )
             )
 
+        # Search in entity terms (aliases/synonyms)
+        if filters.query:
+            search_conditions.append(
+                func.lower(EntityTerm.term).contains(query_lower)
+            )
+
         # Combine search conditions with OR
         base_query = base_query.where(or_(*search_conditions))
 
+        # Make query distinct to avoid duplicates from multiple term matches
+        base_query = base_query.distinct()
+
         # Calculate relevance score
-        # Higher score for exact slug matches, lower for summary matches
+        # Higher score for exact matches, prioritize slug > terms > summary
         relevance_score = case(
-            (func.lower(EntityRevision.slug) == query_lower, 1.0),  # Exact match
+            (func.lower(EntityRevision.slug) == query_lower, 1.0),  # Exact slug match
+            (func.lower(EntityTerm.term) == query_lower, 0.95),  # Exact term match
             (func.lower(EntityRevision.slug).contains(query_lower), 0.8),  # Slug contains
+            (func.lower(EntityTerm.term).contains(query_lower), 0.7),  # Term contains
             else_=0.5,  # Summary match
         ).label("relevance")
 
@@ -434,8 +447,9 @@ class SearchService:
         query_lower = request.query.lower()
         search_types = request.types or ["entity", "source"]
 
-        # Get entity suggestions
+        # Get entity suggestions (from slugs and terms)
         if "entity" in search_types:
+            # Get suggestions from entity slugs
             entity_stmt = (
                 select(Entity.id, EntityRevision.slug, EntityRevision.ui_category_id)
                 .join(EntityRevision, Entity.id == EntityRevision.entity_id)
@@ -455,6 +469,30 @@ class SearchService:
                         secondary=None,  # Could add category label here
                     )
                 )
+
+            # Get suggestions from entity terms (if we haven't hit the limit)
+            if len(suggestions) < request.limit:
+                remaining = request.limit - len(suggestions)
+                term_stmt = (
+                    select(Entity.id, EntityTerm.term, EntityRevision.slug)
+                    .join(Entity, EntityTerm.entity_id == Entity.id)
+                    .join(EntityRevision, Entity.id == EntityRevision.entity_id)
+                    .where(EntityRevision.is_current == True)
+                    .where(func.lower(EntityTerm.term).startswith(query_lower))
+                    .order_by(EntityTerm.term)
+                    .limit(remaining)
+                )
+
+                result = await self.db.execute(term_stmt)
+                for entity_id, term, slug in result.all():
+                    suggestions.append(
+                        SearchSuggestion(
+                            id=entity_id,
+                            type="entity",
+                            label=term,
+                            secondary=f"→ {slug}",  # Show which entity this term belongs to
+                        )
+                    )
 
         # Get source suggestions
         if "source" in search_types and len(suggestions) < request.limit:

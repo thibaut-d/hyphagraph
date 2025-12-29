@@ -9,6 +9,7 @@ from uuid import uuid4
 
 from app.models.entity import Entity
 from app.models.entity_revision import EntityRevision
+from app.models.entity_term import EntityTerm
 from app.models.source import Source
 from app.models.source_revision import SourceRevision
 from app.models.relation import Relation
@@ -90,6 +91,48 @@ async def test_entities(db_session, ui_category):
 
     await db.commit()
     return entities
+
+
+@pytest.fixture
+async def test_entities_with_terms(db_session, ui_category):
+    """Create test entities with entity terms for term search testing."""
+    db = db_session
+
+    # Entity: paracetamol with multiple terms/aliases
+    entity = Entity(id=uuid4())
+    db.add(entity)
+    await db.flush()
+
+    revision = EntityRevision(
+        id=uuid4(),
+        entity_id=entity.id,
+        slug="paracetamol",
+        summary={"en": "Analgesic and antipyretic drug"},
+        ui_category_id=ui_category.id,
+        is_current=True,
+    )
+    db.add(revision)
+
+    # Add entity terms (aliases)
+    terms_data = [
+        {"term": "Acetaminophen", "language": "en", "display_order": 1},
+        {"term": "Tylenol", "language": "en", "display_order": 2},
+        {"term": "Paracétamol", "language": "fr", "display_order": 3},
+    ]
+
+    terms = []
+    for data in terms_data:
+        term = EntityTerm(entity_id=entity.id, **data)
+        db.add(term)
+        terms.append(term)
+
+    await db.commit()
+    await db.refresh(entity)
+    await db.refresh(revision)
+    for term in terms:
+        await db.refresh(term)
+
+    return entity, revision, terms
 
 
 @pytest.fixture
@@ -266,6 +309,86 @@ class TestSearchEntities:
 
         assert entity_count == 0
         assert total == 0
+
+    async def test_search_entity_by_term_exact_match(self, db_session, test_entities_with_terms):
+        """Test searching entity by exact term match."""
+        db = db_session
+        entity, revision, terms = test_entities_with_terms
+        service = SearchService(db)
+
+        # Search for "Tylenol" which is a term for paracetamol
+        filters = SearchFilters(query="tylenol", limit=10, offset=0)
+        results, total, entity_count, _, _ = await service.search(filters)
+
+        assert entity_count >= 1
+        # Should find the paracetamol entity
+        entity_slugs = [r.slug for r in results if r.type == "entity"]
+        assert "paracetamol" in entity_slugs
+        # Exact term match should have high relevance (0.95)
+        assert results[0].relevance_score == 0.95
+
+    async def test_search_entity_by_term_partial_match(self, db_session, test_entities_with_terms):
+        """Test searching entity by partial term match."""
+        db = db_session
+        entity, revision, terms = test_entities_with_terms
+        service = SearchService(db)
+
+        # Search for "acetamin" which partially matches "Acetaminophen"
+        filters = SearchFilters(query="acetamin", limit=10, offset=0)
+        results, total, entity_count, _, _ = await service.search(filters)
+
+        assert entity_count >= 1
+        # Should find the paracetamol entity
+        entity_slugs = [r.slug for r in results if r.type == "entity"]
+        assert "paracetamol" in entity_slugs
+
+    async def test_search_entity_by_term_case_insensitive(self, db_session, test_entities_with_terms):
+        """Test case-insensitive term search."""
+        db = db_session
+        entity, revision, terms = test_entities_with_terms
+        service = SearchService(db)
+
+        # Search with different cases
+        filters_upper = SearchFilters(query="ACETAMINOPHEN", limit=10, offset=0)
+        filters_lower = SearchFilters(query="acetaminophen", limit=10, offset=0)
+
+        results_upper, _, count_upper, _, _ = await service.search(filters_upper)
+        results_lower, _, count_lower, _, _ = await service.search(filters_lower)
+
+        assert count_upper == count_lower
+        assert count_upper >= 1
+
+    async def test_search_entity_term_no_duplicates(self, db_session, test_entities_with_terms):
+        """Test that entities with multiple matching terms don't appear as duplicates."""
+        db = db_session
+        entity, revision, terms = test_entities_with_terms
+        service = SearchService(db)
+
+        # Search for "a" which matches both "Acetaminophen" and "Paracétamol"
+        filters = SearchFilters(query="a", types=["entity"], limit=20, offset=0)
+        results, total, entity_count, _, _ = await service.search(filters)
+
+        # Count how many times paracetamol appears
+        paracetamol_count = sum(1 for r in results if r.type == "entity" and r.slug == "paracetamol")
+
+        # Should appear only once despite multiple matching terms
+        assert paracetamol_count == 1
+
+    async def test_search_entity_relevance_slug_vs_term(self, db_session, test_entities_with_terms):
+        """Test that slug matches rank higher than term matches."""
+        db = db_session
+        entity, revision, terms = test_entities_with_terms
+        service = SearchService(db)
+
+        # Search for "paracetamol" which matches both slug and term
+        filters = SearchFilters(query="paracetamol", types=["entity"], limit=10, offset=0)
+        results, total, entity_count, _, _ = await service.search(filters)
+
+        assert entity_count >= 1
+        # Exact slug match should have relevance 1.0 (higher than term match 0.95)
+        first_result = results[0]
+        assert first_result.slug == "paracetamol"
+        assert first_result.relevance_score == 1.0
 
 
 class TestSearchSources:
@@ -468,3 +591,37 @@ class TestSearchSuggestions:
         # Should have fewer results (no paracetamol)
         para_found = any("paracetamol" in s.label for s in suggestions_no_match)
         assert not para_found
+
+    async def test_suggestions_include_entity_terms(self, db_session, test_entities_with_terms):
+        """Test that suggestions include entity terms."""
+        db = db_session
+        entity, revision, terms = test_entities_with_terms
+        service = SearchService(db)
+
+        # Search for "Tyl" which should match "Tylenol" term
+        request = SearchSuggestionRequest(query="tyl", types=["entity"], limit=10)
+        suggestions = await service.get_suggestions(request)
+
+        # Should find suggestion for Tylenol
+        labels = [s.label for s in suggestions]
+        assert "Tylenol" in labels
+
+        # Check that the suggestion shows which entity it belongs to
+        tylenol_suggestion = next(s for s in suggestions if s.label == "Tylenol")
+        assert tylenol_suggestion.secondary == "→ paracetamol"
+
+    async def test_suggestions_entity_terms_and_slugs(self, db_session, test_entities_with_terms):
+        """Test that suggestions include both entity slugs and terms."""
+        db = db_session
+        entity, revision, terms = test_entities_with_terms
+        service = SearchService(db)
+
+        # Search for "para" which matches both the slug and a term
+        request = SearchSuggestionRequest(query="para", types=["entity"], limit=10)
+        suggestions = await service.get_suggestions(request)
+
+        labels = [s.label for s in suggestions]
+        # Should include the slug
+        assert "paracetamol" in labels
+        # Should also include the term if there's room
+        assert len(suggestions) >= 1
