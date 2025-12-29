@@ -385,24 +385,46 @@ These features are **important for production readiness** but not blocking MVP:
 
 #### 7. **Entity Terms & UI Categories** ⭐
 **Priority**: MEDIUM
-**Status**: Database models exist, no UI
+**Status**: ✅ **Entity Terms COMPLETE** (2025-12-29) - UI Categories remain
 **Rationale**: Better entity management and discoverability
 
-**Deliverables**:
-- [ ] Entity term management in entity edit view
-- [ ] Display primary term and aliases in entity detail
-- [ ] Search by entity terms/aliases
+**Completed (Entity Terms)**:
+- ✅ Complete REST API with 5 endpoints (list, create, update, delete, bulk update)
+- ✅ Service layer with full CRUD operations
+- ✅ Database-agnostic IntegrityError handling (PostgreSQL & SQLite)
+- ✅ 12 comprehensive API tests (100% passing)
+- ✅ Entity term management UI in entity edit view
+- ✅ Display terms/aliases in entity detail view
+- ✅ Search integration - entities findable by any registered term
+- ✅ Autocomplete suggestions include entity terms
+- ✅ 7 search integration tests (all passing)
+- ✅ Support for 9 languages + international/no language option
+- ✅ Unique constraint on (entity_id, term, language)
+- ✅ Optional display_order for custom term sorting
+
+**Remaining Deliverables (UI Categories)**:
 - [ ] UI category picker in entity create/edit forms
 - [ ] Filter entities by UI category
 - [ ] Display category badges on entity cards
-- [ ] **Tests**: Term CRUD tests, category filter tests
+- [ ] **Tests**: Category filter tests
 
-**Files to create/modify**:
-- `backend/app/api/entity_terms.py` - CRUD for entity terms
-- `backend/app/api/ui_categories.py` - UI category management
-- `frontend/src/components/EntityTermManager.tsx`
-- `frontend/src/views/EditEntityView.tsx`
-- `backend/tests/test_entity_terms.py`
+**Files Created/Modified (Entity Terms - Complete)**:
+- ✅ `backend/app/api/entities.py` - Added 5 entity term endpoints
+- ✅ `backend/app/services/entity_term_service.py` - Service layer (307 lines)
+- ✅ `backend/app/schemas/entity_term.py` - Pydantic schemas
+- ✅ `backend/app/models/entity_term.py` - Added TimestampMixin
+- ✅ `backend/tests/test_entity_terms.py` - 12 comprehensive tests
+- ✅ `frontend/src/api/entityTerms.ts` - TypeScript API client
+- ✅ `frontend/src/components/EntityTermsManager.tsx` - Full editing UI (449 lines)
+- ✅ `frontend/src/components/EntityTermsDisplay.tsx` - Read-only display (135 lines)
+- ✅ `frontend/src/views/EntityDetailView.tsx` - Integrated display
+- ✅ `frontend/src/views/EditEntityView.tsx` - Integrated manager
+- ✅ `backend/app/services/search_service.py` - Search integration with terms
+- ✅ `backend/tests/test_search_service.py` - Added 7 search tests (26 total, all passing)
+
+**Files to create (UI Categories)**:
+- `backend/app/api/ui_categories.py` - UI category management endpoints
+- `frontend/src/components/UiCategoryPicker.tsx`
 
 ---
 
