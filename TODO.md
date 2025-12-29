@@ -1,7 +1,7 @@
 # HyphaGraph TODO — Refined Priorities
 
 **Last Updated**: 2025-12-29
-**Status**: Phase 1 Complete! All Tests Passing (Backend 251/251 ✅ + Frontend 292/292 ✅ = 543/543 ✅)
+**Status**: Phase 3 Complete! All Tests Passing (Backend 251/251 ✅ + Frontend 398/398 ✅ = 649/649 ✅)
 **Graph Visualization**: ❌ **NOT MVP** (per project requirements)
 
 ---
@@ -15,9 +15,89 @@
 - **Type Safety** - Python type hints + TypeScript throughout
 - **Complete UI** - All major views implemented (Entity/Source/Relation CRUD, Inferences, Home dashboard)
 - **i18n Support** - English + French (26 translation keys added today)
-- **Test Infrastructure** - pytest + Vitest setup, **543/543 tests passing (100%)** ✅ (251 backend + 292 frontend)
+- **Test Infrastructure** - pytest + Vitest setup, **649/649 tests passing (100%)** ✅ (251 backend + 398 frontend)
+
+### 🚧 Recent Progress (2025-12-29 Session 6)
+- **Phase 3: Component Library Tests**: ✅ **106 TESTS ADDED ACROSS 11 COMPONENTS**
+  - ✅ **EntityTermsManager Component Tests** (20 tests)
+    - File: `frontend/src/components/__tests__/EntityTermsManager.test.tsx` (589 lines)
+    - Coverage:
+      - Loading and initial state (displays terms, handles errors)
+      - Adding terms (form display, validation, creation, error handling)
+      - Editing terms (form display, updates)
+      - Deleting terms (confirmation dialog, deletion, cancellation)
+      - Language grouping (by language code, international group)
+      - Display order management
+      - Readonly mode (hides add/edit/delete buttons)
+      - Summary display (total term count)
+    - All 20 tests passing ✅
+
+  - ✅ **Layout Component Tests** (16 tests)
+    - File: `frontend/src/components/__tests__/Layout.test.tsx` (302 lines)
+    - Coverage:
+      - Rendering (app bar, menu items, global search, language toggle)
+      - Authentication integration (login button, profile menu)
+      - Navigation (active route highlighting, correct links)
+      - Language switching (toggles between en/fr)
+      - Content rendering (MUI Container)
+    - All 16 tests passing ✅
+
+  - ✅ **EntityTermsDisplay Component Tests** (14 tests)
+    - File: `frontend/src/components/__tests__/EntityTermsDisplay.test.tsx` (279 lines)
+    - Coverage:
+      - Loading state and error handling
+      - Empty state (returns null when no terms)
+      - Compact mode (chips without header)
+      - Full mode (with header and language labels)
+      - Language label mapping (EN, FR, ES, DE, IT, PT, unknown codes)
+      - Data refetching on entityId change
+      - Default compact prop behavior
+    - All 14 tests passing ✅
+
+  - ✅ **Filter Drawer Components Tests** (36 tests)
+    - File: `frontend/src/components/filters/__tests__/FilterDrawerComponents.test.tsx` (636 lines)
+    - Covers 6 components in one test suite:
+      - FilterDrawerHeader (title, badge, close button) - 4 tests
+      - FilterDrawerActions (clear all, close, disabled states) - 6 tests
+      - FilterSection (title, children, expansion) - 5 tests
+      - FilterDrawerContent (renders children) - 2 tests
+      - FilterDrawer (integration, header, actions, anchors) - 8 tests
+      - ActiveFilters (chip display, formatting, deletion) - 11 tests
+    - All 36 tests passing ✅
+    - Note: Documented ActiveFilters bug where range filters show as "2 selected" instead of formatted range
+
+  - ✅ **Utility Components Tests** (20 tests)
+    - Separate test files for each utility component:
+      - **UserAvatar.test.tsx** (9 tests) - Initials generation, name handling, sizing, background colors
+      - **ScrollToTop.test.tsx** (6 tests) - Visibility threshold, scroll behavior, cleanup
+      - **ProtectedRoute.test.tsx** (5 tests) - Loading state, authentication, redirection
+    - All 20 tests passing ✅
+
+  - **Test Summary**: All component tests passing (146/146 ✅)
+  - **Frontend Total**: 398 tests passing (up from 292, +106 tests)
+  - **Overall Total**: 649/649 tests passing (251 backend + 398 frontend)
 
 ### 🚧 Recent Progress (2025-12-29 Session 5)
+- **DisagreementsView Tests + Bug Fixes**: ✅ **16 TESTS ADDED + CRITICAL BUGS FIXED**
+  - ✅ Created comprehensive test suite for DisagreementsView component
+  - ✅ Fixed critical bugs in DisagreementsView.tsx:
+    - Fixed API import: `getInferences` → `getInferenceForEntity` (function didn't exist)
+    - Removed dead code: unused `listRelations` call and `relations` state
+    - Fixed type imports to use proper locations
+  - ✅ Test coverage includes:
+    - Loading state and error handling (entity, inference fetch failures)
+    - Scientific honesty warning display
+    - Statistics (conflicting relation types, total contradictions count)
+    - Disagreement groups with accordions
+    - Supporting/contradicting evidence chips
+    - Confidence percentages per group
+    - Multiple disagreement groups
+    - Guidance section on interpreting disagreements
+    - No contradictions state with proper messaging
+    - Navigation actions (view synthesis, back to entity)
+  - ✅ All 16 tests passing
+  - ✅ File: `frontend/src/views/__tests__/DisagreementsView.test.tsx` (532 lines)
+
 - **SynthesisView Tests + Bug Fixes**: ✅ **25 TESTS ADDED + CRITICAL BUGS FIXED**
   - ✅ Created comprehensive test suite for SynthesisView component
   - ✅ Fixed critical bugs in SynthesisView.tsx:

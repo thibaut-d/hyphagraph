@@ -27,6 +27,7 @@ import { ExplanationView } from "../views/ExplanationView";
 import { PropertyDetailView } from "../views/PropertyDetailView";
 import { SynthesisView } from "../views/SynthesisView";
 import { DisagreementsView } from "../views/DisagreementsView";
+import { EvidenceView } from "../views/EvidenceView";
 
 export const router = createBrowserRouter([
   {
@@ -41,7 +42,9 @@ export const router = createBrowserRouter([
       { path: "entities/:id/edit", element: <ProtectedRoute><EditEntityView /></ProtectedRoute> },
       { path: "entities/:id/synthesis", element: <SynthesisView /> },
       { path: "entities/:id/disagreements", element: <DisagreementsView /> },
+      { path: "entities/:id/evidence", element: <EvidenceView /> },
       { path: "entities/:id/properties/:roleType", element: <PropertyDetailView /> },
+      { path: "entities/:id/properties/:roleType/evidence", element: <EvidenceView /> },
       { path: "explain/:entityId/:roleType", element: <ExplanationView /> },
 
       { path: "sources", element: <SourcesView /> },
