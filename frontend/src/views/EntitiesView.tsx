@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
-import { listEntities, EntityFilters } from "../api/entities";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { listEntities, EntityFilters, getEntityFilterOptions, EntityFilterOptions } from "../api/entities";
 import { EntityRead } from "../types/entity";
 import { Link as RouterLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -21,7 +21,7 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import FilterListIcon from "@mui/icons-material/FilterList";
 
-import { FilterDrawer, FilterSection, SearchFilter } from "../components/filters";
+import { FilterDrawer, FilterSection, CheckboxFilter, SearchFilter } from "../components/filters";
 import { ScrollToTop } from "../components/ScrollToTop";
 import { useFilterDrawer } from "../hooks/useFilterDrawer";
 import { usePersistedFilters } from "../hooks/usePersistedFilters";
@@ -29,14 +29,47 @@ import { useDebounce } from "../hooks/useDebounce";
 import { useInfiniteScroll } from "../hooks/useInfiniteScroll";
 
 const PAGE_SIZE = 50;
+const FILTER_OPTIONS_CACHE_KEY = 'entity-filter-options-cache';
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+interface CachedFilterOptions {
+  data: EntityFilterOptions;
+  timestamp: number;
+}
+
+function getCachedFilterOptions(): EntityFilterOptions | null {
+  const cached = localStorage.getItem(FILTER_OPTIONS_CACHE_KEY);
+  if (!cached) return null;
+
+  try {
+    const { data, timestamp }: CachedFilterOptions = JSON.parse(cached);
+    if (Date.now() - timestamp > CACHE_TTL) {
+      localStorage.removeItem(FILTER_OPTIONS_CACHE_KEY);
+      return null;
+    }
+    return data;
+  } catch {
+    localStorage.removeItem(FILTER_OPTIONS_CACHE_KEY);
+    return null;
+  }
+}
+
+function setCachedFilterOptions(options: EntityFilterOptions) {
+  const cached: CachedFilterOptions = {
+    data: options,
+    timestamp: Date.now()
+  };
+  localStorage.setItem(FILTER_OPTIONS_CACHE_KEY, JSON.stringify(cached));
+}
 
 export function EntitiesView() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [entities, setEntities] = useState<EntityRead[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [offset, setOffset] = useState(0);
+  const [filterOptions, setFilterOptions] = useState<EntityFilterOptions | null>(null);
 
   // Filter state with localStorage persistence
   const {
@@ -55,6 +88,31 @@ export function EntitiesView() {
 
   // Debounce search to reduce server load during typing
   const debouncedSearch = useDebounce(filters.search, 300);
+
+  // Fetch filter options once with caching
+  useEffect(() => {
+    const cached = getCachedFilterOptions();
+    if (cached) {
+      setFilterOptions(cached);
+    } else {
+      getEntityFilterOptions().then(options => {
+        setFilterOptions(options);
+        setCachedFilterOptions(options);
+      });
+    }
+  }, []);
+
+  // Extract category options with current language labels
+  const categoryOptions = useMemo(() => {
+    if (!filterOptions) return [];
+
+    const currentLanguage = i18n.language || 'en';
+
+    return filterOptions.ui_categories.map(cat => ({
+      value: cat.id,
+      label: cat.label[currentLanguage] || cat.label.en || cat.id
+    }));
+  }, [filterOptions, i18n.language]);
 
   // Reset pagination when filters change
   useEffect(() => {
@@ -216,6 +274,16 @@ export function EntitiesView() {
         activeFilterCount={activeFilterCount}
         onClearAll={clearAllFilters}
       >
+        {categoryOptions.length > 0 && (
+          <FilterSection title={t("filters.entity_category", "Category")}>
+            <CheckboxFilter
+              options={categoryOptions}
+              value={(filters.ui_category_id as string[]) || []}
+              onChange={(value) => setFilter('ui_category_id', value)}
+            />
+          </FilterSection>
+        )}
+
         <FilterSection title={t("filters.search", "Search")}>
           <SearchFilter
             value={(filters.search as string) || ''}

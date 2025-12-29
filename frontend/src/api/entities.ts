@@ -19,6 +19,18 @@ export interface EntityFilters {
   offset?: number;
 }
 
+export interface UICategoryOption {
+  id: string;
+  label: Record<string, string>; // i18n: { en: "Drug", fr: "Médicament" }
+}
+
+export interface EntityFilterOptions {
+  ui_categories: UICategoryOption[];
+  consensus_levels: [number, number] | null;
+  evidence_quality_range: [number, number] | null;
+  year_range: [number, number] | null;
+}
+
 export interface PaginatedResponse<T> {
   items: T[];
   total: number;
@@ -71,4 +83,8 @@ export function deleteEntity(id: string): Promise<void> {
   return apiFetch(`/entities/${id}`, {
     method: "DELETE",
   });
+}
+
+export function getEntityFilterOptions(): Promise<EntityFilterOptions> {
+  return apiFetch("/entities/filter-options");
 }

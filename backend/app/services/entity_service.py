@@ -5,7 +5,7 @@ from typing import Optional, Tuple
 from uuid import UUID
 
 from app.schemas.entity import EntityWrite, EntityRead
-from app.schemas.filters import EntityFilters
+from app.schemas.filters import EntityFilters, EntityFilterOptions, UICategoryOption
 from app.repositories.entity_repo import EntityRepository
 from app.models.entity import Entity
 from app.models.entity_revision import EntityRevision
@@ -192,3 +192,32 @@ class EntityService:
         except Exception:
             await self.db.rollback()
             raise
+
+    async def get_filter_options(self) -> EntityFilterOptions:
+        """
+        Get available filter options for entities.
+
+        Returns distinct UI categories with i18n labels using efficient database queries.
+        This avoids fetching all entity records when populating filter UI controls.
+
+        Returns:
+            EntityFilterOptions with available ui_categories
+        """
+        from app.models.ui_category import UiCategory
+
+        # Get all UI categories with their i18n labels
+        category_query = select(UiCategory.id, UiCategory.labels).order_by(UiCategory.order)
+        category_result = await self.db.execute(category_query)
+        categories = category_result.all()
+
+        ui_categories = [
+            UICategoryOption(id=str(cat_id), label=labels)
+            for cat_id, labels in categories
+        ]
+
+        return EntityFilterOptions(
+            ui_categories=ui_categories,
+            consensus_levels=None,  # Future: compute from inferences
+            evidence_quality_range=None,  # Future: compute from relations
+            year_range=None,  # Future: compute from related sources
+        )

@@ -5,12 +5,32 @@ from typing import Optional, List
 
 from app.database import get_db
 from app.schemas.entity import EntityWrite, EntityRead
-from app.schemas.filters import EntityFilters
+from app.schemas.filters import EntityFilters, EntityFilterOptions
 from app.schemas.pagination import PaginatedResponse
 from app.services.entity_service import EntityService
 from app.dependencies.auth import get_current_user
 
 router = APIRouter()
+
+
+@router.get("/filter-options", response_model=EntityFilterOptions)
+async def get_entity_filter_options(
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get available filter options for entities.
+
+    Returns distinct UI categories with i18n labels.
+    Useful for populating filter UI controls efficiently.
+
+    Returns:
+        - **ui_categories**: List of UI categories with id and i18n labels
+        - **consensus_levels**: [Future] Min/max consensus levels from inferences
+        - **evidence_quality_range**: [Future] Min/max evidence quality scores
+        - **year_range**: [Future] Min/max years from related sources
+    """
+    service = EntityService(db)
+    return await service.get_filter_options()
 
 
 @router.post("/", response_model=EntityRead)
