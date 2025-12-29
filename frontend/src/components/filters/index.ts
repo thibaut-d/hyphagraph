@@ -12,3 +12,4 @@ export * from './RangeFilter';
 export * from './YearRangeFilter';
 export * from './SearchFilter';
 export * from './ActiveFilters';
+export * from './EntityDetailFilters';

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams, Link as RouterLink, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
@@ -13,13 +13,14 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
-  IconButton,
   Box,
   TextField,
   Chip,
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Badge,
+  Alert,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -31,12 +32,17 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 import { getEntity, deleteEntity } from "../api/entities";
 import { getInferenceForEntity, ScopeFilter } from "../api/inferences";
+import { getSource } from "../api/sources";
 
 import { EntityRead } from "../types/entity";
 import { InferenceRead } from "../types/inference";
+import { SourceRead } from "../types/source";
+import { RelationRead } from "../types/relation";
 
 import { InferenceBlock } from "../components/InferenceBlock";
 import { EntityTermsDisplay } from "../components/EntityTermsDisplay";
+import { FilterDrawer, EntityDetailFilters, EntityDetailFilterValues } from "../components/filters";
+import { useFilterDrawer } from "../hooks/useFilterDrawer";
 
 export function EntityDetailView() {
   const { id } = useParams<{ id: string }>();
@@ -49,10 +55,25 @@ export function EntityDetailView() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  // Scope filter state
+  // Source data for filtering
+  const [sources, setSources] = useState<Record<string, SourceRead>>({});
+  const [loadingSources, setLoadingSources] = useState(false);
+
+  // Scope filter state (existing population/condition filtering)
   const [scopeFilter, setScopeFilter] = useState<ScopeFilter>({});
   const [newFilterKey, setNewFilterKey] = useState("");
   const [newFilterValue, setNewFilterValue] = useState("");
+
+  // Evidence filter drawer state (new UX.md Section 5.3 filtering)
+  const {
+    isOpen: filterDrawerOpen,
+    openDrawer: openFilterDrawer,
+    closeDrawer: closeFilterDrawer,
+    filters: evidenceFilters,
+    setFilter: setEvidenceFilter,
+    clearAllFilters: clearEvidenceFilters,
+    activeFilterCount: evidenceFilterCount,
+  } = useFilterDrawer();
 
   const loadInference = async (filter: ScopeFilter) => {
     if (!id) return;
@@ -60,6 +81,37 @@ export function EntityDetailView() {
     try {
       const inferenceRes = await getInferenceForEntity(id, filter);
       setInference(inferenceRes);
+
+      // Extract unique source IDs from relations
+      const sourceIds = new Set<string>();
+      Object.values(inferenceRes.relations_by_kind).forEach((relations) => {
+        relations.forEach((rel) => {
+          sourceIds.add(rel.source_id);
+        });
+      });
+
+      // Fetch all source data for filtering
+      if (sourceIds.size > 0) {
+        setLoadingSources(true);
+        const sourcePromises = Array.from(sourceIds).map(async (sourceId) => {
+          try {
+            return await getSource(sourceId);
+          } catch (error) {
+            console.error(`Failed to load source ${sourceId}:`, error);
+            return null;
+          }
+        });
+
+        const sourcesData = await Promise.all(sourcePromises);
+        const sourcesMap: Record<string, SourceRead> = {};
+        sourcesData.forEach((source) => {
+          if (source) {
+            sourcesMap[source.id] = source;
+          }
+        });
+        setSources(sourcesMap);
+        setLoadingSources(false);
+      }
     } catch (error) {
       console.error("Failed to load inference:", error);
     }
@@ -74,9 +126,42 @@ export function EntityDetailView() {
       getEntity(id),
       getInferenceForEntity(id),
     ])
-      .then(([entityRes, inferenceRes]) => {
+      .then(async ([entityRes, inferenceRes]) => {
         setEntity(entityRes);
         setInference(inferenceRes);
+
+        // Extract unique source IDs from relations
+        if (!inferenceRes) return;
+
+        const sourceIds = new Set<string>();
+        Object.values(inferenceRes.relations_by_kind).forEach((relations) => {
+          relations.forEach((rel) => {
+            sourceIds.add(rel.source_id);
+          });
+        });
+
+        // Fetch all source data for filtering
+        if (sourceIds.size > 0) {
+          setLoadingSources(true);
+          const sourcePromises = Array.from(sourceIds).map(async (sourceId) => {
+            try {
+              return await getSource(sourceId);
+            } catch (error) {
+              console.error(`Failed to load source ${sourceId}:`, error);
+              return null;
+            }
+          });
+
+          const sourcesData = await Promise.all(sourcePromises);
+          const sourcesMap: Record<string, SourceRead> = {};
+          sourcesData.forEach((source) => {
+            if (source) {
+              sourcesMap[source.id] = source;
+            }
+          });
+          setSources(sourcesMap);
+          setLoadingSources(false);
+        }
       })
       .finally(() => setLoading(false));
   }, [id]);
@@ -123,6 +208,89 @@ export function EntityDetailView() {
     loadInference({});
   };
 
+  // Apply evidence filters to inference data (client-side)
+  const filteredInference = useMemo((): InferenceRead | null => {
+    if (!inference || evidenceFilterCount === 0) {
+      return inference;
+    }
+
+    const filters = evidenceFilters as EntityDetailFilterValues;
+
+    // Filter relations based on evidence filters
+    const filteredRelationsByKind: Record<string, RelationRead[]> = {};
+    let totalFilteredOut = 0;
+
+    Object.entries(inference.relations_by_kind).forEach(([kind, relations]) => {
+      const filtered = relations.filter((relation) => {
+        const source = sources[relation.source_id];
+        if (!source) return true; // Keep if source not loaded yet
+
+        // Filter by direction
+        if (filters.directions && filters.directions.length > 0) {
+          if (!relation.direction || !filters.directions.includes(relation.direction)) {
+            totalFilteredOut++;
+            return false;
+          }
+        }
+
+        // Filter by source kind (study type)
+        if (filters.kinds && filters.kinds.length > 0) {
+          if (!filters.kinds.includes(source.kind)) {
+            totalFilteredOut++;
+            return false;
+          }
+        }
+
+        // Filter by year range
+        if (filters.yearRange) {
+          const [minYear, maxYear] = filters.yearRange;
+          if (source.year < minYear || source.year > maxYear) {
+            totalFilteredOut++;
+            return false;
+          }
+        }
+
+        // Filter by minimum trust level
+        if (filters.minTrustLevel !== undefined && filters.minTrustLevel > 0) {
+          if (source.trust_level < filters.minTrustLevel) {
+            totalFilteredOut++;
+            return false;
+          }
+        }
+
+        return true;
+      });
+
+      if (filtered.length > 0) {
+        filteredRelationsByKind[kind] = filtered;
+      }
+    });
+
+    return {
+      ...inference,
+      relations_by_kind: filteredRelationsByKind,
+    };
+  }, [inference, evidenceFilters, evidenceFilterCount, sources]);
+
+  // Count total relations before and after filtering
+  const totalRelationsCount = useMemo(() => {
+    if (!inference) return 0;
+    return Object.values(inference.relations_by_kind).reduce(
+      (sum, relations) => sum + relations.length,
+      0
+    );
+  }, [inference]);
+
+  const filteredRelationsCount = useMemo(() => {
+    if (!filteredInference) return 0;
+    return Object.values(filteredInference.relations_by_kind).reduce(
+      (sum, relations) => sum + relations.length,
+      0
+    );
+  }, [filteredInference]);
+
+  const hiddenRelationsCount = totalRelationsCount - filteredRelationsCount;
+
   // Loading state
   if (loading) {
     return (
@@ -140,6 +308,8 @@ export function EntityDetailView() {
       </Typography>
     );
   }
+
+  const sourcesArray = Object.values(sources);
 
   return (
     <Stack spacing={3}>
@@ -215,16 +385,41 @@ export function EntityDetailView() {
               {t("entity.inference", "Related assertions")}
             </Typography>
 
-            {Object.keys(scopeFilter).length > 0 && (
-              <Button
-                size="small"
-                onClick={handleClearFilters}
-                startIcon={<CloseIcon />}
-              >
-                Clear Filters
-              </Button>
-            )}
+            <Stack direction="row" spacing={2}>
+              {/* Evidence Filter Button */}
+              <Badge badgeContent={evidenceFilterCount} color="primary">
+                <Button
+                  variant="outlined"
+                  startIcon={<FilterListIcon />}
+                  onClick={openFilterDrawer}
+                  disabled={loadingSources}
+                >
+                  {t("filters.evidence", "Filter Evidence")}
+                </Button>
+              </Badge>
+
+              {Object.keys(scopeFilter).length > 0 && (
+                <Button
+                  size="small"
+                  onClick={handleClearFilters}
+                  startIcon={<CloseIcon />}
+                >
+                  Clear Scope Filters
+                </Button>
+              )}
+            </Stack>
           </Box>
+
+          {/* Warning when evidence is hidden by filters */}
+          {evidenceFilterCount > 0 && hiddenRelationsCount > 0 && (
+            <Alert severity="warning">
+              {t(
+                "filters.evidence_hidden_warning",
+                "{{count}} relation(s) hidden by evidence filters. These are excluded from the view but do not affect computed scores.",
+                { count: hiddenRelationsCount }
+              )}
+            </Alert>
+          )}
 
           {/* Scope Filter Controls */}
           <Accordion>
@@ -307,8 +502,8 @@ export function EntityDetailView() {
           </Accordion>
 
           {/* Inference Display */}
-          {inference ? (
-            <InferenceBlock inference={inference} />
+          {filteredInference ? (
+            <InferenceBlock inference={filteredInference} />
           ) : (
             <Typography color="text.secondary">
               {t("common.no_data", "No data")}
@@ -316,6 +511,21 @@ export function EntityDetailView() {
           )}
         </Stack>
       </Paper>
+
+      {/* Evidence Filter Drawer */}
+      <FilterDrawer
+        open={filterDrawerOpen}
+        onClose={closeFilterDrawer}
+        title={t("filters.evidence", "Filter Evidence")}
+        activeFilterCount={evidenceFilterCount}
+        onClearAll={clearEvidenceFilters}
+      >
+        <EntityDetailFilters
+          filters={evidenceFilters as EntityDetailFilterValues}
+          onFilterChange={setEvidenceFilter}
+          sources={sourcesArray}
+        />
+      </FilterDrawer>
 
       {/* Delete Confirmation Dialog */}
       <Dialog
