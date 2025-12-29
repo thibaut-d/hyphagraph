@@ -333,6 +333,17 @@ These features are **highly valuable for usability** but the system can function
 - ✅ "No results" message when filters match nothing
 - ✅ Alert showing active filter count and result count
 
+**✅ COMPLETED - Entity Detail Drawer** (`/entities/:id`) - (2025-12-29):
+- ✅ Filter by evidence direction (supports/contradicts/neutral/mixed)
+- ✅ Filter by study type (source kind)
+- ✅ Filter by publication year range
+- ✅ Filter by minimum source authority (trust level)
+- ✅ Warning when evidence is hidden (alert shows count of hidden relations)
+- ✅ Active filter count badge
+- ✅ Client-side filtering (useMemo for performance)
+- ✅ Source data fetching for all relations on page load
+- ✅ Clear messaging that filters don't affect computed scores
+
 **🟡 PENDING - Advanced Filters** (require computed/derived data from backend):
 - [ ] **Entity List** - Additional UX.md filters:
   - [ ] Clinical effects (requires relation data aggregation)
@@ -342,12 +353,6 @@ These features are **highly valuable for usability** but the system can function
 - [ ] **Source List** - Additional UX.md filters:
   - [ ] Domain/topic (requires domain taxonomy)
   - [ ] Graph role (pillar/supporting/contradictory - requires relation analysis)
-- [ ] **Entity Detail Drawer** (`/entities/:id`) - Not yet implemented:
-  - [ ] Filter by evidence direction (supports/contradicts/heterogeneous)
-  - [ ] Filter by study type
-  - [ ] Filter by publication year
-  - [ ] Filter by minimum source authority
-  - [ ] Warning when evidence is hidden
 
 **Files Created/Modified**:
 - ✅ `frontend/src/components/filters/FilterDrawer.tsx` (1,797 bytes)
@@ -355,6 +360,7 @@ These features are **highly valuable for usability** but the system can function
 - ✅ `frontend/src/components/filters/RangeFilter.tsx` (1,882 bytes)
 - ✅ `frontend/src/components/filters/SearchFilter.tsx` (1,950 bytes)
 - ✅ `frontend/src/components/filters/YearRangeFilter.tsx` (497 bytes)
+- ✅ `frontend/src/components/filters/EntityDetailFilters.tsx` (117 lines) - **NEW** (2025-12-29)
 - ✅ `frontend/src/components/filters/__tests__/CheckboxFilter.test.tsx` (6 tests)
 - ✅ `frontend/src/components/filters/__tests__/RangeFilter.test.tsx` (5 tests)
 - ✅ `frontend/src/components/filters/__tests__/SearchFilter.test.tsx` (5 tests)
@@ -363,6 +369,7 @@ These features are **highly valuable for usability** but the system can function
 - ✅ `frontend/src/hooks/usePersistedFilters.ts` (localStorage hook)
 - ✅ `frontend/src/views/EntitiesView.tsx` (301 lines - filter drawer integrated)
 - ✅ `frontend/src/views/SourcesView.tsx` (338 lines - filter drawer integrated)
+- ✅ `frontend/src/views/EntityDetailView.tsx` (555 lines - evidence filter drawer) - **UPDATED** (2025-12-29)
 - ✅ `backend/app/api/entities.py` - Filter options endpoint
 - ✅ `backend/app/api/sources.py` - Filter options endpoint
 - ✅ `backend/app/services/entity_service.py` - get_filter_options()
