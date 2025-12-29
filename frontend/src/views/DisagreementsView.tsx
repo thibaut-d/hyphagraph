@@ -51,8 +51,9 @@ import ThumbDownIcon from "@mui/icons-material/ThumbDown";
 import InfoIcon from "@mui/icons-material/Info";
 
 import { getEntity, EntityRead } from "../api/entities";
-import { getInferences, InferenceRead } from "../api/inferences";
-import { listRelations, RelationRead } from "../api/relations";
+import { getInferenceForEntity } from "../api/inferences";
+import { InferenceRead } from "../types/inference";
+import { RelationRead } from "../types/relation";
 import { resolveLabel } from "../utils/i18nLabel";
 
 interface DisagreementGroup {
@@ -82,11 +83,10 @@ export function DisagreementsView() {
 
   const [entity, setEntity] = useState<EntityRead | null>(null);
   const [inference, setInference] = useState<InferenceRead | null>(null);
-  const [relations, setRelations] = useState<RelationRead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch entity, inferences, and relations
+  // Fetch entity and inferences
   useEffect(() => {
     if (!id) {
       setError("Missing entity ID");
@@ -99,13 +99,11 @@ export function DisagreementsView() {
 
     Promise.all([
       getEntity(id),
-      getInferences(id),
-      listRelations({ entity_id: id, limit: 1000 })
+      getInferenceForEntity(id)
     ])
-      .then(([entityData, inferenceData, relationsData]) => {
+      .then(([entityData, inferenceData]) => {
         setEntity(entityData);
         setInference(inferenceData);
-        setRelations(relationsData.items);
       })
       .catch((err) => {
         console.error("Failed to load disagreements:", err);
