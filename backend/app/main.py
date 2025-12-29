@@ -6,7 +6,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
-from app.api import sources, entities, relations, inferences, explain
+from app.api import sources, entities, relations, inferences, explain, search
 from app.database import AsyncSessionLocal
 from app.startup import run_startup_tasks
 from app.utils.rate_limit import limiter
@@ -57,6 +57,7 @@ app.include_router(entities.router, prefix="/api/entities", tags=["entities"])
 app.include_router(relations.router, prefix="/api/relations", tags=["relations"])
 app.include_router(inferences.router, prefix="/api/inferences", tags=["inferences"])
 app.include_router(explain.router, prefix="/api/explain", tags=["explain"])
+app.include_router(search.router, prefix="/api")
 
 # --- Healthcheck ---
 @app.get("/health", tags=["health"])
