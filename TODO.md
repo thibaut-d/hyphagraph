@@ -1,7 +1,7 @@
 # HyphaGraph TODO — Refined Priorities
 
 **Last Updated**: 2025-12-29
-**Status**: Phase 1 Complete! All Tests Passing (Backend 251/251 ✅ + Frontend 278/278 ✅ = 529/529 ✅)
+**Status**: Phase 1 Complete! All Tests Passing (Backend 251/251 ✅ + Frontend 292/292 ✅ = 543/543 ✅)
 **Graph Visualization**: ❌ **NOT MVP** (per project requirements)
 
 ---
@@ -15,9 +15,24 @@
 - **Type Safety** - Python type hints + TypeScript throughout
 - **Complete UI** - All major views implemented (Entity/Source/Relation CRUD, Inferences, Home dashboard)
 - **i18n Support** - English + French (26 translation keys added today)
-- **Test Infrastructure** - pytest + Vitest setup, **529/529 tests passing (100%)** ✅ (251 backend + 278 frontend)
+- **Test Infrastructure** - pytest + Vitest setup, **543/543 tests passing (100%)** ✅ (251 backend + 292 frontend)
 
-### 🚧 Recent Progress (2025-12-29 Session 4)
+### 🚧 Recent Progress (2025-12-29 Session 5)
+- **PropertyDetailView Tests**: ✅ **14 TESTS ADDED**
+  - ✅ Created comprehensive test suite for PropertyDetailView component
+  - ✅ Test coverage includes:
+    - Loading state and error handling
+    - Successful rendering and data display
+    - Natural language summary display
+    - Evidence chain rendering (using mocked EvidenceTrace component)
+    - Consensus status determination (strong/moderate/weak/disputed)
+    - Known limitations section display
+    - Contradictions display with proper scientific honesty warnings
+  - ✅ All 14 tests passing
+  - ✅ Completes Phase 2 UX-Critical Views testing coverage
+  - ✅ File: `frontend/src/views/__tests__/PropertyDetailView.test.tsx` (428 lines)
+
+### 🚧 Previous Progress (2025-12-29 Session 4)
 - **Documentation Reorganization**: ✅ **COMPLETE**
   - ✅ Created `./doc/` directory for technical documentation
   - ✅ Moved 7 documentation files to `doc/`:
