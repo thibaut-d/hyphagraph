@@ -46,21 +46,31 @@ This starts:
 
 The database schema is managed with Alembic migrations.
 
+**⚠️ Important:** All commands must be run inside the Docker container, not on your host machine.
+
 In another terminal:
 
-```
-cd backend
-alembic upgrade head
+```bash
+# Run migrations inside the API container
+docker compose exec api alembic upgrade head
 ```
 
 This will create all tables with the correct schema, indexes, and constraints.
 
 **Note:** If you need to reset the database:
 
+```bash
+docker compose exec api alembic downgrade base  # Drop all tables
+docker compose exec api alembic upgrade head     # Recreate from scratch
 ```
-cd backend
-alembic downgrade base  # Drop all tables
-alembic upgrade head     # Recreate from scratch
+
+**Alternative:** Interactive shell inside the container:
+
+```bash
+docker compose exec api bash
+# Now you're inside the container
+alembic upgrade head
+exit
 ```
 
 
@@ -222,33 +232,34 @@ This returns a structured, traceable view of assertions — no synthesis, no con
 
 ## 9. Running tests
 
-### Backend tests
+### Backend tests (inside Docker)
 
 ```bash
-cd backend
-
 # All tests
-pytest
+docker compose exec api pytest
 
 # With coverage
-pytest --cov=app --cov-report=html --cov-report=term-missing
+docker compose exec api pytest --cov=app --cov-report=html --cov-report=term-missing
 
 # Specific test file
-pytest tests/test_auth_endpoints.py
+docker compose exec api pytest tests/test_auth_endpoints.py
 
 # Verbose
-pytest -vv
+docker compose exec api pytest -vv
 ```
 
-### Frontend tests
+### Frontend tests (can run locally or in Docker)
 
 ```bash
+# Locally (if Node.js installed)
 cd frontend
-
-# Run tests
 npm test
 
-# With UI
+# Or inside Docker
+docker compose exec web npm test
+
+# With UI (locally only)
+cd frontend
 npm run test:ui
 
 # With coverage
@@ -286,8 +297,7 @@ docker compose restart db
 ### "Migrations not applied"
 
 ```bash
-cd backend
-alembic upgrade head
+docker compose exec api alembic upgrade head
 ```
 
 ### "Port already in use"
@@ -312,9 +322,8 @@ docker compose down -v
 # Rebuild and restart
 docker compose up --build -d
 
-# Reapply migrations
-cd backend
-alembic upgrade head
+# Reapply migrations (inside Docker container)
+docker compose exec api alembic upgrade head
 ```
 
 
@@ -331,27 +340,25 @@ docker compose logs -f api web
 
 # Make code changes (auto-reload enabled)
 
-# Run tests
-cd backend && pytest
+# Run tests (backend inside Docker, frontend locally or in Docker)
+docker compose exec api pytest
 cd frontend && npm test
 
-# Create migration if models changed
-cd backend
-alembic revision --autogenerate -m "Add new field"
-alembic upgrade head
+# Create migration if models changed (inside Docker)
+docker compose exec api alembic revision --autogenerate -m "Add new field"
+docker compose exec api alembic upgrade head
 ```
 
 ### Before committing
 
 ```bash
-# Backend checks
-cd backend
-pytest --cov=app
-ruff check .
-ruff format .
-mypy app/
+# Backend checks (inside Docker)
+docker compose exec api pytest --cov=app
+docker compose exec api ruff check .
+docker compose exec api ruff format .
+docker compose exec api mypy app/
 
-# Frontend checks
+# Frontend checks (locally or in Docker)
 cd frontend
 npm test
 npm run lint
@@ -411,5 +418,3 @@ After setup, read these documents in order:
 - **Architecture Questions**: See `ARCHITECTURE.md`
 - **Code Questions**: See `CODE_GUIDE.md`
 - **Issues**: Report on GitHub
-
-

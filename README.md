@@ -48,43 +48,29 @@ it extracts explicit factual statements (“claims”) from documents and repres
 
 - Intended for exploration, research, and prototyping
 
-
-
 ---
 
 ## Quick start
 
 To get started with the project, read the following files in this order:
 
-1. **GETTING_STARTED.md**
+**GETTING_STARTED.md**
    Setup instructions and local development workflow
 
-2. **AUTHENTICATION.md**
-   Authentication system implementation and API usage
-
-3. **PROJECT.md**
+**PROJECT.md**
    Scientific motivation, conceptual foundations, and detailed rationale
 
-4. **ARCHITECTURE.md**
+**ARCHITECTURE.md**
    System architecture, component responsibilities, and design constraints
 
-5. **DATABASE_SCHEMA.md**
+**DATABASE_SCHEMA.md**
    Canonical logical data model and schema definitions
 
-6. **COMPUTED_RELATIONS.md**
-   Inference model and mathematical formulas for knowledge derivation
-
-7. **CODE_GUIDE.md**
-   Coding guidelines and best practices
-
-8. **STRUCTURE.md**
+**STRUCTURE.md**
    Project file structure and organization
 
-9. **UX.md**
+**UX.md**
    Design brief and user experience principles
-
-
-
 
 ---
 
@@ -111,12 +97,14 @@ To get started with the project, read the following files in this order:
 ### Unit & Integration Tests
 
 **Backend (pytest)**:
+
 ```bash
 cd backend
 pytest
 ```
 
 **Frontend (Vitest)**:
+
 ```bash
 cd frontend
 npm test
@@ -127,6 +115,7 @@ npm test
 End-to-end tests cover complete user workflows across the entire stack.
 
 **Quick Start**:
+
 ```bash
 # Install dependencies
 cd e2e
@@ -142,6 +131,7 @@ npm test
 ```
 
 **Test Coverage**:
+
 - Authentication flows (login, registration, password reset)
 - Entity CRUD operations
 - Source CRUD operations
