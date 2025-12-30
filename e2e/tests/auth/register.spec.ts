@@ -17,9 +17,9 @@ test.describe('Registration Flow', () => {
     // Should show success message (registerViaUI already waits for it)
     await expect(page.locator('text=/Registration Successful/i')).toBeVisible();
 
-    // Should show verification message
+    // Should show verification message (using .first() since there are multiple matches)
     await expect(
-      page.locator('text=/check your email|verify|verification/i')
+      page.locator('text=/check your email|verify|verification/i').first()
     ).toBeVisible();
   });
 
@@ -100,7 +100,7 @@ test.describe('Registration Flow', () => {
     // Or should show error about unverified email
     const loggedIn = await page.locator('text=Logged in as').isVisible();
     const needsVerification = await page
-      .locator('text=/verify|verification/i')
+      .locator('text=/verify|verification/i').first()
       .isVisible();
 
     expect(loggedIn || needsVerification).toBeTruthy();

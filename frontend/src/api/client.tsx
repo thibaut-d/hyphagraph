@@ -188,5 +188,10 @@ export async function apiFetch<T>(
     throw new Error("API error");
   }
 
+  // Handle 204 No Content responses (e.g., password reset requests)
+  if (res.status === 204) {
+    return;
+  }
+
   return res.json();
 }
