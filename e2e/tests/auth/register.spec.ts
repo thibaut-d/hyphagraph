@@ -75,9 +75,9 @@ test.describe('Registration Flow', () => {
     await page.getByRole('button', { name: /register/i }).click();
 
     // Should show error message (backend returns validation error)
-    // Looking for error display - could be [object Object] if frontend has issue
+    // Using more specific selector to avoid matching "Password" label and "Forgot password?" link
     await expect(
-      page.locator('text=/password|weak|strength|error|object/i')
+      page.locator('text=/string_too_short|too short|error/i').first()
     ).toBeVisible({ timeout: 5000 });
   });
 
