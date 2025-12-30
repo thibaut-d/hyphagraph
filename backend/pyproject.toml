@@ -47,6 +47,7 @@ dev = [
     "httpx>=0.27",
     "ruff>=0.3",
     "mypy>=1.8",
+    "aiosqlite>=0.19",  # Async SQLite for tests
 ]
 
 [tool.uv]

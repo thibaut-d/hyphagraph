@@ -36,8 +36,8 @@ export default defineConfig({
 
   // Shared settings for all tests
   use: {
-    // Base URL for the application
-    baseURL: process.env.BASE_URL || 'http://localhost:3001',
+    // Base URL for the application (Caddy proxy on port 80)
+    baseURL: process.env.BASE_URL || 'http://localhost',
 
     // API endpoint
     extraHTTPHeaders: {

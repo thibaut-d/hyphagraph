@@ -43,6 +43,7 @@ services:
     container_name: hyphagraph-web
     volumes:
       - ./frontend:/app
+      - /app/node_modules  # Preserve container's node_modules (prevents host override)
     env_file:
       - .env
     depends_on:

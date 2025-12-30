@@ -5,7 +5,10 @@ WORKDIR /app
 # Copy dependency files first
 COPY package.json package-lock.json* ./
 
-RUN npm install --legacy-peer-deps
+# Install dependencies with explicit optional dependencies
+RUN npm cache clean --force && \
+    npm install --legacy-peer-deps && \
+    npm install --no-save @rollup/rollup-linux-x64-gnu
 
 # Copy source
 COPY . .

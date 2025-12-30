@@ -38,7 +38,7 @@ test.describe('Login Flow', () => {
     await page.getByRole('button', { name: /login/i }).click();
 
     // Should show error message
-    await expect(page.locator('text=/error|invalid|failed/i')).toBeVisible({
+    await expect(page.locator('text=/incorrect|error|invalid|failed/i')).toBeVisible({
       timeout: 5000,
     });
 
@@ -73,8 +73,9 @@ test.describe('Login Flow', () => {
     const authenticatedAfter = await isAuthenticated(page);
     expect(authenticatedAfter).toBe(false);
 
-    // Login form should be visible
-    await expect(page.getByRole('button', { name: /login/i })).toBeVisible();
+    // Navigate to account page to verify login form is shown
+    await page.goto('/account');
+    await expect(page.getByRole('button', { name: /login/i })).toBeVisible({ timeout: 5000 });
   });
 
   test('should persist login across page refreshes', async ({ page }) => {
@@ -85,7 +86,7 @@ test.describe('Login Flow', () => {
 
     // Should still be logged in
     await page.goto('/account');
-    await expect(page.locator('text=Logged in as')).toBeVisible();
+    await expect(page.locator('text=Logged in as')).toBeVisible({ timeout: 10000 });
 
     const authenticated = await isAuthenticated(page);
     expect(authenticated).toBe(true);

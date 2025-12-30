@@ -78,7 +78,13 @@ export async function apiFetch<T>(
       } catch {
         throw new Error("API error");
       }
-      throw new Error(error.detail ?? "API error");
+      const detail = error.detail;
+      if (typeof detail === 'string') {
+        throw new Error(detail);
+      } else if (typeof detail === 'object' && detail !== null) {
+        throw new Error(JSON.stringify(detail));
+      }
+      throw new Error("API error");
     }
 
     // Handle concurrent requests with single refresh
@@ -104,7 +110,13 @@ export async function apiFetch<T>(
                 } catch {
                   throw new Error("API error");
                 }
-                throw new Error(error.detail ?? "API error");
+                const detail = error.detail;
+                if (typeof detail === 'string') {
+                  throw new Error(detail);
+                } else if (typeof detail === 'object' && detail !== null) {
+                  throw new Error(JSON.stringify(detail));
+                }
+                throw new Error("API error");
               }
               return retryRes.json();
             })
@@ -146,7 +158,13 @@ export async function apiFetch<T>(
       } catch {
         throw new Error("API error");
       }
-      throw new Error(error.detail ?? "API error");
+      const detail = error.detail;
+      if (typeof detail === 'string') {
+        throw new Error(detail);
+      } else if (typeof detail === 'object' && detail !== null) {
+        throw new Error(JSON.stringify(detail));
+      }
+      throw new Error("API error");
     }
 
     return retryRes.json();
@@ -159,7 +177,15 @@ export async function apiFetch<T>(
     } catch {
       throw new Error("API error");
     }
-    throw new Error(error.detail ?? "API error");
+    // Handle error.detail which might be a string or object
+    const detail = error.detail;
+    if (typeof detail === 'string') {
+      throw new Error(detail);
+    } else if (typeof detail === 'object' && detail !== null) {
+      // For validation errors or structured errors, stringify it
+      throw new Error(JSON.stringify(detail));
+    }
+    throw new Error("API error");
   }
 
   return res.json();

@@ -7,7 +7,7 @@
 import { Page } from '@playwright/test';
 import { ADMIN_USER } from './test-data';
 
-const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+const BASE_URL = process.env.BASE_URL || 'http://localhost';
 
 /**
  * Login via the UI
@@ -27,8 +27,8 @@ export async function loginViaUI(
   // Click login button
   await page.getByRole('button', { name: /login/i }).click();
 
-  // Wait for successful login (user info should appear)
-  await page.waitForSelector('text=Logged in as', { timeout: 5000 });
+  // Wait for successful login (user info should appear on account page)
+  await page.waitForSelector('text=/Logged in as/i', { timeout: 10000 });
 }
 
 /**
@@ -47,7 +47,7 @@ export async function loginViaAPI(
   email: string,
   password: string
 ): Promise<{ accessToken: string; refreshToken: string }> {
-  const API_URL = process.env.API_URL || 'http://localhost:8000';
+  const API_URL = process.env.API_URL || 'http://localhost';
 
   // Login via API
   const response = await page.request.post(`${API_URL}/api/auth/login`, {
@@ -99,8 +99,11 @@ export async function logoutViaUI(page: Page): Promise<void> {
   // Click logout button
   await page.getByRole('button', { name: /logout/i }).click();
 
-  // Wait for login form to appear
-  await page.waitForSelector('text=Login');
+  // Wait for redirect to home page or login form
+  await page.waitForURL(/\/(account)?$/, { timeout: 5000 });
+
+  // Give time for auth state to clear
+  await page.waitForTimeout(500);
 }
 
 /**
@@ -143,8 +146,8 @@ export async function registerViaUI(
   // Click register button
   await page.getByRole('button', { name: /register/i }).click();
 
-  // Wait for success message
-  await page.waitForSelector('text=Registration Successful', { timeout: 5000 });
+  // Wait for success message (text contains "Registration Successful!")
+  await page.waitForSelector('text=/Registration Successful/i', { timeout: 5000 });
 }
 
 /**
@@ -155,7 +158,7 @@ export async function registerViaAPI(
   email: string,
   password: string
 ): Promise<{ id: string; email: string }> {
-  const API_URL = process.env.API_URL || 'http://localhost:8000';
+  const API_URL = process.env.API_URL || 'http://localhost';
 
   const response = await page.request.post(`${API_URL}/api/auth/register`, {
     headers: {

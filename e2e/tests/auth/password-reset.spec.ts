@@ -20,23 +20,23 @@ test.describe('Password Reset Flow', () => {
   test('should submit password reset request', async ({ page }) => {
     await page.goto('/forgot-password');
 
-    // Fill in email
-    await page.getByLabel(/email/i).fill(ADMIN_USER.email);
+    // Fill in email (using placeholder since label isn't linked to input)
+    await page.getByPlaceholder(/email/i).fill(ADMIN_USER.email);
 
     // Submit form
     await page.getByRole('button', { name: /submit|send|reset/i }).click();
 
-    // Should show success message
+    // Should show success message ("Check Your Email")
     await expect(
-      page.locator('text=/sent|check your email|success/i')
+      page.locator('text=/check your email/i')
     ).toBeVisible({ timeout: 5000 });
   });
 
   test('should handle invalid email in password reset', async ({ page }) => {
     await page.goto('/forgot-password');
 
-    // Fill in invalid email
-    await page.getByLabel(/email/i).fill('notanemail');
+    // Fill in invalid email (using placeholder since label isn't linked to input)
+    await page.getByPlaceholder(/email/i).fill('notanemail');
 
     // Submit form
     await page.getByRole('button', { name: /submit|send|reset/i }).click();
@@ -54,7 +54,8 @@ test.describe('Password Reset Flow', () => {
     // Should be on reset password page
     await expect(page).toHaveURL(/reset-password/);
 
-    // Should have password input fields
-    await expect(page.getByLabel(/password/i).first()).toBeVisible();
+    // Should have password input fields (using placeholders since labels aren't linked)
+    await expect(page.getByPlaceholder(/enter new password/i)).toBeVisible();
+    await expect(page.getByPlaceholder(/confirm new password/i)).toBeVisible();
   });
 });
