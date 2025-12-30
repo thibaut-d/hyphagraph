@@ -25,6 +25,7 @@ from app.models.source import Source
 from app.models.source_revision import SourceRevision
 from app.models.relation import Relation
 from app.models.relation_revision import RelationRevision
+from app.models.relation_role_revision import RelationRoleRevision
 from app.schemas.search import (
     SearchFilters,
     SearchResult,
@@ -412,6 +413,14 @@ class SearchService:
                         notes_text[:150] + "..." if len(notes_text) > 150 else notes_text
                     )
 
+            # Fetch entity IDs from roles for this revision
+            roles_stmt = (
+                select(RelationRoleRevision.entity_id)
+                .where(RelationRoleRevision.relation_revision_id == revision.id)
+            )
+            roles_result = await self.db.execute(roles_stmt)
+            entity_ids = [str(row[0]) for row in roles_result.all()]
+
             search_results.append(
                 RelationSearchResult(
                     id=relation.id,
@@ -421,7 +430,7 @@ class SearchService:
                     relevance_score=float(score) if score else 0.5,
                     kind=revision.kind,
                     source_id=relation.source_id,
-                    entity_ids=[],  # TODO: Fetch related entity IDs from roles
+                    entity_ids=entity_ids,
                     direction=revision.direction,
                 )
             )

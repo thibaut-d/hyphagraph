@@ -5,7 +5,7 @@ Tests full-text search functionality across entities, sources, and relations.
 """
 
 import pytest
-from uuid import uuid4
+from uuid import uuid4, UUID
 
 from app.models.entity import Entity
 from app.models.entity_revision import EntityRevision
@@ -625,3 +625,121 @@ class TestSearchSuggestions:
         assert "paracetamol" in labels
         # Should also include the term if there's room
         assert len(suggestions) >= 1
+
+
+class TestRelationSearch:
+    """Test relation search functionality with entity_ids."""
+
+    @pytest.fixture
+    async def test_relations(self, db_session, test_entities, test_sources):
+        """Create test relations with roles for entity_ids testing."""
+        db = db_session
+        relations = []
+
+        # Get first two entities for the relation
+        entity1, rev1 = test_entities[0]  # paracetamol
+        entity2, rev2 = test_entities[1]  # ibuprofen
+        source1, source_rev1 = test_sources[0]
+
+        # Create a relation with two entity roles
+        relation = Relation(id=uuid4(), source_id=source1.id)
+        db.add(relation)
+        await db.flush()
+
+        rel_revision = RelationRevision(
+            id=uuid4(),
+            relation_id=relation.id,
+            kind="drug_interaction",
+            direction="supports",
+            confidence=0.85,
+            notes={"en": "Interaction between pain medications"},
+            is_current=True,
+        )
+        db.add(rel_revision)
+        await db.flush()
+
+        # Add role revisions linking entities to this relation
+        from app.models.relation_role_revision import RelationRoleRevision
+
+        role1 = RelationRoleRevision(
+            relation_revision_id=rel_revision.id,
+            entity_id=entity1.id,
+            role_type="subject",
+        )
+        role2 = RelationRoleRevision(
+            relation_revision_id=rel_revision.id,
+            entity_id=entity2.id,
+            role_type="object",
+        )
+        db.add(role1)
+        db.add(role2)
+
+        await db.commit()
+        await db.refresh(relation)
+        await db.refresh(rel_revision)
+
+        relations.append((relation, rel_revision, [role1, role2]))
+        return relations
+
+    async def test_relation_search_includes_entity_ids(
+        self, db_session, test_relations
+    ):
+        """Test that relation search results include entity_ids from roles."""
+        db = db_session
+        service = SearchService(db)
+
+        # Search for the relation
+        filters = SearchFilters(
+            query="drug_interaction",
+            types=["relation"],
+            limit=10,
+            offset=0,
+        )
+
+        results, total, _, _, relation_count = await service.search(filters)
+
+        # Should find the relation
+        assert relation_count >= 1
+        assert total >= 1
+
+        # Find the relation result
+        relation_result = next(
+            (r for r in results if r.type == "relation" and r.kind == "drug_interaction"),
+            None
+        )
+        assert relation_result is not None
+
+        # Check that entity_ids are populated
+        assert relation_result.entity_ids is not None
+        assert len(relation_result.entity_ids) == 2
+
+        # Entity IDs should be UUIDs (Pydantic converts strings to UUIDs)
+        assert all(isinstance(eid, UUID) for eid in relation_result.entity_ids)
+
+        # Entity IDs should match the entities from the fixture
+        relation, revision, roles = test_relations[0]
+        expected_ids = {role.entity_id for role in roles}
+        actual_ids = set(relation_result.entity_ids)
+        assert actual_ids == expected_ids
+
+    async def test_relation_search_by_kind(self, db_session, test_relations):
+        """Test searching relations by kind returns entity_ids."""
+        db = db_session
+        service = SearchService(db)
+
+        filters = SearchFilters(
+            query="interaction",
+            types=["relation"],
+            limit=10,
+            offset=0,
+        )
+
+        results, total, _, _, relation_count = await service.search(filters)
+
+        assert relation_count >= 1
+
+        # All relation results should have entity_ids
+        for result in results:
+            if result.type == "relation":
+                assert result.entity_ids is not None
+                assert isinstance(result.entity_ids, list)
