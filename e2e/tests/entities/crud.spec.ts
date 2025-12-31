@@ -14,12 +14,12 @@ test.describe('Entity CRUD Operations', () => {
     // Navigate to create entity page
     await page.goto('/entities/new');
 
-    // Wait for form to load
-    await expect(page.locator('text=Create Entity')).toBeVisible();
+    // Wait for form to load (use heading specifically to avoid strict mode violation)
+    await expect(page.getByRole('heading', { name: 'Create Entity' })).toBeVisible();
 
     // Fill in entity details
     await page.getByLabel(/slug/i).fill(entitySlug);
-    await page.getByLabel(/summary.*en/i).fill('This is a test entity');
+    await page.getByLabel(/summary.*english/i).fill('This is a test entity');
 
     // Submit form
     await page.getByRole('button', { name: /create|submit/i }).click();
@@ -34,8 +34,8 @@ test.describe('Entity CRUD Operations', () => {
   test('should view entity list', async ({ page }) => {
     await page.goto('/entities');
 
-    // Should show entities page
-    await expect(page.locator('text=/Entities|Entity List/i')).toBeVisible();
+    // Should show entities page heading
+    await expect(page.getByRole('heading', { name: 'Entities' })).toBeVisible();
 
     // Should have some entities (at least the test data)
     // Note: This depends on database state
@@ -47,7 +47,7 @@ test.describe('Entity CRUD Operations', () => {
 
     await page.goto('/entities/new');
     await page.getByLabel(/slug/i).fill(entitySlug);
-    await page.getByLabel(/summary.*en/i).fill('Entity for viewing');
+    await page.getByLabel(/summary.*english/i).fill('Entity for viewing');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
     // Wait for navigation to detail page
@@ -65,7 +65,7 @@ test.describe('Entity CRUD Operations', () => {
 
     await page.goto('/entities/new');
     await page.getByLabel(/slug/i).fill(originalSlug);
-    await page.getByLabel(/summary.*en/i).fill('Original summary');
+    await page.getByLabel(/summary.*english/i).fill('Original summary');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
     // Wait for navigation to detail page
@@ -78,7 +78,7 @@ test.describe('Entity CRUD Operations', () => {
     await expect(page).toHaveURL(/\/entities\/[a-f0-9-]+\/edit/);
 
     // Update the summary
-    const summaryField = page.getByLabel(/summary.*en/i);
+    const summaryField = page.getByLabel(/summary.*english/i);
     await summaryField.clear();
     await summaryField.fill(updatedSummary);
 
@@ -98,7 +98,7 @@ test.describe('Entity CRUD Operations', () => {
 
     await page.goto('/entities/new');
     await page.getByLabel(/slug/i).fill(entitySlug);
-    await page.getByLabel(/summary.*en/i).fill('Entity to be deleted');
+    await page.getByLabel(/summary.*english/i).fill('Entity to be deleted');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
     // Wait for navigation to detail page
@@ -126,7 +126,7 @@ test.describe('Entity CRUD Operations', () => {
     // Create first entity
     await page.goto('/entities/new');
     await page.getByLabel(/slug/i).fill(duplicateSlug);
-    await page.getByLabel(/summary.*en/i).fill('First entity');
+    await page.getByLabel(/summary.*english/i).fill('First entity');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
     // Wait for success
@@ -135,7 +135,7 @@ test.describe('Entity CRUD Operations', () => {
     // Try to create another entity with the same slug
     await page.goto('/entities/new');
     await page.getByLabel(/slug/i).fill(duplicateSlug);
-    await page.getByLabel(/summary.*en/i).fill('Duplicate entity');
+    await page.getByLabel(/summary.*english/i).fill('Duplicate entity');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
     // Should show error message
@@ -165,7 +165,7 @@ test.describe('Entity CRUD Operations', () => {
     for (const slug of [entity1, entity2]) {
       await page.goto('/entities/new');
       await page.getByLabel(/slug/i).fill(slug);
-      await page.getByLabel(/summary.*en/i).fill(`Test entity ${slug}`);
+      await page.getByLabel(/summary.*english/i).fill(`Test entity ${slug}`);
       await page.getByRole('button', { name: /create|submit/i }).click();
       await page.waitForURL(/\/entities\/[a-f0-9-]+/);
     }
@@ -190,7 +190,7 @@ test.describe('Entity CRUD Operations', () => {
 
     await page.goto('/entities/new');
     await page.getByLabel(/slug/i).fill(entitySlug);
-    await page.getByLabel(/summary.*en/i).fill('Navigation test entity');
+    await page.getByLabel(/summary.*english/i).fill('Navigation test entity');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
     // Wait for detail page
