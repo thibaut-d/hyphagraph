@@ -107,17 +107,18 @@ test.describe('Entity CRUD Operations', () => {
     // Wait for navigation to detail page
     await page.waitForURL(/\/entities\/[a-f0-9-]+/);
 
-    // Click delete button
-    await page.getByRole('button', { name: /delete/i }).click();
+    // Click delete button (opens confirmation dialog)
+    await page.getByRole('button', { name: /delete/i }).first().click();
 
-    // Confirm deletion (if there's a confirmation dialog)
-    const confirmButton = page.getByRole('button', { name: /confirm|yes|delete/i });
-    if (await confirmButton.isVisible({ timeout: 2000 })) {
-      await confirmButton.click();
-    }
+    // Wait for dialog to appear
+    await page.waitForSelector('[role="dialog"]', { state: 'visible' });
 
-    // Should navigate back to entities list
-    await expect(page).toHaveURL(/\/entities$/);
+    // Click the "Delete" button in the dialog (there are two Delete buttons: one to open dialog, one to confirm)
+    const dialog = page.locator('[role="dialog"]');
+    await dialog.getByRole('button', { name: /delete/i }).click();
+
+    // Should navigate back to entities list after deletion
+    await expect(page).toHaveURL(/\/entities$/, { timeout: 10000 });
 
     // Deleted entity should not appear in the list
     await expect(page.locator(`text=${entitySlug}`)).not.toBeVisible();
@@ -141,10 +142,9 @@ test.describe('Entity CRUD Operations', () => {
     await page.getByLabel(/summary.*english/i).fill('Duplicate entity');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
-    // Should show error message
-    await expect(page.locator('text=/error|already exists|duplicate/i')).toBeVisible({
-      timeout: 5000,
-    });
+    // Should show error message in Alert component
+    await expect(page.getByRole('alert')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('alert')).toContainText(/error|fail|already|duplicate/i);
   });
 
   test('should show validation error for empty slug', async ({ page }) => {
@@ -153,10 +153,9 @@ test.describe('Entity CRUD Operations', () => {
     // Try to submit without filling slug
     await page.getByRole('button', { name: /create|submit/i }).click();
 
-    // Should show validation error
-    await expect(page.locator('text=/slug.*required|error/i')).toBeVisible({
-      timeout: 5000,
-    });
+    // Should show validation error in Alert component
+    await expect(page.getByRole('alert')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('alert')).toContainText(/slug.*required/i);
   });
 
   test('should search/filter entities', async ({ page }) => {

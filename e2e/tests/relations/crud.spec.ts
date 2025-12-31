@@ -13,10 +13,11 @@ test.describe('Relation CRUD Operations', () => {
 
     // Create prerequisite data: source and entities
     // Create a source
-    const sourceSlug = generateSourceName('rel-source').toLowerCase().replace(/\s+/g, '-');
+    const sourceTitle = generateSourceName('Relation Test Source');
     await page.goto('/sources/new');
-    await page.getByLabel(/slug/i).fill(sourceSlug);
+    await page.getByLabel(/title/i).fill(sourceTitle);
     await page.getByLabel(/summary.*english/i).fill('Source for relation tests');
+    await page.getByLabel(/url/i).fill('https://example.com/relation-test-source');
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/sources\/([a-f0-9-]+)/);
     sourceId = page.url().match(/\/sources\/([a-f0-9-]+)/)?.[1] || '';
@@ -151,20 +152,18 @@ test.describe('Relation CRUD Operations', () => {
     // Wait for navigation
     await page.waitForURL(/\/relations\/[a-f0-9-]+/);
 
-    // Click delete button
-    const deleteButton = page.getByRole('button', { name: /delete/i });
-    if (await deleteButton.isVisible({ timeout: 2000 })) {
-      await deleteButton.click();
+    // Click delete button (opens confirmation dialog)
+    await page.getByRole('button', { name: /delete/i }).first().click();
 
-      // Confirm deletion
-      const confirmButton = page.getByRole('button', { name: /confirm|yes|delete/i });
-      if (await confirmButton.isVisible({ timeout: 2000 })) {
-        await confirmButton.click();
-      }
+    // Wait for dialog to appear
+    await page.waitForSelector('[role="dialog"]', { state: 'visible' });
 
-      // Should navigate back to relations list
-      await expect(page).toHaveURL(/\/relations$/);
-    }
+    // Click the "Delete" button in the dialog
+    const dialog = page.locator('[role="dialog"]');
+    await dialog.getByRole('button', { name: /delete/i }).click();
+
+    // Should navigate back to relations list after deletion
+    await expect(page).toHaveURL(/\/relations$/, { timeout: 10000 });
   });
 
   test('should validate required fields', async ({ page }) => {
@@ -173,9 +172,8 @@ test.describe('Relation CRUD Operations', () => {
     // Try to submit without filling required fields
     await page.getByRole('button', { name: /create|submit/i }).click();
 
-    // Should show validation error
-    await expect(page.locator('text=/required|error/i')).toBeVisible({
-      timeout: 5000,
-    });
+    // Should show validation error in Alert component
+    await expect(page.getByRole('alert')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('alert')).toContainText(/required|error/i);
   });
 });

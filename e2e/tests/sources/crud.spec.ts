@@ -107,15 +107,17 @@ test.describe('Source CRUD Operations', () => {
     // Wait for navigation to detail page
     await page.waitForURL(/\/sources\/[a-f0-9-]+/);
 
-    // Click delete button
-    await page.getByRole('button', { name: /delete/i }).click();
+    // Click delete button (opens confirmation dialog)
+    await page.getByRole('button', { name: /delete/i }).first().click();
 
-    // Confirm deletion in dialog - wait for it to appear and be visible
-    await page.waitForSelector('role=dialog', { state: 'visible', timeout: 3000 });
-    const confirmButton = page.getByRole('dialog').getByRole('button', { name: /delete/i });
-    await confirmButton.click();
+    // Wait for dialog to appear
+    await page.waitForSelector('[role="dialog"]', { state: 'visible' });
 
-    // Should navigate back to sources list
+    // Click the "Delete" button in the dialog
+    const dialog = page.locator('[role="dialog"]');
+    await dialog.getByRole('button', { name: /delete/i }).click();
+
+    // Should navigate back to sources list after deletion
     await expect(page).toHaveURL(/\/sources$/, { timeout: 10000 });
   });
 
@@ -125,10 +127,9 @@ test.describe('Source CRUD Operations', () => {
     // Try to submit without filling required fields
     await page.getByRole('button', { name: /create|submit/i }).click();
 
-    // Should show validation error
-    await expect(page.locator('text=/required|error/i')).toBeVisible({
-      timeout: 5000,
-    });
+    // Should show validation error in Alert component
+    await expect(page.getByRole('alert')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('alert')).toContainText(/required|error/i);
   });
 
   test('should search/filter sources', async ({ page }) => {

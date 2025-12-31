@@ -36,10 +36,9 @@ test.describe('Registration Flow', () => {
     // Click register button
     await page.getByRole('button', { name: /register/i }).click();
 
-    // Should show error message
-    await expect(
-      page.locator('text=/already exists|already registered|error/i')
-    ).toBeVisible({ timeout: 5000 });
+    // Should show error message in Alert component
+    await expect(page.getByRole('alert')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('alert')).toContainText(/already.*exist|already.*registered|error/i);
   });
 
   test('should show error when registering with invalid email', async ({ page }) => {
@@ -74,11 +73,9 @@ test.describe('Registration Flow', () => {
     // Click register button
     await page.getByRole('button', { name: /register/i }).click();
 
-    // Should show error message (backend returns validation error)
-    // Using more specific selector to avoid matching "Password" label and "Forgot password?" link
-    await expect(
-      page.locator('text=/string_too_short|too short|error/i').first()
-    ).toBeVisible({ timeout: 5000 });
+    // Should show error message in Alert component (backend returns validation error)
+    await expect(page.getByRole('alert')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('alert')).toContainText(/short|length|error/i);
   });
 
   test('should allow login after successful registration', async ({ page }) => {
