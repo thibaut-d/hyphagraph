@@ -95,11 +95,7 @@ test.describe('Entity CRUD Operations', () => {
     await expect(page.locator(`text=${updatedSummary}`)).toBeVisible();
   });
 
-  test.skip('should delete an entity', async ({ page }) => {
-    // TODO: Delete dialog not opening - frontend bug
-    // Dialog button onClick={() => setDeleteDialogOpen(true)} not triggering
-    // Button shows [active] state but dialog never appears
-    // See: e2e/test-results/.../error-context.md for evidence
+  test('should delete an entity', async ({ page }) => {
     // Create an entity first
     const entitySlug = generateEntityName('delete-test').toLowerCase().replace(/\s+/g, '-');
 

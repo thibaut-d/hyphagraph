@@ -94,9 +94,7 @@ test.describe('Source CRUD Operations', () => {
     await expect(page.locator(`text=${updatedSummary}`)).toBeVisible();
   });
 
-  test.skip('should delete a source', async ({ page }) => {
-    // TODO: Delete dialog not opening - same frontend bug as entities
-    // See entities/crud.spec.ts delete test for details
+  test('should delete a source', async ({ page }) => {
     // Create a source first
     const sourceTitle = generateSourceName('Delete Test Source');
 
