@@ -74,8 +74,8 @@ test.describe('Entity CRUD Operations', () => {
     // Wait for page to stabilize (entity terms may fail to load for new entities)
     await page.waitForLoadState('networkidle');
 
-    // Click edit button (ignore any "Failed to load terms" error as it's non-blocking)
-    await page.getByRole('button', { name: /edit/i }).click({ timeout: 15000 });
+    // Click edit link (it's a RouterLink, not a button)
+    await page.getByRole('link', { name: /edit/i }).click({ timeout: 15000 });
 
     // Should navigate to edit page
     await expect(page).toHaveURL(/\/entities\/[a-f0-9-]+\/edit/);
@@ -199,8 +199,8 @@ test.describe('Entity CRUD Operations', () => {
     // Wait for detail page
     await page.waitForURL(/\/entities\/[a-f0-9-]+/);
 
-    // Click back to list
-    await page.getByRole('button', { name: /back/i }).click();
+    // Click back to list (it's a RouterLink, not a button)
+    await page.getByRole('link', { name: /back/i }).click();
 
     // Should be on entities list
     await expect(page).toHaveURL(/\/entities$/);
