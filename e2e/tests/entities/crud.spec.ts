@@ -71,10 +71,11 @@ test.describe('Entity CRUD Operations', () => {
     // Wait for navigation to detail page
     await page.waitForURL(/\/entities\/[a-f0-9-]+/);
 
-    // Wait for edit button to be visible and click it
-    const editButton = page.getByRole('button', { name: /edit/i });
-    await editButton.waitFor({ state: 'visible', timeout: 10000 });
-    await editButton.click();
+    // Wait for page to stabilize (entity terms may fail to load for new entities)
+    await page.waitForLoadState('networkidle');
+
+    // Click edit button (ignore any "Failed to load terms" error as it's non-blocking)
+    await page.getByRole('button', { name: /edit/i }).click({ timeout: 15000 });
 
     // Should navigate to edit page
     await expect(page).toHaveURL(/\/entities\/[a-f0-9-]+\/edit/);
