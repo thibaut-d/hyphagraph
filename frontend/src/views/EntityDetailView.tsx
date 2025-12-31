@@ -208,6 +208,10 @@ export function EntityDetailView() {
     loadInference({});
   };
 
+  const handleDeleteClick = () => {
+    setDeleteDialogOpen(true);
+  };
+
   // Apply evidence filters to inference data (client-side)
   const filteredInference = useMemo((): InferenceRead | null => {
     if (!inference || evidenceFilterCount === 0) {
@@ -352,7 +356,7 @@ export function EntityDetailView() {
                 {t("common.edit", "Edit")}
               </Button>
               <Button
-                onClick={() => setDeleteDialogOpen(true)}
+                onClick={handleDeleteClick}
                 color="error"
                 startIcon={<DeleteIcon />}
               >
