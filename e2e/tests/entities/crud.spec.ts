@@ -110,12 +110,11 @@ test.describe('Entity CRUD Operations', () => {
     // Click delete button (opens confirmation dialog)
     await page.getByRole('button', { name: /delete/i }).first().click();
 
-    // Wait for dialog to appear
-    await page.waitForSelector('[role="dialog"]', { state: 'visible' });
+    // Wait for confirmation dialog with specific text
+    await expect(page.getByText(/are you sure|delete entity|confirm/i)).toBeVisible({ timeout: 5000 });
 
-    // Click the "Delete" button in the dialog (there are two Delete buttons: one to open dialog, one to confirm)
-    const dialog = page.locator('[role="dialog"]');
-    await dialog.getByRole('button', { name: /delete/i }).click();
+    // Find and click the Delete button within the dialog (last one, as first is the trigger button)
+    await page.getByRole('button', { name: /delete/i }).last().click();
 
     // Should navigate back to entities list after deletion
     await expect(page).toHaveURL(/\/entities$/, { timeout: 10000 });
