@@ -15,11 +15,11 @@ test.describe('Source CRUD Operations', () => {
     await page.goto('/sources/new');
 
     // Wait for form to load
-    await expect(page.locator('text=Create Source')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Create Source' })).toBeVisible();
 
     // Fill in source details
     await page.getByLabel(/slug/i).fill(sourceSlug);
-    await page.getByLabel(/summary.*en/i).fill('This is a test source');
+    await page.getByLabel(/summary.*english/i).fill('This is a test source');
 
     // Optionally fill URL if available
     const urlField = page.getByLabel(/url/i);
@@ -41,7 +41,7 @@ test.describe('Source CRUD Operations', () => {
     await page.goto('/sources');
 
     // Should show sources page
-    await expect(page.locator('text=/Sources|Source List/i')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Sources' })).toBeVisible();
   });
 
   test('should view source detail', async ({ page }) => {
@@ -50,7 +50,7 @@ test.describe('Source CRUD Operations', () => {
 
     await page.goto('/sources/new');
     await page.getByLabel(/slug/i).fill(sourceSlug);
-    await page.getByLabel(/summary.*en/i).fill('Source for viewing');
+    await page.getByLabel(/summary.*english/i).fill('Source for viewing');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
     // Wait for navigation to detail page
@@ -68,7 +68,7 @@ test.describe('Source CRUD Operations', () => {
 
     await page.goto('/sources/new');
     await page.getByLabel(/slug/i).fill(originalSlug);
-    await page.getByLabel(/summary.*en/i).fill('Original summary');
+    await page.getByLabel(/summary.*english/i).fill('Original summary');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
     // Wait for navigation to detail page
@@ -81,7 +81,7 @@ test.describe('Source CRUD Operations', () => {
     await expect(page).toHaveURL(/\/sources\/[a-f0-9-]+\/edit/);
 
     // Update the summary
-    const summaryField = page.getByLabel(/summary.*en/i);
+    const summaryField = page.getByLabel(/summary.*english/i);
     await summaryField.clear();
     await summaryField.fill(updatedSummary);
 
@@ -101,7 +101,7 @@ test.describe('Source CRUD Operations', () => {
 
     await page.goto('/sources/new');
     await page.getByLabel(/slug/i).fill(sourceSlug);
-    await page.getByLabel(/summary.*en/i).fill('Source to be deleted');
+    await page.getByLabel(/summary.*english/i).fill('Source to be deleted');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
     // Wait for navigation to detail page
@@ -141,7 +141,7 @@ test.describe('Source CRUD Operations', () => {
     for (const slug of [source1, source2]) {
       await page.goto('/sources/new');
       await page.getByLabel(/slug/i).fill(slug);
-      await page.getByLabel(/summary.*en/i).fill(`Test source ${slug}`);
+      await page.getByLabel(/summary.*english/i).fill(`Test source ${slug}`);
       await page.getByRole('button', { name: /create|submit/i }).click();
       await page.waitForURL(/\/sources\/[a-f0-9-]+/);
     }
