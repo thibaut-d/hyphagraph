@@ -43,8 +43,10 @@ export function EntityTermsDisplay({
         const data = await listEntityTerms(entityId);
         setTerms(data);
       } catch (err) {
+        // Log error but don't block UI - terms are optional
         console.error("Failed to load terms:", err);
-        setError("Failed to load terms");
+        // Set empty array instead of error to allow page to function
+        setTerms([]);
       } finally {
         setLoading(false);
       }
