@@ -746,44 +746,67 @@ These features are **important for production readiness** but not blocking MVP:
 
 #### 10. **E2E Testing** ⭐
 **Priority**: MEDIUM
-**Status**: ✅ **INFRASTRUCTURE COMPLETE** (2025-12-28), tests ready to run
+**Status**: 🟡 **INFRASTRUCTURE COMPLETE, TESTS EXECUTED** (2025-12-31), selector fixes needed
 **Rationale**: Catch integration bugs before production
 
-**Completed (2025-12-28)**:
+**Completed (2025-12-31)**:
 - ✅ Set up Playwright 1.57.0
 - ✅ Created Docker Compose E2E environment (docker-compose.e2e.yml)
+- ✅ **Fixed environment configuration** - Created e2e/.env with correct URLs
+- ✅ **Installed dotenv** - Auto-load environment variables
+- ✅ **Executed full test suite** - 50 tests run
 - ✅ Wrote critical path E2E tests:
   - ✅ `e2e/tests/entities/crud.spec.ts` - Entity CRUD (9 tests)
-  - ✅ `e2e/tests/auth/login.spec.ts` - Authentication flows
-  - ✅ `e2e/tests/sources/crud.spec.ts` - Source CRUD
-  - ✅ `e2e/tests/relations/crud.spec.ts` - Relation CRUD
-  - ✅ `e2e/tests/inferences/display.spec.ts` - Inference display
-  - ✅ `e2e/tests/explanations/trace.spec.ts` - Explanation tracing
+  - ✅ `e2e/tests/auth/login.spec.ts` - Authentication flows (6 tests)
+  - ✅ `e2e/tests/auth/register.spec.ts` - Registration flows (5 tests)
+  - ✅ `e2e/tests/auth/password-reset.spec.ts` - Password reset flows (4 tests)
+  - ✅ `e2e/tests/sources/crud.spec.ts` - Source CRUD (7 tests)
+  - ✅ `e2e/tests/relations/crud.spec.ts` - Relation CRUD (6 tests)
+  - ✅ `e2e/tests/inferences/viewing.spec.ts` - Inference display (6 tests)
+  - ✅ `e2e/tests/explanations/trace.spec.ts` - Explanation tracing (7 tests)
 - ✅ Created comprehensive E2E_TESTING_GUIDE.md (498 lines)
 - ✅ Created automated test scripts (rebuild-and-test.sh/bat)
 - ✅ Fixed authentication race condition (critical for all E2E tests)
 - ✅ Fixed entity CRUD pages to match test requirements
 
+**Test Results (2025-12-31)**:
+- ✅ **8/50 tests passing (16%)**
+- ⚠️ **42/50 tests failing (84%)** - Due to selector issues, NOT application bugs
+- **Passing Tests**:
+  - 4 authentication flow tests
+  - 1 registration validation test
+  - 3 inference viewing tests
+- **Failure Root Cause**: Ambiguous text locators causing "strict mode violations"
+  - Example: `page.locator('text=Create Entity')` matches both heading and button
+  - Solution: Replace with role-based selectors like `page.getByRole('button', { name: /create/i })`
+
 **Remaining Deliverables**:
-- [ ] Run tests and verify all pass
+- [ ] **Fix selector issues** (2-4 hours) - Main blocking issue
+- [ ] **Re-run tests** to verify fixes (estimated 80-90% pass rate after fixes)
 - [ ] Add visual regression testing (optional)
 - [ ] Set up CI/CD pipeline for automated testing
 - [ ] Add more test coverage for edge cases
 
-**Files Created**:
+**Files Created/Modified**:
+- ✅ `e2e/.env` - Environment configuration (BASE_URL, API_URL) - **NEW** (2025-12-31)
+- ✅ `e2e/playwright.config.ts` - Updated to use dotenv - **MODIFIED** (2025-12-31)
+- ✅ `e2e/package.json` - Added dotenv dependency - **MODIFIED** (2025-12-31)
 - ✅ `playwright.config.ts` - Playwright configuration
 - ✅ `docker-compose.e2e.yml` - Isolated test environment
 - ✅ `e2e/fixtures/auth-helpers.ts` - Authentication utilities
 - ✅ `e2e/fixtures/test-data.ts` - Test credentials and helpers
-- ✅ `E2E_TESTING_GUIDE.md` - Comprehensive documentation
+- ✅ `doc/E2E_TESTING_GUIDE.md` - Comprehensive documentation
 - ✅ `rebuild-and-test.sh` - Linux/Mac test script
 - ✅ `rebuild-and-test.bat` - Windows test script
+- ✅ `.temp/E2E_TEST_RESULTS_2025-12-31.md` - Detailed test execution report - **NEW**
 
-**Next Steps**:
-1. Run `rebuild-and-test.bat` (Windows) or `rebuild-and-test.sh` (Linux/Mac)
-2. Verify all entity CRUD tests pass (expected: 9/9)
-3. Debug and fix any remaining test failures
-4. Run full test suite across all features
+**Next Steps** (Priority Order):
+1. **Fix ambiguous selectors** (2-4 hours) - Replace text locators with role-based selectors in 8 test files
+2. **Re-run full test suite** (10 minutes) - Expected 80-90% pass rate after selector fixes
+3. **Update E2E_TESTING_GUIDE.md** (30 minutes) - Add selector best practices
+4. **Set up CI/CD** (future) - GitHub Actions workflow for automated testing
+
+**Detailed Analysis**: See `.temp/E2E_TEST_RESULTS_2025-12-31.md` for comprehensive findings
 
 ---
 
