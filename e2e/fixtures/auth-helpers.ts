@@ -110,12 +110,17 @@ export async function logoutViaUI(page: Page): Promise<void> {
  * Clear authentication state
  */
 export async function clearAuthState(page: Page): Promise<void> {
+  // Clear all storage
+  await page.context().clearCookies();
   await page.goto(BASE_URL);
   await page.evaluate(() => {
     localStorage.clear();
+    sessionStorage.clear();
   });
-  // Force reload to reset React state
-  await page.reload();
+  // Wait for any pending requests to complete
+  await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {
+    // Ignore timeout - sometimes there are long-polling requests
+  });
   await page.waitForTimeout(500);
 }
 
