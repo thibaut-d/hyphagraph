@@ -71,8 +71,10 @@ test.describe('Entity CRUD Operations', () => {
     // Wait for navigation to detail page
     await page.waitForURL(/\/entities\/[a-f0-9-]+/);
 
-    // Click edit button
-    await page.getByRole('button', { name: /edit/i }).click();
+    // Wait for edit button to be visible and click it
+    const editButton = page.getByRole('button', { name: /edit/i });
+    await editButton.waitFor({ state: 'visible', timeout: 10000 });
+    await editButton.click();
 
     // Should navigate to edit page
     await expect(page).toHaveURL(/\/entities\/[a-f0-9-]+\/edit/);
