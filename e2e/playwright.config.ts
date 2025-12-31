@@ -15,8 +15,12 @@ dotenv.config({ path: path.resolve(__dirname, '.env') });
  * - Parallel execution enabled
  * - Screenshots/videos on failure
  * - English only (no i18n testing)
+ * - Global setup cleans database before all tests
  */
 export default defineConfig({
+  // Global setup - runs once before all tests
+  globalSetup: require.resolve('./global-setup.ts'),
+
   // Test directory
   testDir: './tests',
 
@@ -27,10 +31,10 @@ export default defineConfig({
   },
 
   // Test execution
-  fullyParallel: true, // Run tests in parallel
+  fullyParallel: false, // Run test files sequentially to avoid DB conflicts
   forbidOnly: !!process.env.CI, // Prevent .only in CI
   retries: process.env.CI ? 2 : 0, // Retry on CI only
-  workers: process.env.CI ? 1 : undefined, // Parallel workers (auto-detect locally)
+  workers: 1, // Single worker to ensure test isolation
 
   // Reporter configuration
   reporter: [
