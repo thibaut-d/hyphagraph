@@ -28,24 +28,41 @@
 - **Entity Terms & UI Categories** - ✅ Entity terms complete, UI category picker pending
 - **LLM Integration** - Not started (Phase 3 priority)
 - **Batch Operations** - Not started (import/export)
-- **E2E Testing** - 🟡 Auth tests 87% passing (13/15), 2 timeouts in sequential mode
+- **E2E Testing** - 🟡 19/37 tests passing (51%) - Auth 87%, CRUD 27%
 - **CI/CD Pipeline** - Not started
 
 ### 🚧 Recent Progress (2025-12-31 Session 7)
-- **E2E Authentication Tests**: 🟡 **13/15 TESTS PASSING (87%)**
+- **E2E Test Improvements**: 🟡 **19/37 TESTS PASSING (51%)**
+
+  **Authentication Tests: 13/15 (87%)** ✅
   - ✅ Fixed audit_logs schema mismatch (migration 003)
-  - ✅ Improved test isolation (clear cookies, sessionStorage, networkidle)
+  - ✅ Improved test isolation (cookies, sessionStorage, networkidle)
   - ✅ Fixed multiple test selectors (registration, password reset)
   - ✅ All test suites pass 100% when run in isolation
-  - 🟡 2 failures only occur in sequential mode (API timeouts after many tests)
-  - Files changed:
-    - `e2e/fixtures/auth-helpers.ts` - Enhanced clearAuthState function
-    - `e2e/tests/auth/login.spec.ts` - Use API login for persist test
-    - `backend/alembic/versions/003_fix_audit_logs_schema.py` - Migration
-  - Test breakdown:
-    - Login tests: 6 tests (5 pass, 1 timeout in sequential)
-    - Password reset tests: 4 tests (3 pass, 1 timeout in sequential)
-    - Registration tests: 5 tests (all pass ✅)
+  - 🟡 2 timeouts only in sequential mode (API resource exhaustion)
+
+  **CRUD Tests: 6/22 (27%)** 🟡
+  - Entity tests: 5/9 passing (56%)
+    - ✅ Create, view list, view detail, delete, duplicate validation
+    - 🟡 Edit blocked by "Failed to load terms" UI bug
+    - 🟡 Validation, search, navigation need fixes
+  - Source tests: 1/7 passing (14%)
+    - Need form field updates (Title/URL vs slug)
+  - Relation tests: 0/6 passing (0%)
+    - Need form field updates
+
+  **Known Issues:**
+  - "Failed to load terms" error blocks entity edit button (real UI bug)
+  - Source/relation tests need rewrite for correct form fields
+  - Some tests timeout after many sequential test runs
+
+  **Files Changed:**
+  - `e2e/fixtures/auth-helpers.ts` - Enhanced clearAuthState
+  - `e2e/tests/auth/*.spec.ts` - Fixed selectors
+  - `e2e/tests/entities/crud.spec.ts` - Fixed selectors, found UI bug
+  - `e2e/tests/sources/crud.spec.ts` - Partial selector fixes
+  - `e2e/tests/relations/crud.spec.ts` - Partial selector fixes
+  - `backend/alembic/versions/003_fix_audit_logs_schema.py` - Migration
 
 ### 🚧 Previous Progress (2025-12-29 Session 6)
 - **Phase 3: Component Library Tests**: ✅ **106 TESTS ADDED ACROSS 11 COMPONENTS**
