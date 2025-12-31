@@ -112,9 +112,11 @@ export async function logoutViaUI(page: Page): Promise<void> {
 export async function clearAuthState(page: Page): Promise<void> {
   await page.goto(BASE_URL);
   await page.evaluate(() => {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('refresh_token');
+    localStorage.clear();
   });
+  // Force reload to reset React state
+  await page.reload();
+  await page.waitForTimeout(500);
 }
 
 /**

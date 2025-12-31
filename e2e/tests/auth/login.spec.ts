@@ -3,6 +3,7 @@ import { ADMIN_USER, generateTestEmail } from '../../fixtures/test-data';
 import {
   loginViaUI,
   loginAsAdmin,
+  loginAsAdminViaAPI,
   logoutViaUI,
   clearAuthState,
   isAuthenticated,
@@ -79,13 +80,17 @@ test.describe('Login Flow', () => {
   });
 
   test('should persist login across page refreshes', async ({ page }) => {
-    await loginAsAdmin(page);
+    // Use API login to avoid UI interaction issues after previous tests
+    await loginAsAdminViaAPI(page);
+
+    // Navigate to account page to verify login state
+    await page.goto('/account');
+    await expect(page.locator('text=Logged in as')).toBeVisible({ timeout: 10000 });
 
     // Refresh the page
     await page.reload();
 
     // Should still be logged in
-    await page.goto('/account');
     await expect(page.locator('text=Logged in as')).toBeVisible({ timeout: 10000 });
 
     const authenticated = await isAuthenticated(page);
