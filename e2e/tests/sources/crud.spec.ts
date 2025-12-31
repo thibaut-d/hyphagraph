@@ -9,7 +9,7 @@ test.describe('Source CRUD Operations', () => {
   });
 
   test('should create a new source', async ({ page }) => {
-    const sourceSlug = generateSourceName('test-source').toLowerCase().replace(/\s+/g, '-');
+    const sourceTitle = generateSourceName('Test Source');
 
     // Navigate to create source page
     await page.goto('/sources/new');
@@ -18,14 +18,11 @@ test.describe('Source CRUD Operations', () => {
     await expect(page.getByRole('heading', { name: 'Create Source' })).toBeVisible();
 
     // Fill in source details
-    await page.getByLabel(/slug/i).fill(sourceSlug);
+    await page.getByLabel(/title/i).fill(sourceTitle);
     await page.getByLabel(/summary.*english/i).fill('This is a test source');
 
-    // Optionally fill URL if available
-    const urlField = page.getByLabel(/url/i);
-    if (await urlField.isVisible({ timeout: 1000 })) {
-      await urlField.fill('https://example.com/test-source');
-    }
+    // Fill URL (required field)
+    await page.getByLabel(/url/i).fill('https://example.com/test-source');
 
     // Submit form
     await page.getByRole('button', { name: /create|submit/i }).click();
@@ -34,7 +31,7 @@ test.describe('Source CRUD Operations', () => {
     await expect(page).toHaveURL(/\/sources\/[a-f0-9-]+/, { timeout: 10000 });
 
     // Should show source details
-    await expect(page.locator(`text=${sourceSlug}`)).toBeVisible();
+    await expect(page.locator(`text=${sourceTitle}`)).toBeVisible();
   });
 
   test('should view source list', async ({ page }) => {
@@ -46,36 +43,38 @@ test.describe('Source CRUD Operations', () => {
 
   test('should view source detail', async ({ page }) => {
     // Create a source first
-    const sourceSlug = generateSourceName('view-test').toLowerCase().replace(/\s+/g, '-');
+    const sourceTitle = generateSourceName('View Test Source');
 
     await page.goto('/sources/new');
-    await page.getByLabel(/slug/i).fill(sourceSlug);
+    await page.getByLabel(/title/i).fill(sourceTitle);
     await page.getByLabel(/summary.*english/i).fill('Source for viewing');
+    await page.getByLabel(/url/i).fill('https://example.com/view-test');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
     // Wait for navigation to detail page
     await page.waitForURL(/\/sources\/[a-f0-9-]+/);
 
     // Should show source details
-    await expect(page.locator(`text=${sourceSlug}`)).toBeVisible();
+    await expect(page.locator(`text=${sourceTitle}`)).toBeVisible();
     await expect(page.locator('text=Source for viewing')).toBeVisible();
   });
 
   test('should edit a source', async ({ page }) => {
     // Create a source first
-    const originalSlug = generateSourceName('edit-test').toLowerCase().replace(/\s+/g, '-');
+    const originalTitle = generateSourceName('Edit Test Source');
     const updatedSummary = 'Updated summary for source';
 
     await page.goto('/sources/new');
-    await page.getByLabel(/slug/i).fill(originalSlug);
+    await page.getByLabel(/title/i).fill(originalTitle);
     await page.getByLabel(/summary.*english/i).fill('Original summary');
+    await page.getByLabel(/url/i).fill('https://example.com/edit-test');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
     // Wait for navigation to detail page
     await page.waitForURL(/\/sources\/[a-f0-9-]+/);
 
-    // Click edit button
-    await page.getByRole('button', { name: /edit/i }).click();
+    // Click edit link (it's a RouterLink, not a button)
+    await page.getByRole('link', { name: /edit/i }).click();
 
     // Should navigate to edit page
     await expect(page).toHaveURL(/\/sources\/[a-f0-9-]+\/edit/);
@@ -97,11 +96,12 @@ test.describe('Source CRUD Operations', () => {
 
   test('should delete a source', async ({ page }) => {
     // Create a source first
-    const sourceSlug = generateSourceName('delete-test').toLowerCase().replace(/\s+/g, '-');
+    const sourceTitle = generateSourceName('Delete Test Source');
 
     await page.goto('/sources/new');
-    await page.getByLabel(/slug/i).fill(sourceSlug);
+    await page.getByLabel(/title/i).fill(sourceTitle);
     await page.getByLabel(/summary.*english/i).fill('Source to be deleted');
+    await page.getByLabel(/url/i).fill('https://example.com/delete-test');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
     // Wait for navigation to detail page
@@ -110,14 +110,13 @@ test.describe('Source CRUD Operations', () => {
     // Click delete button
     await page.getByRole('button', { name: /delete/i }).click();
 
-    // Confirm deletion (if there's a confirmation dialog)
-    const confirmButton = page.getByRole('button', { name: /confirm|yes|delete/i });
-    if (await confirmButton.isVisible({ timeout: 2000 })) {
-      await confirmButton.click();
-    }
+    // Confirm deletion in dialog - wait for it to appear and be visible
+    await page.waitForSelector('role=dialog', { state: 'visible', timeout: 3000 });
+    const confirmButton = page.getByRole('dialog').getByRole('button', { name: /delete/i });
+    await confirmButton.click();
 
     // Should navigate back to sources list
-    await expect(page).toHaveURL(/\/sources$/);
+    await expect(page).toHaveURL(/\/sources$/, { timeout: 10000 });
   });
 
   test('should validate required fields', async ({ page }) => {
@@ -135,13 +134,14 @@ test.describe('Source CRUD Operations', () => {
   test('should search/filter sources', async ({ page }) => {
     // Create test sources
     const prefix = Date.now().toString();
-    const source1 = `${prefix}-wikipedia`;
-    const source2 = `${prefix}-journal`;
+    const source1Title = `Wikipedia Test ${prefix}`;
+    const source2Title = `Journal Test ${prefix}`;
 
-    for (const slug of [source1, source2]) {
+    for (const title of [source1Title, source2Title]) {
       await page.goto('/sources/new');
-      await page.getByLabel(/slug/i).fill(slug);
-      await page.getByLabel(/summary.*english/i).fill(`Test source ${slug}`);
+      await page.getByLabel(/title/i).fill(title);
+      await page.getByLabel(/summary.*english/i).fill(`Test source ${title}`);
+      await page.getByLabel(/url/i).fill(`https://example.com/${title.replace(/\s+/g, '-')}`);
       await page.getByRole('button', { name: /create|submit/i }).click();
       await page.waitForURL(/\/sources\/[a-f0-9-]+/);
     }
@@ -152,10 +152,10 @@ test.describe('Source CRUD Operations', () => {
     // Search for specific source
     const searchInput = page.getByPlaceholder(/search/i);
     if (await searchInput.isVisible({ timeout: 2000 })) {
-      await searchInput.fill(source1);
+      await searchInput.fill(source1Title);
 
       // Should show matching source
-      await expect(page.locator(`text=${source1}`)).toBeVisible();
+      await expect(page.locator(`text=${source1Title}`)).toBeVisible();
     }
   });
 });
