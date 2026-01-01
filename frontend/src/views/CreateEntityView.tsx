@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -10,10 +10,11 @@ import {
   Box,
   IconButton,
   Alert,
+  Autocomplete,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
-import { createEntity, EntityWrite } from "../api/entities";
+import { createEntity, EntityWrite, getEntityFilterOptions, EntityFilterOptions } from "../api/entities";
 
 export function CreateEntityView() {
   const { t, i18n } = useTranslation();
@@ -22,8 +23,27 @@ export function CreateEntityView() {
   const [slug, setSlug] = useState("");
   const [summaryEn, setSummaryEn] = useState("");
   const [summaryFr, setSummaryFr] = useState("");
+  const [uiCategoryId, setUiCategoryId] = useState<string | null>(null);
+  const [filterOptions, setFilterOptions] = useState<EntityFilterOptions | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Fetch UI category options
+  useEffect(() => {
+    getEntityFilterOptions().then(setFilterOptions).catch(console.error);
+  }, []);
+
+  // Extract category options with current language labels
+  const categoryOptions = useMemo(() => {
+    if (!filterOptions) return [];
+
+    const currentLanguage = i18n.language || 'en';
+
+    return filterOptions.ui_categories.map(cat => ({
+      id: cat.id,
+      label: cat.label[currentLanguage] || cat.label.en || cat.id
+    }));
+  }, [filterOptions, i18n.language]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,6 +64,7 @@ export function CreateEntityView() {
       const payload: EntityWrite = {
         slug: slug.trim(),
         summary: Object.keys(summary).length > 0 ? summary : undefined,
+        ui_category_id: uiCategoryId || undefined,
       };
 
       const created = await createEntity(payload);
@@ -93,6 +114,25 @@ export function CreateEntityView() {
                 "create_entity.slug_help",
                 "A unique identifier (e.g., person-albert-einstein)"
               )}
+            />
+
+            <Autocomplete
+              options={categoryOptions}
+              getOptionLabel={(option) => option.label}
+              value={categoryOptions.find(opt => opt.id === uiCategoryId) || null}
+              onChange={(_, newValue) => setUiCategoryId(newValue?.id || null)}
+              disabled={loading}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label={t("create_entity.category", "Category")}
+                  helperText={t(
+                    "create_entity.category_help",
+                    "Optional: Select a category to help organize this entity"
+                  )}
+                />
+              )}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
             />
 
             <TextField

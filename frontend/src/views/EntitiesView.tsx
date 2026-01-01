@@ -17,6 +17,7 @@ import {
   Badge,
   Alert,
   CircularProgress,
+  Chip,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import FilterListIcon from "@mui/icons-material/FilterList";
@@ -113,6 +114,13 @@ export function EntitiesView() {
       label: cat.label[currentLanguage] || cat.label.en || cat.id
     }));
   }, [filterOptions, i18n.language]);
+
+  // Helper function to get category label from ID
+  const getCategoryLabel = useCallback((categoryId: string | undefined) => {
+    if (!categoryId) return null;
+    const category = categoryOptions.find(opt => opt.value === categoryId);
+    return category?.label || null;
+  }, [categoryOptions]);
 
   // Reset pagination when filters change
   useEffect(() => {
@@ -222,18 +230,31 @@ export function EntitiesView() {
         ) : (
           <>
             <List>
-              {entities.map((e) => (
-                <ListItem key={e.id}>
-                  <ListItemText
-                    primary={
-                      <Link component={RouterLink} to={`/entities/${e.id}`}>
-                        {e.slug}
-                      </Link>
-                    }
-                    secondary={e.summary?.en || e.kind}
-                  />
-                </ListItem>
-              ))}
+              {entities.map((e) => {
+                const categoryLabel = getCategoryLabel(e.ui_category_id);
+                return (
+                  <ListItem key={e.id}>
+                    <ListItemText
+                      primary={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Link component={RouterLink} to={`/entities/${e.id}`}>
+                            {e.slug}
+                          </Link>
+                          {categoryLabel && (
+                            <Chip
+                              label={categoryLabel}
+                              size="small"
+                              color="primary"
+                              variant="outlined"
+                            />
+                          )}
+                        </Box>
+                      }
+                      secondary={e.summary?.en || e.kind}
+                    />
+                  </ListItem>
+                );
+              })}
             </List>
 
             {/* Infinite scroll sentinel */}
