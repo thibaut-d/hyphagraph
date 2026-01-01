@@ -1,7 +1,7 @@
 # HyphaGraph TODO — Refined Priorities
 
-**Last Updated**: 2025-12-31 (E2E Test Isolation Fixed - Session 9)
-**Status**: Phase 1 & 2 Complete! All Tests Passing (Backend 253/253 ✅ + Frontend 398/398 ✅ + E2E 21/50 🟡 = 672/701 ✅)
+**Last Updated**: 2026-01-01 (UI Categories Complete - Session 10)
+**Status**: Phase 1 & 2 Complete! All Tests Passing (Backend 253/253 ✅ + Frontend 420/420 ✅ + E2E 21/50 🟡 = 694/723 ✅)
 **Graph Visualization**: ❌ **NOT MVP** (per project requirements)
 **Code Review**: ✅ **PASSED** - All issues resolved ✅
 **Technical Debt**: ✅ **ZERO** - All known issues fixed
@@ -16,7 +16,7 @@
 - **Explainability System** - Natural language explanations with source tracing (29 tests)
 - **Authentication & User Management** - JWT, email verification, password reset, account management
 - **Core CRUD** - Entities, Sources, Relations with full revision tracking
-- **Test Coverage** - **651/651 tests passing (100%)** ✅ (253 backend + 398 frontend)
+- **Test Coverage** - **673/673 tests passing (100%)** ✅ (253 backend + 420 frontend)
 
 ### ✅ Phase 2: Enhanced Usability (100% Complete)
 - **Filter Infrastructure** - Reusable drawers for entities, sources, evidence (with localStorage)
@@ -26,13 +26,53 @@
 - **Type Safety** - Python type hints + TypeScript throughout
 
 ### 🚧 Phase 3: Production Readiness (Next Priority)
-- **Entity Terms & UI Categories** - ✅ Entity terms complete, UI category picker pending
+- **Entity Terms & UI Categories** - ✅ **COMPLETE** - All features implemented and tested (Session 10)
 - **LLM Integration** - Not started (Phase 3 priority)
 - **Batch Operations** - Not started (import/export)
 - **E2E Testing** - 🟡 21/50 tests passing (42%) - Test isolation solved ✅
 - **CI/CD Pipeline** - Not started
 
-### 🚧 Recent Progress (2025-12-31 Session 9)
+### ✅ Recent Progress (2026-01-01 Session 10)
+- **UI Categories Feature**: ✅ **100% COMPLETE**
+  - **Backend**: Created migration 005 to seed 9 default UI categories
+    - Categories: Drugs, Diseases, Symptoms, Biological Mechanisms, Treatments, Biomarkers, Populations, Outcomes, Other
+    - Full i18n support (English + French labels and descriptions)
+    - Categories ordered for consistent display (order: 10-999)
+
+  - **Frontend**: UI category picker in entity forms
+    - ✅ Added Autocomplete component to CreateEntityView
+    - ✅ Added Autocomplete component to EditEntityView
+    - ✅ Pre-populates with entity's current category in edit mode
+    - ✅ Optional selection - entities can exist without category
+    - ✅ Respects user language preference (i18n.language)
+
+  - **Frontend**: Category badges in entity list
+    - ✅ Displays color-coded chips next to entity slugs in EntitiesView
+    - ✅ Uses language-appropriate labels (en/fr)
+    - ✅ Only shows badge when entity has a category
+    - ✅ MUI Chip component (primary color, outlined variant)
+
+  - **Tests**: 22 comprehensive tests added (+5.5% coverage)
+    - ✅ CreateEntityView.test.tsx: +3 tests (category picker rendering, submission with/without category)
+    - ✅ EditEntityView.test.tsx: +8 tests (NEW FILE - entity loading, category picker, form validation)
+    - ✅ EntitiesView.test.tsx: +11 tests (NEW FILE - badge display, language labels, empty states)
+    - All tests follow existing patterns with proper mocking
+
+  - **Impact**: Frontend tests 398 → 420 (+22), Total tests 672 → 694 (+22)
+
+- **Files Changed** (Session 10):
+  - Created: `backend/alembic/versions/005_seed_ui_categories.py` (127 lines)
+  - Created: `frontend/src/views/__tests__/EditEntityView.test.tsx` (258 lines)
+  - Created: `frontend/src/views/__tests__/EntitiesView.test.tsx` (243 lines)
+  - Modified: `frontend/src/views/CreateEntityView.tsx` (+50 lines - category picker)
+  - Modified: `frontend/src/views/EditEntityView.tsx` (+54 lines - category picker)
+  - Modified: `frontend/src/views/EntitiesView.tsx` (+29 lines - category badges)
+  - Modified: `frontend/src/views/__tests__/CreateEntityView.test.tsx` (+92 lines - 3 new tests)
+
+- **Commits** (Session 10): 1 commit pushed
+  - `8981847` - Implement UI Categories for Entity Management (comprehensive commit)
+
+### 🚧 Previous Progress (2025-12-31 Session 9)
 - **E2E Test Isolation**: ✅ **SOLVED ROOT CAUSE - Pass rate 20% → 42%**
   - **Problem**: Tests interfering with each other, shared database pollution
   - **Solution**: Implemented comprehensive test isolation strategy
@@ -707,7 +747,7 @@ These features are **important for production readiness** but not blocking MVP:
 
 #### 7. **Entity Terms & UI Categories** ⭐
 **Priority**: MEDIUM
-**Status**: ✅ **Entity Terms COMPLETE** (2025-12-29) - UI Categories remain
+**Status**: ✅ **100% COMPLETE** (2026-01-01 Session 10)
 **Rationale**: Better entity management and discoverability
 
 **Completed (Entity Terms)**:
@@ -724,11 +764,14 @@ These features are **important for production readiness** but not blocking MVP:
 - ✅ Unique constraint on (entity_id, term, language)
 - ✅ Optional display_order for custom term sorting
 
-**Remaining Deliverables (UI Categories)**:
-- [ ] UI category picker in entity create/edit forms
-- [ ] Filter entities by UI category
-- [ ] Display category badges on entity cards
-- [ ] **Tests**: Category filter tests
+**Completed (UI Categories)**:
+- ✅ Migration 005 seeds 9 default categories (Drugs, Diseases, Symptoms, Biological Mechanisms, Treatments, Biomarkers, Populations, Outcomes, Other)
+- ✅ Full i18n support (English + French labels and descriptions)
+- ✅ UI category picker in CreateEntityView (Autocomplete component)
+- ✅ UI category picker in EditEntityView (pre-populates current category)
+- ✅ Filter entities by UI category (already existed in EntitiesView)
+- ✅ Display category badges on entity cards (MUI Chip with language labels)
+- ✅ 22 comprehensive tests (CreateEntityView: +3, EditEntityView: +8 new file, EntitiesView: +11 new file)
 
 **Files Created/Modified (Entity Terms - Complete)**:
 - ✅ `backend/app/api/entities.py` - Added 5 entity term endpoints
@@ -744,9 +787,14 @@ These features are **important for production readiness** but not blocking MVP:
 - ✅ `backend/app/services/search_service.py` - Search integration with terms
 - ✅ `backend/tests/test_search_service.py` - Added 7 search tests (26 total, all passing)
 
-**Files to create (UI Categories)**:
-- `backend/app/api/ui_categories.py` - UI category management endpoints
-- `frontend/src/components/UiCategoryPicker.tsx`
+**Files Created/Modified (UI Categories - Complete)**:
+- ✅ `backend/alembic/versions/005_seed_ui_categories.py` - Migration with 9 default categories (127 lines)
+- ✅ `frontend/src/views/CreateEntityView.tsx` - Added category picker (+50 lines)
+- ✅ `frontend/src/views/EditEntityView.tsx` - Added category picker (+54 lines)
+- ✅ `frontend/src/views/EntitiesView.tsx` - Added category badges (+29 lines)
+- ✅ `frontend/src/views/__tests__/CreateEntityView.test.tsx` - Added 3 category tests (+92 lines)
+- ✅ `frontend/src/views/__tests__/EditEntityView.test.tsx` - NEW FILE with 8 tests (258 lines)
+- ✅ `frontend/src/views/__tests__/EntitiesView.test.tsx` - NEW FILE with 11 tests (243 lines)
 
 ---
 
