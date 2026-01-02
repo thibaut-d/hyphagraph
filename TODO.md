@@ -57,19 +57,31 @@
     - **File Modified**: `frontend/src/components/Layout.tsx` (+156 lines)
     - **Commit**: `edfb58c` - Add UI categories dropdown to Entities menu
 
+  - **Mobile Search Dialog (Priority 2)**: ✅ **COMPLETE**
+    - ✅ Added search icon button in mobile AppBar (xs/sm only)
+    - ✅ Created search Dialog with full GlobalSearch component
+    - ✅ Auto-closes after navigation (useEffect on location change)
+    - ✅ Desktop retains inline search bar (md+)
+    - ✅ Full-width dialog optimized for mobile touch
+    - **File Modified**: `frontend/src/components/Layout.tsx` (+46 lines)
+    - **Commit**: `fc0fe1c` - Implement mobile search dialog for responsive design
+
   - **Remaining Responsive Work** (Pending):
-    - [ ] **Priority 2**: GlobalSearch mobile adaptation (hide or icon-only on small screens)
     - [ ] **Priority 3**: Responsive audit of view pages (EntitiesView, SourcesView, EntityDetailView, etc.)
     - [ ] **Priority 4**: Container padding improvements for tablet sizes
 
-  - **Impact**: Layout.tsx now fully responsive for mobile (xs/sm) and desktop (md+) with comprehensive navigation
+  - **Impact**: Layout.tsx now fully responsive with mobile navigation, search dialog, and category menus
 
 - **Files Changed** (Session 11):
-  - Modified: `frontend/src/components/Layout.tsx` (2 commits, +323 lines net)
+  - Modified: `frontend/src/components/Layout.tsx` (3 commits, +369 lines net)
+  - Modified: `TODO.md` (documentation update)
+  - Modified: `UX.md` (added responsive design specifications)
 
-- **Commits** (Session 11): 2 commits pushed
+- **Commits** (Session 11): 5 commits pushed
   - `703c52a` - Implement responsive mobile navigation menu
   - `edfb58c` - Add UI categories dropdown to Entities menu
+  - `6e7e7bc` - Update TODO.md and UX.md with responsive design documentation
+  - `fc0fe1c` - Implement mobile search dialog for responsive design
 
 ### ✅ Previous Progress (2026-01-01 Session 10)
 - **UI Categories Feature**: ✅ **100% COMPLETE**
