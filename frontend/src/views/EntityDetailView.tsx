@@ -318,24 +318,28 @@ export function EntityDetailView() {
   return (
     <Stack spacing={3}>
       {/* Header */}
-      <Paper sx={{ p: 3 }}>
+      <Paper sx={{ p: { xs: 2, sm: 3 } }}>
         <Stack spacing={2}>
           <Box sx={{ display: "flex", gap: 1 }}>
             <Button
               component={RouterLink}
               to="/entities"
               startIcon={<ArrowBackIcon />}
+              size="small"
             >
               {t("common.back", "Back")}
             </Button>
           </Box>
           <Stack
-            direction="row"
+            direction={{ xs: "column", sm: "row" }}
             justifyContent="space-between"
-            alignItems="center"
+            alignItems={{ xs: "flex-start", sm: "center" }}
+            spacing={2}
           >
             <Box sx={{ flexGrow: 1 }}>
-              <Typography variant="h4">{entity.slug}</Typography>
+              <Typography variant="h4" sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
+                {entity.slug}
+              </Typography>
               <Typography variant="subtitle2" color="text.secondary">
                 {entity.summary?.en || entity.kind}
               </Typography>
@@ -346,12 +350,18 @@ export function EntityDetailView() {
               </Box>
             </Box>
 
-            <Box sx={{ display: "flex", gap: 1 }}>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1}
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
+            >
               <Button
                 component={RouterLink}
                 to={`/entities/${entity.id}/edit`}
                 color="primary"
                 startIcon={<EditIcon />}
+                size="small"
+                fullWidth={{ xs: true, sm: false }}
               >
                 {t("common.edit", "Edit")}
               </Button>
@@ -359,6 +369,8 @@ export function EntityDetailView() {
                 onClick={handleDeleteClick}
                 color="error"
                 startIcon={<DeleteIcon />}
+                size="small"
+                fullWidth={{ xs: true, sm: false }}
               >
                 {t("common.delete", "Delete")}
               </Button>
@@ -367,16 +379,18 @@ export function EntityDetailView() {
                 to={`/relations/new?entity_id=${entity.id}`}
                 variant="contained"
                 startIcon={<AddIcon />}
+                size="small"
+                fullWidth={{ xs: true, sm: false }}
               >
                 {t("relation.create", "Create relation")}
               </Button>
-            </Box>
+            </Stack>
           </Stack>
         </Stack>
       </Paper>
 
       {/* Inference */}
-      <Paper sx={{ p: 3 }}>
+      <Paper sx={{ p: { xs: 2, sm: 3 } }}>
         <Stack spacing={2}>
           <Box
             sx={{

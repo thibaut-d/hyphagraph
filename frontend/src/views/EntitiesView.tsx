@@ -17,6 +17,7 @@ import {
   Badge,
   Alert,
   CircularProgress,
+  Chip,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import FilterListIcon from "@mui/icons-material/FilterList";
@@ -114,6 +115,13 @@ export function EntitiesView() {
     }));
   }, [filterOptions, i18n.language]);
 
+  // Helper function to get category label from ID
+  const getCategoryLabel = useCallback((categoryId: string | undefined) => {
+    if (!categoryId) return null;
+    const category = categoryOptions.find(opt => opt.value === categoryId);
+    return category?.label || null;
+  }, [categoryOptions]);
+
   // Reset pagination when filters change
   useEffect(() => {
     setEntities([]);
@@ -172,18 +180,28 @@ export function EntitiesView() {
 
   return (
     <Stack spacing={2}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Typography variant="h4">
+      <Box sx={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: { xs: "flex-start", sm: "center" },
+        flexDirection: { xs: "column", sm: "row" },
+        gap: 2
+      }}>
+        <Typography variant="h4" sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
           {t("entities.title", "Entities")}
         </Typography>
-        <Stack direction="row" spacing={2}>
+        <Stack direction="row" spacing={1}>
           <Badge badgeContent={activeFilterCount} color="primary">
             <Button
               variant="outlined"
               startIcon={<FilterListIcon />}
               onClick={openDrawer}
+              size="small"
+              sx={{ minWidth: { xs: 'auto', sm: 'auto' } }}
             >
-              {t("filters.title", "Filters")}
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                {t("filters.title", "Filters")}
+              </Box>
             </Button>
           </Badge>
           <Button
@@ -191,8 +209,11 @@ export function EntitiesView() {
             to="/entities/new"
             variant="contained"
             startIcon={<AddIcon />}
+            size="small"
           >
-            {t("entities.create", "Create Entity")}
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+              {t("entities.create", "Create Entity")}
+            </Box>
           </Button>
         </Stack>
       </Box>
@@ -214,26 +235,39 @@ export function EntitiesView() {
         </Alert>
       )}
 
-      <Paper sx={{ p: 2 }}>
+      <Paper sx={{ p: { xs: 1, sm: 2 } }}>
         {entities.length === 0 && isLoading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: { xs: 2, sm: 3 } }}>
             <CircularProgress />
           </Box>
         ) : (
           <>
             <List>
-              {entities.map((e) => (
-                <ListItem key={e.id}>
-                  <ListItemText
-                    primary={
-                      <Link component={RouterLink} to={`/entities/${e.id}`}>
-                        {e.slug}
-                      </Link>
-                    }
-                    secondary={e.summary?.en || e.kind}
-                  />
-                </ListItem>
-              ))}
+              {entities.map((e) => {
+                const categoryLabel = getCategoryLabel(e.ui_category_id);
+                return (
+                  <ListItem key={e.id}>
+                    <ListItemText
+                      primary={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Link component={RouterLink} to={`/entities/${e.id}`}>
+                            {e.slug}
+                          </Link>
+                          {categoryLabel && (
+                            <Chip
+                              label={categoryLabel}
+                              size="small"
+                              color="primary"
+                              variant="outlined"
+                            />
+                          )}
+                        </Box>
+                      }
+                      secondary={e.summary?.en || e.kind}
+                    />
+                  </ListItem>
+                );
+              })}
             </List>
 
             {/* Infinite scroll sentinel */}

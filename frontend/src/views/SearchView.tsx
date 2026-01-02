@@ -141,9 +141,9 @@ export function SearchView() {
   const totalPages = Math.ceil(total / RESULTS_PER_PAGE);
 
   return (
-    <Paper sx={{ p: 3 }}>
+    <Paper sx={{ p: { xs: 2, sm: 3 } }}>
       <Stack spacing={3}>
-        <Typography variant="h5">
+        <Typography variant="h5" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
           {t("search.title", "Search")}
         </Typography>
 
@@ -167,6 +167,13 @@ export function SearchView() {
               onChange={handleTypeFilterChange}
               aria-label="search result types"
               size="small"
+              sx={{
+                flexWrap: 'wrap',
+                '& .MuiToggleButton-root': {
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                  py: { xs: 0.5, sm: 1 },
+                }
+              }}
             >
               <ToggleButton value="entity" aria-label="entities">
                 Entities ({entityCount})
