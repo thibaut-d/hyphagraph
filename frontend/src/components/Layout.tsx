@@ -24,6 +24,9 @@ import {
   Menu,
   MenuItem,
   Collapse,
+  Dialog,
+  DialogContent,
+  DialogTitle,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
@@ -59,6 +62,7 @@ export function Layout() {
 
   // Mobile menu state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
   // Entities dropdown state
   const [categories, setCategories] = useState<Array<{ id: string; label: { en: string; fr: string } }>>([]);
@@ -77,6 +81,11 @@ export function Layout() {
         console.error("Failed to fetch UI categories:", error);
       });
   }, []);
+
+  // Close mobile search dialog on navigation
+  useEffect(() => {
+    setMobileSearchOpen(false);
+  }, [location.pathname]);
 
   const toggleLanguage = () => {
     i18n.changeLanguage(i18n.language === "en" ? "fr" : "en");
@@ -213,6 +222,18 @@ export function Layout() {
 
           {/* Spacer for mobile (pushes icons to right) */}
           <Box sx={{ flexGrow: 1, display: { xs: 'block', md: 'none' } }} />
+
+          {/* Mobile: Search button (xs/sm only) */}
+          <Tooltip title={t("common.search", "Search")}>
+            <IconButton
+              color="inherit"
+              onClick={() => setMobileSearchOpen(true)}
+              size="small"
+              sx={{ display: { xs: 'flex', md: 'none' } }}
+            >
+              <SearchIcon />
+            </IconButton>
+          </Tooltip>
 
           {/* Language switch */}
           <Tooltip title={t("common.change_language", "Change language")}>
@@ -416,6 +437,31 @@ export function Layout() {
           </>
         )}
       </Drawer>
+
+      {/* Mobile: Search Dialog */}
+      <Dialog
+        open={mobileSearchOpen}
+        onClose={() => setMobileSearchOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        sx={{ display: { xs: 'block', md: 'none' } }}
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          {t("common.search", "Search")}
+          <IconButton
+            onClick={() => setMobileSearchOpen(false)}
+            size="small"
+            edge="end"
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 1 }}>
+            <GlobalSearch />
+          </Box>
+        </DialogContent>
+      </Dialog>
 
       {/* Content */}
       <Container
