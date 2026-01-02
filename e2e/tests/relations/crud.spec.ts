@@ -15,8 +15,8 @@ test.describe('Relation CRUD Operations', () => {
     // Create a source (sources use Title and URL, not slug)
     const sourceTitle = generateSourceName('rel-source');
     await page.goto('/sources/new');
-    await page.getByLabel(/^title$/i).fill(sourceTitle);
-    await page.getByLabel(/^url$/i).fill('https://example.com/rel-source');
+    await page.getByRole('textbox', { name: 'Title' }).fill(sourceTitle);
+    await page.getByRole('textbox', { name: 'URL' }).fill('https://example.com/rel-source');
     await page.getByLabel(/summary \(english\)/i).fill('Source for relation tests');
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/sources\/([a-f0-9-]+)/);
@@ -25,7 +25,7 @@ test.describe('Relation CRUD Operations', () => {
     // Create first entity
     const entity1Slug = generateEntityName('rel-entity-1').toLowerCase().replace(/\s+/g, '-');
     await page.goto('/entities/new');
-    await page.getByLabel(/^slug$/i).fill(entity1Slug);
+    await page.getByRole('textbox', { name: 'Slug' }).fill(entity1Slug);
     await page.getByLabel(/summary \(english\)/i).fill('First entity for relations');
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/entities\/([a-f0-9-]+)/);
@@ -34,7 +34,7 @@ test.describe('Relation CRUD Operations', () => {
     // Create second entity
     const entity2Slug = generateEntityName('rel-entity-2').toLowerCase().replace(/\s+/g, '-');
     await page.goto('/entities/new');
-    await page.getByLabel(/^slug$/i).fill(entity2Slug);
+    await page.getByRole('textbox', { name: 'Slug' }).fill(entity2Slug);
     await page.getByLabel(/summary \(english\)/i).fill('Second entity for relations');
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/entities\/([a-f0-9-]+)/);
@@ -56,7 +56,7 @@ test.describe('Relation CRUD Operations', () => {
     await expect(page.getByRole('heading', { name: /create relation|new relation/i })).toBeVisible();
 
     // Fill in relation details
-    await page.getByLabel(/^slug$/i).fill(relationSlug);
+    await page.getByRole('textbox', { name: 'Slug' }).fill(relationSlug);
     await page.getByLabel(/summary \(english\)/i).fill('This is a test relation');
 
     // Select source (if there's a source selector)
@@ -89,7 +89,7 @@ test.describe('Relation CRUD Operations', () => {
     const relationSlug = generateRelationName('role-test').toLowerCase().replace(/\s+/g, '-');
 
     await page.goto('/relations/new');
-    await page.getByLabel(/^slug$/i).fill(relationSlug);
+    await page.getByRole('textbox', { name: 'Slug' }).fill(relationSlug);
     await page.getByLabel(/summary \(english\)/i).fill('Relation for role testing');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
@@ -122,7 +122,7 @@ test.describe('Relation CRUD Operations', () => {
     const updatedSummary = 'Updated summary for relation';
 
     await page.goto('/relations/new');
-    await page.getByLabel(/^slug$/i).fill(originalSlug);
+    await page.getByRole('textbox', { name: 'Slug' }).fill(originalSlug);
     await page.getByLabel(/summary \(english\)/i).fill('Original summary');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
@@ -150,7 +150,7 @@ test.describe('Relation CRUD Operations', () => {
     const relationSlug = generateRelationName('delete-test').toLowerCase().replace(/\s+/g, '-');
 
     await page.goto('/relations/new');
-    await page.getByLabel(/^slug$/i).fill(relationSlug);
+    await page.getByRole('textbox', { name: 'Slug' }).fill(relationSlug);
     await page.getByLabel(/summary \(english\)/i).fill('Relation to be deleted');
     await page.getByRole('button', { name: /create|submit/i }).click();
 

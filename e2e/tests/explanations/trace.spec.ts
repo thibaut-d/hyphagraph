@@ -17,8 +17,8 @@ test.describe('Explanation Trace', () => {
     // Create test data first
     const entitySlug = generateEntityName('explain-entity').toLowerCase().replace(/\s+/g, '-');
     await page.goto('/entities/new');
-    await page.getByLabel(/^slug$/i).fill(entitySlug);
-    await page.getByLabel(/summary \(english\)/i).fill('Entity for explanation test');
+    await page.getByRole('textbox', { name: 'Slug' }).fill(entitySlug);
+    await page.getByRole('textbox', { name: /summary.*english/i }).fill('Entity for explanation test');
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/entities\/([a-f0-9-]+)/);
 
@@ -36,16 +36,16 @@ test.describe('Explanation Trace', () => {
     // Create entities and relations to generate explanation data
     const sourceTitle = generateSourceName('exp-source');
     await page.goto('/sources/new');
-    await page.getByLabel(/^title$/i).fill(sourceTitle);
-    await page.getByLabel(/^url$/i).fill('https://example.com/exp-source');
-    await page.getByLabel(/summary \(english\)/i).fill('Source for explanation');
+    await page.getByRole('textbox', { name: 'Title' }).fill(sourceTitle);
+    await page.getByRole('textbox', { name: 'URL' }).fill('https://example.com/exp-source');
+    await page.getByRole('textbox', { name: /summary.*english/i }).fill('Source for explanation');
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/sources\/[a-f0-9-]+/);
 
     const entitySlug = generateEntityName('trace-entity').toLowerCase().replace(/\s+/g, '-');
     await page.goto('/entities/new');
-    await page.getByLabel(/^slug$/i).fill(entitySlug);
-    await page.getByLabel(/summary \(english\)/i).fill('Entity with trace');
+    await page.getByRole('textbox', { name: 'Slug' }).fill(entitySlug);
+    await page.getByRole('textbox', { name: /summary.*english/i }).fill('Entity with trace');
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/entities\/([a-f0-9-]+)/);
 
@@ -65,8 +65,8 @@ test.describe('Explanation Trace', () => {
     // Create complex relation chain for evidence path
     const entitySlug = generateEntityName('evidence-entity').toLowerCase().replace(/\s+/g, '-');
     await page.goto('/entities/new');
-    await page.getByLabel(/^slug$/i).fill(entitySlug);
-    await page.getByLabel(/summary \(english\)/i).fill('Entity with evidence');
+    await page.getByRole('textbox', { name: 'Slug' }).fill(entitySlug);
+    await page.getByRole('textbox', { name: /summary.*english/i }).fill('Entity with evidence');
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/entities\/([a-f0-9-]+)/);
 
@@ -89,8 +89,8 @@ test.describe('Explanation Trace', () => {
   test('should expand/collapse evidence nodes', async ({ page }) => {
     const entitySlug = generateEntityName('expand-entity').toLowerCase().replace(/\s+/g, '-');
     await page.goto('/entities/new');
-    await page.getByLabel(/^slug$/i).fill(entitySlug);
-    await page.getByLabel(/summary \(english\)/i).fill('Entity for expand test');
+    await page.getByRole('textbox', { name: 'Slug' }).fill(entitySlug);
+    await page.getByRole('textbox', { name: /summary.*english/i }).fill('Entity for expand test');
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/entities\/([a-f0-9-]+)/);
 
@@ -117,8 +117,8 @@ test.describe('Explanation Trace', () => {
   test('should show inference scores in explanation', async ({ page }) => {
     const entitySlug = generateEntityName('score-explain').toLowerCase().replace(/\s+/g, '-');
     await page.goto('/entities/new');
-    await page.getByLabel(/^slug$/i).fill(entitySlug);
-    await page.getByLabel(/summary \(english\)/i).fill('Entity with scored explanation');
+    await page.getByRole('textbox', { name: 'Slug' }).fill(entitySlug);
+    await page.getByRole('textbox', { name: /summary.*english/i }).fill('Entity with scored explanation');
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/entities\/([a-f0-9-]+)/);
 
@@ -136,8 +136,8 @@ test.describe('Explanation Trace', () => {
   test('should navigate between entity detail and explanation', async ({ page }) => {
     const entitySlug = generateEntityName('nav-explain').toLowerCase().replace(/\s+/g, '-');
     await page.goto('/entities/new');
-    await page.getByLabel(/^slug$/i).fill(entitySlug);
-    await page.getByLabel(/summary \(english\)/i).fill('Entity for nav test');
+    await page.getByRole('textbox', { name: 'Slug' }).fill(entitySlug);
+    await page.getByRole('textbox', { name: /summary.*english/i }).fill('Entity for nav test');
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/entities\/([a-f0-9-]+)/);
 
@@ -166,8 +166,8 @@ test.describe('Explanation Trace', () => {
   test('should handle explanation for non-existent role', async ({ page }) => {
     const entitySlug = generateEntityName('no-role').toLowerCase().replace(/\s+/g, '-');
     await page.goto('/entities/new');
-    await page.getByLabel(/^slug$/i).fill(entitySlug);
-    await page.getByLabel(/summary \(english\)/i).fill('Entity without role');
+    await page.getByRole('textbox', { name: 'Slug' }).fill(entitySlug);
+    await page.getByRole('textbox', { name: /summary.*english/i }).fill('Entity without role');
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/entities\/([a-f0-9-]+)/);
 

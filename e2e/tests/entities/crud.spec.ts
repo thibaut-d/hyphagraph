@@ -23,7 +23,7 @@ test.describe('Entity CRUD Operations', () => {
     await expect(page.getByRole('heading', { name: 'Create Entity' })).toBeVisible();
 
     // Fill in entity details
-    await page.getByLabel(/^slug$/i).fill(entitySlug);
+    await page.getByRole('textbox', { name: 'Slug' }).fill(entitySlug);
     await page.getByLabel(/summary \(english\)/i).fill('This is a test entity');
 
     // Submit form
@@ -51,7 +51,7 @@ test.describe('Entity CRUD Operations', () => {
     const entitySlug = generateEntityName('view-test').toLowerCase().replace(/\s+/g, '-');
 
     await page.goto('/entities/new');
-    await page.getByLabel(/^slug$/i).fill(entitySlug);
+    await page.getByRole('textbox', { name: 'Slug' }).fill(entitySlug);
     await page.getByLabel(/summary \(english\)/i).fill('Entity for viewing');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
@@ -69,7 +69,7 @@ test.describe('Entity CRUD Operations', () => {
     const updatedSummary = 'Updated summary for edit test';
 
     await page.goto('/entities/new');
-    await page.getByLabel(/^slug$/i).fill(originalSlug);
+    await page.getByRole('textbox', { name: 'Slug' }).fill(originalSlug);
     await page.getByLabel(/summary \(english\)/i).fill('Original summary');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
@@ -105,7 +105,7 @@ test.describe('Entity CRUD Operations', () => {
     const entitySlug = generateEntityName('delete-test').toLowerCase().replace(/\s+/g, '-');
 
     await page.goto('/entities/new');
-    await page.getByLabel(/^slug$/i).fill(entitySlug);
+    await page.getByRole('textbox', { name: 'Slug' }).fill(entitySlug);
     await page.getByLabel(/summary \(english\)/i).fill('Entity to be deleted');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
@@ -133,7 +133,7 @@ test.describe('Entity CRUD Operations', () => {
 
     // Create first entity
     await page.goto('/entities/new');
-    await page.getByLabel(/^slug$/i).fill(duplicateSlug);
+    await page.getByRole('textbox', { name: 'Slug' }).fill(duplicateSlug);
     await page.getByLabel(/summary \(english\)/i).fill('First entity');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
@@ -142,7 +142,7 @@ test.describe('Entity CRUD Operations', () => {
 
     // Try to create another entity with the same slug
     await page.goto('/entities/new');
-    await page.getByLabel(/^slug$/i).fill(duplicateSlug);
+    await page.getByRole('textbox', { name: 'Slug' }).fill(duplicateSlug);
     await page.getByLabel(/summary \(english\)/i).fill('Duplicate entity');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
@@ -172,7 +172,7 @@ test.describe('Entity CRUD Operations', () => {
 
     for (const slug of [entity1, entity2]) {
       await page.goto('/entities/new');
-      await page.getByLabel(/^slug$/i).fill(slug);
+      await page.getByRole('textbox', { name: 'Slug' }).fill(slug);
       await page.getByLabel(/summary \(english\)/i).fill(`Test entity ${slug}`);
       await page.getByRole('button', { name: /create|submit/i }).click();
       await page.waitForURL(/\/entities\/[a-f0-9-]+/);
@@ -197,7 +197,7 @@ test.describe('Entity CRUD Operations', () => {
     const entitySlug = generateEntityName('nav-test').toLowerCase().replace(/\s+/g, '-');
 
     await page.goto('/entities/new');
-    await page.getByLabel(/^slug$/i).fill(entitySlug);
+    await page.getByRole('textbox', { name: 'Slug' }).fill(entitySlug);
     await page.getByLabel(/summary \(english\)/i).fill('Navigation test entity');
     await page.getByRole('button', { name: /create|submit/i }).click();
 

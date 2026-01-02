@@ -20,8 +20,8 @@ test.describe('Inference Viewing', () => {
     // Create source
     const sourceTitle = generateSourceName('inf-source');
     await page.goto('/sources/new');
-    await page.getByLabel(/^title$/i).fill(sourceTitle);
-    await page.getByLabel(/^url$/i).fill('https://example.com/inf-source');
+    await page.getByRole('textbox', { name: 'Title' }).fill(sourceTitle);
+    await page.getByRole('textbox', { name: 'URL' }).fill('https://example.com/inf-source');
     await page.getByLabel(/summary \(english\)/i).fill('Source for inference test');
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/sources\/[a-f0-9-]+/);
@@ -29,7 +29,7 @@ test.describe('Inference Viewing', () => {
     // Create entities
     const entity1Slug = generateEntityName('person').toLowerCase().replace(/\s+/g, '-');
     await page.goto('/entities/new');
-    await page.getByLabel(/^slug$/i).fill(entity1Slug);
+    await page.getByRole('textbox', { name: 'Slug' }).fill(entity1Slug);
     await page.getByLabel(/summary \(english\)/i).fill('A person entity');
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/entities\/([a-f0-9-]+)/);
@@ -37,7 +37,7 @@ test.describe('Inference Viewing', () => {
 
     const entity2Slug = generateEntityName('company').toLowerCase().replace(/\s+/g, '-');
     await page.goto('/entities/new');
-    await page.getByLabel(/^slug$/i).fill(entity2Slug);
+    await page.getByRole('textbox', { name: 'Slug' }).fill(entity2Slug);
     await page.getByLabel(/summary \(english\)/i).fill('A company entity');
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/entities\/[a-f0-9-]+/);
@@ -85,8 +85,8 @@ test.describe('Inference Viewing', () => {
     // Create entities and relations
     const sourceTitle = generateSourceName('score-test');
     await page.goto('/sources/new');
-    await page.getByLabel(/^title$/i).fill(sourceTitle);
-    await page.getByLabel(/^url$/i).fill('https://example.com/score-test');
+    await page.getByRole('textbox', { name: 'Title' }).fill(sourceTitle);
+    await page.getByRole('textbox', { name: 'URL' }).fill('https://example.com/score-test');
     await page.getByLabel(/summary \(english\)/i).fill('Source with high authority');
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/sources\/[a-f0-9-]+/);
@@ -94,7 +94,7 @@ test.describe('Inference Viewing', () => {
     // Create an entity and check for inferences
     const entitySlug = generateEntityName('scored-entity').toLowerCase().replace(/\s+/g, '-');
     await page.goto('/entities/new');
-    await page.getByLabel(/^slug$/i).fill(entitySlug);
+    await page.getByRole('textbox', { name: 'Slug' }).fill(entitySlug);
     await page.getByLabel(/summary \(english\)/i).fill('Entity with scored inferences');
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/entities\/[a-f0-9-]+/);
@@ -110,7 +110,7 @@ test.describe('Inference Viewing', () => {
     // Create test data
     const entitySlug = generateEntityName('inf-detail').toLowerCase().replace(/\s+/g, '-');
     await page.goto('/entities/new');
-    await page.getByLabel(/^slug$/i).fill(entitySlug);
+    await page.getByRole('textbox', { name: 'Slug' }).fill(entitySlug);
     await page.getByLabel(/summary \(english\)/i).fill('Entity for inference details');
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/entities\/[a-f0-9-]+/);
