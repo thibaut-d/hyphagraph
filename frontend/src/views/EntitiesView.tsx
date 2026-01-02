@@ -180,18 +180,28 @@ export function EntitiesView() {
 
   return (
     <Stack spacing={2}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Typography variant="h4">
+      <Box sx={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: { xs: "flex-start", sm: "center" },
+        flexDirection: { xs: "column", sm: "row" },
+        gap: 2
+      }}>
+        <Typography variant="h4" sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
           {t("entities.title", "Entities")}
         </Typography>
-        <Stack direction="row" spacing={2}>
+        <Stack direction="row" spacing={1}>
           <Badge badgeContent={activeFilterCount} color="primary">
             <Button
               variant="outlined"
               startIcon={<FilterListIcon />}
               onClick={openDrawer}
+              size="small"
+              sx={{ minWidth: { xs: 'auto', sm: 'auto' } }}
             >
-              {t("filters.title", "Filters")}
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                {t("filters.title", "Filters")}
+              </Box>
             </Button>
           </Badge>
           <Button
@@ -199,8 +209,11 @@ export function EntitiesView() {
             to="/entities/new"
             variant="contained"
             startIcon={<AddIcon />}
+            size="small"
           >
-            {t("entities.create", "Create Entity")}
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+              {t("entities.create", "Create Entity")}
+            </Box>
           </Button>
         </Stack>
       </Box>
@@ -222,9 +235,9 @@ export function EntitiesView() {
         </Alert>
       )}
 
-      <Paper sx={{ p: 2 }}>
+      <Paper sx={{ p: { xs: 1, sm: 2 } }}>
         {entities.length === 0 && isLoading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: { xs: 2, sm: 3 } }}>
             <CircularProgress />
           </Box>
         ) : (

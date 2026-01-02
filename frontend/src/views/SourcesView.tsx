@@ -182,18 +182,28 @@ export function SourcesView() {
 
   return (
     <Stack spacing={2}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Typography variant="h4">
+      <Box sx={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: { xs: "flex-start", sm: "center" },
+        flexDirection: { xs: "column", sm: "row" },
+        gap: 2
+      }}>
+        <Typography variant="h4" sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
           {t("sources.title", "Sources")}
         </Typography>
-        <Stack direction="row" spacing={2}>
+        <Stack direction="row" spacing={1}>
           <Badge badgeContent={activeFilterCount} color="primary">
             <Button
               variant="outlined"
               startIcon={<FilterListIcon />}
               onClick={openDrawer}
+              size="small"
+              sx={{ minWidth: { xs: 'auto', sm: 'auto' } }}
             >
-              {t("filters.title", "Filters")}
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                {t("filters.title", "Filters")}
+              </Box>
             </Button>
           </Badge>
           <Button
@@ -201,8 +211,11 @@ export function SourcesView() {
             to="/sources/new"
             variant="contained"
             startIcon={<AddIcon />}
+            size="small"
           >
-            {t("sources.create", "Create Source")}
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+              {t("sources.create", "Create Source")}
+            </Box>
           </Button>
         </Stack>
       </Box>
@@ -224,9 +237,9 @@ export function SourcesView() {
         </Alert>
       )}
 
-      <Paper sx={{ p: 3 }}>
+      <Paper sx={{ p: { xs: 1, sm: 2 } }}>
         {sources.length === 0 && isLoading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: { xs: 2, sm: 3 } }}>
             <CircularProgress />
           </Box>
         ) : (
