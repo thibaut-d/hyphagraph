@@ -1,6 +1,6 @@
 # HyphaGraph TODO — Refined Priorities
 
-**Last Updated**: 2026-01-01 (UI Categories Complete - Session 10)
+**Last Updated**: 2026-01-02 (Responsive Design - Session 11)
 **Status**: Phase 1 & 2 Complete! All Tests Passing (Backend 253/253 ✅ + Frontend 420/420 ✅ + E2E 21/50 🟡 = 694/723 ✅)
 **Graph Visualization**: ❌ **NOT MVP** (per project requirements)
 **Code Review**: ✅ **PASSED** - All issues resolved ✅
@@ -32,7 +32,46 @@
 - **E2E Testing** - 🟡 21/50 tests passing (42%) - Test isolation solved ✅
 - **CI/CD Pipeline** - Not started
 
-### ✅ Recent Progress (2026-01-01 Session 10)
+### 🚧 Recent Progress (2026-01-02 Session 11)
+- **Responsive Design Implementation**: 🟡 **PARTIALLY COMPLETE** (Priority 1 done, 2-4 pending)
+  - **Mobile Navigation (Priority 1)**: ✅ **COMPLETE**
+    - ✅ Added hamburger menu icon for mobile (xs/sm breakpoints)
+    - ✅ Created 280px navigation drawer with icons and labels
+    - ✅ Implemented expandable/collapsible menu items
+    - ✅ Added language switcher in drawer
+    - ✅ Responsive sizing for all components (logo, icons, avatars, buttons)
+    - ✅ Hides desktop menu on mobile, shows hamburger instead
+    - ✅ User info footer in mobile drawer
+    - ✅ Active state highlighting for current route
+    - **File Modified**: `frontend/src/components/Layout.tsx` (+167 lines net)
+    - **Commit**: `703c52a` - Implement responsive mobile navigation menu
+
+  - **UI Categories Dropdown in Entities Menu**: ✅ **COMPLETE**
+    - ✅ Desktop: Dropdown menu with ArrowDropDownIcon showing all categories
+    - ✅ Mobile: Expandable submenu in drawer with category list
+    - ✅ "All Entities" option at top of both menus
+    - ✅ Categories fetched from API on mount (`getEntityFilterOptions`)
+    - ✅ Full i18n support (en/fr labels)
+    - ✅ Each category navigates to `/entities?ui_category_id={categoryId}`
+    - ✅ Graceful fallback if no categories available
+    - **File Modified**: `frontend/src/components/Layout.tsx` (+156 lines)
+    - **Commit**: `edfb58c` - Add UI categories dropdown to Entities menu
+
+  - **Remaining Responsive Work** (Pending):
+    - [ ] **Priority 2**: GlobalSearch mobile adaptation (hide or icon-only on small screens)
+    - [ ] **Priority 3**: Responsive audit of view pages (EntitiesView, SourcesView, EntityDetailView, etc.)
+    - [ ] **Priority 4**: Container padding improvements for tablet sizes
+
+  - **Impact**: Layout.tsx now fully responsive for mobile (xs/sm) and desktop (md+) with comprehensive navigation
+
+- **Files Changed** (Session 11):
+  - Modified: `frontend/src/components/Layout.tsx` (2 commits, +323 lines net)
+
+- **Commits** (Session 11): 2 commits pushed
+  - `703c52a` - Implement responsive mobile navigation menu
+  - `edfb58c` - Add UI categories dropdown to Entities menu
+
+### ✅ Previous Progress (2026-01-01 Session 10)
 - **UI Categories Feature**: ✅ **100% COMPLETE**
   - **Backend**: Created migration 005 to seed 9 default UI categories
     - Categories: Drugs, Diseases, Symptoms, Biological Mechanisms, Treatments, Biomarkers, Populations, Outcomes, Other

@@ -83,6 +83,61 @@ Core UX principles:
 
 ---
 
+### 2.3 Responsive Design Requirements
+
+The application must provide **optimal user experience on both desktop and mobile devices**.
+
+#### 2.3.1 Breakpoint Strategy
+
+The interface adapts to screen sizes using Material-UI breakpoints:
+
+- **Mobile** (xs/sm): 0-899px — Optimized for touch and narrow screens
+- **Desktop** (md+): 900px+ — Full feature display with mouse/keyboard
+
+#### 2.3.2 Mobile Adaptations (xs/sm)
+
+**Navigation:**
+- Hamburger menu icon replaces horizontal navigation
+- Side drawer (280px) with vertical menu
+- All main pages accessible via drawer
+- Language switcher integrated in drawer
+- User profile information in drawer footer
+
+**Layout:**
+- Reduced padding and margins for content efficiency
+- Smaller typography and icon sizes
+- Stackable components (vertical flow)
+- Touch-friendly hit targets (minimum 44px)
+
+**Interactions:**
+- Expandable/collapsible sections for complex menus
+- Drawer auto-closes after navigation
+- No hover states (touch-only)
+
+#### 2.3.3 Desktop Experience (md+)
+
+**Navigation:**
+- Horizontal menu bar with inline links
+- Dropdown menus for hierarchical navigation
+- Global search visible and expanded
+- All actions accessible without drawer
+
+**Layout:**
+- Optimal use of horizontal space
+- Multi-column layouts where appropriate
+- Sidebar filters remain visible when open
+
+#### 2.3.4 Design Constraints
+
+The responsive implementation must preserve:
+
+- **Scientific honesty** — No information hidden on mobile
+- **Traceability** — Evidence links functional on all devices
+- **Clarity** — Navigation structure clear on any screen size
+- **Performance** — Fast load times on mobile networks
+
+---
+
 ## 3. Page Architecture
 
 ### 3.1 Root Pages (Main Menu)
