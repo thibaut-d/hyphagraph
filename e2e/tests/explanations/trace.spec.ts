@@ -1,11 +1,16 @@
 import { test, expect } from '@playwright/test';
-import { loginAsAdminViaAPI } from '../../fixtures/auth-helpers';
+import { loginAsAdminViaAPI, clearAuthState } from '../../fixtures/auth-helpers';
 import { generateEntityName, generateSourceName, generateRelationName } from '../../fixtures/test-data';
 
 test.describe('Explanation Trace', () => {
   test.beforeEach(async ({ page }) => {
     // Login before each test
     await loginAsAdminViaAPI(page);
+  });
+
+  test.afterEach(async ({ page }) => {
+    // Clear auth state to avoid polluting other tests
+    await clearAuthState(page);
   });
 
   test('should navigate to explanation page', async ({ page }) => {

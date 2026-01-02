@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginAsAdminViaAPI } from '../../fixtures/auth-helpers';
+import { loginAsAdminViaAPI, clearAuthState } from '../../fixtures/auth-helpers';
 import { generateRelationName, generateEntityName, generateSourceName } from '../../fixtures/test-data';
 
 test.describe('Relation CRUD Operations', () => {
@@ -38,6 +38,11 @@ test.describe('Relation CRUD Operations', () => {
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/entities\/([a-f0-9-]+)/);
     entity2Id = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1] || '';
+  });
+
+  test.afterEach(async ({ page }) => {
+    // Clear auth state to avoid polluting other tests
+    await clearAuthState(page);
   });
 
   test('should create a new relation', async ({ page }) => {
