@@ -66,22 +66,45 @@
     - **File Modified**: `frontend/src/components/Layout.tsx` (+46 lines)
     - **Commit**: `fc0fe1c` - Implement mobile search dialog for responsive design
 
-  - **Remaining Responsive Work** (Pending):
-    - [ ] **Priority 3**: Responsive audit of view pages (EntitiesView, SourcesView, EntityDetailView, etc.)
-    - [ ] **Priority 4**: Container padding improvements for tablet sizes
+  - **View Pages Responsive Audit (Priority 3)**: ✅ **COMPLETE**
+    - ✅ Made EntitiesView fully responsive
+      - Header stacks vertically on mobile (column layout)
+      - Icon-only buttons on xs breakpoint
+      - Responsive typography (h4: 1.75rem mobile, 2.125rem desktop)
+      - Responsive padding (Paper: 1 on mobile, 2 on desktop)
+    - ✅ Made SourcesView fully responsive
+      - Identical improvements as EntitiesView
+      - Optimized touch targets and spacing
+    - ✅ Made SearchView fully responsive
+      - Responsive Paper padding (2 on mobile, 3 on desktop)
+      - Responsive h5 sizing (1.25rem mobile, 1.5rem desktop)
+      - ToggleButtonGroup wraps on small screens
+      - Smaller button text and padding on mobile
+    - **Files Modified**: EntitiesView.tsx, SourcesView.tsx, SearchView.tsx
+    - **Commits**: `cad503b`, `0f049a6`
 
-  - **Impact**: Layout.tsx now fully responsive with mobile navigation, search dialog, and category menus
+  - **Remaining Responsive Work** (Optional):
+    - [ ] **Priority 4**: Fine-tune container padding for tablet sizes (md breakpoint)
+    - [ ] Additional polish for detail/form views (already using responsive MUI components)
+
+  - **Impact**: All major view pages now fully responsive with optimized mobile UX
 
 - **Files Changed** (Session 11):
   - Modified: `frontend/src/components/Layout.tsx` (3 commits, +369 lines net)
-  - Modified: `TODO.md` (documentation update)
+  - Modified: `frontend/src/views/EntitiesView.tsx` (responsive improvements)
+  - Modified: `frontend/src/views/SourcesView.tsx` (responsive improvements)
+  - Modified: `frontend/src/views/SearchView.tsx` (responsive improvements)
+  - Modified: `TODO.md` (documentation updates)
   - Modified: `UX.md` (added responsive design specifications)
 
-- **Commits** (Session 11): 5 commits pushed
+- **Commits** (Session 11): 7 commits pushed
   - `703c52a` - Implement responsive mobile navigation menu
   - `edfb58c` - Add UI categories dropdown to Entities menu
   - `6e7e7bc` - Update TODO.md and UX.md with responsive design documentation
   - `fc0fe1c` - Implement mobile search dialog for responsive design
+  - `3e26b23` - Update TODO.md - Mark Priority 2 (mobile search) complete
+  - `cad503b` - Make EntitiesView and SourcesView responsive for mobile
+  - `0f049a6` - Make SearchView responsive for mobile
 
 ### ✅ Previous Progress (2026-01-01 Session 10)
 - **UI Categories Feature**: ✅ **100% COMPLETE**
