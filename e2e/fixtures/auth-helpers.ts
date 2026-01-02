@@ -49,7 +49,7 @@ export async function loginViaAPI(
 ): Promise<{ accessToken: string; refreshToken: string }> {
   const API_URL = process.env.API_URL || 'http://localhost';
 
-  // Login via API
+  // Login via API with extended timeout
   const response = await page.request.post(`${API_URL}/api/auth/login`, {
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -58,6 +58,7 @@ export async function loginViaAPI(
       username: email,
       password: password,
     },
+    timeout: 30000, // 30 seconds timeout for API requests
   });
 
   if (!response.ok()) {

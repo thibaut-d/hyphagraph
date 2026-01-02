@@ -22,10 +22,10 @@ export default defineConfig({
   },
 
   // Test execution
-  fullyParallel: true, // Run tests in parallel
+  fullyParallel: false, // Disable parallel execution to avoid state conflicts
   forbidOnly: !!process.env.CI, // Prevent .only in CI
   retries: process.env.CI ? 2 : 0, // Retry on CI only
-  workers: process.env.CI ? 1 : undefined, // Parallel workers (auto-detect locally)
+  workers: 1, // Run tests serially to avoid database state conflicts
 
   // Reporter configuration
   reporter: [
