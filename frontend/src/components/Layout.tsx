@@ -467,9 +467,9 @@ export function Layout() {
       <Container
         maxWidth="lg"
         sx={{
-          mt: 4,
-          px: { xs: 2, sm: 3 },
-          mb: 4,
+          mt: { xs: 2, sm: 3, md: 4 },
+          px: { xs: 2, sm: 3, md: 4 },
+          mb: { xs: 3, sm: 4 },
         }}
       >
         <Outlet />
