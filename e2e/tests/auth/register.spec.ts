@@ -8,6 +8,11 @@ test.describe('Registration Flow', () => {
     await clearAuthState(page);
   });
 
+  test.afterEach(async ({ page }) => {
+    // Clear auth state after each test to avoid polluting other tests
+    await clearAuthState(page);
+  });
+
   test('should register a new user successfully', async ({ page }) => {
     const email = generateTestEmail();
     const password = 'TestPassword123!';

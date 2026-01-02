@@ -16,6 +16,11 @@ test.describe('Login Flow', () => {
     await clearAuthState(page);
   });
 
+  test.afterEach(async ({ page }) => {
+    // Clear auth state after each test to avoid polluting other tests
+    await clearAuthState(page);
+  });
+
   test('should login successfully with valid credentials', async ({ page }) => {
     await loginViaUI(page, ADMIN_USER.email, ADMIN_USER.password);
 

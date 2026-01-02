@@ -7,6 +7,11 @@ test.describe('Password Reset Flow', () => {
     await clearAuthState(page);
   });
 
+  test.afterEach(async ({ page }) => {
+    // Clear auth state after each test to avoid polluting other tests
+    await clearAuthState(page);
+  });
+
   test('should navigate to forgot password page', async ({ page }) => {
     await page.goto('/account');
 
