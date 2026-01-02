@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link as RouterLink, Outlet, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link as RouterLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import i18n from "i18next";
 
@@ -21,6 +21,9 @@ import {
   Divider,
   useMediaQuery,
   useTheme,
+  Menu,
+  MenuItem,
+  Collapse,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
@@ -29,10 +32,15 @@ import HomeIcon from "@mui/icons-material/Home";
 import CategoryIcon from "@mui/icons-material/Category";
 import LibraryBooksIcon from "@mui/icons-material/LibraryBooks";
 import SearchIcon from "@mui/icons-material/Search";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 
 import { ProfileMenu } from "./ProfileMenu";
 import { GlobalSearch } from "./GlobalSearch";
 import { useAuthContext } from "../auth/AuthContext";
+import { getEntityFilterOptions } from "../api/entities";
 
 const menuItems = [
   { key: "menu.home", path: "/", icon: HomeIcon },
@@ -43,6 +51,7 @@ const menuItems = [
 
 export function Layout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { user } = useAuthContext();
   const theme = useTheme();
@@ -50,6 +59,24 @@ export function Layout() {
 
   // Mobile menu state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Entities dropdown state
+  const [categories, setCategories] = useState<Array<{ id: string; label: { en: string; fr: string } }>>([]);
+  const [entitiesMenuAnchor, setEntitiesMenuAnchor] = useState<null | HTMLElement>(null);
+  const [mobileEntitiesExpanded, setMobileEntitiesExpanded] = useState(false);
+
+  // Fetch UI categories for Entities dropdown
+  useEffect(() => {
+    getEntityFilterOptions()
+      .then((options) => {
+        if (options.ui_categories) {
+          setCategories(options.ui_categories);
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to fetch UI categories:", error);
+      });
+  }, []);
 
   const toggleLanguage = () => {
     i18n.changeLanguage(i18n.language === "en" ? "fr" : "en");
@@ -104,6 +131,24 @@ export function Layout() {
                 location.pathname === item.path ||
                 (item.path !== "/" && location.pathname.startsWith(item.path));
 
+              // Special case for Entities menu with dropdown
+              if (item.path === "/entities" && categories.length > 0) {
+                return (
+                  <Button
+                    key={item.path}
+                    color="inherit"
+                    endIcon={<ArrowDropDownIcon />}
+                    onClick={(e) => setEntitiesMenuAnchor(e.currentTarget)}
+                    sx={{
+                      fontWeight: isActive ? "bold" : "normal",
+                      textDecoration: isActive ? "underline" : "none",
+                    }}
+                  >
+                    {t(item.key)}
+                  </Button>
+                );
+              }
+
               return (
                 <Button
                   key={item.path}
@@ -125,6 +170,46 @@ export function Layout() {
               <GlobalSearch />
             </Box>
           </Box>
+
+          {/* Desktop: Entities dropdown menu */}
+          <Menu
+            anchorEl={entitiesMenuAnchor}
+            open={Boolean(entitiesMenuAnchor)}
+            onClose={() => setEntitiesMenuAnchor(null)}
+            anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'left',
+            }}
+            transformOrigin={{
+              vertical: 'top',
+              horizontal: 'left',
+            }}
+          >
+            <MenuItem
+              onClick={() => {
+                setEntitiesMenuAnchor(null);
+                navigate('/entities');
+              }}
+              sx={{ fontWeight: 600 }}
+            >
+              {t("menu.all_entities", "All Entities")}
+            </MenuItem>
+            <Divider />
+            {categories.map((category) => {
+              const label = category.label[i18n.language as 'en' | 'fr'] || category.label.en;
+              return (
+                <MenuItem
+                  key={category.id}
+                  onClick={() => {
+                    setEntitiesMenuAnchor(null);
+                    navigate(`/entities?ui_category_id=${category.id}`);
+                  }}
+                >
+                  {label}
+                </MenuItem>
+              );
+            })}
+          </Menu>
 
           {/* Spacer for mobile (pushes icons to right) */}
           <Box sx={{ flexGrow: 1, display: { xs: 'block', md: 'none' } }} />
@@ -194,6 +279,75 @@ export function Layout() {
             const isActive =
               location.pathname === item.path ||
               (item.path !== "/" && location.pathname.startsWith(item.path));
+
+            // Special case for Entities menu with expandable categories
+            if (item.path === "/entities" && categories.length > 0) {
+              return (
+                <Box key={item.path}>
+                  <ListItem disablePadding>
+                    <ListItemButton
+                      onClick={() => setMobileEntitiesExpanded(!mobileEntitiesExpanded)}
+                      selected={isActive}
+                      sx={{
+                        py: 1.5,
+                        '&.Mui-selected': {
+                          backgroundColor: 'action.selected',
+                          '&:hover': {
+                            backgroundColor: 'action.hover',
+                          },
+                        },
+                      }}
+                    >
+                      <ListItemIcon>
+                        <Icon color={isActive ? 'primary' : 'inherit'} />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={t(item.key)}
+                        primaryTypographyProps={{
+                          fontWeight: isActive ? 600 : 400,
+                        }}
+                      />
+                      {mobileEntitiesExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                    </ListItemButton>
+                  </ListItem>
+                  <Collapse in={mobileEntitiesExpanded} timeout="auto" unmountOnExit>
+                    <List component="div" disablePadding>
+                      <ListItemButton
+                        component={RouterLink}
+                        to="/entities"
+                        onClick={handleMobileMenuClose}
+                        sx={{ pl: 4, py: 1 }}
+                      >
+                        <ListItemIcon>
+                          <FiberManualRecordIcon fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={t("menu.all_entities", "All Entities")}
+                          primaryTypographyProps={{ fontWeight: 600 }}
+                        />
+                      </ListItemButton>
+                      {categories.map((category) => {
+                        const label = category.label[i18n.language as 'en' | 'fr'] || category.label.en;
+                        return (
+                          <ListItemButton
+                            key={category.id}
+                            component={RouterLink}
+                            to={`/entities?ui_category_id=${category.id}`}
+                            onClick={handleMobileMenuClose}
+                            sx={{ pl: 4, py: 1 }}
+                          >
+                            <ListItemIcon>
+                              <FiberManualRecordIcon fontSize="small" />
+                            </ListItemIcon>
+                            <ListItemText primary={label} />
+                          </ListItemButton>
+                        );
+                      })}
+                    </List>
+                  </Collapse>
+                </Box>
+              );
+            }
 
             return (
               <ListItem key={item.path} disablePadding>
