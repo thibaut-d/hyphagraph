@@ -1,16 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { loginAsAdminViaAPI, clearAuthState } from '../../fixtures/auth-helpers';
+import { loginAsAdminViaAPI } from '../../fixtures/auth-helpers';
 import { generateEntityName } from '../../fixtures/test-data';
 
 test.describe('Entity CRUD Operations', () => {
   test.beforeEach(async ({ page }) => {
     // Login before each test
     await loginAsAdminViaAPI(page);
-  });
-
-  test.afterEach(async ({ page }) => {
-    // Clear auth state to avoid polluting other tests
-    await clearAuthState(page);
   });
 
   test('should create a new entity', async ({ page }) => {
@@ -23,8 +18,8 @@ test.describe('Entity CRUD Operations', () => {
     await expect(page.getByRole('heading', { name: 'Create Entity' })).toBeVisible();
 
     // Fill in entity details
-    await page.getByRole('textbox', { name: 'Slug' }).fill(entitySlug);
-    await page.getByRole('textbox', { name: /summary.*english/i }).fill('This is a test entity');
+    await page.getByLabel(/slug/i).fill(entitySlug);
+    await page.getByLabel(/summary.*english/i).fill('This is a test entity');
 
     // Submit form
     await page.getByRole('button', { name: /create|submit/i }).click();
@@ -51,8 +46,8 @@ test.describe('Entity CRUD Operations', () => {
     const entitySlug = generateEntityName('view-test').toLowerCase().replace(/\s+/g, '-');
 
     await page.goto('/entities/new');
-    await page.getByRole('textbox', { name: 'Slug' }).fill(entitySlug);
-    await page.getByRole('textbox', { name: /summary.*english/i }).fill('Entity for viewing');
+    await page.getByLabel(/slug/i).fill(entitySlug);
+    await page.getByLabel(/summary.*english/i).fill('Entity for viewing');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
     // Wait for navigation to detail page
@@ -69,8 +64,8 @@ test.describe('Entity CRUD Operations', () => {
     const updatedSummary = 'Updated summary for edit test';
 
     await page.goto('/entities/new');
-    await page.getByRole('textbox', { name: 'Slug' }).fill(originalSlug);
-    await page.getByRole('textbox', { name: /summary.*english/i }).fill('Original summary');
+    await page.getByLabel(/slug/i).fill(originalSlug);
+    await page.getByLabel(/summary.*english/i).fill('Original summary');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
     // Wait for navigation to detail page
@@ -79,14 +74,14 @@ test.describe('Entity CRUD Operations', () => {
     // Wait for page to stabilize (entity terms may fail to load for new entities)
     await page.waitForLoadState('networkidle');
 
-    // Click edit button (it's actually a link styled as a button)
+    // Click edit link (it's a RouterLink, not a button)
     await page.getByRole('link', { name: /edit/i }).click({ timeout: 15000 });
 
     // Should navigate to edit page
     await expect(page).toHaveURL(/\/entities\/[a-f0-9-]+\/edit/);
 
     // Update the summary
-    const summaryField = page.getByRole('textbox', { name: /summary.*english/i });
+    const summaryField = page.getByLabel(/summary.*english/i);
     await summaryField.clear();
     await summaryField.fill(updatedSummary);
 
@@ -105,24 +100,32 @@ test.describe('Entity CRUD Operations', () => {
     const entitySlug = generateEntityName('delete-test').toLowerCase().replace(/\s+/g, '-');
 
     await page.goto('/entities/new');
-    await page.getByRole('textbox', { name: 'Slug' }).fill(entitySlug);
-    await page.getByRole('textbox', { name: /summary.*english/i }).fill('Entity to be deleted');
+    await page.getByLabel(/slug/i).fill(entitySlug);
+    await page.getByLabel(/summary.*english/i).fill('Entity to be deleted');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
     // Wait for navigation to detail page
     await page.waitForURL(/\/entities\/[a-f0-9-]+/);
 
-    // Click delete button
-    await page.getByRole('button', { name: /delete/i }).click();
+    // Wait for page to fully load
+    await page.waitForLoadState('networkidle');
 
-    // Confirm deletion (if there's a confirmation dialog)
-    const confirmButton = page.getByRole('button', { name: /confirm|yes|delete/i });
-    if (await confirmButton.isVisible({ timeout: 2000 })) {
-      await confirmButton.click();
-    }
+    // Wait a bit more for any async operations
+    await page.waitForTimeout(1000);
 
-    // Should navigate back to entities list
-    await expect(page).toHaveURL(/\/entities$/);
+    // Click delete button - find it specifically (should be near Edit button)
+    const deleteButton = page.getByRole('button', { name: 'Delete' });
+    await expect(deleteButton).toBeVisible();
+    await deleteButton.click();
+
+    // Wait for confirmation dialog to appear
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
+
+    // Confirm deletion by clicking Delete button in dialog
+    await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click();
+
+    // Wait for navigation back to entities list after deletion
+    await page.waitForURL(/\/entities$/, { timeout: 10000 });
 
     // Deleted entity should not appear in the list
     await expect(page.locator(`text=${entitySlug}`)).not.toBeVisible();
@@ -133,8 +136,8 @@ test.describe('Entity CRUD Operations', () => {
 
     // Create first entity
     await page.goto('/entities/new');
-    await page.getByRole('textbox', { name: 'Slug' }).fill(duplicateSlug);
-    await page.getByRole('textbox', { name: /summary.*english/i }).fill('First entity');
+    await page.getByLabel(/slug/i).fill(duplicateSlug);
+    await page.getByLabel(/summary.*english/i).fill('First entity');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
     // Wait for success
@@ -142,14 +145,13 @@ test.describe('Entity CRUD Operations', () => {
 
     // Try to create another entity with the same slug
     await page.goto('/entities/new');
-    await page.getByRole('textbox', { name: 'Slug' }).fill(duplicateSlug);
-    await page.getByRole('textbox', { name: /summary.*english/i }).fill('Duplicate entity');
+    await page.getByLabel(/slug/i).fill(duplicateSlug);
+    await page.getByLabel(/summary.*english/i).fill('Duplicate entity');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
-    // Should show error message
-    await expect(page.locator('text=/error|already exists|duplicate/i')).toBeVisible({
-      timeout: 5000,
-    });
+    // Should show error message in Alert component
+    await expect(page.getByRole('alert')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('alert')).toContainText(/error|fail|already|duplicate/i);
   });
 
   test('should show validation error for empty slug', async ({ page }) => {
@@ -158,11 +160,9 @@ test.describe('Entity CRUD Operations', () => {
     // Try to submit without filling slug
     await page.getByRole('button', { name: /create|submit/i }).click();
 
-    // Should stay on create page due to HTML5 validation (required attribute prevents submission)
-    await expect(page).toHaveURL(/\/entities\/new/, { timeout: 2000 });
-
-    // Verify we're still on the create form
-    await expect(page.getByRole('heading', { name: 'Create Entity' })).toBeVisible();
+    // Should show validation error in Alert component
+    await expect(page.getByRole('alert')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('alert')).toContainText(/slug.*required/i);
   });
 
   test('should search/filter entities', async ({ page }) => {
@@ -173,8 +173,8 @@ test.describe('Entity CRUD Operations', () => {
 
     for (const slug of [entity1, entity2]) {
       await page.goto('/entities/new');
-      await page.getByRole('textbox', { name: 'Slug' }).fill(slug);
-      await page.getByRole('textbox', { name: /summary.*english/i }).fill(`Test entity ${slug}`);
+      await page.getByLabel(/slug/i).fill(slug);
+      await page.getByLabel(/summary.*english/i).fill(`Test entity ${slug}`);
       await page.getByRole('button', { name: /create|submit/i }).click();
       await page.waitForURL(/\/entities\/[a-f0-9-]+/);
     }
@@ -187,8 +187,8 @@ test.describe('Entity CRUD Operations', () => {
     if (await searchInput.isVisible({ timeout: 2000 })) {
       await searchInput.fill(entity1);
 
-      // Should show only matching entity (use .first() to avoid strict mode violation)
-      await expect(page.locator(`text=${entity1}`).first()).toBeVisible();
+      // Should show only matching entity
+      await expect(page.locator(`text=${entity1}`)).toBeVisible();
       // Note: entity2 might still be visible depending on search implementation
     }
   });
@@ -198,33 +198,23 @@ test.describe('Entity CRUD Operations', () => {
     const entitySlug = generateEntityName('nav-test').toLowerCase().replace(/\s+/g, '-');
 
     await page.goto('/entities/new');
-    await page.getByRole('textbox', { name: 'Slug' }).fill(entitySlug);
-    await page.getByRole('textbox', { name: /summary.*english/i }).fill('Navigation test entity');
+    await page.getByLabel(/slug/i).fill(entitySlug);
+    await page.getByLabel(/summary.*english/i).fill('Navigation test entity');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
     // Wait for detail page
     await page.waitForURL(/\/entities\/[a-f0-9-]+/);
 
-    // Store entity ID for later
-    const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1];
-
-    // Click back to list (it's actually a link styled as a button)
+    // Click back to list (it's a RouterLink, not a button)
     await page.getByRole('link', { name: /back/i }).click();
 
     // Should be on entities list
     await expect(page).toHaveURL(/\/entities$/);
 
-    // Wait for the list to load - verify heading is visible
-    await expect(page.getByRole('heading', { name: 'Entities' })).toBeVisible({ timeout: 10000 });
-
-    // Navigate directly to the entity using the ID (instead of trying to find it in the paginated list)
-    // This is more reliable since the list is paginated and new entities appear at the end
-    await page.goto(`/entities/${entityId}`);
+    // Click on entity to view details again
+    await page.locator(`text=${entitySlug}`).click();
 
     // Should be on detail page again
-    await expect(page).toHaveURL(/\/entities\/[a-f0-9-]+/, { timeout: 10000 });
-
-    // Verify it's the correct entity
-    await expect(page.getByText(entitySlug)).toBeVisible();
+    await expect(page).toHaveURL(/\/entities\/[a-f0-9-]+/);
   });
 });

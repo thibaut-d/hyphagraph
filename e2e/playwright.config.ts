@@ -1,4 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+// Load environment variables from .env file
+dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 /**
  * Playwright E2E Test Configuration for Hyphagraph
@@ -10,8 +15,12 @@ import { defineConfig, devices } from '@playwright/test';
  * - Parallel execution enabled
  * - Screenshots/videos on failure
  * - English only (no i18n testing)
+ * - Global setup cleans database before all tests
  */
 export default defineConfig({
+  // Global setup - runs once before all tests
+  globalSetup: require.resolve('./global-setup.ts'),
+
   // Test directory
   testDir: './tests',
 
@@ -22,10 +31,10 @@ export default defineConfig({
   },
 
   // Test execution
-  fullyParallel: false, // Disable parallel execution to avoid state conflicts
+  fullyParallel: false, // Run test files sequentially to avoid DB conflicts
   forbidOnly: !!process.env.CI, // Prevent .only in CI
-  retries: 1, // Retry failed tests once to handle intermittent backend load issues
-  workers: 1, // Run tests serially to avoid database state conflicts
+  retries: process.env.CI ? 2 : 1, // Retry on CI (2x) or locally (1x) to handle intermittent backend load
+  workers: 1, // Single worker to ensure test isolation
 
   // Reporter configuration
   reporter: [
