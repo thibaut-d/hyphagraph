@@ -38,6 +38,9 @@ dependencies = [
     # --- Email ---
     "aiosmtplib>=3.0",  # Async SMTP client
     "email-validator>=2.1",  # Email validation
+
+    # --- LLM / AI ---
+    "openai>=1.12",  # OpenAI API client
 ]
 
 [project.optional-dependencies]

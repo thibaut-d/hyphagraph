@@ -50,6 +50,11 @@ class Settings(BaseSettings):
     INFERENCE_MODEL_VERSION: str = "v1.0"  # Version of inference model (for cache invalidation)
     SYSTEM_SOURCE_ID: str | None = None  # UUID of system source (created on startup)
 
+    # LLM Configuration
+    OPENAI_API_KEY: str | None = None  # OpenAI API key for ChatGPT
+    OPENAI_MODEL: str = "gpt-4o-mini"  # OpenAI model to use (gpt-4o-mini, gpt-4o, gpt-4-turbo)
+    OPENAI_TEMPERATURE: float = 0.3  # Temperature for LLM responses (0.0-1.0, lower = more deterministic)
+
     # Flags
     STRICT_VALIDATION: bool = True
     SQL_DEBUG: bool = False
