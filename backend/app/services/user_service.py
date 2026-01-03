@@ -60,7 +60,7 @@ class UserService:
             )
 
         # Hash password
-        hashed_password = hash_password(payload.password)
+        hashed_password = await hash_password(payload.password)
 
         # Create user
         user = User(
@@ -186,7 +186,7 @@ class UserService:
 
             # Update password if provided
             if payload.password is not None:
-                user.hashed_password = hash_password(payload.password)
+                user.hashed_password = await hash_password(payload.password)
 
             # Update is_active if provided
             if payload.is_active is not None:
@@ -300,7 +300,7 @@ class UserService:
         user = await self.repo.get_by_email(email)
 
         # Verify user exists and password is correct
-        if not user or not verify_password(password, user.hashed_password):
+        if not user or not await verify_password(password, user.hashed_password):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect email or password",
@@ -346,7 +346,7 @@ class UserService:
             )
 
         # Verify current password
-        if not verify_password(current_password, user.hashed_password):
+        if not await verify_password(current_password, user.hashed_password):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Current password is incorrect"
@@ -354,7 +354,7 @@ class UserService:
 
         try:
             # Set new password
-            user.hashed_password = hash_password(new_password)
+            user.hashed_password = await hash_password(new_password)
             await self.repo.update(user)
             await self.db.commit()
 
@@ -377,7 +377,7 @@ class UserService:
 
         # Generate refresh token
         refresh_token = generate_refresh_token()
-        token_hash = hash_refresh_token(refresh_token)
+        token_hash = await hash_refresh_token(refresh_token)
 
         # Calculate expiration
         expires_at = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
@@ -425,7 +425,7 @@ class UserService:
         # Find matching token by verifying hash
         matched_token = None
         for token in all_tokens:
-            if verify_refresh_token(refresh_token, token.token_hash):
+            if await verify_refresh_token(refresh_token, token.token_hash):
                 matched_token = token
                 break
 
@@ -474,7 +474,7 @@ class UserService:
         # Find matching token by verifying hash
         matched_token = None
         for token in all_tokens:
-            if verify_refresh_token(refresh_token, token.token_hash):
+            if await verify_refresh_token(refresh_token, token.token_hash):
                 matched_token = token
                 break
 
@@ -657,7 +657,7 @@ class UserService:
 
         try:
             # Set new password and clear reset token
-            user.hashed_password = hash_password(new_password)
+            user.hashed_password = await hash_password(new_password)
             user.reset_token = None
             user.reset_token_expires_at = None
             await self.repo.update(user)

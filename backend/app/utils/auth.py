@@ -3,19 +3,29 @@ Authentication utilities for JWT token handling and password hashing.
 
 Uses python-jose for JWT and bcrypt for password hashing.
 NO third-party auth frameworks.
+
+Bcrypt operations are CPU-bound and run in a thread pool to avoid blocking
+the async event loop during password hashing/verification.
 """
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from uuid import UUID, uuid4
 import secrets
 import bcrypt
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from jose import JWTError, jwt
 from app.config import settings
 
 
-def hash_password(password: str) -> str:
+# Thread pool for CPU-bound bcrypt operations
+# Prevents blocking the async event loop during password hashing
+_bcrypt_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="bcrypt")
+
+
+async def hash_password(password: str) -> str:
     """
-    Hash a plain text password using bcrypt.
+    Hash a plain text password using bcrypt (async, runs in thread pool).
 
     Args:
         password: Plain text password
@@ -30,19 +40,25 @@ def hash_password(password: str) -> str:
         Cost factor is configurable via BCRYPT_ROUNDS:
         - 10 = ~100ms (fast, for dev/test environments)
         - 12 = ~400ms (secure, for production)
+
+        This function runs in a thread pool to avoid blocking the event loop.
     """
     # Truncate to 72 bytes (bcrypt limit)
     password_bytes = password.encode('utf-8')[:72]
-    # Generate salt and hash
-    salt = bcrypt.gensalt(rounds=settings.BCRYPT_ROUNDS)
-    hashed = bcrypt.hashpw(password_bytes, salt)
-    # Return as string
-    return hashed.decode('utf-8')
+
+    # Run blocking bcrypt in thread pool
+    def _hash():
+        salt = bcrypt.gensalt(rounds=settings.BCRYPT_ROUNDS)
+        hashed = bcrypt.hashpw(password_bytes, salt)
+        return hashed.decode('utf-8')
+
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(_bcrypt_executor, _hash)
 
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
+async def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
-    Verify a plain text password against a hashed password.
+    Verify a plain text password against a hashed password (async, runs in thread pool).
 
     Args:
         plain_password: Plain text password to verify
@@ -53,12 +69,18 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
     Note:
         Truncates to 72 bytes to match hashing behavior.
+        This function runs in a thread pool to avoid blocking the event loop.
     """
     # Truncate to 72 bytes (bcrypt limit)
     password_bytes = plain_password.encode('utf-8')[:72]
     hashed_bytes = hashed_password.encode('utf-8')
-    # Verify using bcrypt
-    return bcrypt.checkpw(password_bytes, hashed_bytes)
+
+    # Run blocking bcrypt in thread pool
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(
+        _bcrypt_executor,
+        lambda: bcrypt.checkpw(password_bytes, hashed_bytes)
+    )
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -124,9 +146,9 @@ def generate_refresh_token() -> str:
     return secrets.token_urlsafe(32)
 
 
-def hash_refresh_token(token: str) -> str:
+async def hash_refresh_token(token: str) -> str:
     """
-    Hash a refresh token for secure storage in the database.
+    Hash a refresh token for secure storage in the database (async, runs in thread pool).
 
     Uses bcrypt for consistency with password hashing.
 
@@ -141,19 +163,24 @@ def hash_refresh_token(token: str) -> str:
         before hashing to prevent errors.
 
         Uses configurable BCRYPT_ROUNDS (same as passwords).
+        This function runs in a thread pool to avoid blocking the event loop.
     """
     # Truncate to 72 bytes (bcrypt limit)
     token_bytes = token.encode('utf-8')[:72]
-    # Generate salt and hash
-    salt = bcrypt.gensalt(rounds=settings.BCRYPT_ROUNDS)
-    hashed = bcrypt.hashpw(token_bytes, salt)
-    # Return as string
-    return hashed.decode('utf-8')
+
+    # Run blocking bcrypt in thread pool
+    def _hash():
+        salt = bcrypt.gensalt(rounds=settings.BCRYPT_ROUNDS)
+        hashed = bcrypt.hashpw(token_bytes, salt)
+        return hashed.decode('utf-8')
+
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(_bcrypt_executor, _hash)
 
 
-def verify_refresh_token(plain_token: str, hashed_token: str) -> bool:
+async def verify_refresh_token(plain_token: str, hashed_token: str) -> bool:
     """
-    Verify a plain refresh token against a hashed token.
+    Verify a plain refresh token against a hashed token (async, runs in thread pool).
 
     Args:
         plain_token: Plain refresh token to verify
@@ -164,9 +191,15 @@ def verify_refresh_token(plain_token: str, hashed_token: str) -> bool:
 
     Note:
         Truncates to 72 bytes to match hashing behavior.
+        This function runs in a thread pool to avoid blocking the event loop.
     """
     # Truncate to 72 bytes (bcrypt limit)
     token_bytes = plain_token.encode('utf-8')[:72]
     hashed_bytes = hashed_token.encode('utf-8')
-    # Verify using bcrypt
-    return bcrypt.checkpw(token_bytes, hashed_bytes)
+
+    # Run blocking bcrypt in thread pool
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(
+        _bcrypt_executor,
+        lambda: bcrypt.checkpw(token_bytes, hashed_bytes)
+    )
