@@ -31,9 +31,9 @@ test.describe('Password Reset Flow', () => {
     // Submit form
     await page.getByRole('button', { name: /submit|send|reset/i }).click();
 
-    // Should show success message in Alert component
+    // Should show success message
     await expect(
-      page.getByRole('alert').filter({ hasText: /check your email/i })
+      page.getByRole('heading', { name: /check your email/i })
     ).toBeVisible({ timeout: 5000 });
   });
 

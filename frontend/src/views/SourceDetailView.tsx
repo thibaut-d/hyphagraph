@@ -112,6 +112,14 @@ export function SourceDetailView() {
               {source.year && ` • ${source.year}`}
             </Typography>
 
+            {source.url && (
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                <Link href={source.url} target="_blank" rel="noopener noreferrer">
+                  {source.url}
+                </Link>
+              </Typography>
+            )}
+
             {source.trust_level !== undefined && (
               <Typography variant="body2">
                 {t("sources.trust", "Trust level")}:{" "}

@@ -158,8 +158,8 @@ test.describe('Entity CRUD Operations', () => {
     // Try to submit without filling slug
     await page.getByRole('button', { name: /create|submit/i }).click();
 
-    // Should show validation error
-    await expect(page.locator('text=/slug.*required|error/i')).toBeVisible({
+    // Should show validation error in Alert component
+    await expect(page.getByRole('alert').filter({ hasText: /slug.*required/i })).toBeVisible({
       timeout: 5000,
     });
   });

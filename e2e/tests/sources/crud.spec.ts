@@ -129,8 +129,8 @@ test.describe('Source CRUD Operations', () => {
     // Try to submit without filling required fields
     await page.getByRole('button', { name: /create|submit/i }).click();
 
-    // Should show validation error
-    await expect(page.locator('text=/required|error/i')).toBeVisible({
+    // Should show validation error in Alert component
+    await expect(page.getByRole('alert').filter({ hasText: /required|title|url/i })).toBeVisible({
       timeout: 5000,
     });
   });
