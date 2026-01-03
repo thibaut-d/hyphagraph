@@ -99,10 +99,11 @@ def upgrade() -> None:
     import json
     connection = op.get_bind()
     for cat in categories:
+        # Use CAST() instead of :: to avoid asyncpg parameter parsing issues
         connection.execute(
             text("""
                 INSERT INTO ui_categories (id, slug, labels, description, "order", created_at)
-                VALUES (:id, :slug, :labels::jsonb, :description::jsonb, :order, now())
+                VALUES (:id, :slug, CAST(:labels AS jsonb), CAST(:description AS jsonb), :order, now())
             """),
             {
                 'id': cat['id'],

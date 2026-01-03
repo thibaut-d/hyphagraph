@@ -14,7 +14,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '006_add_entity_slug_unique_constraint'
+revision = '006_entity_slug_unique'
 down_revision = '005_seed_ui_categories'
 branch_labels = None
 depends_on = None
