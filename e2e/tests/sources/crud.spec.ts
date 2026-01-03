@@ -77,7 +77,7 @@ test.describe('Source CRUD Operations', () => {
     await page.waitForURL(/\/sources\/[a-f0-9-]+/);
 
     // Click edit button (it's an IconButton with RouterLink, renders as link with title="Edit")
-    await page.getByRole('link', { name: /edit/i }).click();
+    await page.getByRole('link', { name: 'Edit', exact: true }).click();
 
     // Should navigate to edit page
     await expect(page).toHaveURL(/\/sources\/[a-f0-9-]+\/edit/);
