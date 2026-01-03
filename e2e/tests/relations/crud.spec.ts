@@ -133,11 +133,25 @@ test.describe('Relation CRUD Operations', () => {
     let roleTypeFields = page.getByLabel(/role type|role/i);
     await expect(roleTypeFields).toHaveCount(2);
 
-    // Click delete button on first role (IconButton with DeleteIcon)
-    const deleteButtons = page.getByRole('button').filter({ has: page.locator('svg') });
-    await deleteButtons.first().click();
+    // Wait a moment for UI to settle
+    await page.waitForTimeout(500);
 
-    // Should now have only 1 role
+    // Click delete button on first role - look for delete buttons in the Roles section
+    // MUI IconButtons with DeleteIcon are rendered as buttons but without text
+    const allButtons = await page.getByRole('button').all();
+    // Find buttons that are likely delete buttons (no accessible name, likely positioned after role fields)
+    for (const button of allButtons) {
+      const ariaLabel = await button.getAttribute('aria-label');
+      const text = await button.textContent();
+      // Delete button has no text and is not the "ADD ROLE" button
+      if (!text && !ariaLabel) {
+        await button.click();
+        break;
+      }
+    }
+
+    // Should now have only 1 role after a moment
+    await page.waitForTimeout(300);
     roleTypeFields = page.getByLabel(/role type|role/i);
     await expect(roleTypeFields).toHaveCount(1);
   });
