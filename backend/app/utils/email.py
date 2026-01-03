@@ -3,6 +3,7 @@ Email service for sending verification emails and notifications.
 
 Supports SMTP-based email sending with async support.
 """
+import asyncio
 import logging
 import secrets
 from email.mime.text import MIMEText
@@ -67,27 +68,37 @@ async def send_email(
         part2 = MIMEText(html_content, "html")
         message.attach(part2)
 
-        # Send email
-        if settings.SMTP_TLS:
-            # Use STARTTLS
-            await aiosmtplib.send(
-                message,
-                hostname=settings.SMTP_HOST,
-                port=settings.SMTP_PORT,
-                username=settings.SMTP_USER,
-                password=settings.SMTP_PASSWORD,
-                start_tls=True,
-            )
-        else:
-            # Use SSL or no encryption
-            await aiosmtplib.send(
-                message,
-                hostname=settings.SMTP_HOST,
-                port=settings.SMTP_PORT,
-                username=settings.SMTP_USER,
-                password=settings.SMTP_PASSWORD,
-                use_tls=True if settings.SMTP_PORT == 465 else False,
-            )
+        # Send email with timeout to prevent hanging
+        try:
+            if settings.SMTP_TLS:
+                # Use STARTTLS
+                await asyncio.wait_for(
+                    aiosmtplib.send(
+                        message,
+                        hostname=settings.SMTP_HOST,
+                        port=settings.SMTP_PORT,
+                        username=settings.SMTP_USER,
+                        password=settings.SMTP_PASSWORD,
+                        start_tls=True,
+                    ),
+                    timeout=10.0  # 10 second timeout for email sending
+                )
+            else:
+                # Use SSL or no encryption
+                await asyncio.wait_for(
+                    aiosmtplib.send(
+                        message,
+                        hostname=settings.SMTP_HOST,
+                        port=settings.SMTP_PORT,
+                        username=settings.SMTP_USER,
+                        password=settings.SMTP_PASSWORD,
+                        use_tls=True if settings.SMTP_PORT == 465 else False,
+                    ),
+                    timeout=10.0  # 10 second timeout for email sending
+                )
+        except asyncio.TimeoutError:
+            logger.error(f"Email sending to {to_email} timed out after 10 seconds")
+            return False
 
         logger.info(f"Email sent successfully to {to_email}")
         return True
