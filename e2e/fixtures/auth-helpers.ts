@@ -20,8 +20,8 @@ export async function loginViaUI(
   // Navigate to account page (where login form is)
   await page.goto('/account');
 
-  // Fill in credentials
-  await page.getByLabel(/email/i).fill(email);
+  // Fill in credentials using role-based selectors
+  await page.getByRole('textbox', { name: /email/i }).fill(email);
   await page.getByLabel(/password/i).fill(password);
 
   // Click login button
@@ -147,15 +147,15 @@ export async function registerViaUI(
   // Navigate to account page
   await page.goto('/account');
 
-  // Fill in registration form
-  await page.getByLabel(/email/i).fill(email);
+  // Fill in registration form using role-based selectors
+  await page.getByRole('textbox', { name: /email/i }).fill(email);
   await page.getByLabel(/password/i).fill(password);
 
   // Click register button
   await page.getByRole('button', { name: /register/i }).click();
 
-  // Wait for success message (text contains "Registration Successful!")
-  await page.waitForSelector('text=/Registration Successful/i', { timeout: 5000 });
+  // Wait for success message - exact text match for better reliability
+  await page.getByText('Registration Successful!', { exact: true }).waitFor({ state: 'visible', timeout: 5000 });
 }
 
 /**

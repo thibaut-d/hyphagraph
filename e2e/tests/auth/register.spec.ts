@@ -20,11 +20,14 @@ test.describe('Registration Flow', () => {
     await registerViaUI(page, email, password);
 
     // Should show success message (registerViaUI already waits for it)
-    await expect(page.locator('text=/Registration Successful/i')).toBeVisible();
-
-    // Should show verification message (using .first() since there are multiple matches)
+    // The success message is in a custom styled Paper, look for the heading text
     await expect(
-      page.locator('text=/check your email|verify|verification/i').first()
+      page.getByText('Registration Successful!', { exact: true })
+    ).toBeVisible();
+
+    // Should show verification message
+    await expect(
+      page.getByText(/check your email for a verification link/i)
     ).toBeVisible();
   });
 
@@ -34,16 +37,17 @@ test.describe('Registration Flow', () => {
 
     await page.goto('/account');
 
-    // Fill in registration form
-    await page.getByLabel(/email/i).fill(email);
+    // Fill in registration form using role-based selectors
+    await page.getByRole('textbox', { name: /email/i }).fill(email);
     await page.getByLabel(/password/i).fill(password);
 
     // Click register button
     await page.getByRole('button', { name: /register/i }).click();
 
-    // Should show error message
+    // Should show error message - it's displayed as Typography with color="error"
+    // Look for common error patterns related to duplicate email
     await expect(
-      page.locator('text=/already exists|already registered|error/i')
+      page.locator('[class*="MuiTypography-root"]').filter({ hasText: /already|exists|registered/i })
     ).toBeVisible({ timeout: 5000 });
   });
 
@@ -53,8 +57,8 @@ test.describe('Registration Flow', () => {
 
     await page.goto('/account');
 
-    // Fill in registration form
-    await page.getByLabel(/email/i).fill(invalidEmail);
+    // Fill in registration form using role-based selectors
+    await page.getByRole('textbox', { name: /email/i }).fill(invalidEmail);
     await page.getByLabel(/password/i).fill(password);
 
     // Click register button
@@ -72,17 +76,17 @@ test.describe('Registration Flow', () => {
 
     await page.goto('/account');
 
-    // Fill in registration form
-    await page.getByLabel(/email/i).fill(email);
+    // Fill in registration form using role-based selectors
+    await page.getByRole('textbox', { name: /email/i }).fill(email);
     await page.getByLabel(/password/i).fill(weakPassword);
 
     // Click register button
     await page.getByRole('button', { name: /register/i }).click();
 
     // Should show error message (backend returns validation error)
-    // Using more specific selector to avoid matching "Password" label and "Forgot password?" link
+    // Error is displayed as Typography with color="error"
     await expect(
-      page.locator('text=/string_too_short|too short|error/i').first()
+      page.locator('[class*="MuiTypography-root"]').filter({ hasText: /string_too_short|too short|at least/i })
     ).toBeVisible({ timeout: 5000 });
   });
 
@@ -94,7 +98,9 @@ test.describe('Registration Flow', () => {
     await registerViaUI(page, email, password);
 
     // Wait for success message (registerViaUI already waits for it)
-    await expect(page.locator('text=/Registration Successful/i')).toBeVisible();
+    await expect(
+      page.getByText('Registration Successful!', { exact: true })
+    ).toBeVisible();
 
     // Try to login
     // Note: This might fail if email verification is required

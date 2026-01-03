@@ -36,8 +36,8 @@ test.describe('Login Flow', () => {
   test('should show error with invalid credentials', async ({ page }) => {
     await page.goto('/account');
 
-    // Fill in invalid credentials
-    await page.getByLabel(/email/i).fill('invalid@example.com');
+    // Fill in invalid credentials using role-based selectors
+    await page.getByRole('textbox', { name: /email/i }).fill('invalid@example.com');
     await page.getByLabel(/password/i).fill('wrongpassword');
 
     // Click login button
@@ -85,17 +85,16 @@ test.describe('Login Flow', () => {
   });
 
   test('should persist login across page refreshes', async ({ page }) => {
-    // Use API login to avoid UI interaction issues after previous tests
-    await loginAsAdminViaAPI(page);
+    // Use UI login instead of API to avoid timeout issues
+    await loginAsAdmin(page);
 
-    // Navigate to account page to verify login state
-    await page.goto('/account');
+    // Verify logged in
     await expect(page.locator('text=Logged in as')).toBeVisible({ timeout: 10000 });
 
     // Refresh the page
     await page.reload();
 
-    // Should still be logged in
+    // Should still be logged in after refresh
     await expect(page.locator('text=Logged in as')).toBeVisible({ timeout: 10000 });
 
     const authenticated = await isAuthenticated(page);
