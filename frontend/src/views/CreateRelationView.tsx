@@ -53,8 +53,8 @@ export function CreateRelationView() {
 
     Promise.all([listEntities(), listSources()])
       .then(([entitiesRes, sourcesRes]) => {
-        setEntities(entitiesRes);
-        setSources(sourcesRes);
+        setEntities(entitiesRes.items || []);
+        setSources(sourcesRes.items || []);
       })
       .finally(() => setLoading(false));
   }, []);
