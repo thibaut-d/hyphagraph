@@ -57,9 +57,9 @@ test.describe('Source CRUD Operations', () => {
     // Wait for navigation to detail page
     await page.waitForURL(/\/sources\/[a-f0-9-]+/);
 
-    // Should show source details
+    // Should show source details (title and URL are shown, summary is not displayed on detail page)
     await expect(page.locator(`text=${sourceTitle}`)).toBeVisible();
-    await expect(page.locator('text=Source for viewing')).toBeVisible();
+    await expect(page.locator('text=https://example.com/view-test')).toBeVisible();
   });
 
   test('should edit a source', async ({ page }) => {

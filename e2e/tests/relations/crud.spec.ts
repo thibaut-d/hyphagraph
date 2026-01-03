@@ -80,8 +80,8 @@ test.describe('Relation CRUD Operations', () => {
   test('should view relations list', async ({ page }) => {
     await page.goto('/relations');
 
-    // Should show relations page
-    await expect(page.getByRole('heading', { name: 'Relations' })).toBeVisible();
+    // Should show relations page (use exact match to avoid strict mode violation)
+    await expect(page.getByRole('heading', { name: 'Relations', exact: true })).toBeVisible();
   });
 
   test('should add roles to a relation', async ({ page }) => {

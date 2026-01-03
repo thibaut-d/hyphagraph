@@ -186,8 +186,8 @@ test.describe('Entity CRUD Operations', () => {
     if (await searchInput.isVisible({ timeout: 2000 })) {
       await searchInput.fill(entity1);
 
-      // Should show only matching entity
-      await expect(page.locator(`text=${entity1}`)).toBeVisible();
+      // Should show only matching entity (use .first() to avoid strict mode violation)
+      await expect(page.locator(`text=${entity1}`).first()).toBeVisible();
       // Note: entity2 might still be visible depending on search implementation
     }
   });

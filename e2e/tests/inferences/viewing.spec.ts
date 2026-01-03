@@ -100,7 +100,8 @@ test.describe('Inference Viewing', () => {
     await page.waitForURL(/\/entities\/[a-f0-9-]+/);
 
     // Look for score indicators (might be percentage, progress bar, etc.)
-    const scoreElement = page.locator('text=/%|score|confidence/i');
+    // Use .first() to avoid strict mode violation when multiple elements match
+    const scoreElement = page.locator('text=/%|score|confidence/i').first();
     if (await scoreElement.isVisible({ timeout: 3000 })) {
       await expect(scoreElement).toBeVisible();
     }
