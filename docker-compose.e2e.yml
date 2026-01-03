@@ -36,6 +36,8 @@ services:
       # Admin user credentials (must match test-data.ts)
       ADMIN_EMAIL: admin@example.com
       ADMIN_PASSWORD: changeme123
+      # Fast bcrypt for E2E tests (10=100ms vs 12=400ms)
+      BCRYPT_ROUNDS: 10
       # SMTP settings - use a test SMTP service or disable email
       SMTP_HOST: localhost
       SMTP_PORT: 1025

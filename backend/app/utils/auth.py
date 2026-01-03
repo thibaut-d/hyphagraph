@@ -26,11 +26,15 @@ def hash_password(password: str) -> str:
     Note:
         Bcrypt has a 72-byte limit. Passwords are truncated to 72 bytes
         before hashing to prevent errors.
+
+        Cost factor is configurable via BCRYPT_ROUNDS:
+        - 10 = ~100ms (fast, for dev/test environments)
+        - 12 = ~400ms (secure, for production)
     """
     # Truncate to 72 bytes (bcrypt limit)
     password_bytes = password.encode('utf-8')[:72]
     # Generate salt and hash
-    salt = bcrypt.gensalt(rounds=12)
+    salt = bcrypt.gensalt(rounds=settings.BCRYPT_ROUNDS)
     hashed = bcrypt.hashpw(password_bytes, salt)
     # Return as string
     return hashed.decode('utf-8')
@@ -135,11 +139,13 @@ def hash_refresh_token(token: str) -> str:
     Note:
         Bcrypt has a 72-byte limit. Tokens are truncated to 72 bytes
         before hashing to prevent errors.
+
+        Uses configurable BCRYPT_ROUNDS (same as passwords).
     """
     # Truncate to 72 bytes (bcrypt limit)
     token_bytes = token.encode('utf-8')[:72]
     # Generate salt and hash
-    salt = bcrypt.gensalt(rounds=12)
+    salt = bcrypt.gensalt(rounds=settings.BCRYPT_ROUNDS)
     hashed = bcrypt.hashpw(token_bytes, salt)
     # Return as string
     return hashed.decode('utf-8')

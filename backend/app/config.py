@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"  # JWT signing algorithm
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30  # JWT token expiration (30 minutes)
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7  # Refresh token expiration (7 days)
+    BCRYPT_ROUNDS: int = 12  # Bcrypt cost factor (10=fast for dev/test, 12=secure for prod)
 
     # Admin User (created automatically on startup)
     ADMIN_EMAIL: str = "admin@example.com"
