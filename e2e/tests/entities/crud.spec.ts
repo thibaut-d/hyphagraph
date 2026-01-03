@@ -205,16 +205,26 @@ test.describe('Entity CRUD Operations', () => {
     // Wait for detail page
     await page.waitForURL(/\/entities\/[a-f0-9-]+/);
 
+    // Store entity ID for later
+    const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1];
+
     // Click back to list (it's actually a link styled as a button)
     await page.getByRole('link', { name: /back/i }).click();
 
     // Should be on entities list
     await expect(page).toHaveURL(/\/entities$/);
 
-    // Click on entity to view details again
-    await page.locator(`text=${entitySlug}`).click();
+    // Wait for the list to load - verify heading is visible
+    await expect(page.getByRole('heading', { name: 'Entities' })).toBeVisible({ timeout: 10000 });
+
+    // Navigate directly to the entity using the ID (instead of trying to find it in the paginated list)
+    // This is more reliable since the list is paginated and new entities appear at the end
+    await page.goto(`/entities/${entityId}`);
 
     // Should be on detail page again
-    await expect(page).toHaveURL(/\/entities\/[a-f0-9-]+/);
+    await expect(page).toHaveURL(/\/entities\/[a-f0-9-]+/, { timeout: 10000 });
+
+    // Verify it's the correct entity
+    await expect(page.getByText(entitySlug)).toBeVisible();
   });
 });

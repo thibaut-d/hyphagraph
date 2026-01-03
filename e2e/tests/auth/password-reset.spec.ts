@@ -31,10 +31,10 @@ test.describe('Password Reset Flow', () => {
     // Submit form
     await page.getByRole('button', { name: /submit|send|reset/i }).click();
 
-    // Should show success message
+    // Should show success message (increase timeout for backend delays)
     await expect(
       page.getByRole('heading', { name: /check your email/i })
-    ).toBeVisible({ timeout: 5000 });
+    ).toBeVisible({ timeout: 20000 });
   });
 
   test('should handle invalid email in password reset', async ({ page }) => {

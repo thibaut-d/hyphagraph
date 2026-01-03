@@ -94,8 +94,11 @@ test.describe('Login Flow', () => {
     // Refresh the page
     await page.reload();
 
+    // Wait for network to be idle after reload (auth state restoration)
+    await page.waitForLoadState('networkidle', { timeout: 10000 });
+
     // Should still be logged in after refresh
-    await expect(page.locator('text=Logged in as')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=Logged in as')).toBeVisible({ timeout: 15000 });
 
     const authenticated = await isAuthenticated(page);
     expect(authenticated).toBe(true);

@@ -18,16 +18,36 @@ export async function loginViaUI(
   password: string
 ): Promise<void> {
   // Navigate to account page (where login form is)
-  await page.goto('/account');
+  await page.goto('/account', { waitUntil: 'networkidle' });
 
   // Fill in credentials using role-based selectors
-  await page.getByRole('textbox', { name: /email/i }).fill(email);
-  await page.getByLabel(/password/i).fill(password);
+  const emailField = page.getByRole('textbox', { name: /email/i });
+  const passwordField = page.getByLabel(/password/i);
+  const loginButton = page.getByRole('button', { name: /login/i });
+
+  // Wait for fields to be visible and interactable
+  await emailField.waitFor({ state: 'visible', timeout: 10000 });
+  await passwordField.waitFor({ state: 'visible', timeout: 10000 });
+  await loginButton.waitFor({ state: 'visible', timeout: 10000 });
+
+  // Fill credentials
+  await emailField.fill(email);
+  await passwordField.fill(password);
+
+  // Wait a moment for any validation to complete
+  await page.waitForTimeout(500);
 
   // Click login button
-  await page.getByRole('button', { name: /login/i }).click();
+  await loginButton.click();
 
-  // Wait for successful login (user info should appear on account page)
+  // Wait for successful login - use multiple strategies
+  // Strategy 1: Wait for auth token in localStorage (most reliable)
+  await page.waitForFunction(
+    () => !!localStorage.getItem('auth_token'),
+    { timeout: 20000 }
+  );
+
+  // Strategy 2: Wait for UI to update
   await page.waitForSelector('text=/Logged in as/i', { timeout: 10000 });
 }
 
