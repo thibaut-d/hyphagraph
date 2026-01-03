@@ -158,10 +158,11 @@ test.describe('Entity CRUD Operations', () => {
     // Try to submit without filling slug
     await page.getByRole('button', { name: /create|submit/i }).click();
 
-    // Should show validation error in Alert component
-    await expect(page.getByRole('alert').filter({ hasText: /slug.*required/i })).toBeVisible({
-      timeout: 5000,
-    });
+    // Should stay on create page due to HTML5 validation (required attribute prevents submission)
+    await expect(page).toHaveURL(/\/entities\/new/, { timeout: 2000 });
+
+    // Verify we're still on the create form
+    await expect(page.getByRole('heading', { name: 'Create Entity' })).toBeVisible();
   });
 
   test('should search/filter entities', async ({ page }) => {

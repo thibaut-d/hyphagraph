@@ -129,10 +129,11 @@ test.describe('Source CRUD Operations', () => {
     // Try to submit without filling required fields
     await page.getByRole('button', { name: /create|submit/i }).click();
 
-    // Should show validation error in Alert component
-    await expect(page.getByRole('alert').filter({ hasText: /required|title|url/i })).toBeVisible({
-      timeout: 5000,
-    });
+    // Should stay on create page due to HTML5 validation (required attribute prevents submission)
+    await expect(page).toHaveURL(/\/sources\/new/, { timeout: 2000 });
+
+    // Verify we're still on the create form
+    await expect(page.getByRole('heading', { name: 'Create Source' })).toBeVisible();
   });
 
   test('should search/filter sources', async ({ page }) => {
