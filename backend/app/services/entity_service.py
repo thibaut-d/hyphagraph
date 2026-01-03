@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, func
+from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException, status
 from typing import Optional, Tuple
 from uuid import UUID
@@ -28,6 +29,9 @@ class EntityService:
         Creates both:
         1. Base Entity (immutable, just id + created_at)
         2. EntityRevision (all the data)
+
+        Raises:
+            HTTPException 409: If an entity with this slug already exists
         """
         try:
             # Create base entity
@@ -52,6 +56,18 @@ class EntityService:
             await self.db.commit()
             return entity_to_read(entity, revision)
 
+        except IntegrityError as e:
+            await self.db.rollback()
+            # Check if it's a duplicate slug error (both PostgreSQL and SQLite)
+            error_msg = str(e.orig).lower()
+            if ('ix_entity_revisions_slug_current_unique' in error_msg or
+                'unique constraint failed: entity_revisions.slug' in error_msg):
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"An entity with slug '{payload.slug}' already exists"
+                )
+            # Re-raise other integrity errors
+            raise
         except Exception:
             await self.db.rollback()
             raise

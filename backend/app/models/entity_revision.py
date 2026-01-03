@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, JSON, Boolean, ForeignKey, DateTime
+from sqlalchemy import String, JSON, Boolean, ForeignKey, DateTime, Index, text
 from sqlalchemy.sql import func
 from uuid import UUID
 from app.models.base import Base, UUIDMixin
@@ -13,6 +13,16 @@ class EntityRevision(Base, UUIDMixin):
     Only one revision per entity should have is_current=True.
     """
     __tablename__ = "entity_revisions"
+    __table_args__ = (
+        # Unique constraint: only one current revision can have a given slug
+        Index(
+            'ix_entity_revisions_slug_current_unique',
+            'slug',
+            unique=True,
+            postgresql_where=text('is_current = true'),  # PostgreSQL partial index
+            sqlite_where=text('is_current = 1'),  # SQLite uses 1 for true
+        ),
+    )
 
     # Link to base entity
     entity_id: Mapped[UUID] = mapped_column(

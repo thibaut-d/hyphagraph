@@ -131,7 +131,7 @@ test.describe('Entity CRUD Operations', () => {
     await expect(page.getByRole('heading', { name: 'Entities' })).toBeVisible();
   });
 
-  test('should allow duplicate slugs (no uniqueness constraint)', async ({ page }) => {
+  test('should show validation error for duplicate slug', async ({ page }) => {
     const duplicateSlug = generateEntityName('duplicate').toLowerCase().replace(/\s+/g, '-');
 
     // Create first entity
@@ -142,21 +142,16 @@ test.describe('Entity CRUD Operations', () => {
 
     // Wait for success
     await page.waitForURL(/\/entities\/[a-f0-9-]+/);
-    const firstEntityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1];
 
-    // Create another entity with the same slug - should succeed
+    // Try to create another entity with the same slug - should fail
     await page.goto('/entities/new');
     await page.getByLabel(/slug/i).fill(duplicateSlug);
     await page.getByLabel(/summary.*english/i).fill('Duplicate entity');
-    await page.getByRole('button', { name: /create|submit/i }).click();
+    await page.getByRole('button', { name: /create|submit/i}).click();
 
-    // Should create successfully with different ID
-    await page.waitForURL(/\/entities\/[a-f0-9-]+/);
-    const secondEntityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1];
-
-    // Verify both entities exist with different IDs but same slug
-    expect(firstEntityId).not.toBe(secondEntityId);
-    await expect(page.locator(`text=${duplicateSlug}`)).toBeVisible();
+    // Should show error message in Alert component
+    await expect(page.getByRole('alert')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('alert')).toContainText(/already exists|duplicate/i);
   });
 
   test('should prevent submission with empty slug (HTML5 validation)', async ({ page }) => {

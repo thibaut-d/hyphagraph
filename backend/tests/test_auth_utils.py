@@ -20,36 +20,36 @@ from app.config import settings
 class TestPasswordHashing:
     """Test password hashing and verification."""
 
-    def test_hash_password_creates_different_hashes(self):
+    async def test_hash_password_creates_different_hashes(self):
         """Same password should create different hashes (salt)."""
         password = "test_password_123"
-        hash1 = hash_password(password)
-        hash2 = hash_password(password)
+        hash1 = await hash_password(password)
+        hash2 = await hash_password(password)
 
         assert hash1 != hash2  # Different due to random salt
         assert hash1.startswith("$2b$")  # bcrypt format
 
-    def test_verify_password_correct(self):
+    async def test_verify_password_correct(self):
         """Correct password should verify successfully."""
         password = "correct_password"
-        hashed = hash_password(password)
+        hashed = await hash_password(password)
 
-        assert verify_password(password, hashed) is True
+        assert await verify_password(password, hashed) is True
 
-    def test_verify_password_incorrect(self):
+    async def test_verify_password_incorrect(self):
         """Incorrect password should fail verification."""
         password = "correct_password"
         wrong_password = "wrong_password"
-        hashed = hash_password(password)
+        hashed = await hash_password(password)
 
-        assert verify_password(wrong_password, hashed) is False
+        assert await verify_password(wrong_password, hashed) is False
 
-    def test_hash_password_handles_unicode(self):
+    async def test_hash_password_handles_unicode(self):
         """Password hashing should handle unicode characters."""
         password = "пароль_中文_🔒"
-        hashed = hash_password(password)
+        hashed = await hash_password(password)
 
-        assert verify_password(password, hashed) is True
+        assert await verify_password(password, hashed) is True
 
 
 class TestJWTTokens:
@@ -121,29 +121,29 @@ class TestRefreshTokens:
         assert len(token1) > 40  # URL-safe base64 of 32 bytes
         assert len(token2) > 40
 
-    def test_hash_refresh_token_creates_different_hashes(self):
+    async def test_hash_refresh_token_creates_different_hashes(self):
         """Same token should create different hashes (salt)."""
         token = "test_refresh_token"
-        hash1 = hash_refresh_token(token)
-        hash2 = hash_refresh_token(token)
+        hash1 = await hash_refresh_token(token)
+        hash2 = await hash_refresh_token(token)
 
         assert hash1 != hash2  # Different due to random salt
         assert hash1.startswith("$2b$")  # bcrypt format
 
-    def test_verify_refresh_token_correct(self):
+    async def test_verify_refresh_token_correct(self):
         """Correct token should verify successfully."""
         token = generate_refresh_token()
-        hashed = hash_refresh_token(token)
+        hashed = await hash_refresh_token(token)
 
-        assert verify_refresh_token(token, hashed) is True
+        assert await verify_refresh_token(token, hashed) is True
 
-    def test_verify_refresh_token_incorrect(self):
+    async def test_verify_refresh_token_incorrect(self):
         """Incorrect token should fail verification."""
         token = generate_refresh_token()
         wrong_token = generate_refresh_token()
-        hashed = hash_refresh_token(token)
+        hashed = await hash_refresh_token(token)
 
-        assert verify_refresh_token(wrong_token, hashed) is False
+        assert await verify_refresh_token(wrong_token, hashed) is False
 
     def test_refresh_token_url_safe(self):
         """Refresh tokens should be URL-safe (no +, /, =)."""

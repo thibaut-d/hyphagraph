@@ -187,3 +187,16 @@ class TestEntityService:
         current = await service.get(created.id)
         assert current.slug == "v3"
         assert current.id == created.id == v2.id == v3.id
+
+    async def test_create_duplicate_slug_rejected(self, db_session):
+        """Test that creating two entities with the same slug is rejected."""
+        # Arrange
+        service = EntityService(db_session)
+        await service.create(EntityWrite(slug="duplicate-test", kind="drug"))
+
+        # Act & Assert - Attempting to create another entity with the same slug should fail
+        with pytest.raises(HTTPException) as exc_info:
+            await service.create(EntityWrite(slug="duplicate-test", kind="drug"))
+
+        assert exc_info.value.status_code == 409
+        assert "already exists" in exc_info.value.detail.lower()
