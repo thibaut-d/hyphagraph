@@ -85,7 +85,7 @@ test.describe('Login Flow', () => {
   });
 
   test('should persist login across page refreshes', async ({ page }) => {
-    // Use UI login instead of API to avoid timeout issues
+    // Use UI login
     await loginAsAdmin(page);
 
     // Verify logged in

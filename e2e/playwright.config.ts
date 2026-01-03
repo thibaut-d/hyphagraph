@@ -24,7 +24,7 @@ export default defineConfig({
   // Test execution
   fullyParallel: false, // Disable parallel execution to avoid state conflicts
   forbidOnly: !!process.env.CI, // Prevent .only in CI
-  retries: process.env.CI ? 2 : 0, // Retry on CI only
+  retries: 1, // Retry failed tests once to handle intermittent backend load issues
   workers: 1, // Run tests serially to avoid database state conflicts
 
   // Reporter configuration
