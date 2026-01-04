@@ -7,6 +7,7 @@ to enable knowledge extraction from documents.
 from app.llm.base import LLMProvider, LLMResponse, LLMError
 from app.llm.openai_provider import OpenAIProvider
 from app.llm.client import get_llm_provider, is_llm_available, llm
+from app.llm import prompts, schemas
 
 __all__ = [
     "LLMProvider",
@@ -16,4 +17,6 @@ __all__ = [
     "get_llm_provider",
     "is_llm_available",
     "llm",
+    "prompts",
+    "schemas",
 ]
