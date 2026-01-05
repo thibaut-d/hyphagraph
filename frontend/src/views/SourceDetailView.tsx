@@ -19,15 +19,21 @@ import {
   DialogContentText,
   DialogActions,
   Button,
+  Alert,
+  CircularProgress,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
 
 import { getSource, deleteSource } from "../api/sources";
 import { listRelationsBySource, deleteRelation } from "../api/relations";
+import { uploadAndExtract } from "../api/extraction";
 import { SourceRead } from "../types/source";
 import { RelationRead } from "../types/relation";
 import { invalidateSourceFilterCache } from "../utils/cacheUtils";
+import { DocumentExtractionPreview, SaveExtractionResult } from "../types/extraction";
+import { ExtractionPreview } from "../components/ExtractionPreview";
 
 export function SourceDetailView() {
   const { id } = useParams<{ id: string }>();
@@ -41,6 +47,12 @@ export function SourceDetailView() {
   const [relationToDelete, setRelationToDelete] = useState<RelationRead | null>(null);
   const [deleteRelationDialogOpen, setDeleteRelationDialogOpen] = useState(false);
   const [deletingRelation, setDeletingRelation] = useState(false);
+
+  // Extraction workflow state
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [extractionPreview, setExtractionPreview] = useState<DocumentExtractionPreview | null>(null);
+  const [saveResult, setSaveResult] = useState<SaveExtractionResult | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -88,6 +100,42 @@ export function SourceDetailView() {
   const openDeleteRelationDialog = (relation: RelationRead) => {
     setRelationToDelete(relation);
     setDeleteRelationDialogOpen(true);
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !id) return;
+
+    setUploading(true);
+    setUploadError(null);
+    setSaveResult(null);
+
+    try {
+      const preview = await uploadAndExtract(id, file);
+      setExtractionPreview(preview);
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "Failed to upload and extract");
+    } finally {
+      setUploading(false);
+      // Clear file input
+      event.target.value = "";
+    }
+  };
+
+  const handleSaveComplete = async (result: SaveExtractionResult) => {
+    setSaveResult(result);
+    setExtractionPreview(null);
+
+    // Refresh relations list
+    if (id) {
+      const updatedRelations = await listRelationsBySource(id);
+      setRelations(updatedRelations);
+    }
+  };
+
+  const handleCancelExtraction = () => {
+    setExtractionPreview(null);
+    setUploadError(null);
   };
 
   if (!source) {
@@ -147,6 +195,58 @@ export function SourceDetailView() {
           </Box>
         </Box>
       </Paper>
+
+      {/* Document Upload & Extraction */}
+      <Paper sx={{ p: 3 }}>
+        <Typography variant="h5" gutterBottom>
+          Knowledge Extraction
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Upload a PDF or TXT document to extract entities and relations using AI.
+        </Typography>
+
+        <input
+          accept=".pdf,.txt"
+          style={{ display: "none" }}
+          id="document-upload"
+          type="file"
+          onChange={handleFileUpload}
+          disabled={uploading}
+        />
+        <label htmlFor="document-upload">
+          <Button
+            variant="contained"
+            component="span"
+            startIcon={uploading ? <CircularProgress size={16} /> : <UploadFileIcon />}
+            disabled={uploading}
+          >
+            {uploading ? "Uploading & Extracting..." : "Upload Document"}
+          </Button>
+        </label>
+
+        {uploadError && (
+          <Alert severity="error" sx={{ mt: 2 }} onClose={() => setUploadError(null)}>
+            {uploadError}
+          </Alert>
+        )}
+
+        {saveResult && (
+          <Alert severity="success" sx={{ mt: 2 }} onClose={() => setSaveResult(null)}>
+            Successfully saved to graph: {saveResult.entities_created} entities created,{" "}
+            {saveResult.entities_linked} entities linked, {saveResult.relations_created}{" "}
+            relations created.
+          </Alert>
+        )}
+      </Paper>
+
+      {/* Extraction Preview */}
+      {extractionPreview && (
+        <ExtractionPreview
+          preview={extractionPreview}
+          onSaveComplete={handleSaveComplete}
+          onCancel={handleCancelExtraction}
+        />
+      )}
 
       <Paper sx={{ p: 3 }}>
         <Typography variant="h5" gutterBottom>
