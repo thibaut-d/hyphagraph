@@ -41,6 +41,9 @@ dependencies = [
 
     # --- LLM / AI ---
     "openai>=1.12",  # OpenAI API client
+
+    # --- Document Processing ---
+    "pypdf>=3.17",  # PDF text extraction
 ]
 
 [project.optional-dependencies]

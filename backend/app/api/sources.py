@@ -1,14 +1,18 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, UploadFile, File, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 from typing import Optional, List
+import logging
 
 from app.database import get_db
-from app.schemas.source import SourceWrite, SourceRead
+from app.schemas.source import SourceWrite, SourceRead, DocumentUploadResponse
 from app.schemas.filters import SourceFilters, SourceFilterOptions
 from app.schemas.pagination import PaginatedResponse
 from app.services.source_service import SourceService
+from app.services.document_service import DocumentService
 from app.dependencies.auth import get_current_user
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -108,3 +112,59 @@ async def delete_source(
     service = SourceService(db)
     await service.delete(source_id)
     return None
+
+
+@router.post("/{source_id}/upload-document", response_model=DocumentUploadResponse)
+async def upload_document(
+    source_id: UUID,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """
+    Upload a document (PDF or TXT) to an existing source.
+
+    Extracts text content from the uploaded file and stores it in the source revision
+    for future re-extraction and analysis.
+
+    Supported formats:
+    - PDF (.pdf) - Extracts text from all pages
+    - Plain text (.txt) - Reads UTF-8 or Latin-1 encoded text
+
+    Limitations:
+    - Maximum file size: 10 MB
+    - Maximum text length: 50,000 characters (~10-15 pages)
+    - Scanned PDFs without OCR will fail
+
+    Returns the source ID and a preview of the extracted text.
+    """
+    logger.info(f"Document upload requested for source {source_id} by user {user.email}")
+
+    # Extract text from document
+    document_service = DocumentService()
+    extraction_result = await document_service.extract_text_from_file(file)
+
+    # Store document content in source revision
+    source_service = SourceService(db)
+    await source_service.add_document_to_source(
+        source_id=source_id,
+        document_text=extraction_result.text,
+        document_format=extraction_result.format,
+        document_file_name=extraction_result.filename,
+        user_id=user.id if user else None
+    )
+
+    logger.info(
+        f"Document uploaded successfully: {extraction_result.filename} "
+        f"({extraction_result.char_count} chars, format: {extraction_result.format})"
+    )
+
+    # Return response with preview
+    return DocumentUploadResponse(
+        source_id=source_id,
+        document_text_preview=extraction_result.text[:500],
+        document_format=extraction_result.format,
+        character_count=extraction_result.char_count,
+        truncated=extraction_result.truncated,
+        warnings=extraction_result.warnings
+    )

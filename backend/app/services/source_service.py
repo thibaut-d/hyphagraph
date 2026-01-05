@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, and_, cast, String, func
 from fastapi import HTTPException, status
 from typing import Optional, Tuple
+from uuid import UUID
 
 from app.schemas.source import SourceWrite, SourceRead
 from app.schemas.filters import SourceFilters, SourceFilterOptions
@@ -240,3 +241,69 @@ class SourceService:
             kinds=sorted(kinds),
             year_range=(min_year, max_year) if min_year and max_year else None,
         )
+
+    async def add_document_to_source(
+        self,
+        source_id: UUID,
+        document_text: str,
+        document_format: str,
+        document_file_name: str,
+        user_id: UUID | None = None
+    ) -> None:
+        """
+        Add document content to a source's current revision.
+
+        Updates the current revision to include document text, format, and metadata.
+        This allows storing uploaded PDF/text content for future re-extraction.
+
+        Args:
+            source_id: The source to update
+            document_text: Extracted text content
+            document_format: File format (pdf, txt, etc.)
+            document_file_name: Original filename
+            user_id: User who uploaded the document
+
+        Raises:
+            HTTPException: If source not found
+        """
+        try:
+            # Get the source
+            source = await self.repo.get_by_id(source_id)
+            if not source:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Source not found"
+                )
+
+            # Get current revision
+            current_revision_query = select(SourceRevision).where(
+                SourceRevision.source_id == source_id,
+                SourceRevision.is_current == True
+            )
+            result = await self.db.execute(current_revision_query)
+            current_revision = result.scalar_one_or_none()
+
+            if not current_revision:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="No current revision found for source"
+                )
+
+            # Update document fields
+            from datetime import datetime, timezone
+            current_revision.document_text = document_text
+            current_revision.document_format = document_format
+            current_revision.document_file_name = document_file_name
+            current_revision.document_extracted_at = datetime.now(timezone.utc)
+
+            # If user_id provided, update created_by_user_id
+            if user_id and not current_revision.created_by_user_id:
+                current_revision.created_by_user_id = user_id
+
+            await self.db.commit()
+
+        except HTTPException:
+            raise
+        except Exception:
+            await self.db.rollback()
+            raise

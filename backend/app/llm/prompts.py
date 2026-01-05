@@ -37,11 +37,13 @@ Guidelines:
 ENTITY_EXTRACTION_PROMPT = """Extract all relevant biomedical entities from the following text.
 
 For each entity, provide:
-- slug: A unique identifier (lowercase, hyphenated, e.g., "drug-aspirin", "disease-headache")
+- slug: A unique identifier (lowercase, hyphenated, NO underscores, e.g., "aspirin", "migraine-headache", "cox-enzyme-inhibition")
 - summary: A brief description (1-2 sentences) in English
 - category: The entity type (drug, disease, symptom, biological_mechanism, treatment, biomarker, population, outcome)
 - confidence: Your confidence in this extraction (high, medium, low)
 - text_span: The exact text from the source that mentions this entity
+
+IMPORTANT: Slugs must only contain lowercase letters, numbers, and hyphens. NO underscores allowed.
 
 Categories:
 - drug: Medications, pharmaceuticals, active ingredients
@@ -60,18 +62,25 @@ Respond with a JSON array of entities. Example format:
 ```json
 [
   {{
-    "slug": "drug-aspirin",
+    "slug": "aspirin",
     "summary": "Aspirin is a nonsteroidal anti-inflammatory drug (NSAID) used for pain relief, fever reduction, and anti-platelet effects.",
     "category": "drug",
     "confidence": "high",
     "text_span": "aspirin (acetylsalicylic acid)"
   }},
   {{
-    "slug": "disease-migraine",
+    "slug": "migraine-headache",
     "summary": "Migraine is a neurological condition characterized by recurrent severe headaches, often with nausea and light sensitivity.",
     "category": "disease",
     "confidence": "high",
     "text_span": "migraine headaches"
+  }},
+  {{
+    "slug": "cox-enzyme-inhibition",
+    "summary": "COX enzyme inhibition is the mechanism by which NSAIDs block prostaglandin synthesis.",
+    "category": "biological_mechanism",
+    "confidence": "high",
+    "text_span": "irreversibly inhibiting cyclooxygenase (COX) enzymes"
   }}
 ]
 ```
@@ -250,15 +259,25 @@ Text to analyze:
 
 Extract:
 1. **Entities**: All drugs, diseases, symptoms, treatments, biomarkers, and other relevant entities
-2. **Relations**: Relationships between entities (treats, causes, prevents, etc.)
+   - slug: lowercase, hyphenated, NO underscores (e.g., "aspirin", "cox-inhibition")
+   - category: drug, disease, symptom, biological_mechanism, treatment, biomarker, population, outcome, other
+   - confidence: high, medium, low
+
+2. **Relations**: Relationships between entities
+   - relation_type: MUST be one of: treats, causes, prevents, increases_risk, decreases_risk, mechanism, contraindicated, interacts_with, metabolized_by, biomarker_for, affects_population, other
+   - confidence: high, medium, low
+
 3. **Claims**: Factual statements with evidence
+   - evidence_strength: MUST be one of: strong, moderate, weak, anecdotal
+   - claim_type: efficacy, safety, mechanism, epidemiology, other
+   - confidence: high, medium, low
 
 Respond with JSON containing three arrays:
 ```json
 {{
   "entities": [
     {{
-      "slug": "drug-aspirin",
+      "slug": "aspirin",
       "summary": "Aspirin is a nonsteroidal anti-inflammatory drug...",
       "category": "drug",
       "confidence": "high",
@@ -267,23 +286,23 @@ Respond with JSON containing three arrays:
   ],
   "relations": [
     {{
-      "subject_slug": "drug-aspirin",
-      "relation_type": "treats",
-      "object_slug": "disease-migraine",
-      "roles": {{"dosage": "325-650mg"}},
+      "subject_slug": "aspirin",
+      "relation_type": "decreases_risk",
+      "object_slug": "myocardial-infarction",
+      "roles": {{"dosage": "low-dose daily"}},
       "confidence": "high",
-      "text_span": "aspirin 325-650mg for migraine",
-      "notes": "Most effective at symptom onset"
+      "text_span": "daily aspirin therapy reduces heart attack risk",
+      "notes": "Evidence from clinical trials"
     }}
   ],
   "claims": [
     {{
-      "claim_text": "Aspirin is effective for migraine pain relief",
-      "entities_involved": ["drug-aspirin", "disease-migraine"],
+      "claim_text": "Daily aspirin therapy reduces myocardial infarction risk by 25% in adults with coronary artery disease",
+      "entities_involved": ["aspirin", "myocardial-infarction", "coronary-artery-disease"],
       "claim_type": "efficacy",
-      "evidence_strength": "moderate",
+      "evidence_strength": "strong",
       "confidence": "high",
-      "text_span": "Studies show aspirin reduces migraine pain..."
+      "text_span": "Clinical studies have shown that daily aspirin therapy reduces the risk of myocardial infarction by approximately 25% in adults with coronary artery disease"
     }}
   ]
 }}

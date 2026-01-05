@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, Integer, Float, JSON, Boolean, ForeignKey, DateTime, ARRAY
+from sqlalchemy import String, Integer, Float, JSON, Boolean, ForeignKey, DateTime, ARRAY, Text
 from sqlalchemy.sql import func
 from uuid import UUID
 from app.models.base import Base, UUIDMixin
@@ -39,6 +39,14 @@ class SourceRevision(Base, UUIDMixin):
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )
+
+    # Document content (for uploaded PDFs/text files)
+    document_text: Mapped[str | None] = mapped_column(Text)  # Full extracted text
+    document_format: Mapped[str | None] = mapped_column(String)  # pdf, txt, etc.
+    document_file_name: Mapped[str | None] = mapped_column(String)  # Original filename
+    document_extracted_at: Mapped[DateTime | None] = mapped_column(
+        DateTime(timezone=True)
+    )  # When text was extracted
 
     # Revision metadata
     created_at: Mapped[DateTime] = mapped_column(
