@@ -141,8 +141,7 @@ async def test_end_to_end_pubmed_ingestion():
         if relations:
             print(f"\n  Sample relations:")
             for relation in relations[:3]:
-                roles = ", ".join([f"{r.entity_slug} ({r.role_type})" for r in relation.roles])
-                print(f"    - {relation.kind}: {roles}")
+                print(f"    - {relation.relation_type}: {relation.subject_slug} → {relation.object_slug}")
 
         # =====================================================================
         # STEP 4: Link entities to existing knowledge

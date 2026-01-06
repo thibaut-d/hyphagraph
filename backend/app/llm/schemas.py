@@ -44,8 +44,8 @@ class ExtractedEntity(BaseModel):
         min_length=3,
         max_length=100
     )
-    summary: str = Field(
-        ...,
+    summary: str | None = Field(
+        None,
         description="Brief description of the entity (1-2 sentences)",
         min_length=10,
         max_length=500
