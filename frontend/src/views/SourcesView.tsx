@@ -18,6 +18,7 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import FilterListIcon from "@mui/icons-material/FilterList";
+import DownloadIcon from "@mui/icons-material/Download";
 
 import { listSources, SourceFilters, getSourceFilterOptions, SourceFilterOptions } from "../api/sources";
 import { SourceRead } from "../types/source";
@@ -206,6 +207,17 @@ export function SourcesView() {
               </Box>
             </Button>
           </Badge>
+          <Button
+            component={RouterLink}
+            to="/sources/import-pubmed"
+            variant="outlined"
+            startIcon={<DownloadIcon />}
+            size="small"
+          >
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+              Import from PubMed
+            </Box>
+          </Button>
           <Button
             component={RouterLink}
             to="/sources/new"
