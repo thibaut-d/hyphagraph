@@ -41,6 +41,32 @@ class UrlExtractionRequest(BaseModel):
     url: str
 
 
+class PubMedBulkSearchRequest(BaseModel):
+    """Request model for bulk PubMed search and import."""
+    query: str | None = None  # Direct search query
+    search_url: str | None = None  # Or PubMed search URL
+    max_results: int = 10  # Maximum articles to import (1-100)
+
+
+class PubMedSearchResult(BaseModel):
+    """Single PubMed search result."""
+    pmid: str
+    title: str
+    authors: list[str]
+    journal: str | None
+    year: int | None
+    doi: str | None
+    url: str
+
+
+class PubMedBulkSearchResponse(BaseModel):
+    """Response from bulk PubMed search."""
+    query: str  # The actual query used
+    total_results: int  # Total results available in PubMed
+    results: list[PubMedSearchResult]  # Article metadata
+    retrieved_count: int  # Number of articles actually retrieved
+
+
 # =============================================================================
 # Dependency: Require LLM
 # =============================================================================
@@ -542,4 +568,128 @@ async def extract_from_url(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to extract from URL: {str(e)}"
+        )
+
+
+@router.post(
+    "/pubmed/bulk-search",
+    response_model=PubMedBulkSearchResponse,
+    summary="Search PubMed and get article list",
+    description="""
+    Search PubMed and retrieve article metadata for bulk import.
+
+    This endpoint:
+    1. Accepts either a direct search query OR a PubMed search URL
+    2. Searches PubMed using E-utilities esearch API
+    3. Fetches article metadata for the first N results
+    4. Returns article list for user selection
+
+    User can then select which articles to import and extract.
+
+    Input options:
+    - `query`: Direct PubMed query (e.g., "cancer AND 2024[pdat]")
+    - `search_url`: PubMed search URL copied from web interface
+
+    At least one must be provided. If both are provided, `query` takes precedence.
+
+    Rate limiting:
+    - NCBI allows 3 requests/second without API key
+    - Larger batches will take proportionally longer
+    """
+)
+async def bulk_search_pubmed(
+    request: PubMedBulkSearchRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> PubMedBulkSearchResponse:
+    """Search PubMed and retrieve article metadata for bulk import."""
+    user_email = current_user.email if current_user else "system"
+
+    # Determine query to use
+    query = None
+    if request.query:
+        query = request.query
+    elif request.search_url:
+        # Extract query from URL
+        pubmed_fetcher = PubMedFetcher()
+        query = pubmed_fetcher.extract_query_from_search_url(request.search_url)
+        if not query:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Could not extract search query from URL: {request.search_url}"
+            )
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Either 'query' or 'search_url' must be provided"
+        )
+
+    # Validate max_results
+    if request.max_results < 1 or request.max_results > 100:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="max_results must be between 1 and 100"
+        )
+
+    logger.info(
+        f"PubMed bulk search requested by user {user_email}, "
+        f"query: '{query}', max_results: {request.max_results}"
+    )
+
+    try:
+        pubmed_fetcher = PubMedFetcher()
+
+        # Step 1: Search PubMed
+        pmids, total_count = await pubmed_fetcher.search_pubmed(
+            query=query,
+            max_results=request.max_results
+        )
+
+        if not pmids:
+            logger.info(f"No results found for query: {query}")
+            return PubMedBulkSearchResponse(
+                query=query,
+                total_results=total_count,
+                results=[],
+                retrieved_count=0
+            )
+
+        # Step 2: Bulk fetch article metadata
+        articles = await pubmed_fetcher.bulk_fetch_articles(pmids)
+
+        # Step 3: Convert to response format
+        results = [
+            PubMedSearchResult(
+                pmid=article.pmid,
+                title=article.title,
+                authors=article.authors,
+                journal=article.journal,
+                year=article.year,
+                doi=article.doi,
+                url=article.url
+            )
+            for article in articles
+        ]
+
+        logger.info(
+            f"PubMed bulk search complete: {len(results)}/{request.max_results} "
+            f"articles retrieved from {total_count} total results"
+        )
+
+        return PubMedBulkSearchResponse(
+            query=query,
+            total_results=total_count,
+            results=results,
+            retrieved_count=len(results)
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"PubMed bulk search failed: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to search PubMed: {str(e)}"
         )
