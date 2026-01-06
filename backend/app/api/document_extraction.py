@@ -67,6 +67,19 @@ class PubMedBulkSearchResponse(BaseModel):
     retrieved_count: int  # Number of articles actually retrieved
 
 
+class PubMedBulkImportRequest(BaseModel):
+    """Request to import selected PubMed articles as sources."""
+    pmids: list[str]  # List of PMIDs to import
+
+
+class PubMedBulkImportResponse(BaseModel):
+    """Response from bulk import operation."""
+    total_requested: int  # Number of PMIDs requested
+    sources_created: int  # Number of sources successfully created
+    failed_pmids: list[str]  # PMIDs that failed to import
+    source_ids: list[UUID]  # IDs of created sources
+
+
 # =============================================================================
 # Dependency: Require LLM
 # =============================================================================
@@ -692,4 +705,133 @@ async def bulk_search_pubmed(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to search PubMed: {str(e)}"
+        )
+
+
+@router.post(
+    "/pubmed/bulk-import",
+    response_model=PubMedBulkImportResponse,
+    summary="Batch import PubMed articles as sources",
+    description="""
+    Import selected PubMed articles as sources in the knowledge graph.
+
+    This endpoint:
+    1. Fetches full article metadata for each PMID
+    2. Creates a Source for each article with complete metadata
+    3. Returns list of created source IDs
+
+    The created sources can then be used for knowledge extraction.
+
+    Rate limiting:
+    - NCBI allows 3 requests/second without API key
+    - Batch operations take proportionally longer
+    """
+)
+async def bulk_import_pubmed(
+    request: PubMedBulkImportRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> PubMedBulkImportResponse:
+    """Batch import PubMed articles as sources."""
+    user_email = current_user.email if current_user else "system"
+    user_id = current_user.id if current_user else None
+
+    if not request.pmids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No PMIDs provided for import"
+        )
+
+    if len(request.pmids) > 100:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Maximum 100 articles can be imported at once"
+        )
+
+    logger.info(
+        f"PubMed bulk import requested by user {user_email}, "
+        f"importing {len(request.pmids)} articles"
+    )
+
+    try:
+        pubmed_fetcher = PubMedFetcher()
+        source_service = SourceService(db)
+
+        # Step 1: Bulk fetch article metadata from PubMed
+        articles = await pubmed_fetcher.bulk_fetch_articles(request.pmids)
+
+        # Track successes and failures
+        source_ids = []
+        failed_pmids = []
+
+        # Step 2: Create a source for each article
+        for article in articles:
+            try:
+                from app.schemas.source import SourceWrite
+
+                # Create source with PubMed metadata
+                source_data = SourceWrite(
+                    kind="study",
+                    title=article.title,
+                    authors=article.authors,
+                    year=article.year,
+                    origin=article.journal,
+                    url=article.url,
+                    trust_level=0.9,  # PubMed articles are generally high quality
+                    summary={"en": article.abstract} if article.abstract else None,
+                    source_metadata={
+                        "pmid": article.pmid,
+                        "doi": article.doi,
+                        "source": "pubmed",
+                        "imported_via": "bulk_import"
+                    },
+                    created_with_llm=None
+                )
+
+                source = await source_service.create(source_data, user_id=user_id)
+                source_ids.append(source.id)
+
+                # Store document text in source for later extraction
+                await source_service.add_document_to_source(
+                    source_id=source.id,
+                    document_text=article.full_text,
+                    document_format="txt",
+                    document_file_name=f"pubmed_{article.pmid}.txt",
+                    user_id=user_id
+                )
+
+                logger.info(f"Created source {source.id} for PMID {article.pmid}")
+
+            except Exception as e:
+                logger.error(f"Failed to create source for PMID {article.pmid}: {e}")
+                failed_pmids.append(article.pmid)
+                continue
+
+        # Identify PMIDs that failed to fetch
+        fetched_pmids = {a.pmid for a in articles}
+        requested_pmids = set(request.pmids)
+        fetch_failed = list(requested_pmids - fetched_pmids)
+        failed_pmids.extend(fetch_failed)
+
+        logger.info(
+            f"PubMed bulk import complete: {len(source_ids)}/{len(request.pmids)} sources created, "
+            f"{len(failed_pmids)} failed"
+        )
+
+        return PubMedBulkImportResponse(
+            total_requested=len(request.pmids),
+            sources_created=len(source_ids),
+            failed_pmids=failed_pmids,
+            source_ids=source_ids
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"PubMed bulk import failed: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to import PubMed articles: {str(e)}"
         )

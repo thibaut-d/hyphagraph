@@ -24,3 +24,14 @@ export interface PubMedBulkSearchResponse {
   results: PubMedSearchResult[];  // Article metadata
   retrieved_count: number;  // Number of articles retrieved
 }
+
+export interface PubMedBulkImportRequest {
+  pmids: string[];  // List of PMIDs to import
+}
+
+export interface PubMedBulkImportResponse {
+  total_requested: number;  // Number of PMIDs requested
+  sources_created: number;  // Number of sources successfully created
+  failed_pmids: string[];  // PMIDs that failed to import
+  source_ids: string[];  // IDs of created sources
+}

@@ -31,7 +31,7 @@ import {
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import DownloadIcon from "@mui/icons-material/Download";
-import { bulkSearchPubMed } from "../api/pubmed";
+import { bulkSearchPubMed, bulkImportPubMed } from "../api/pubmed";
 import type { PubMedSearchResult } from "../types/pubmed";
 
 export function PubMedImportView() {
@@ -119,18 +119,21 @@ export function PubMedImportView() {
     setImportError(null);
 
     try {
-      // TODO: Implement batch source creation endpoint
-      // For now, we'll show a placeholder message
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const response = await bulkImportPubMed({
+        pmids: Array.from(selectedPmids),
+      });
 
-      alert(
-        `Import feature coming soon!\n\n` +
-          `Will create ${selectedPmids.size} sources from selected PubMed articles.\n\n` +
-          `Selected PMIDs: ${Array.from(selectedPmids).join(", ")}`
-      );
+      // Show success message
+      const failedCount = response.failed_pmids.length;
+      const successMessage =
+        failedCount === 0
+          ? `Successfully imported ${response.sources_created} articles!`
+          : `Imported ${response.sources_created} articles. ${failedCount} failed: ${response.failed_pmids.join(", ")}`;
 
-      // After successful import, navigate to sources list
-      // navigate("/sources");
+      alert(successMessage);
+
+      // Navigate to sources list
+      navigate("/sources");
     } catch (error) {
       setImportError(
         error instanceof Error ? error.message : "Failed to import articles"
