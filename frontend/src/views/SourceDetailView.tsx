@@ -28,12 +28,13 @@ import UploadFileIcon from "@mui/icons-material/UploadFile";
 
 import { getSource, deleteSource } from "../api/sources";
 import { listRelationsBySource, deleteRelation } from "../api/relations";
-import { uploadAndExtract } from "../api/extraction";
+import { uploadAndExtract, extractFromUrl } from "../api/extraction";
 import { SourceRead } from "../types/source";
 import { RelationRead } from "../types/relation";
 import { invalidateSourceFilterCache } from "../utils/cacheUtils";
 import { DocumentExtractionPreview, SaveExtractionResult } from "../types/extraction";
 import { ExtractionPreview } from "../components/ExtractionPreview";
+import { UrlExtractionDialog } from "../components/UrlExtractionDialog";
 
 export function SourceDetailView() {
   const { id } = useParams<{ id: string }>();
@@ -53,6 +54,10 @@ export function SourceDetailView() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [extractionPreview, setExtractionPreview] = useState<DocumentExtractionPreview | null>(null);
   const [saveResult, setSaveResult] = useState<SaveExtractionResult | null>(null);
+
+  // URL extraction state
+  const [urlDialogOpen, setUrlDialogOpen] = useState(false);
+  const [urlExtracting, setUrlExtracting] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -138,6 +143,25 @@ export function SourceDetailView() {
     setUploadError(null);
   };
 
+  const handleUrlExtraction = async (url: string) => {
+    if (!id) return;
+
+    setUrlExtracting(true);
+    setUploadError(null);
+    setSaveResult(null);
+
+    try {
+      const preview = await extractFromUrl(id, url);
+      setExtractionPreview(preview);
+      setUrlDialogOpen(false);
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "Failed to extract from URL");
+      throw error; // Re-throw to let dialog handle error display
+    } finally {
+      setUrlExtracting(false);
+    }
+  };
+
   if (!source) {
     return (
       <Typography color="error">
@@ -205,24 +229,34 @@ export function SourceDetailView() {
           Upload a PDF or TXT document to extract entities and relations using AI.
         </Typography>
 
-        <input
-          accept=".pdf,.txt"
-          style={{ display: "none" }}
-          id="document-upload"
-          type="file"
-          onChange={handleFileUpload}
-          disabled={uploading}
-        />
-        <label htmlFor="document-upload">
-          <Button
-            variant="contained"
-            component="span"
-            startIcon={uploading ? <CircularProgress size={16} /> : <UploadFileIcon />}
+        <Box sx={{ display: "flex", gap: 2 }}>
+          <input
+            accept=".pdf,.txt"
+            style={{ display: "none" }}
+            id="document-upload"
+            type="file"
+            onChange={handleFileUpload}
             disabled={uploading}
+          />
+          <label htmlFor="document-upload">
+            <Button
+              variant="contained"
+              component="span"
+              startIcon={uploading ? <CircularProgress size={16} /> : <UploadFileIcon />}
+              disabled={uploading}
+            >
+              {uploading ? "Uploading & Extracting..." : "Upload Document"}
+            </Button>
+          </label>
+
+          <Button
+            variant="outlined"
+            onClick={() => setUrlDialogOpen(true)}
+            disabled={uploading || urlExtracting}
           >
-            {uploading ? "Uploading & Extracting..." : "Upload Document"}
+            Extract from URL
           </Button>
-        </label>
+        </Box>
 
         {uploadError && (
           <Alert severity="error" sx={{ mt: 2 }} onClose={() => setUploadError(null)}>
@@ -374,6 +408,14 @@ export function SourceDetailView() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* URL Extraction Dialog */}
+      <UrlExtractionDialog
+        open={urlDialogOpen}
+        onClose={() => setUrlDialogOpen(false)}
+        onSubmit={handleUrlExtraction}
+        loading={urlExtracting}
+      />
     </Stack>
   );
 }

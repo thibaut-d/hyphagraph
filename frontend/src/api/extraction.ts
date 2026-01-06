@@ -113,6 +113,41 @@ export async function uploadAndExtract(
 }
 
 /**
+ * Fetch content from URL and extract knowledge.
+ *
+ * POST /api/sources/{source_id}/extract-from-url
+ *
+ * Supports:
+ * - PubMed URLs (uses official NCBI API)
+ * - General web pages (limited support)
+ *
+ * Combines:
+ * 1. URL content fetching
+ * 2. Text extraction
+ * 3. Knowledge extraction (entities + relations)
+ * 4. Entity linking suggestions
+ *
+ * @param sourceId - UUID of the source
+ * @param url - URL to fetch and extract from
+ * @returns Extraction preview with entities, relations, and link suggestions
+ */
+export async function extractFromUrl(
+  sourceId: string,
+  url: string
+): Promise<DocumentExtractionPreview> {
+  return apiFetch<DocumentExtractionPreview>(
+    `/api/sources/${sourceId}/extract-from-url`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ url }),
+    }
+  );
+}
+
+/**
  * Save user-approved extracted knowledge to the graph.
  *
  * POST /api/sources/{source_id}/save-extraction
