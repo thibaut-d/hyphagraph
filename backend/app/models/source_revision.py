@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, Integer, Float, JSON, Boolean, ForeignKey, DateTime, ARRAY, Text
+from sqlalchemy import String, Integer, Float, JSON, Boolean, ForeignKey, DateTime, Text
 from sqlalchemy.sql import func
 from uuid import UUID
 from app.models.base import Base, UUIDMixin
@@ -23,7 +23,7 @@ class SourceRevision(Base, UUIDMixin):
     # Core fields
     kind: Mapped[str] = mapped_column(String, nullable=False)  # study, review, guideline, case_report
     title: Mapped[str] = mapped_column(String, nullable=False)
-    authors: Mapped[list[str] | None] = mapped_column(ARRAY(String))
+    authors: Mapped[list[str] | None] = mapped_column(JSON)  # Stored as JSON array for cross-DB compatibility
     year: Mapped[int | None] = mapped_column(Integer)
     origin: Mapped[str | None] = mapped_column(String)  # journal, organization, publisher
     url: Mapped[str] = mapped_column(String, nullable=False)

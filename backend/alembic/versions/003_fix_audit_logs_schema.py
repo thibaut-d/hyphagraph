@@ -35,7 +35,7 @@ def upgrade() -> None:
         sa.Column('user_email', sa.String(), nullable=True, comment="Email address used in the event (stored separately in case user is deleted)"),
         sa.Column('ip_address', sa.String(length=45), nullable=True, index=True, comment="IP address of the client (supports IPv6)"),
         sa.Column('user_agent', sa.Text(), nullable=True, comment="User agent string from the request"),
-        sa.Column('details', postgresql.JSONB(), nullable=True, comment="Additional event-specific data in JSON format"),
+        sa.Column('details', sa.JSON(), nullable=True, comment="Additional event-specific data in JSON format"),
         sa.Column('error_message', sa.Text(), nullable=True, comment="Error message for failed events"),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False, index=True),
     )
@@ -55,7 +55,7 @@ def downgrade() -> None:
         sa.Column('action', sa.String(), nullable=False),
         sa.Column('resource_type', sa.String(), nullable=False),
         sa.Column('resource_id', postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column('details', postgresql.JSONB(), nullable=True),
+        sa.Column('details', sa.JSON(), nullable=True),
         sa.Column('ip_address', sa.String(), nullable=True),
         sa.Column('user_agent', sa.String(), nullable=True),
     )

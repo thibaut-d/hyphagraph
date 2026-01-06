@@ -60,7 +60,7 @@ class Settings(BaseSettings):
     SQL_DEBUG: bool = False
 
     model_config = ConfigDict(
-        env_file=".env.test",  # Test configuration (not tracked by git) - overridden by environment variables
+        env_file=".env",  # Development configuration (not tracked by git) - overridden by environment variables
         env_file_encoding="utf-8",
         case_sensitive=True,
         extra="ignore",  # Ignore extra environment variables

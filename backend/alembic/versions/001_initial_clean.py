@@ -72,7 +72,7 @@ def upgrade() -> None:
         sa.Column('action', sa.String(), nullable=False),
         sa.Column('resource_type', sa.String(), nullable=False),
         sa.Column('resource_id', postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column('details', postgresql.JSONB(), nullable=True),
+        sa.Column('details', sa.JSON(), nullable=True),
         sa.Column('ip_address', sa.String(), nullable=True),
         sa.Column('user_agent', sa.String(), nullable=True),
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='SET NULL'),
@@ -95,14 +95,14 @@ def upgrade() -> None:
         'ui_categories',
         sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column('slug', sa.String(), nullable=False),
-        sa.Column('labels', postgresql.JSONB(), nullable=False),
-        sa.Column('description', postgresql.JSONB(), nullable=True),
+        sa.Column('labels', sa.JSON(), nullable=False),
+        sa.Column('description', sa.JSON(), nullable=True),
         sa.Column('order', sa.Integer(), nullable=False, server_default='0'),
         sa.Column('created_at', sa.DateTime(timezone=True), nullable=False, server_default=text('now()')),
         sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
+        sa.CheckConstraint('"order" >= 0', name='ck_ui_categories_order'),
     )
     op.create_index('ix_ui_categories_slug', 'ui_categories', ['slug'], unique=True)
-    op.create_check_constraint('ck_ui_categories_order', 'ui_categories', '"order" >= 0')
 
     # Entity Revisions
     op.create_table(
@@ -111,7 +111,7 @@ def upgrade() -> None:
         sa.Column('entity_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('ui_category_id', postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column('slug', sa.String(), nullable=False),
-        sa.Column('summary', postgresql.JSONB(), nullable=True),
+        sa.Column('summary', sa.JSON(), nullable=True),
         sa.Column('created_with_llm', sa.String(), nullable=True),
         sa.Column('created_by_user_id', postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), nullable=False, server_default=text('now()')),
@@ -154,13 +154,13 @@ def upgrade() -> None:
         sa.Column('source_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('kind', sa.String(), nullable=False),
         sa.Column('title', sa.String(), nullable=False),
-        sa.Column('authors', postgresql.ARRAY(sa.String()), nullable=True),
+        sa.Column('authors', sa.JSON(), nullable=True),  # Array of strings stored as JSON
         sa.Column('year', sa.Integer(), nullable=True),
         sa.Column('origin', sa.String(), nullable=True),
         sa.Column('url', sa.String(), nullable=False),
         sa.Column('trust_level', sa.Float(), nullable=True),
-        sa.Column('summary', postgresql.JSONB(), nullable=True),
-        sa.Column('source_metadata', postgresql.JSONB(), nullable=True),
+        sa.Column('summary', sa.JSON(), nullable=True),
+        sa.Column('source_metadata', sa.JSON(), nullable=True),
         sa.Column('created_with_llm', sa.String(), nullable=True),
         sa.Column('created_by_user_id', postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), nullable=False, server_default=text('now()')),
@@ -196,8 +196,8 @@ def upgrade() -> None:
         sa.Column('kind', sa.String(), nullable=True),
         sa.Column('direction', sa.String(), nullable=True),
         sa.Column('confidence', sa.Float(), nullable=True),
-        sa.Column('scope', postgresql.JSONB(), nullable=True),
-        sa.Column('notes', postgresql.JSONB(), nullable=True),
+        sa.Column('scope', sa.JSON(), nullable=True),
+        sa.Column('notes', sa.JSON(), nullable=True),
         sa.Column('created_with_llm', sa.String(), nullable=True),
         sa.Column('created_by_user_id', postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), nullable=False, server_default=text('now()')),
@@ -247,7 +247,7 @@ def upgrade() -> None:
         sa.Column('owner_type', sa.Enum('entity', 'relation', name='attributeownertype'), nullable=False),
         sa.Column('owner_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('key', sa.String(), nullable=False),
-        sa.Column('value', postgresql.JSONB(), nullable=False),
+        sa.Column('value', sa.JSON(), nullable=False),
         sa.Column('created_at', sa.DateTime(timezone=True), nullable=False, server_default=text('now()')),
         sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
     )
