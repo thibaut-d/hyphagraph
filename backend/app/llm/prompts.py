@@ -37,13 +37,19 @@ Guidelines:
 ENTITY_EXTRACTION_PROMPT = """Extract all relevant biomedical entities from the following text.
 
 For each entity, provide:
-- slug: A unique identifier (lowercase, hyphenated, NO underscores, e.g., "aspirin", "migraine-headache", "cox-enzyme-inhibition")
+- slug: A unique identifier following STRICT format rules (see below)
 - summary: A brief description (1-2 sentences) in English
 - category: The entity type (drug, disease, symptom, biological_mechanism, treatment, biomarker, population, outcome)
 - confidence: Your confidence in this extraction (high, medium, low)
 - text_span: The exact text from the source that mentions this entity
 
-IMPORTANT: Slugs must only contain lowercase letters, numbers, and hyphens. NO underscores allowed.
+CRITICAL SLUG FORMAT REQUIREMENTS:
+- MUST start with a lowercase letter (a-z)
+- Can only contain: lowercase letters (a-z), numbers (0-9), hyphens (-)
+- MUST be at least 3 characters long
+- NO underscores, NO uppercase, NO spaces, NO special characters
+- Valid examples: "aspirin", "migraine-headache", "cox-2-inhibition", "vitamin-d3"
+- INVALID examples: "2mg" (starts with number), "COX" (uppercase), "α" (too short), "cox_inhibition" (underscore)
 
 Categories:
 - drug: Medications, pharmaceuticals, active ingredients
@@ -134,14 +140,14 @@ Text to analyze:
 
 For each relation, provide:
 - subject_slug: The entity that is the subject of the relation
-- relation_type: The type of relation (see list below)
+- relation_type: The type of relation (MUST be from the exact list below)
 - object_slug: The entity that is the object of the relation
 - roles: Additional context about the relation (optional)
 - confidence: Your confidence in this relation (high, medium, low)
 - text_span: The exact text that states this relation
 - notes: Any important caveats, conditions, or context
 
-Common relation types:
+CRITICAL: relation_type MUST be EXACTLY one of these values (no variations):
 - treats: Drug/treatment treats disease/symptom
 - causes: Drug/disease causes symptom/outcome
 - prevents: Drug/treatment prevents disease/outcome
@@ -153,6 +159,10 @@ Common relation types:
 - metabolized_by: Drug is metabolized by enzyme/pathway
 - biomarker_for: Biomarker indicates disease/condition
 - affects_population: Treatment affects specific population
+- other: Any other type of relationship
+
+IMPORTANT: Do NOT create new relation types. If a relationship doesn't fit the above categories, use "other".
+Do NOT use types like: "has", "integrates_with", "diagnosed_by", "correlates_with", "associated_with", etc.
 
 Example roles:
 - dosage: "100mg daily"
@@ -259,17 +269,56 @@ Text to analyze:
 
 Extract:
 1. **Entities**: All drugs, diseases, symptoms, treatments, biomarkers, and other relevant entities
-   - slug: lowercase, hyphenated, NO underscores (e.g., "aspirin", "cox-inhibition")
+
+   CRITICAL SLUG FORMAT REQUIREMENTS:
+   - slug MUST start with a lowercase letter (a-z)
+   - slug can only contain: lowercase letters (a-z), numbers (0-9), and hyphens (-)
+   - slug MUST be at least 3 characters long
+   - NO underscores, NO uppercase, NO spaces, NO special characters
+   - Examples: "aspirin", "cox-2-inhibition", "vitamin-d3", "type-2-diabetes"
+   - INVALID examples: "2-diabetes" (starts with number), "COX" (uppercase), "α" (too short), "cox_inhibition" (underscore)
+
    - category: drug, disease, symptom, biological_mechanism, treatment, biomarker, population, outcome, other
    - confidence: high, medium, low
 
 2. **Relations**: Relationships between entities
-   - relation_type: MUST be one of: treats, causes, prevents, increases_risk, decreases_risk, mechanism, contraindicated, interacts_with, metabolized_by, biomarker_for, affects_population, other
+
+   CRITICAL: relation_type MUST be EXACTLY one of these values (no variations allowed):
+   - treats
+   - causes
+   - prevents
+   - increases_risk
+   - decreases_risk
+   - mechanism
+   - contraindicated
+   - interacts_with
+   - metabolized_by
+   - biomarker_for
+   - affects_population
+   - other
+
+   IMPORTANT: If the relationship doesn't clearly fit one of the specific types above, use "other".
+   Do NOT invent new relation types like "has", "integrates_with", "diagnosed_by", "negatively-correlates-with", etc.
+
    - confidence: high, medium, low
 
 3. **Claims**: Factual statements with evidence
-   - evidence_strength: MUST be one of: strong, moderate, weak, anecdotal
-   - claim_type: efficacy, safety, mechanism, epidemiology, other
+
+   CRITICAL: claim_type MUST be EXACTLY one of these values (no variations allowed):
+   - efficacy
+   - safety
+   - mechanism
+   - epidemiology
+   - other
+
+   Do NOT use types like "outcome" - use "efficacy" for outcome claims or "other" if unclear.
+
+   CRITICAL: evidence_strength MUST be EXACTLY one of these values:
+   - strong
+   - moderate
+   - weak
+   - anecdotal
+
    - confidence: high, medium, low
 
 Respond with JSON containing three arrays:
@@ -282,9 +331,32 @@ Respond with JSON containing three arrays:
       "category": "drug",
       "confidence": "high",
       "text_span": "aspirin"
+    }},
+    {{
+      "slug": "duloxetine",
+      "summary": "Duloxetine is an SNRI antidepressant used for depression and pain conditions",
+      "category": "drug",
+      "confidence": "high",
+      "text_span": "duloxetine"
+    }},
+    {{
+      "slug": "fibromyalgia",
+      "summary": "Fibromyalgia is a chronic pain disorder characterized by widespread musculoskeletal pain",
+      "category": "disease",
+      "confidence": "high",
+      "text_span": "fibromyalgia"
     }}
   ],
   "relations": [
+    {{
+      "subject_slug": "duloxetine",
+      "relation_type": "treats",
+      "object_slug": "fibromyalgia",
+      "roles": {{"dosage": "60mg daily"}},
+      "confidence": "high",
+      "text_span": "duloxetine 60mg daily is effective for fibromyalgia",
+      "notes": "FDA approved indication"
+    }},
     {{
       "subject_slug": "aspirin",
       "relation_type": "decreases_risk",
@@ -293,9 +365,26 @@ Respond with JSON containing three arrays:
       "confidence": "high",
       "text_span": "daily aspirin therapy reduces heart attack risk",
       "notes": "Evidence from clinical trials"
+    }},
+    {{
+      "subject_slug": "duloxetine",
+      "relation_type": "mechanism",
+      "object_slug": "serotonin-reuptake-inhibition",
+      "roles": {{}},
+      "confidence": "high",
+      "text_span": "duloxetine inhibits serotonin and norepinephrine reuptake",
+      "notes": "SNRI mechanism of action"
     }}
   ],
   "claims": [
+    {{
+      "claim_text": "Duloxetine significantly reduced pain scores in fibromyalgia patients compared to placebo",
+      "entities_involved": ["duloxetine", "fibromyalgia"],
+      "claim_type": "efficacy",
+      "evidence_strength": "strong",
+      "confidence": "high",
+      "text_span": "In randomized controlled trials, duloxetine significantly reduced pain scores in fibromyalgia patients compared to placebo (p<0.001)"
+    }},
     {{
       "claim_text": "Daily aspirin therapy reduces myocardial infarction risk by 25% in adults with coronary artery disease",
       "entities_involved": ["aspirin", "myocardial-infarction", "coronary-artery-disease"],
@@ -307,6 +396,12 @@ Respond with JSON containing three arrays:
   ]
 }}
 ```
+
+CRITICAL REMINDERS:
+- Entity slugs: Must start with letter, only lowercase letters/numbers/hyphens, minimum 3 chars
+- Relation types: ONLY use the exact 12 types listed above (use "other" if unsure)
+- Claim types: ONLY use efficacy, safety, mechanism, epidemiology, or other
+- Evidence strength: ONLY use strong, moderate, weak, or anecdotal
 
 Be thorough but conservative. Only extract information that is clearly stated or strongly implied.
 """
