@@ -139,16 +139,31 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
     relationsSelected: selectedRelations.size,
   };
 
+  // Auto-accept logic: If all entities are high-confidence matches, show quick save option
+  const allHighConfidence =
+    preview.link_suggestions.every((s) => s.match_type === "exact" || s.match_type === "synonym") &&
+    preview.entities.every((e) => e.confidence === "high");
+
+  const hasDecisions = stats.toCreate > 0 || stats.toLink > 0;
+
   return (
-    <Paper sx={{ p: 3 }}>
+    <Paper sx={{ p: 3, border: 2, borderColor: "primary.main" }}>
       <Stack spacing={3}>
         {/* Header */}
         <Box>
-          <Typography variant="h5" gutterBottom>
-            Extraction Preview
-          </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+            <CheckCircleIcon color="success" />
+            <Typography variant="h5">Extraction Complete!</Typography>
+          </Box>
           <Typography variant="body2" color="text.secondary">
-            Review extracted entities and relations before saving to the knowledge graph.
+            {allHighConfidence ? (
+              <>
+                <strong>✓ High-confidence extraction detected.</strong> All entities have exact or synonym matches.
+                You can quick-save or review details below.
+              </>
+            ) : (
+              <>Review extracted entities and relations before saving to the knowledge graph.</>
+            )}
           </Typography>
         </Box>
 
@@ -217,21 +232,59 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
           </Alert>
         )}
 
+        {/* Quick Save for High-Confidence Extractions */}
+        {allHighConfidence && (
+          <Alert severity="success" sx={{ bgcolor: "success.50" }}>
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
+              <Box>
+                <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                  ✓ All entities validated with high confidence
+                </Typography>
+                <Typography variant="caption">
+                  {stats.toCreate} new entities • {stats.toLink} linked entities • {stats.relationsSelected} relations
+                </Typography>
+              </Box>
+              <Button
+                variant="contained"
+                color="success"
+                size="large"
+                startIcon={saving ? <CircularProgress size={20} /> : <SaveIcon />}
+                onClick={handleSave}
+                disabled={saving || !hasDecisions}
+                sx={{ minWidth: 180, fontWeight: 600 }}
+              >
+                {saving ? "Saving..." : "Quick Save ✓"}
+              </Button>
+            </Box>
+          </Alert>
+        )}
+
         {/* Actions */}
-        <Box sx={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>
-          {onCancel && (
-            <Button onClick={onCancel} disabled={saving}>
-              Cancel
-            </Button>
-          )}
-          <Button
-            variant="contained"
-            startIcon={saving ? <CircularProgress size={16} /> : <SaveIcon />}
-            onClick={handleSave}
-            disabled={saving || (stats.toCreate === 0 && stats.toLink === 0)}
-          >
-            {saving ? "Saving..." : "Save to Graph"}
-          </Button>
+        <Box sx={{ display: "flex", gap: 2, justifyContent: "space-between", alignItems: "center" }}>
+          <Typography variant="caption" color="text.secondary" sx={{ flex: 1 }}>
+            {hasDecisions
+              ? "Review entities and relations above, then save to add them to the knowledge graph."
+              : "All entities skipped. Adjust decisions above to enable saving."}
+          </Typography>
+          <Box sx={{ display: "flex", gap: 2 }}>
+            {onCancel && (
+              <Button onClick={onCancel} disabled={saving} variant="outlined">
+                Cancel
+              </Button>
+            )}
+            {!allHighConfidence && (
+              <Button
+                variant="contained"
+                size="large"
+                startIcon={saving ? <CircularProgress size={16} /> : <SaveIcon />}
+                onClick={handleSave}
+                disabled={saving || !hasDecisions}
+                sx={{ minWidth: 180 }}
+              >
+                {saving ? "Saving..." : "Save to Graph"}
+              </Button>
+            )}
+          </Box>
         </Box>
       </Stack>
     </Paper>
