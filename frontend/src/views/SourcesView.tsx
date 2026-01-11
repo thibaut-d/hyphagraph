@@ -19,6 +19,7 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import DownloadIcon from "@mui/icons-material/Download";
+import SearchIcon from "@mui/icons-material/Search";
 
 import { listSources, SourceFilters, getSourceFilterOptions, SourceFilterOptions } from "../api/sources";
 import { SourceRead } from "../types/source";
@@ -209,6 +210,18 @@ export function SourcesView() {
           </Badge>
           <Button
             component={RouterLink}
+            to="/sources/smart-discovery"
+            variant="contained"
+            color="secondary"
+            startIcon={<SearchIcon />}
+            size="small"
+          >
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+              Smart Discovery
+            </Box>
+          </Button>
+          <Button
+            component={RouterLink}
             to="/sources/import-pubmed"
             variant="outlined"
             startIcon={<DownloadIcon />}
@@ -221,7 +234,7 @@ export function SourcesView() {
           <Button
             component={RouterLink}
             to="/sources/new"
-            variant="contained"
+            variant="outlined"
             startIcon={<AddIcon />}
             size="small"
           >

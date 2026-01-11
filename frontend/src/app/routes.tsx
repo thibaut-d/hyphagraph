@@ -30,6 +30,7 @@ import { DisagreementsView } from "../views/DisagreementsView";
 import { EvidenceView } from "../views/EvidenceView";
 import { PubMedImportView } from "../views/PubMedImportView";
 import InferencesView from "../views/InferencesView";
+import { SmartSourceDiscoveryView } from "../views/SmartSourceDiscoveryView";
 
 export const router = createBrowserRouter([
   {
@@ -52,6 +53,7 @@ export const router = createBrowserRouter([
       { path: "sources", element: <SourcesView /> },
       { path: "sources/new", element: <ProtectedRoute><CreateSourceView /></ProtectedRoute> },
       { path: "sources/import-pubmed", element: <ProtectedRoute><PubMedImportView /></ProtectedRoute> },
+      { path: "sources/smart-discovery", element: <ProtectedRoute><SmartSourceDiscoveryView /></ProtectedRoute> },
       { path: "sources/:id", element: <SourceDetailView /> },
       { path: "sources/:id/edit", element: <ProtectedRoute><EditSourceView /></ProtectedRoute> },
 

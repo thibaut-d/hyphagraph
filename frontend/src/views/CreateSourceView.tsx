@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link as RouterLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Typography,
@@ -23,6 +23,7 @@ import LinkIcon from "@mui/icons-material/Link";
 import EditIcon from "@mui/icons-material/Edit";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import SearchIcon from "@mui/icons-material/Search";
 
 import { createSource, SourceWrite, extractMetadataFromUrl } from "../api/sources";
 import { invalidateSourceFilterCache } from "../utils/cacheUtils";
@@ -212,12 +213,23 @@ export function CreateSourceView() {
           </Typography>
         </Box>
 
-        <Alert severity="info" icon={<AutoFixHighIcon />}>
-          {t(
-            "create_source.description_autofill",
-            "Paste a URL below and click 'Auto-Fill' to automatically extract metadata from PubMed, arXiv, or any webpage."
-          )}
-        </Alert>
+        <Stack direction="row" spacing={2}>
+          <Alert severity="info" icon={<AutoFixHighIcon />} sx={{ flex: 1 }}>
+            {t(
+              "create_source.description_autofill",
+              "Paste a URL below and click 'Auto-Fill' to automatically extract metadata from PubMed, arXiv, or any webpage."
+            )}
+          </Alert>
+          <Button
+            component={RouterLink}
+            to="/sources/smart-discovery"
+            variant="outlined"
+            startIcon={<SearchIcon />}
+            sx={{ minWidth: 200 }}
+          >
+            {t("create_source.or_smart_discovery", "Or Smart Discovery")}
+          </Button>
+        </Stack>
 
         {/* Error message (form submission) */}
         {error && <Alert severity="error">{error}</Alert>}
