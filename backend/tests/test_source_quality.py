@@ -217,6 +217,33 @@ class TestInferTrustLevelFromPubMed:
         )
         assert score == 0.9  # Should detect RCT from abstract
 
+    def test_cochrane_automatic_systematic_review(self):
+        """Cochrane Database articles always treated as systematic reviews."""
+        score = infer_trust_level_from_pubmed_metadata(
+            title="Antidepressants for pain management",  # No 'systematic review' in title
+            journal="Cochrane Database of Systematic Reviews",
+            year=2023
+        )
+        assert score == 1.0  # Should be maximum score
+
+    def test_cochrane_abbreviated_journal(self):
+        """Cochrane Database Syst Rev (PubMed abbreviation) recognized."""
+        score = infer_trust_level_from_pubmed_metadata(
+            title="Duloxetine for painful neuropathy",
+            journal="Cochrane Database Syst Rev",
+            year=2015
+        )
+        assert score == 1.0
+
+    def test_cochrane_with_systematic_review_in_title(self):
+        """Cochrane with explicit 'systematic review' in title."""
+        score = infer_trust_level_from_pubmed_metadata(
+            title="Systematic review of NSAIDs for osteoarthritis",
+            journal="Cochrane Database of Systematic Reviews",
+            year=2024
+        )
+        assert score == 1.0
+
     def test_old_study_gets_penalty(self):
         """Very old study gets age penalty."""
         score = infer_trust_level_from_pubmed_metadata(

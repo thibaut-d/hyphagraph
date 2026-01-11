@@ -83,6 +83,10 @@ HIGH_IMPACT_JOURNALS = {
     "nature medicine",
     "lancet oncology",
     "jama internal medicine",
+    # Cochrane - Gold standard for systematic reviews
+    "cochrane database",
+    "cochrane database of systematic reviews",
+    "cochrane library",
 }
 
 
@@ -334,6 +338,11 @@ def infer_trust_level_from_pubmed_metadata(
     Attempts to detect study type from title/abstract and combines
     with journal quality.
 
+    Special handling:
+    - Cochrane Database articles are always systematic reviews (trust_level=1.0)
+    - Study type detection from title keywords
+    - Fallback to abstract analysis if title unclear
+
     Args:
         title: Article title
         journal: Journal name
@@ -350,7 +359,22 @@ def infer_trust_level_from_pubmed_metadata(
         ...     2023
         ... )
         0.9
+        >>> infer_trust_level_from_pubmed_metadata(
+        ...     "Antidepressants for pain management",
+        ...     "Cochrane Database of Systematic Reviews",
+        ...     2023
+        ... )
+        1.0
     """
+    # Special case: Cochrane Database publications are ALWAYS systematic reviews
+    if journal and "cochrane database" in journal.lower():
+        return calculate_trust_level(
+            study_type="systematic_review",
+            journal=journal,
+            is_peer_reviewed=True,
+            publication_year=year
+        )
+
     # Detect study type from title
     study_type = detect_study_type_from_title(title)
 
