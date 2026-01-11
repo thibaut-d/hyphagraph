@@ -5,16 +5,134 @@ from typing import Optional, List
 import logging
 
 from app.database import get_db
-from app.schemas.source import SourceWrite, SourceRead, DocumentUploadResponse
+from app.schemas.source import SourceWrite, SourceRead, DocumentUploadResponse, SourceMetadataSuggestion
 from app.schemas.filters import SourceFilters, SourceFilterOptions
 from app.schemas.pagination import PaginatedResponse
 from app.services.source_service import SourceService
 from app.services.document_service import DocumentService
+from app.services.pubmed_fetcher import PubMedFetcher
+from app.services.url_fetcher import UrlFetcher
 from app.dependencies.auth import get_current_user
+from app.utils.source_quality import infer_trust_level_from_pubmed_metadata, website_trust_level
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+# =============================================================================
+# Request/Response Models for Autofill
+# =============================================================================
+
+class UrlMetadataRequest(BaseModel):
+    """Request to extract metadata from a URL."""
+    url: str
+
+
+# =============================================================================
+# Endpoints
+# =============================================================================
+
+@router.post("/extract-metadata-from-url", response_model=SourceMetadataSuggestion)
+async def extract_metadata_from_url(
+    request: UrlMetadataRequest,
+    user=Depends(get_current_user),
+):
+    """
+    Extract metadata from a URL to autofill source creation form.
+
+    This endpoint analyzes a URL and extracts metadata without creating a source.
+    Useful for auto-filling the create source form before user validation.
+
+    Supported URL types:
+    - PubMed articles (https://pubmed.ncbi.nlm.nih.gov/...) - extracts full metadata via API
+    - General web pages - extracts title and basic info
+
+    Returns suggested values for:
+    - title
+    - authors
+    - year
+    - origin (journal/publisher)
+    - kind (article, website, etc.)
+    - url (normalized)
+
+    The user can then review, edit, and submit the form.
+    """
+    logger.info(f"Metadata extraction requested for URL: {request.url}")
+
+    try:
+        # Check if it's a PubMed URL
+        pubmed_fetcher = PubMedFetcher()
+        pmid = pubmed_fetcher.extract_pmid_from_url(request.url)
+
+        if pmid:
+            # Use PubMed API for complete metadata
+            logger.info(f"Detected PubMed URL, fetching metadata for PMID {pmid}")
+            article = await pubmed_fetcher.fetch_by_pmid(pmid)
+
+            # Calculate trust level based on article metadata
+            trust_level = infer_trust_level_from_pubmed_metadata(
+                title=article.title,
+                journal=article.journal,
+                year=article.year,
+                abstract=article.abstract
+            )
+
+            logger.info(f"Calculated trust level: {trust_level} (journal: {article.journal})")
+
+            return SourceMetadataSuggestion(
+                url=article.url,
+                title=article.title,
+                authors=article.authors if article.authors else None,
+                year=article.year,
+                origin=article.journal,
+                kind="article",
+                trust_level=trust_level,  # Calculated automatically
+                summary_en=article.abstract if article.abstract else None,
+                source_metadata={
+                    "pmid": article.pmid,
+                    "doi": article.doi,
+                    "source": "pubmed"
+                }
+            )
+        else:
+            # Use general URL fetcher for basic metadata
+            logger.info("Using general URL fetcher for metadata")
+            url_fetcher = UrlFetcher()
+            fetch_result = await url_fetcher.fetch_url(request.url)
+
+            # Determine kind based on URL
+            kind = "website"
+            if "youtube.com" in request.url.lower() or "youtu.be" in request.url.lower():
+                kind = "video"
+            elif any(ext in request.url.lower() for ext in ['.pdf', 'arxiv.org']):
+                kind = "article"
+
+            # Calculate trust level for website (lower than peer-reviewed articles)
+            trust_level = website_trust_level()
+
+            return SourceMetadataSuggestion(
+                url=request.url,
+                title=fetch_result.title if fetch_result.title else None,
+                authors=None,  # Can't reliably extract from general web pages
+                year=None,  # Would require text analysis
+                origin=None,  # Could extract domain name, but not implemented yet
+                kind=kind,
+                trust_level=trust_level,  # Lower for general websites
+                summary_en=None,  # Would require summarization
+                source_metadata={"fetched_url": fetch_result.url}
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Metadata extraction failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to extract metadata from URL: {str(e)}"
+        )
+
 
 @router.get("/filter-options", response_model=SourceFilterOptions)
 async def get_source_filter_options(

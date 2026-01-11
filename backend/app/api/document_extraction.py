@@ -25,6 +25,7 @@ from app.services.document_service import DocumentService
 from app.services.pubmed_fetcher import PubMedFetcher
 from app.services.url_fetcher import UrlFetcher
 from app.llm.client import is_llm_available
+from app.utils.source_quality import infer_trust_level_from_pubmed_metadata
 from pydantic import BaseModel, HttpUrl
 
 logger = logging.getLogger(__name__)
@@ -769,6 +770,14 @@ async def bulk_import_pubmed(
             try:
                 from app.schemas.source import SourceWrite
 
+                # Calculate trust level based on article metadata (title, journal, year)
+                trust_level = infer_trust_level_from_pubmed_metadata(
+                    title=article.title,
+                    journal=article.journal,
+                    year=article.year,
+                    abstract=article.abstract
+                )
+
                 # Create source with PubMed metadata
                 source_data = SourceWrite(
                     kind="study",
@@ -777,7 +786,7 @@ async def bulk_import_pubmed(
                     year=article.year,
                     origin=article.journal,
                     url=article.url,
-                    trust_level=0.9,  # PubMed articles are generally high quality
+                    trust_level=trust_level,  # Calculated based on study type and journal
                     summary={"en": article.abstract} if article.abstract else None,
                     source_metadata={
                         "pmid": article.pmid,

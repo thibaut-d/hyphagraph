@@ -37,6 +37,26 @@ export interface SourceFilterOptions {
   year_range: [number, number] | null;
 }
 
+export interface SourceMetadataSuggestion {
+  url: string;
+  title?: string | null;
+  authors?: string[] | null;
+  year?: number | null;
+  origin?: string | null;
+  kind?: string | null;
+  trust_level?: number | null;  // Calculated quality score (0.0-1.0)
+  summary_en?: string | null;
+  summary_fr?: string | null;
+  source_metadata?: Record<string, any> | null;
+}
+
+export function extractMetadataFromUrl(url: string): Promise<SourceMetadataSuggestion> {
+  return apiFetch("/sources/extract-metadata-from-url", {
+    method: "POST",
+    body: JSON.stringify({ url }),
+  });
+}
+
 export function listSources(filters?: SourceFilters): Promise<PaginatedResponse<SourceRead>> {
   const params = new URLSearchParams();
 
