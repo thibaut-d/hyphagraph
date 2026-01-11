@@ -185,14 +185,24 @@ test.describe('Entity CRUD Operations', () => {
     // Go to entities list
     await page.goto('/entities');
 
-    // Search for specific entity
+    // Search for specific entity (autocomplete dropdown)
     const searchInput = page.getByPlaceholder(/search/i);
     if (await searchInput.isVisible({ timeout: 2000 })) {
       await searchInput.fill(entity1);
+      await page.waitForTimeout(500); // Wait for autocomplete dropdown to appear
 
-      // Should show only matching entity
-      await expect(page.locator(`text=${entity1}`)).toBeVisible();
-      // Note: entity2 might still be visible depending on search implementation
+      // The search shows results in a listbox dropdown, not in the main list
+      const listbox = page.getByRole('listbox');
+      await expect(listbox).toBeVisible();
+
+      // Should show matching entity in autocomplete dropdown
+      await expect(listbox.getByRole('option', { name: new RegExp(entity1) })).toBeVisible();
+
+      // Click the matching result to navigate
+      await listbox.getByRole('option', { name: new RegExp(entity1) }).first().click();
+
+      // Should navigate to the entity detail page
+      await expect(page).toHaveURL(new RegExp(`/entities/.*`));
     }
   });
 

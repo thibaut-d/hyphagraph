@@ -24,7 +24,7 @@ import type {
 export async function bulkSearchPubMed(
   request: PubMedBulkSearchRequest
 ): Promise<PubMedBulkSearchResponse> {
-  return apiFetch<PubMedBulkSearchResponse>("/api/pubmed/bulk-search", {
+  return apiFetch<PubMedBulkSearchResponse>("/pubmed/bulk-search", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -47,7 +47,7 @@ export async function bulkSearchPubMed(
 export async function bulkImportPubMed(
   request: PubMedBulkImportRequest
 ): Promise<PubMedBulkImportResponse> {
-  return apiFetch<PubMedBulkImportResponse>("/api/pubmed/bulk-import", {
+  return apiFetch<PubMedBulkImportResponse>("/pubmed/bulk-import", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

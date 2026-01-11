@@ -191,7 +191,7 @@ export function HomeView() {
                 icon={<StorageIcon fontSize="large" />}
                 color="primary"
                 actionLabel={t("home.createEntity", "Create")}
-                onAction={() => navigate("/entities/create")}
+                onAction={() => navigate("/entities/new")}
                 viewLabel={t("home.viewAll", "View All")}
                 onView={() => navigate("/entities")}
               />
@@ -205,7 +205,7 @@ export function HomeView() {
                 icon={<SourceIcon fontSize="large" />}
                 color="success"
                 actionLabel={t("home.createSource", "Create")}
-                onAction={() => navigate("/sources/create")}
+                onAction={() => navigate("/sources/new")}
                 viewLabel={t("home.viewAll", "View All")}
                 onView={() => navigate("/sources")}
               />

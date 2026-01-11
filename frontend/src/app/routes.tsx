@@ -29,6 +29,7 @@ import { SynthesisView } from "../views/SynthesisView";
 import { DisagreementsView } from "../views/DisagreementsView";
 import { EvidenceView } from "../views/EvidenceView";
 import { PubMedImportView } from "../views/PubMedImportView";
+import { InferencesView } from "../views/InferencesView";
 
 export const router = createBrowserRouter([
   {
@@ -55,6 +56,7 @@ export const router = createBrowserRouter([
       { path: "sources/:id/edit", element: <ProtectedRoute><EditSourceView /></ProtectedRoute> },
 
       { path: "search", element: <SearchView /> },
+      { path: "inferences", element: <InferencesView /> },
 
       { path: "account", element: <AccountView /> },
       { path: "profile", element: <ProfileView /> },

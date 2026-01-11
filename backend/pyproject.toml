@@ -44,6 +44,8 @@ dependencies = [
 
     # --- Document Processing ---
     "pypdf>=3.17",  # PDF text extraction
+    "beautifulsoup4>=4.12",  # HTML parsing
+    "aiohttp>=3.9",  # Async HTTP client for URL fetching
 ]
 
 [project.optional-dependencies]

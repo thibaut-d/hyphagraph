@@ -1,6 +1,7 @@
 from uuid import UUID
-from typing import Optional, List
+from typing import Optional, List, Any
 from datetime import datetime
+from pydantic import field_validator
 from app.schemas.base import Schema
 from app.llm.schemas import ExtractedEntity, ExtractedRelation
 
@@ -21,6 +22,14 @@ class SourceWrite(Schema):
     summary: Optional[dict] = None  # i18n: {"en": "...", "fr": "..."}
     source_metadata: Optional[dict] = None  # doi, pubmed_id, etc.
     created_with_llm: Optional[str] = None
+
+    @field_validator('authors', 'summary', 'source_metadata', mode='before')
+    @classmethod
+    def convert_null_string_to_none(cls, v: Any) -> Any:
+        """Convert string 'null' to None for JSON fields."""
+        if v == 'null' or v == 'undefined':
+            return None
+        return v
 
 
 class SourceRevisionRead(Schema):
