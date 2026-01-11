@@ -6,7 +6,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
-from app.api import sources, entities, relations, inferences, explain, search, extraction, document_extraction
+from app.api import sources, entities, relations, inferences, explain, search, extraction, document_extraction, relation_types
 from app.database import AsyncSessionLocal
 from app.startup import run_startup_tasks
 from app.utils.rate_limit import limiter
@@ -27,6 +27,7 @@ from app.models.relation_role_revision import RelationRoleRevision
 from app.models.computed_relation import ComputedRelation
 from app.models.refresh_token import RefreshToken
 from app.models.audit_log import AuditLog
+from app.models.relation_type import RelationType
 
 
 @asynccontextmanager
@@ -77,6 +78,7 @@ app.include_router(explain.router, prefix="/api/explain", tags=["explain"])
 app.include_router(search.router, prefix="/api")
 app.include_router(extraction.router, prefix="/api")
 app.include_router(document_extraction.router, prefix="/api")
+app.include_router(relation_types.router, prefix="/api/relation-types", tags=["relation-types"])
 
 # --- Healthcheck ---
 @app.get("/health", tags=["health"])
