@@ -90,6 +90,7 @@ RelationType = Literal[
     "metabolized_by",
     "biomarker_for",
     "affects_population",
+    "measures",  # For diagnostic tools, assessments, biomarkers
     "other"
 ]
 

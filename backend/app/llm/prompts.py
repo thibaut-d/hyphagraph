@@ -159,6 +159,7 @@ CRITICAL: relation_type MUST be EXACTLY one of these values (no variations):
 - metabolized_by: Drug is metabolized by enzyme/pathway
 - biomarker_for: Biomarker indicates disease/condition
 - affects_population: Treatment affects specific population
+- measures: Assessment tool/test measures condition/symptom (e.g., "VAS measures pain", "MoCA measures cognition")
 - other: Any other type of relationship
 
 IMPORTANT: Do NOT create new relation types. If a relationship doesn't fit the above categories, use "other".
@@ -295,6 +296,7 @@ Extract:
    - metabolized_by
    - biomarker_for
    - affects_population
+   - measures
    - other
 
    IMPORTANT: If the relationship doesn't clearly fit one of the specific types above, use "other".
