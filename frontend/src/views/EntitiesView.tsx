@@ -24,6 +24,7 @@ import FilterListIcon from "@mui/icons-material/FilterList";
 
 import { FilterDrawer, FilterSection, CheckboxFilter, SearchFilter, RangeFilter } from "../components/filters";
 import { ScrollToTop } from "../components/ScrollToTop";
+import { ExportMenu } from "../components/ExportMenu";
 import { useFilterDrawer } from "../hooks/useFilterDrawer";
 import { usePersistedFilters } from "../hooks/usePersistedFilters";
 import { useDebounce } from "../hooks/useDebounce";
@@ -259,6 +260,7 @@ export function EntitiesView() {
               </Box>
             </Button>
           </Badge>
+          <ExportMenu exportType="entities" buttonText={t("entities.export", "Export")} size="small" />
           <Button
             component={RouterLink}
             to="/entities/new"

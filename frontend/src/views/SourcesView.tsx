@@ -25,6 +25,7 @@ import { listSources, SourceFilters, getSourceFilterOptions, SourceFilterOptions
 import { SourceRead } from "../types/source";
 import { FilterDrawer, FilterSection, CheckboxFilter, RangeFilter, SearchFilter } from "../components/filters";
 import { ScrollToTop } from "../components/ScrollToTop";
+import { ExportMenu } from "../components/ExportMenu";
 import { useFilterDrawer } from "../hooks/useFilterDrawer";
 import { usePersistedFilters } from "../hooks/usePersistedFilters";
 import { useDebounce } from "../hooks/useDebounce";
@@ -242,6 +243,7 @@ export function SourcesView() {
               Smart Discovery
             </Box>
           </Button>
+          <ExportMenu exportType="full-graph" buttonText={t("export.full_graph", "Export")} size="small" />
           <Button
             component={RouterLink}
             to="/sources/import-pubmed"
