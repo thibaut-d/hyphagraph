@@ -46,6 +46,41 @@ class EntityFilters(BaseModel):
         max_length=100
     )
 
+    # Advanced filters (computed/aggregated properties)
+    clinical_effects: Optional[List[str]] = Field(
+        None,
+        description="Filter by clinical effects (relation types). Multiple values allowed (OR logic).",
+        json_schema_extra={"example": ["treats", "causes"]}
+    )
+
+    consensus_level: Optional[List[str]] = Field(
+        None,
+        description="Filter by consensus level. Multiple values allowed (OR logic).",
+        json_schema_extra={"example": ["strong", "moderate"]}
+    )
+
+    evidence_quality_min: Optional[float] = Field(
+        None,
+        description="Minimum average evidence quality (trust level)",
+        ge=0.0,
+        le=1.0,
+        json_schema_extra={"example": 0.7}
+    )
+
+    evidence_quality_max: Optional[float] = Field(
+        None,
+        description="Maximum average evidence quality (trust level)",
+        ge=0.0,
+        le=1.0,
+        json_schema_extra={"example": 1.0}
+    )
+
+    recency: Optional[List[str]] = Field(
+        None,
+        description="Filter by time relevance. Values: 'recent' (<5 years), 'older' (5-10 years), 'historical' (>10 years)",
+        json_schema_extra={"example": ["recent"]}
+    )
+
     limit: int = Field(
         50,
         description="Maximum number of results to return",
@@ -113,6 +148,19 @@ class SourceFilters(BaseModel):
         max_length=100
     )
 
+    # Advanced filters (computed/aggregated properties)
+    domain: Optional[List[str]] = Field(
+        None,
+        description="Filter by medical domain/topic. Multiple values allowed (OR logic).",
+        json_schema_extra={"example": ["cardiology", "neurology"]}
+    )
+
+    role: Optional[List[str]] = Field(
+        None,
+        description="Filter by role in graph. Values: 'pillar', 'supporting', 'contradictory', 'single'",
+        json_schema_extra={"example": ["pillar", "supporting"]}
+    )
+
     limit: int = Field(
         50,
         description="Maximum number of results to return",
@@ -137,6 +185,14 @@ class UICategoryOption(BaseModel):
     label: dict = Field(..., description="i18n labels (language code -> label)", json_schema_extra={"example": {"en": "Drug", "fr": "Médicament"}})
 
 
+class ClinicalEffectOption(BaseModel):
+    """
+    Clinical effect option with relation type info.
+    """
+    type_id: str = Field(..., description="Relation type ID")
+    label: dict = Field(..., description="i18n labels", json_schema_extra={"example": {"en": "Treats", "fr": "Traite"}})
+
+
 class EntityFilterOptions(BaseModel):
     """
     Available filter options for entities.
@@ -150,10 +206,17 @@ class EntityFilterOptions(BaseModel):
         json_schema_extra={"example": [{"id": "drug-id", "label": {"en": "Drug"}}]}
     )
 
-    consensus_levels: Optional[Tuple[float, float]] = Field(
+    # Advanced filter options
+    clinical_effects: Optional[List[ClinicalEffectOption]] = Field(
         None,
-        description="Minimum and maximum consensus levels [min, max] from computed inferences",
-        json_schema_extra={"example": [0.0, 1.0]}
+        description="Available clinical effects (relation types)",
+        json_schema_extra={"example": [{"type_id": "treats", "label": {"en": "Treats"}}]}
+    )
+
+    consensus_levels: List[str] = Field(
+        default=["strong", "moderate", "weak", "disputed"],
+        description="Available consensus levels",
+        json_schema_extra={"example": ["strong", "moderate", "weak", "disputed"]}
     )
 
     evidence_quality_range: Optional[Tuple[float, float]] = Field(
@@ -162,10 +225,10 @@ class EntityFilterOptions(BaseModel):
         json_schema_extra={"example": [0.0, 1.0]}
     )
 
-    year_range: Optional[Tuple[int, int]] = Field(
-        None,
-        description="Minimum and maximum years from related sources [min, max]",
-        json_schema_extra={"example": [1995, 2024]}
+    recency_options: List[str] = Field(
+        default=["recent", "older", "historical"],
+        description="Available recency categories",
+        json_schema_extra={"example": ["recent", "older", "historical"]}
     )
 
 
@@ -186,4 +249,17 @@ class SourceFilterOptions(BaseModel):
         None,
         description="Minimum and maximum publication years [min, max]",
         json_schema_extra={"example": [1995, 2024]}
+    )
+
+    # Advanced filter options
+    domains: Optional[List[str]] = Field(
+        None,
+        description="Available medical domains/topics",
+        json_schema_extra={"example": ["cardiology", "neurology", "general"]}
+    )
+
+    roles: List[str] = Field(
+        default=["pillar", "supporting", "contradictory", "single"],
+        description="Available roles in graph",
+        json_schema_extra={"example": ["pillar", "supporting", "contradictory", "single"]}
     )

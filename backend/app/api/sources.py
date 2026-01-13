@@ -168,6 +168,8 @@ async def list_sources(
     trust_level_min: Optional[float] = Query(None, description="Minimum trust level", ge=0.0, le=1.0),
     trust_level_max: Optional[float] = Query(None, description="Maximum trust level", ge=0.0, le=1.0),
     search: Optional[str] = Query(None, description="Search in title, authors, or origin", max_length=100),
+    domain: Optional[List[str]] = Query(None, description="Filter by medical domain/topic"),
+    role: Optional[List[str]] = Query(None, description="Filter by role in graph (pillar/supporting/contradictory/single)"),
     limit: int = Query(50, description="Maximum number of results", ge=1, le=100),
     offset: int = Query(0, description="Number of results to skip", ge=0),
     db: AsyncSession = Depends(get_db),
@@ -177,10 +179,17 @@ async def list_sources(
 
     Returns paginated results with total count.
 
+    Basic Filters:
     - **kind**: Filter by kind (multiple values use OR logic)
     - **year_min/year_max**: Filter by publication year range
     - **trust_level_min/trust_level_max**: Filter by trust level range
     - **search**: Case-insensitive search in title, authors, or origin
+
+    Advanced Filters (require aggregations):
+    - **domain**: Filter by medical domain (cardiology, neurology, etc.)
+    - **role**: Filter by role in graph (pillar >5 relations, supporting 2-5, contradictory, single)
+
+    Pagination:
     - **limit**: Maximum number of results to return (default: 50, max: 100)
     - **offset**: Number of results to skip for pagination (default: 0)
     """
@@ -192,6 +201,8 @@ async def list_sources(
         trust_level_min=trust_level_min,
         trust_level_max=trust_level_max,
         search=search,
+        domain=domain,
+        role=role,
         limit=limit,
         offset=offset,
     )

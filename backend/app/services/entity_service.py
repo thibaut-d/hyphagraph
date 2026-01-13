@@ -1,20 +1,27 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_, func
+from sqlalchemy import select, or_, func, and_, distinct
 from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException, status
 from typing import Optional, Tuple
 from uuid import UUID
+from datetime import datetime
 
 from app.schemas.entity import EntityWrite, EntityRead
-from app.schemas.filters import EntityFilters, EntityFilterOptions, UICategoryOption
+from app.schemas.filters import EntityFilters, EntityFilterOptions, UICategoryOption, ClinicalEffectOption
 from app.repositories.entity_repo import EntityRepository
 from app.models.entity import Entity
 from app.models.entity_revision import EntityRevision
+from app.models.relation import Relation
+from app.models.relation_revision import RelationRevision
+from app.models.relation_role_revision import RelationRoleRevision
+from app.models.source import Source
+from app.models.source_revision import SourceRevision
 from app.mappers.entity_mapper import (
     entity_revision_from_write,
     entity_to_read,
 )
 from app.utils.revision_helpers import get_current_revision, create_new_revision
+from app.services.derived_properties_service import DerivedPropertiesService
 
 
 class EntityService:
@@ -98,6 +105,10 @@ class EntityService:
         Filters are applied to the current revision data:
         - ui_category_id: Filter by UI category (OR logic)
         - search: Case-insensitive search in slug
+        - clinical_effects: Filter by relation types (advanced)
+        - consensus_level: Filter by consensus level (advanced)
+        - evidence_quality_min/max: Filter by average trust level (advanced)
+        - recency: Filter by most recent source year (advanced)
         - limit: Maximum number of results to return
         - offset: Number of results to skip
 
@@ -111,7 +122,7 @@ class EntityService:
             .where(EntityRevision.is_current == True)
         )
 
-        # Apply filters if provided
+        # Apply basic filters if provided
         if filters:
             # Filter by UI category (OR logic)
             if filters.ui_category_id:
@@ -123,6 +134,119 @@ class EntityService:
             if filters.search:
                 search_term = f"%{filters.search.lower()}%"
                 base_query = base_query.where(EntityRevision.slug.ilike(search_term))
+
+            # === Advanced Filters (require aggregations) ===
+
+            # Filter by clinical effects (relation types)
+            if filters.clinical_effects:
+                # Entities that have relations of these types
+                clinical_effects_subquery = (
+                    select(distinct(RelationRoleRevision.entity_id))
+                    .join(RelationRevision, RelationRoleRevision.relation_revision_id == RelationRevision.id)
+                    .where(
+                        and_(
+                            RelationRevision.is_current == True,
+                            RelationRoleRevision.relation_type_id.in_(filters.clinical_effects)
+                        )
+                    )
+                )
+                base_query = base_query.where(Entity.id.in_(clinical_effects_subquery))
+
+            # Filter by evidence quality (average trust level)
+            if filters.evidence_quality_min is not None or filters.evidence_quality_max is not None:
+                # Subquery to compute average trust level per entity
+                avg_trust_subquery = (
+                    select(
+                        RelationRoleRevision.entity_id,
+                        func.avg(SourceRevision.trust_level).label('avg_trust')
+                    )
+                    .select_from(RelationRoleRevision)
+                    .join(RelationRevision, RelationRoleRevision.relation_revision_id == RelationRevision.id)
+                    .join(Relation, RelationRevision.relation_id == Relation.id)
+                    .join(Source, Relation.source_id == Source.id)
+                    .join(SourceRevision, and_(
+                        SourceRevision.source_id == Source.id,
+                        SourceRevision.is_current == True
+                    ))
+                    .where(RelationRevision.is_current == True)
+                    .group_by(RelationRoleRevision.entity_id)
+                    .subquery()
+                )
+
+                # Join with the average trust subquery
+                base_query = base_query.join(
+                    avg_trust_subquery,
+                    Entity.id == avg_trust_subquery.c.entity_id
+                )
+
+                if filters.evidence_quality_min is not None:
+                    base_query = base_query.where(avg_trust_subquery.c.avg_trust >= filters.evidence_quality_min)
+                if filters.evidence_quality_max is not None:
+                    base_query = base_query.where(avg_trust_subquery.c.avg_trust <= filters.evidence_quality_max)
+
+            # Filter by recency (most recent source year)
+            if filters.recency:
+                current_year = datetime.now().year
+
+                # Build recency conditions
+                recency_conditions = []
+                for recency_value in filters.recency:
+                    if recency_value == "recent":
+                        # Last 5 years
+                        recency_conditions.append(current_year - 5)
+                    elif recency_value == "older":
+                        # 5-10 years ago
+                        recency_conditions.append(current_year - 10)
+                    elif recency_value == "historical":
+                        # More than 10 years ago
+                        recency_conditions.append(0)  # All years
+
+                # Subquery to get max year per entity
+                if recency_conditions:
+                    max_year_subquery = (
+                        select(
+                            RelationRoleRevision.entity_id,
+                            func.max(SourceRevision.year).label('max_year')
+                        )
+                        .select_from(RelationRoleRevision)
+                        .join(RelationRevision, RelationRoleRevision.relation_revision_id == RelationRevision.id)
+                        .join(Relation, RelationRevision.relation_id == Relation.id)
+                        .join(Source, Relation.source_id == Source.id)
+                        .join(SourceRevision, and_(
+                            SourceRevision.source_id == Source.id,
+                            SourceRevision.is_current == True
+                        ))
+                        .where(RelationRevision.is_current == True)
+                        .group_by(RelationRoleRevision.entity_id)
+                        .subquery()
+                    )
+
+                    # Build OR conditions for recency
+                    recency_filter_conditions = []
+                    if "recent" in filters.recency:
+                        recency_filter_conditions.append(max_year_subquery.c.max_year >= current_year - 5)
+                    if "older" in filters.recency:
+                        recency_filter_conditions.append(and_(
+                            max_year_subquery.c.max_year >= current_year - 10,
+                            max_year_subquery.c.max_year < current_year - 5
+                        ))
+                    if "historical" in filters.recency:
+                        recency_filter_conditions.append(max_year_subquery.c.max_year < current_year - 10)
+
+                    if recency_filter_conditions:
+                        base_query = base_query.join(
+                            max_year_subquery,
+                            Entity.id == max_year_subquery.c.entity_id
+                        ).where(or_(*recency_filter_conditions))
+
+            # Filter by consensus level
+            # Note: This is expensive as it requires computing consensus for each entity
+            # For MVP, we skip this filter or implement it post-query
+            # TODO: Implement consensus level filter with proper indexing
+            if filters.consensus_level:
+                # This would require computing disagreement ratio per entity
+                # For now, we'll implement this as a post-filter in a future iteration
+                pass
 
         # Count total results before pagination
         count_query = select(func.count()).select_from(
@@ -142,6 +266,17 @@ class EntityService:
 
         # Convert to EntityRead objects
         items = [entity_to_read(entity, revision) for entity, revision in results]
+
+        # Post-filter by consensus level if needed (expensive but accurate)
+        if filters and filters.consensus_level:
+            derived_service = DerivedPropertiesService(self.db)
+            filtered_items = []
+            for item in items:
+                consensus = await derived_service.get_entity_consensus_level(UUID(item.id))
+                if consensus in filters.consensus_level:
+                    filtered_items.append(item)
+            items = filtered_items
+            total = len(items)  # Update total after filtering
 
         return items, total
 
@@ -217,7 +352,7 @@ class EntityService:
         This avoids fetching all entity records when populating filter UI controls.
 
         Returns:
-            EntityFilterOptions with available ui_categories
+            EntityFilterOptions with available ui_categories and advanced options
         """
         from app.models.ui_category import UiCategory
 
@@ -231,9 +366,28 @@ class EntityService:
             for cat_id, labels in categories
         ]
 
+        # Get advanced filter options using derived properties service
+        derived_service = DerivedPropertiesService(self.db)
+
+        # Get clinical effects (relation types)
+        import json as json_module
+
+        clinical_effects_data = await derived_service.get_all_clinical_effects()
+        clinical_effects = [
+            ClinicalEffectOption(
+                type_id=effect["type_id"],
+                label=json_module.loads(effect["label"]) if isinstance(effect["label"], str) else effect["label"]
+            )
+            for effect in clinical_effects_data
+        ] if clinical_effects_data else None
+
+        # Get evidence quality range
+        evidence_quality_range = await derived_service.get_evidence_quality_range()
+
         return EntityFilterOptions(
             ui_categories=ui_categories,
-            consensus_levels=None,  # Future: compute from inferences
-            evidence_quality_range=None,  # Future: compute from relations
-            year_range=None,  # Future: compute from related sources
+            clinical_effects=clinical_effects,
+            consensus_levels=["strong", "moderate", "weak", "disputed"],
+            evidence_quality_range=evidence_quality_range,
+            recency_options=["recent", "older", "historical"],
         )
