@@ -104,6 +104,20 @@ export function SourcesView() {
   // Extract filter options
   const kindOptions = filterOptions?.kinds || [];
   const yearRange = filterOptions?.year_range || null;
+  const domainOptions = filterOptions?.domains || [];
+  const roleOptions = filterOptions?.roles || [];
+
+  // Role options with labels
+  const roleOptionsWithLabels = useMemo(() => roleOptions.map(role => ({
+    value: role,
+    label: t(`filters.role_${role}`, role.charAt(0).toUpperCase() + role.slice(1))
+  })), [roleOptions, t]);
+
+  // Domain options with labels
+  const domainOptionsWithLabels = useMemo(() => domainOptions.map(domain => ({
+    value: domain,
+    label: t(`filters.domain_${domain}`, domain.charAt(0).toUpperCase() + domain.slice(1))
+  })), [domainOptions, t]);
 
   // Debounce search to reduce server load during typing
   const debouncedSearch = useDebounce(filters.search, 300);
@@ -113,7 +127,7 @@ export function SourcesView() {
     setSources([]);
     setOffset(0);
     setHasMore(true);
-  }, [filters.kind, filters.year, filters.trust_level, debouncedSearch]);
+  }, [filters.kind, filters.year, filters.trust_level, filters.domain, filters.role, debouncedSearch]);
 
   // Fetch sources with server-side filtering and pagination
   const loadSources = useCallback(async (currentOffset: number) => {
@@ -148,6 +162,14 @@ export function SourcesView() {
 
     if (debouncedSearch && typeof debouncedSearch === 'string') {
       apiFilters.search = debouncedSearch;
+    }
+
+    if (filters.domain && Array.isArray(filters.domain)) {
+      apiFilters.domain = filters.domain;
+    }
+
+    if (filters.role && Array.isArray(filters.role)) {
+      apiFilters.role = filters.role;
     }
 
     try {
@@ -366,6 +388,28 @@ export function SourcesView() {
             placeholder={t("filters.search_placeholder_sources", "Search title, authors, origin...")}
           />
         </FilterSection>
+
+        {/* Advanced Filter: Domain/Topic */}
+        {domainOptionsWithLabels.length > 0 && (
+          <FilterSection title={t("filters.domain", "Medical Domain")}>
+            <CheckboxFilter
+              options={domainOptionsWithLabels}
+              value={(filters.domain as string[]) || []}
+              onChange={(value) => setFilter('domain', value)}
+            />
+          </FilterSection>
+        )}
+
+        {/* Advanced Filter: Role in Graph */}
+        {roleOptionsWithLabels.length > 0 && (
+          <FilterSection title={t("filters.role_in_graph", "Role in Graph")}>
+            <CheckboxFilter
+              options={roleOptionsWithLabels}
+              value={(filters.role as string[]) || []}
+              onChange={(value) => setFilter('role', value)}
+            />
+          </FilterSection>
+        )}
       </FilterDrawer>
 
       {/* Scroll to top button */}

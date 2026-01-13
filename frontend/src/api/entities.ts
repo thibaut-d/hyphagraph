@@ -15,6 +15,11 @@ export interface EntityWrite {
 export interface EntityFilters {
   ui_category_id?: string[];
   search?: string;
+  clinical_effects?: string[];
+  consensus_level?: string[];
+  evidence_quality_min?: number;
+  evidence_quality_max?: number;
+  recency?: string[];
   limit?: number;
   offset?: number;
 }
@@ -24,11 +29,17 @@ export interface UICategoryOption {
   label: Record<string, string>; // i18n: { en: "Drug", fr: "Médicament" }
 }
 
+export interface ClinicalEffectOption {
+  type_id: string;
+  label: Record<string, string>;
+}
+
 export interface EntityFilterOptions {
   ui_categories: UICategoryOption[];
-  consensus_levels: [number, number] | null;
-  evidence_quality_range: [number, number] | null;
-  year_range: [number, number] | null;
+  clinical_effects?: ClinicalEffectOption[];
+  consensus_levels?: string[];
+  evidence_quality_range?: [number, number];
+  recency_options?: string[];
 }
 
 export interface PaginatedResponse<T> {
@@ -47,6 +58,26 @@ export function listEntities(filters?: EntityFilters): Promise<PaginatedResponse
 
   if (filters?.search) {
     params.append('search', filters.search);
+  }
+
+  if (filters?.clinical_effects) {
+    filters.clinical_effects.forEach(effect => params.append('clinical_effects', effect));
+  }
+
+  if (filters?.consensus_level) {
+    filters.consensus_level.forEach(level => params.append('consensus_level', level));
+  }
+
+  if (filters?.evidence_quality_min !== undefined) {
+    params.append('evidence_quality_min', filters.evidence_quality_min.toString());
+  }
+
+  if (filters?.evidence_quality_max !== undefined) {
+    params.append('evidence_quality_max', filters.evidence_quality_max.toString());
+  }
+
+  if (filters?.recency) {
+    filters.recency.forEach(r => params.append('recency', r));
   }
 
   if (filters?.limit !== undefined) {
