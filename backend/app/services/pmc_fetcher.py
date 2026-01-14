@@ -55,12 +55,13 @@ class PMCFetcher:
             PMCID if available, None otherwise
         """
         try:
-            # Use PMC ID Converter API
-            url = f"https://www.ncbi.nlm.nih.gov/pmc/utils/idconv/v1.0/?ids={pmid}&format=json"
+            # Use PMC ID Converter API (updated URL as of 2026)
+            url = f"https://pmc.ncbi.nlm.nih.gov/tools/idconv/api/v1/articles/?ids={pmid}&format=json"
 
             async with httpx.AsyncClient(
                 timeout=self.TIMEOUT_SECONDS,
-                headers={"User-Agent": self.USER_AGENT}
+                headers={"User-Agent": self.USER_AGENT},
+                follow_redirects=True  # Handle any redirects
             ) as client:
                 logger.info(f"Checking PMC availability for PMID {pmid}")
                 response = await client.get(url)
@@ -71,16 +72,19 @@ class PMCFetcher:
 
                 if records and len(records) > 0:
                     record = records[0]
+
+                    # Check if record has error
+                    if record.get("status") == "error":
+                        logger.info(f"Article PMID {pmid} not found in PMC")
+                        return None
+
                     pmcid = record.get("pmcid")
 
                     if pmcid:
-                        # Check if it's in OA subset
-                        status = record.get("live", "n")
-                        if status == "y":
-                            logger.info(f"Article PMID {pmid} available in PMC as {pmcid}")
-                            return pmcid
+                        logger.info(f"Article PMID {pmid} available in PMC as {pmcid}")
+                        return pmcid
 
-                logger.info(f"Article PMID {pmid} not in PMC Open Access subset")
+                logger.info(f"Article PMID {pmid} not in PMC")
                 return None
 
         except Exception as e:
@@ -114,7 +118,11 @@ class PMCFetcher:
                 data = response.json()
 
                 # Parse BioC JSON format
-                documents = data.get("documents", [])
+                # Response can be a dict with "documents" or a list
+                if isinstance(data, list):
+                    documents = data
+                else:
+                    documents = data.get("documents", [])
                 if not documents:
                     logger.warning(f"No documents in PMC response for {pmcid}")
                     return None
