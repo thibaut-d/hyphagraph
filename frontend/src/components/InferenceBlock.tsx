@@ -166,11 +166,27 @@ export function InferenceBlock({ inference }: { inference: InferenceRead | null 
                         direction="row"
                         spacing={1}
                         alignItems="center"
+                        flexWrap="wrap"
                       >
-                        <Chip label={r.direction} size="small" />
+                        <Chip label={r.direction || "neutral"} size="small" color={
+                          r.direction === "supports" ? "success" :
+                          r.direction === "contradicts" ? "error" : "default"
+                        } />
                         <Typography variant="body2">
-                          confidence: {r.confidence}
+                          confidence: {r.confidence?.toFixed(2) || "N/A"}
                         </Typography>
+                        {r.roles && r.roles.length > 0 && (
+                          <Typography variant="body2" color="text.secondary">
+                            • {r.roles.map((role, idx) => (
+                              <span key={idx}>
+                                {idx > 0 && " → "}
+                                <span style={{fontWeight: role.role_type === "subject" ? "bold" : "normal"}}>
+                                  {role.role_type}
+                                </span>
+                              </span>
+                            ))}
+                          </Typography>
+                        )}
                       </Stack>
                     ))}
                   </Stack>
