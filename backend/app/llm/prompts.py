@@ -302,6 +302,20 @@ Extract:
    IMPORTANT: If the relationship doesn't clearly fit one of the specific types above, use "other".
    Do NOT invent new relation types like "has", "integrates_with", "diagnosed_by", "negatively-correlates-with", etc.
 
+   CRITICAL GUIDELINES FOR RELATION DIRECTION:
+   - treats: Subject is the treatment/drug, object is the disease/symptom
+     Example: "duloxetine treats fibromyalgia" (NOT "fibromyalgia treats duloxetine")
+   - causes: Subject is the cause, object is the effect/outcome
+     Example: "smoking causes cancer" (NOT "cancer causes smoking")
+   - biomarker_for: Subject is the biomarker/test, object is the disease/condition
+     Example: "crp biomarker_for inflammation" (NOT "inflammation biomarker_for crp")
+   - affects_population: Subject is disease/condition, object is population group
+     Example: "fibromyalgia affects_population women" (NOT "women affects_population fibromyalgia")
+     SPECIAL CASE: "healthy controls" are NOT affected by the disease - they are comparison groups
+     Do NOT create: "disease affects healthy-controls" - this is illogical
+   - measures: Subject is the assessment tool, object is what it measures
+     Example: "vas measures pain" (NOT "pain measures vas")
+
    - confidence: high, medium, low
 
 3. **Claims**: Factual statements with evidence
