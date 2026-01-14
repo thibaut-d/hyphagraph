@@ -18,6 +18,8 @@ from app.llm.schemas import ExtractedEntity, ExtractedRelation, ExtractedClaim
 from app.llm.client import is_llm_available
 from app.dependencies.auth import get_current_user
 from app.models.user import User
+from app.database import get_db
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -107,9 +109,11 @@ class BatchExtractionResponse(BaseModel):
 # Dependency: Extraction Service
 # =============================================================================
 
-def get_extraction_service() -> ExtractionService:
+async def get_extraction_service(db: AsyncSession = Depends(get_db)) -> ExtractionService:
     """
-    Get extraction service instance.
+    Get extraction service instance with database session.
+
+    This allows the service to load dynamic relation types from the database.
 
     Raises:
         HTTPException: If LLM is not available
@@ -119,7 +123,7 @@ def get_extraction_service() -> ExtractionService:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="LLM service not available. Please configure OPENAI_API_KEY."
         )
-    return ExtractionService()
+    return ExtractionService(db=db)
 
 
 # =============================================================================

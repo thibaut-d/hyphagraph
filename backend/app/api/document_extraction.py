@@ -187,7 +187,7 @@ async def extract_from_document(
         )
 
     # Extract entities and relations
-    extraction_service = ExtractionService()
+    extraction_service = ExtractionService(db=db)
     entities, relations, _ = await extraction_service.extract_batch(
         text=revision.document_text,
         min_confidence="medium"
@@ -399,7 +399,7 @@ async def upload_and_extract(
         logger.info("Document content stored in source")
 
         # Step 3: Extract entities and relations from text
-        extraction_service = ExtractionService()
+        extraction_service = ExtractionService(db=db)
         entities, relations, _ = await extraction_service.extract_batch(
             text=extraction_result.text,
             min_confidence="medium"
@@ -570,7 +570,7 @@ async def extract_from_url(
         logger.info("Document content stored in source")
 
         # Step 3: Extract entities and relations from text
-        extraction_service = ExtractionService()
+        extraction_service = ExtractionService(db=db)
         entities, relations, _ = await extraction_service.extract_batch(
             text=document_text,
             min_confidence="medium"
