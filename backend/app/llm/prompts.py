@@ -297,6 +297,9 @@ Extract:
    - biomarker_for
    - affects_population
    - measures
+   - compared_to
+   - studied_in
+   - correlated_with
    - other
 
    IMPORTANT: If the relationship doesn't clearly fit one of the specific types above, use "other".
@@ -315,6 +318,13 @@ Extract:
      Do NOT create: "disease affects healthy-controls" - this is illogical
    - measures: Subject is the assessment tool, object is what it measures
      Example: "vas measures pain" (NOT "pain measures vas")
+   - compared_to: Subject is study group, object is comparison/control group
+     Example: "fibromyalgia-patients compared_to healthy-controls"
+     Use this INSTEAD of affects_population for study comparisons
+   - studied_in: Subject is condition/treatment, object is the study population
+     Example: "fibromyalgia studied_in women; exercise-intervention studied_in elderly"
+   - correlated_with: Statistical correlation (symmetric, no causation implied)
+     Example: "pain-severity correlated_with depression-score"
 
    - confidence: high, medium, low
 
