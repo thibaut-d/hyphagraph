@@ -9,9 +9,11 @@ import {
   LinearProgress,
   Alert,
   Button,
+  Link,
 } from "@mui/material";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { InferenceRead, RoleInference } from "../types/inference";
+import { RelationRead } from "../types/relation";
 
 function ScoreBar({ score }: { score: number | null }) {
   if (score === null) {
@@ -48,6 +50,95 @@ function ScoreBar({ score }: { score: number | null }) {
         </Typography>
       </Stack>
     </Box>
+  );
+}
+
+function RelationDisplay({ relation, kind }: { relation: RelationRead; kind: string }) {
+  // Sort roles by role_type (subject first, then object, then others)
+  const sortedRoles = [...relation.roles].sort((a, b) => {
+    const order: Record<string, number> = { subject: 0, object: 1 };
+    return (order[a.role_type] ?? 2) - (order[b.role_type] ?? 2);
+  });
+
+  // Find subject and object roles
+  const subject = sortedRoles.find(r => r.role_type === "subject");
+  const object = sortedRoles.find(r => r.role_type === "object");
+
+  // Build natural language sentence
+  let sentence = "";
+
+  if (subject?.entity_slug && object?.entity_slug) {
+    // Use natural language based on relation kind
+    const kindLower = kind.toLowerCase();
+
+    if (kindLower.includes("treat") || kindLower === "treats") {
+      sentence = `${subject.entity_slug} treats ${object.entity_slug}`;
+    } else if (kindLower.includes("biomarker")) {
+      sentence = `${subject.entity_slug} is biomarker for ${object.entity_slug}`;
+    } else if (kindLower.includes("affect") || kindLower.includes("population")) {
+      sentence = `${subject.entity_slug} affects ${object.entity_slug}`;
+    } else if (kindLower.includes("cause") || kindLower === "causes") {
+      sentence = `${subject.entity_slug} causes ${object.entity_slug}`;
+    } else if (kindLower.includes("correlate") || kindLower === "correlates") {
+      sentence = `${subject.entity_slug} correlates with ${object.entity_slug}`;
+    } else {
+      // Default: just display as "subject kind object"
+      sentence = `${subject.entity_slug} ${kind} ${object.entity_slug}`;
+    }
+  } else {
+    // Fallback: display all roles with their types
+    sentence = sortedRoles
+      .map(r => `${r.entity_slug || r.entity_id} (${r.role_type})`)
+      .join(" → ");
+  }
+
+  return (
+    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+      <Chip
+        label={relation.direction || "neutral"}
+        size="small"
+        color={
+          relation.direction === "supports" ? "success" :
+          relation.direction === "contradicts" ? "error" : "default"
+        }
+      />
+      <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+        {subject?.entity_slug && (
+          <Link
+            component={RouterLink}
+            to={`/entities/${subject.entity_slug}`}
+            sx={{ fontWeight: 'bold', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+          >
+            {subject.entity_slug}
+          </Link>
+        )}
+        {subject?.entity_slug && object?.entity_slug && (
+          <span style={{ marginLeft: 4, marginRight: 4 }}>
+            {kind.toLowerCase().includes("treat") ? "treats" :
+             kind.toLowerCase().includes("biomarker") ? "is biomarker for" :
+             kind.toLowerCase().includes("affect") ? "affects" :
+             kind.toLowerCase().includes("cause") ? "causes" :
+             kind.toLowerCase().includes("correlate") ? "correlates with" :
+             kind}
+          </span>
+        )}
+        {object?.entity_slug && (
+          <Link
+            component={RouterLink}
+            to={`/entities/${object.entity_slug}`}
+            sx={{ fontWeight: 'bold', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+          >
+            {object.entity_slug}
+          </Link>
+        )}
+        {!subject?.entity_slug && !object?.entity_slug && (
+          <span>{sentence}</span>
+        )}
+      </Typography>
+      <Typography variant="caption" color="text.secondary">
+        confidence: {relation.confidence?.toFixed(2) || "N/A"}
+      </Typography>
+    </Stack>
   );
 }
 
@@ -161,33 +252,7 @@ export function InferenceBlock({ inference }: { inference: InferenceRead | null 
 
                   <Stack spacing={1} mt={1}>
                     {relations.map((r) => (
-                      <Stack
-                        key={r.id}
-                        direction="row"
-                        spacing={1}
-                        alignItems="center"
-                        flexWrap="wrap"
-                      >
-                        <Chip label={r.direction || "neutral"} size="small" color={
-                          r.direction === "supports" ? "success" :
-                          r.direction === "contradicts" ? "error" : "default"
-                        } />
-                        <Typography variant="body2">
-                          confidence: {r.confidence?.toFixed(2) || "N/A"}
-                        </Typography>
-                        {r.roles && r.roles.length > 0 && (
-                          <Typography variant="body2" color="text.secondary">
-                            • {r.roles.map((role, idx) => (
-                              <span key={idx}>
-                                {idx > 0 && " → "}
-                                <span style={{fontWeight: role.role_type === "subject" ? "bold" : "normal"}}>
-                                  {role.role_type}
-                                </span>
-                              </span>
-                            ))}
-                          </Typography>
-                        )}
-                      </Stack>
+                      <RelationDisplay key={r.id} relation={r} kind={kind} />
                     ))}
                   </Stack>
                 </CardContent>

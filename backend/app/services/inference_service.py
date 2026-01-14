@@ -3,6 +3,7 @@ from uuid import UUID, uuid4
 from typing import Optional
 import math
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from app.repositories.relation_repo import RelationRepository
 from app.repositories.computed_relation_repo import ComputedRelationRepository
@@ -10,6 +11,7 @@ from app.mappers.relation_mapper import relation_to_read
 from app.schemas.inference import InferenceRead
 from app.utils.hashing import compute_scope_hash
 from app.config import settings
+from app.models.entity_revision import EntityRevision
 
 
 class InferenceService:
@@ -17,6 +19,28 @@ class InferenceService:
         self.db = db
         self.repo = RelationRepository(db)
         self.computed_repo = ComputedRelationRepository(db)
+
+    async def _resolve_entity_slugs(self, entity_ids: set[UUID]) -> dict[UUID, str]:
+        """
+        Resolve entity IDs to their current slugs.
+
+        Args:
+            entity_ids: Set of entity UUIDs to resolve
+
+        Returns:
+            Dict mapping entity_id to slug
+        """
+        if not entity_ids:
+            return {}
+
+        stmt = select(EntityRevision.entity_id, EntityRevision.slug).where(
+            EntityRevision.entity_id.in_(entity_ids),
+            EntityRevision.is_current == True
+        )
+        result = await self.db.execute(stmt)
+        rows = result.all()
+
+        return {row.entity_id: row.slug for row in rows}
 
     async def infer_for_entity(
         self,
@@ -64,12 +88,23 @@ class InferenceService:
         if scope_filter:
             relations = [rel for rel in relations if self._matches_scope(rel, scope_filter)]
 
+        # Collect all entity IDs from roles to resolve slugs
+        entity_ids = set()
+        for rel in relations:
+            current_rev = next((r for r in rel.revisions if r.is_current), None) if rel.revisions else None
+            if current_rev and current_rev.roles:
+                for role in current_rev.roles:
+                    entity_ids.add(role.entity_id)
+
+        # Resolve entity slugs in batch
+        entity_slug_map = await self._resolve_entity_slugs(entity_ids)
+
         # Group relations by kind for display
         grouped = defaultdict(list)
         for rel in relations:
             # Get current revision
             current_rev = next((r for r in rel.revisions if r.is_current), None) if rel.revisions else None
-            relation_read = relation_to_read(rel, current_revision=current_rev)
+            relation_read = relation_to_read(rel, current_revision=current_rev, entity_slug_map=entity_slug_map)
 
             # Group by kind (use revision kind if available, else fallback)
             kind = current_rev.kind if current_rev else rel.kind
@@ -406,6 +441,17 @@ class InferenceService:
         if scope_filter:
             relations = [rel for rel in relations if self._matches_scope(rel, scope_filter)]
 
+        # Collect all entity IDs from roles to resolve slugs
+        entity_ids = set()
+        for rel in relations:
+            current_rev = next((r for r in rel.revisions if r.is_current), None) if rel.revisions else None
+            if current_rev and current_rev.roles:
+                for role in current_rev.roles:
+                    entity_ids.add(role.entity_id)
+
+        # Resolve entity slugs in batch
+        entity_slug_map = await self._resolve_entity_slugs(entity_ids)
+
         # Group relations by kind for display
         grouped = defaultdict(list)
         for rel in relations:
@@ -414,7 +460,7 @@ class InferenceService:
                 None
             ) if rel.revisions else None
 
-            relation_read = relation_to_read(rel, current_revision=current_rev)
+            relation_read = relation_to_read(rel, current_revision=current_rev, entity_slug_map=entity_slug_map)
 
             kind = current_rev.kind if current_rev else rel.kind
             if kind:

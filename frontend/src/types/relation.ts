@@ -1,6 +1,7 @@
 export interface RoleRead {
   entity_id: string;
   role_type: string;
+  entity_slug?: string;  // Resolved entity slug for display
 }
 
 export interface RelationRead {
