@@ -128,61 +128,67 @@ class InferenceService:
 
     def _compute_role_inferences(self, relations) -> list:
         """
-        Compute inference scores for all role types across relations.
+        Compute inference scores for all RELATION TYPES (not grammatical roles).
+
+        This calculates aggregated inferences by relation type (treats, causes, etc.)
+        NOT by grammatical role (subject/object) which would be meaningless.
 
         Args:
             relations: List of Relation models with current revisions
 
         Returns:
-            List of RoleInference objects with computed scores
+            List of RoleInference objects with computed scores (role_type = relation kind)
         """
         from app.schemas.inference import RoleInference
 
-        # Collect all unique role types
-        role_types = set()
+        # Collect all unique RELATION TYPES (not role types!)
+        relation_types = set()
         for rel in relations:
             # Get current revision
             if rel.revisions:
                 current_rev = next((r for r in rel.revisions if r.is_current), None)
-                if current_rev and current_rev.roles:
-                    for role in current_rev.roles:
-                        role_types.add(role.role_type)
+                if current_rev and current_rev.kind:
+                    relation_types.add(current_rev.kind)
 
-        # Compute inference for each role type
+        # Compute inference for each RELATION TYPE
         inferences = []
-        for role_type in role_types:
-            # Prepare relations data for this role
+        for relation_type in relation_types:
+            # Prepare relations data for this relation type
             relations_data = []
+            relation_count = 0
+
             for rel in relations:
                 # Get current revision
                 if rel.revisions:
                     current_rev = next((r for r in rel.revisions if r.is_current), None)
-                    if current_rev:
+                    if current_rev and current_rev.kind == relation_type:
+                        relation_count += 1
                         # Get relation weight (use confidence from revision if available, default 1.0)
                         relation_weight = current_rev.confidence if current_rev.confidence is not None else 1.0
 
-                        if current_rev.roles:
-                            # Find role contribution
-                            role = next((r for r in current_rev.roles if r.role_type == role_type), None)
-                            if role:
-                                # Use role weight if available, otherwise assume positive contribution
-                                contribution = role.weight if role.weight is not None else 1.0
+                        # For relation type aggregation, we treat each relation as positive evidence
+                        # The direction field indicates if it's supporting or contradicting
+                        contribution = 1.0
+                        if current_rev.direction == "contradicts":
+                            contribution = -1.0
+                        elif current_rev.direction is None:
+                            contribution = 1.0  # Neutral/unknown = positive
 
-                                relations_data.append({
-                                    "weight": relation_weight,
-                                    "roles": {role_type: contribution}
-                                })
+                        relations_data.append({
+                            "weight": relation_weight,
+                            "roles": {relation_type: contribution}
+                        })
 
             # Compute aggregated inference
             if relations_data:
-                result = self.aggregate_evidence(relations_data, role=role_type)
+                result = self.aggregate_evidence(relations_data, role=relation_type)
                 confidence = self.compute_confidence(result["coverage"])
-                disagreement = self.compute_disagreement(relations_data, role=role_type)
+                disagreement = self.compute_disagreement(relations_data, role=relation_type)
 
                 inferences.append(RoleInference(
-                    role_type=role_type,
+                    role_type=relation_type,  # This is now relation type, not grammatical role
                     score=result["score"],
-                    coverage=result["coverage"],
+                    coverage=float(relation_count),  # Number of relations of this type
                     confidence=confidence,
                     disagreement=disagreement,
                 ))
