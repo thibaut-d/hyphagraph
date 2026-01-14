@@ -111,8 +111,8 @@ class InferenceService:
             if kind:  # Only group if kind is defined
                 grouped[kind].append(relation_read)
 
-        # Compute inference scores per role type
-        role_inferences = self._compute_role_inferences(relations)
+        # Compute inference scores per role type (pass entity_slug_map for connected entities)
+        role_inferences = self._compute_role_inferences(relations, entity_slug_map)
 
         result = InferenceRead(
             entity_id=entity_id,
@@ -126,7 +126,7 @@ class InferenceService:
 
         return result
 
-    def _compute_role_inferences(self, relations) -> list:
+    def _compute_role_inferences(self, relations, entity_slug_map: dict = None) -> list:
         """
         Compute inference scores for all RELATION TYPES (not grammatical roles).
 
@@ -135,11 +135,15 @@ class InferenceService:
 
         Args:
             relations: List of Relation models with current revisions
+            entity_slug_map: Dict mapping entity_id to slug (for connected_entities)
 
         Returns:
             List of RoleInference objects with computed scores (role_type = relation kind)
         """
         from app.schemas.inference import RoleInference
+
+        if entity_slug_map is None:
+            entity_slug_map = {}
 
         # Collect all unique RELATION TYPES (not role types!)
         relation_types = set()
@@ -156,6 +160,7 @@ class InferenceService:
             # Prepare relations data for this relation type
             relations_data = []
             relation_count = 0
+            connected_entity_slugs = set()  # Track entities connected via this relation type
 
             for rel in relations:
                 # Get current revision
@@ -179,6 +184,13 @@ class InferenceService:
                             "roles": {relation_type: contribution}
                         })
 
+                        # Collect connected entity slugs from all roles using the slug map
+                        if current_rev.roles:
+                            for role in current_rev.roles:
+                                slug = entity_slug_map.get(role.entity_id)
+                                if slug:
+                                    connected_entity_slugs.add(slug)
+
             # Compute aggregated inference
             if relations_data:
                 result = self.aggregate_evidence(relations_data, role=relation_type)
@@ -191,6 +203,7 @@ class InferenceService:
                     coverage=float(relation_count),  # Number of relations of this type
                     confidence=confidence,
                     disagreement=disagreement,
+                    connected_entities=list(connected_entity_slugs),  # Entities connected via this relation
                 ))
 
         return inferences

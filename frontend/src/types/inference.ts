@@ -6,6 +6,7 @@ export interface RoleInference {
   coverage: number;  // Information coverage
   confidence: number;  // Confidence in [0, 1)
   disagreement: number;  // Contradiction measure in [0, 1]
+  connected_entities?: string[];  // Entity slugs connected via this relation type
 }
 
 export interface InferenceRead {

@@ -149,15 +149,33 @@ function RoleInferenceCard({
   roleInference: RoleInference;
   entityId: string;
 }) {
-  const { role_type, score, coverage, confidence, disagreement } = roleInference;
+  const { role_type, score, coverage, confidence, disagreement, connected_entities } = roleInference;
 
   return (
     <Card variant="outlined">
       <CardContent>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
-          <Typography variant="h6">
-            {role_type}
-          </Typography>
+        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={1}>
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="h6">
+              {role_type}
+            </Typography>
+            {connected_entities && connected_entities.length > 0 && (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                Connected to: {connected_entities.map((slug, idx) => (
+                  <span key={slug}>
+                    {idx > 0 && ", "}
+                    <Link
+                      component={RouterLink}
+                      to={`/entities/${slug}`}
+                      sx={{ fontWeight: 500 }}
+                    >
+                      {slug}
+                    </Link>
+                  </span>
+                ))}
+              </Typography>
+            )}
+          </Box>
           <Button
             component={RouterLink}
             to={`/explain/${entityId}/${role_type}`}
