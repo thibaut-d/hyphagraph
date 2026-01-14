@@ -299,6 +299,10 @@ async def save_extraction(
                 user_id=current_user.id if current_user else None
             )
 
+        # Final commit to persist all changes in one transaction
+        # This fixes the greenlet_spawn error from multiple commits
+        await db.commit()
+
         created_entity_ids = list(entity_mapping.values())
 
         logger.info(

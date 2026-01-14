@@ -92,8 +92,8 @@ class BulkCreationService:
                     set_as_current=True,
                 )
 
-                # Commit this entity immediately
-                await self.db.commit()
+                # Don't commit here - will commit at transaction end to avoid greenlet issues
+                # await self.db.commit()  # REMOVED - commit happens at endpoint level
 
                 # Map slug to entity_id
                 entity_mapping[extracted.slug] = entity.id
@@ -252,8 +252,8 @@ class BulkCreationService:
                             )
                             self.db.add(pop_role)
 
-                # Commit this relation immediately
-                await self.db.commit()
+                # Don't commit here - will commit at transaction end to avoid greenlet issues
+                # await self.db.commit()  # REMOVED - commit happens at endpoint level
 
                 relation_ids.append(relation.id)
 
