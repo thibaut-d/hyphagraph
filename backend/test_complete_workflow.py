@@ -185,8 +185,10 @@ class WorkflowTester:
                         entities_to_create = [
                             {
                                 "slug": e.get("slug"),
-                                "summary": {"en": e.get("summary", "")},
-                                "category": e.get("category")
+                                "summary": e.get("summary", ""),  # summary should be a string, not {"en": "..."}
+                                "category": e.get("category"),
+                                "confidence": e.get("confidence", "medium"),
+                                "text_span": e.get("text_span", e.get("summary", "N/A")[:200])  # Use first 200 chars of summary as fallback
                             }
                             for e in entities
                         ]
@@ -194,14 +196,15 @@ class WorkflowTester:
                         # Prepare relations (they use slugs which will be mapped)
                         relations_to_create = [
                             {
-                                "subject_slug": r.get("subject"),
-                                "object_slug": r.get("object"),
-                                "kind": r.get("relation_type", "other"),
-                                "confidence": r.get("confidence", "medium"),
+                                "subject_slug": r.get("subject_slug"),  # API returns subject_slug, not subject
+                                "relation_type": r.get("relation_type", "other"),
+                                "object_slug": r.get("object_slug"),  # API returns object_slug, not object
                                 "roles": r.get("roles", {}),
-                                "notes": {"en": r.get("notes", "")} if r.get("notes") else None
+                                "confidence": r.get("confidence", "medium"),
+                                "text_span": r.get("text_span", f"{r.get('subject_slug')} {r.get('relation_type')} {r.get('object_slug')}")[:200]
                             }
                             for r in relations
+                            if r.get("subject_slug") and r.get("object_slug")  # Skip relations with null slugs
                         ]
 
                         save_response = requests.post(

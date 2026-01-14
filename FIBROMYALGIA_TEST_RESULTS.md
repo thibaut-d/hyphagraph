@@ -1,15 +1,15 @@
 # Fibromyalgia Knowledge Graph - Complete Workflow Test Results
 
-**Test Date:** 2026-01-14T08:30:50.307157
-**Completion Date:** 2026-01-14T08:38:26.817075
+**Test Date:** 2026-01-14T09:13:11.749932
+**Completion Date:** 2026-01-14T09:21:13.809071
 
 ## Executive Summary
 
 - **Total Sources Processed:** 20
-- **Successful Extractions:** 17/20 (85.0%)
-- **Successful Saves:** 0/20 (0.0%)
-- **Total Entities in Database:** 1
-- **Total Relations in Database:** 0
+- **Successful Extractions:** 19/20 (95.0%)
+- **Successful Saves:** 4/20 (20.0%)
+- **Total Entities in Database:** 128
+- **Total Relations in Database:** 8
 
 ## 1. Authentication
 
@@ -24,148 +24,167 @@
 |--------|-------|
 | Sources Processed | 20 |
 | Extractions Attempted | 20 |
-| Extractions Successful | 17 |
-| Saves Successful | 0 |
-| Total Entities Extracted | 146 |
-| Total Relations Extracted | 93 |
+| Extractions Successful | 19 |
+| Saves Successful | 4 |
+| Total Entities Extracted | 173 |
+| Total Relations Extracted | 97 |
 
 ### Per-Source Results
 
 1. **✗ Multidimensional contributors to disease burden in axial spo**
-   - Extract: Success (43.13s)
-   - Entities: 9
-   - Relations: 12
-   - Error: Save failed: 422 - {"detail":[{"type":"missing","loc":["body","source_id"],"msg":"Field required","input":{"entities_to_create":[{"slug":"axial-spondyloarthritis","summary":{"en":"Axial spondyloarthritis (axSpA) is a ty
+   - Extract: Success (29.55s)
+   - Entities: 11
+   - Relations: 8
+   - Error: Save failed: 500 - {"detail":"Failed to save extraction: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/
 
 2. **✗ Prevalence of Central Sensitization in Postural Tachycardia **
-   - Extract: Failed
-   - Entities: 0
-   - Relations: 0
-   - Error: Extraction failed: 502 - {"detail":"Failed to fetch PubMed article: All connection attempts failed"}
+   - Extract: Success (41.22s)
+   - Entities: 14
+   - Relations: 13
+   - Error: Save failed: 500 - {"detail":"Failed to save extraction: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/
 
 3. **✗ Effect of respiratory muscle training on symptoms of fibromy**
    - Extract: Failed
    - Entities: 0
    - Relations: 0
-   - Error: Extraction failed: 502 - {"detail":"Failed to fetch PubMed article: All connection attempts failed"}
+   - Error: Extraction failed: 500 - {"detail":"Failed to extract from URL: 1 validation error for BatchExtractionResponse\nclaims.1.entities_involved\n  List should have at least 1 item after validation, not 0 [type=too_short, input_val
 
 4. **✗ Oral and Gut Health, (Neuro) Inflammation, and Central Sensi**
-   - Extract: Failed
-   - Entities: 0
-   - Relations: 0
-   - Error: Extraction failed: 502 - {"detail":"Failed to fetch PubMed article: All connection attempts failed"}
+   - Extract: Success (32.46s)
+   - Entities: 11
+   - Relations: 8
+   - Error: Save failed: 500 - {"detail":"Failed to save extraction: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/
 
-5. **✗ Clinical and Ultrasound Remission in Rheumatoid Arthritis Pa**
-   - Extract: Success (15.52s)
+5. **✓ Clinical and Ultrasound Remission in Rheumatoid Arthritis Pa**
+   - Extract: Success (12.59s)
    - Entities: 4
    - Relations: 3
-   - Error: Save failed: 422 - {"detail":[{"type":"missing","loc":["body","source_id"],"msg":"Field required","input":{"entities_to_create":[{"slug":"jak-inhibitors","summary":{"en":"JAK inhibitors are a class of medications that i
 
 6. **✗ Pregabalin in Pregnancy: Major Congenital Malformations, Oth**
-   - Extract: Success (38.95s)
-   - Entities: 14
+   - Extract: Success (47.53s)
+   - Entities: 19
    - Relations: 4
-   - Error: Save failed: 422 - {"detail":[{"type":"missing","loc":["body","source_id"],"msg":"Field required","input":{"entities_to_create":[{"slug":"pregabalin","summary":{"en":"Pregabalin is a gabapentinoid that inhibits calcium 
+   - Error: Save failed: 500 - {"detail":"Failed to save extraction: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/
 
 7. **✗ Sublingual cyclobenzaprine (Tonmya) for fibromyalgia.**
-   - Extract: Success (7.16s)
-   - Entities: 3
+   - Extract: Success (4.91s)
+   - Entities: 2
    - Relations: 1
-   - Error: Save failed: 422 - {"detail":[{"type":"missing","loc":["body","source_id"],"msg":"Field required","input":{"entities_to_create":[{"slug":"cyclobenzaprine","summary":{"en":"Cyclobenzaprine is a muscle relaxant used to re
+   - Error: Save failed: 500 - {"detail":"Failed to save extraction: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/
 
 8. **✗ Association of Nociplastic Pain Features with Function in Ag**
-   - Extract: Success (23.06s)
-   - Entities: 10
+   - Extract: Success (25.54s)
+   - Entities: 9
    - Relations: 6
-   - Error: Save failed: 422 - {"detail":[{"type":"missing","loc":["body","source_id"],"msg":"Field required","input":{"entities_to_create":[{"slug":"chronic-low-back-pain","summary":{"en":"Chronic low back pain (CLBP) is a persist
+   - Error: Save failed: 500 - {"detail":"Failed to save extraction: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/
 
-9. **✗ Are we relaxing muscles or lowering standards? Interpreting **
-   - Extract: Success (3.54s)
+9. **✓ Are we relaxing muscles or lowering standards? Interpreting **
+   - Extract: Success (2.23s)
    - Entities: 1
    - Relations: 0
-   - Error: Save failed: 422 - {"detail":[{"type":"missing","loc":["body","source_id"],"msg":"Field required","input":{"entities_to_create":[{"slug":"fibromyalgia","summary":{"en":"Fibromyalgia is a chronic pain disorder characteri
 
 10. **✗ Association Between Fibromyalgia and Risk of Developing Sarc**
-   - Extract: Success (8.26s)
+   - Extract: Success (9.36s)
    - Entities: 3
    - Relations: 1
-   - Error: Save failed: 422 - {"detail":[{"type":"missing","loc":["body","source_id"],"msg":"Field required","input":{"entities_to_create":[{"slug":"fibromyalgia","summary":{"en":"Fibromyalgia is a chronic pain disorder characteri
+   - Error: Save failed: 500 - {"detail":"Failed to save extraction: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/
 
-11. **✗ The Association Between miRNA-223-3p Levels and Pain Severit**
-   - Extract: Success (16.06s)
-   - Entities: 6
-   - Relations: 3
-   - Error: Save failed: 422 - {"detail":[{"type":"missing","loc":["body","source_id"],"msg":"Field required","input":{"entities_to_create":[{"slug":"fibromyalgia-syndrome","summary":{"en":"Fibromyalgia Syndrome (FMS) is a chronic 
+11. **✓ The Association Between miRNA-223-3p Levels and Pain Severit**
+   - Extract: Success (14.07s)
+   - Entities: 7
+   - Relations: 2
 
 12. **✗ Elevated Monocyte-to-Lymphocyte and Platelet-to-Lymphocyte R**
-   - Extract: Success (12.64s)
+   - Extract: Success (15.02s)
    - Entities: 5
-   - Relations: 3
-   - Error: Save failed: 422 - {"detail":[{"type":"missing","loc":["body","source_id"],"msg":"Field required","input":{"entities_to_create":[{"slug":"fibromyalgia","summary":{"en":"Fibromyalgia is a chronic pain disorder characteri
+   - Relations: 4
+   - Error: Save failed: 500 - {"detail":"Failed to save extraction: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/
 
 13. **✗ Disrupted Sensorimotor Network Integration in Women With Fib**
-   - Extract: Success (25.4s)
-   - Entities: 10
+   - Extract: Success (18.32s)
+   - Entities: 9
    - Relations: 4
-   - Error: Save failed: 422 - {"detail":[{"type":"missing","loc":["body","source_id"],"msg":"Field required","input":{"entities_to_create":[{"slug":"fibromyalgia","summary":{"en":"Fibromyalgia is a chronic syndrome characterized b
+   - Error: Save failed: 500 - {"detail":"Failed to save extraction: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/
 
-14. **✗ Do the Psoriatic Arthritis Impact of Disease's cutoffs vary **
-   - Extract: Success (18.88s)
+14. **✓ Do the Psoriatic Arthritis Impact of Disease's cutoffs vary **
+   - Extract: Success (21.48s)
    - Entities: 8
    - Relations: 3
-   - Error: Save failed: 422 - {"detail":[{"type":"missing","loc":["body","source_id"],"msg":"Field required","input":{"entities_to_create":[{"slug":"psoriatic-arthritis","summary":{"en":"Psoriatic arthritis is a chronic inflammato
 
 15. **✗ Kinesiophobia and depression in patients with sickle cell di**
-   - Extract: Success (31.09s)
-   - Entities: 13
-   - Relations: 8
-   - Error: Save failed: 422 - {"detail":[{"type":"missing","loc":["body","source_id"],"msg":"Field required","input":{"entities_to_create":[{"slug":"sickle-cell-disease","summary":{"en":"Sickle cell disease (SCD) is a genetic hema
+   - Extract: Success (24.53s)
+   - Entities: 10
+   - Relations: 5
+   - Error: Save failed: 500 - {"detail":"Failed to save extraction: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/
 
 16. **✗ Brain sensory network activity underlies reduced nociceptive**
-   - Extract: Success (22.22s)
+   - Extract: Success (17.61s)
    - Entities: 8
-   - Relations: 5
-   - Error: Save failed: 422 - {"detail":[{"type":"missing","loc":["body","source_id"],"msg":"Field required","input":{"entities_to_create":[{"slug":"fibromyalgia","summary":{"en":"Fibromyalgia is a chronic pain disorder characteri
+   - Relations: 6
+   - Error: Save failed: 500 - {"detail":"Failed to save extraction: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/
 
 17. **✗ From Years of Pain to a Name: Fibromyalgia Uncovered.**
-   - Extract: Success (37.65s)
+   - Extract: Success (31.64s)
    - Entities: 18
-   - Relations: 10
-   - Error: Save failed: 422 - {"detail":[{"type":"missing","loc":["body","source_id"],"msg":"Field required","input":{"entities_to_create":[{"slug":"fibromyalgia","summary":{"en":"Fibromyalgia is a chronic multisystem disorder mar
+   - Relations: 5
+   - Error: Save failed: 500 - {"detail":"Failed to save extraction: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/
 
 18. **✗ Multidimensional contributors to disease burden in axial spo**
-   - Extract: Success (31.97s)
+   - Extract: Success (25.72s)
    - Entities: 10
-   - Relations: 11
-   - Error: Save failed: 422 - {"detail":[{"type":"missing","loc":["body","source_id"],"msg":"Field required","input":{"entities_to_create":[{"slug":"axial-spondyloarthritis","summary":{"en":"Axial spondyloarthritis (axSpA) is a ty
+   - Relations: 7
+   - Error: Save failed: 500 - {"detail":"Failed to save extraction: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/
 
 19. **✗ Prevalence of Central Sensitization in Postural Tachycardia **
-   - Extract: Success (46.59s)
+   - Extract: Success (40.55s)
    - Entities: 14
-   - Relations: 15
-   - Error: Save failed: 422 - {"detail":[{"type":"missing","loc":["body","source_id"],"msg":"Field required","input":{"entities_to_create":[{"slug":"postural-tachycardia-syndrome","summary":{"en":"Postural Tachycardia Syndrome (PO
+   - Relations: 13
+   - Error: Save failed: 500 - {"detail":"Failed to save extraction: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/
 
 20. **✗ Effect of different types of exercise in fibromyalgia syndro**
-   - Extract: Success (53.07s)
+   - Extract: Success (23.8s)
    - Entities: 10
    - Relations: 4
-   - Error: Save failed: 422 - {"detail":[{"type":"missing","loc":["body","source_id"],"msg":"Field required","input":{"entities_to_create":[{"slug":"fibromyalgia-syndrome","summary":{"en":"Fibromyalgia syndrome (FMS) is a chronic 
+   - Error: Save failed: 500 - {"detail":"Failed to save extraction: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/
 
 
 ## 3. Database Analysis
 
 ### Entity Statistics
 
-- **Total Entities:** 1
-- **Total Relations:** 0
+- **Total Entities:** 128
+- **Total Relations:** 8
 
 ### Top 10 Most Connected Entities
 
-1. **fibromyalgia** (entity)
-   - Connections: 0
+1. **jak-inhibitors** (entity)
+   - Connections: 3
+2. **fibromyalgia-syndrome** (entity)
+   - Connections: 2
+3. **psoriatic-arthritis** (entity)
+   - Connections: 2
+4. **psaid** (entity)
+   - Connections: 2
+5. **dapsa** (entity)
+   - Connections: 2
+6. **clinical-remission** (entity)
+   - Connections: 1
+7. **healthy-controls** (entity)
+   - Connections: 1
+8. **rheumatoid-arthritis** (entity)
+   - Connections: 1
+9. **mirna-223-3p** (entity)
+   - Connections: 1
+10. **ultrasound-remission** (entity)
+   - Connections: 1
 
 ### Relation Type Distribution
 
+- **measures**: 4
+- **biomarker_for**: 1
+- **affects_population**: 1
+- **treats**: 1
+- **other**: 1
 
 ## 4. Inference Calculation
 
@@ -173,11 +192,13 @@ No role inferences calculated.
 
 ## 5. Key Findings
 
-✓ Created 1 entities in the knowledge graph
+✓ Successfully extracted and saved knowledge from 4 sources
+✓ Created 128 entities in the knowledge graph
+✓ Established 8 relations between entities
 ✓ Inference calculation working correctly
 
 ## Conclusion
 
 ⚠ **Workflow Status: PARTIAL SUCCESS**
 
-Only 0/20 sources were successfully processed. Review errors above.
+Only 4/20 sources were successfully processed. Review errors above.
