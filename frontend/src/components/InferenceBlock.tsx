@@ -144,12 +144,17 @@ function RelationDisplay({ relation, kind }: { relation: RelationRead; kind: str
 
 function RoleInferenceCard({
   roleInference,
-  entityId
+  entityId,
+  currentEntitySlug
 }: {
   roleInference: RoleInference;
   entityId: string;
+  currentEntitySlug?: string;
 }) {
   const { role_type, score, coverage, confidence, disagreement, connected_entities } = roleInference;
+
+  // Filter out current entity from connected entities
+  const otherEntities = connected_entities?.filter(slug => slug !== currentEntitySlug) || [];
 
   return (
     <Card variant="outlined">
@@ -159,9 +164,9 @@ function RoleInferenceCard({
             <Typography variant="h6">
               {role_type}
             </Typography>
-            {connected_entities && connected_entities.length > 0 && (
+            {otherEntities.length > 0 && (
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                Connected to: {connected_entities.map((slug, idx) => (
+                Connected to: {otherEntities.map((slug, idx) => (
                   <span key={slug}>
                     {idx > 0 && ", "}
                     <Link
@@ -231,7 +236,7 @@ function RoleInferenceCard({
   );
 }
 
-export function InferenceBlock({ inference }: { inference: InferenceRead | null }) {
+export function InferenceBlock({ inference, currentEntitySlug }: { inference: InferenceRead | null; currentEntitySlug?: string }) {
   if (!inference) {
     return null;
   }
@@ -250,6 +255,7 @@ export function InferenceBlock({ inference }: { inference: InferenceRead | null 
                 key={roleInf.role_type}
                 roleInference={roleInf}
                 entityId={inference.entity_id}
+                currentEntitySlug={currentEntitySlug}
               />
             ))}
           </Stack>

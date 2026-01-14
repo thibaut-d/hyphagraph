@@ -533,7 +533,7 @@ export function EntityDetailView() {
 
           {/* Inference Display */}
           {filteredInference ? (
-            <InferenceBlock inference={filteredInference} />
+            <InferenceBlock inference={filteredInference} currentEntitySlug={entity.slug} />
           ) : (
             <Typography color="text.secondary">
               {t("common.no_data", "No data")}
