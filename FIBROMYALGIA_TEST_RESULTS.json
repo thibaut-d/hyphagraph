@@ -1,0 +1,246 @@
+{
+  "start_time": "2026-01-14T08:30:50.307157",
+  "login": {
+    "success": true,
+    "token_length": 165
+  },
+  "extractions": [
+    {
+      "source_id": "505edb82-4a99-4c1e-9df9-02fcf144d2d1",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41526946/",
+      "title": "Multidimensional contributors to disease burden in axial spondyloarthritis: role of central sensitization, catastrophizing and sleep disturbance.",
+      "extract_success": true,
+      "save_success": false,
+      "entities_extracted": 9,
+      "relations_extracted": 12,
+      "error": "Save failed: 422 - {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"source_id\"],\"msg\":\"Field required\",\"input\":{\"entities_to_create\":[{\"slug\":\"axial-spondyloarthritis\",\"summary\":{\"en\":\"Axial spondyloarthritis (axSpA) is a ty",
+      "extract_time": 43.13
+    },
+    {
+      "source_id": "0c01ddac-8429-488c-a8a4-9878dcb11e0e",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41528744/",
+      "title": "Prevalence of Central Sensitization in Postural Tachycardia Syndrome.",
+      "extract_success": false,
+      "save_success": false,
+      "entities_extracted": 0,
+      "relations_extracted": 0,
+      "error": "Extraction failed: 502 - {\"detail\":\"Failed to fetch PubMed article: All connection attempts failed\"}"
+    },
+    {
+      "source_id": "1af574cb-c40c-4c7b-9480-d873f656d16a",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41520184/",
+      "title": "Effect of respiratory muscle training on symptoms of fibromyalgia: a systematic review with meta-analysis.",
+      "extract_success": false,
+      "save_success": false,
+      "entities_extracted": 0,
+      "relations_extracted": 0,
+      "error": "Extraction failed: 502 - {\"detail\":\"Failed to fetch PubMed article: All connection attempts failed\"}"
+    },
+    {
+      "source_id": "d3d3a78d-068c-4ca1-b833-479ce4956b27",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41515997/",
+      "title": "Oral and Gut Health, (Neuro) Inflammation, and Central Sensitization in Chronic Pain: A Narrative Review of Mechanisms, Treatment Opportunities, and Research Agenda.",
+      "extract_success": false,
+      "save_success": false,
+      "entities_extracted": 0,
+      "relations_extracted": 0,
+      "error": "Extraction failed: 502 - {\"detail\":\"Failed to fetch PubMed article: All connection attempts failed\"}"
+    },
+    {
+      "source_id": "66f3dea2-d1fb-4f19-a206-79eed74f4e27",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41517527/",
+      "title": "Clinical and Ultrasound Remission in Rheumatoid Arthritis Patients Treated with JAK Inhibitors: A Real-World Study.",
+      "extract_success": true,
+      "save_success": false,
+      "entities_extracted": 4,
+      "relations_extracted": 3,
+      "error": "Save failed: 422 - {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"source_id\"],\"msg\":\"Field required\",\"input\":{\"entities_to_create\":[{\"slug\":\"jak-inhibitors\",\"summary\":{\"en\":\"JAK inhibitors are a class of medications that i",
+      "extract_time": 15.52
+    },
+    {
+      "source_id": "4dc97cb5-b9b1-4181-860c-7b19eff9bfa7",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41499180/",
+      "title": "Pregabalin in Pregnancy: Major Congenital Malformations, Other Birth Outcomes, and Neurodevelopmental Outcomes.",
+      "extract_success": true,
+      "save_success": false,
+      "entities_extracted": 14,
+      "relations_extracted": 4,
+      "error": "Save failed: 422 - {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"source_id\"],\"msg\":\"Field required\",\"input\":{\"entities_to_create\":[{\"slug\":\"pregabalin\",\"summary\":{\"en\":\"Pregabalin is a gabapentinoid that inhibits calcium ",
+      "extract_time": 38.95
+    },
+    {
+      "source_id": "7770c9af-174e-487d-9bd1-012a8e694441",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41505652/",
+      "title": "Sublingual cyclobenzaprine (Tonmya) for fibromyalgia.",
+      "extract_success": true,
+      "save_success": false,
+      "entities_extracted": 3,
+      "relations_extracted": 1,
+      "error": "Save failed: 422 - {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"source_id\"],\"msg\":\"Field required\",\"input\":{\"entities_to_create\":[{\"slug\":\"cyclobenzaprine\",\"summary\":{\"en\":\"Cyclobenzaprine is a muscle relaxant used to re",
+      "extract_time": 7.16
+    },
+    {
+      "source_id": "4d9f4f79-545a-42ab-8a21-ddd009639915",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41510279/",
+      "title": "Association of Nociplastic Pain Features with Function in Aging Veterans with Chronic Low Back Pain.",
+      "extract_success": true,
+      "save_success": false,
+      "entities_extracted": 10,
+      "relations_extracted": 6,
+      "error": "Save failed: 422 - {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"source_id\"],\"msg\":\"Field required\",\"input\":{\"entities_to_create\":[{\"slug\":\"chronic-low-back-pain\",\"summary\":{\"en\":\"Chronic low back pain (CLBP) is a persist",
+      "extract_time": 23.06
+    },
+    {
+      "source_id": "5db90ca8-3a6e-40ce-8c44-2d79c46a2cf0",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41513285/",
+      "title": "Are we relaxing muscles or lowering standards? Interpreting pharmacological effects in fibromyalgia.",
+      "extract_success": true,
+      "save_success": false,
+      "entities_extracted": 1,
+      "relations_extracted": 0,
+      "error": "Save failed: 422 - {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"source_id\"],\"msg\":\"Field required\",\"input\":{\"entities_to_create\":[{\"slug\":\"fibromyalgia\",\"summary\":{\"en\":\"Fibromyalgia is a chronic pain disorder characteri",
+      "extract_time": 3.54
+    },
+    {
+      "source_id": "96ac23a4-c0d4-45b4-b4d8-db3acf16fff8",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41515557/",
+      "title": "Association Between Fibromyalgia and Risk of Developing Sarcopenia According SARC-F: A Cross-Sectional Study.",
+      "extract_success": true,
+      "save_success": false,
+      "entities_extracted": 3,
+      "relations_extracted": 1,
+      "error": "Save failed: 422 - {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"source_id\"],\"msg\":\"Field required\",\"input\":{\"entities_to_create\":[{\"slug\":\"fibromyalgia\",\"summary\":{\"en\":\"Fibromyalgia is a chronic pain disorder characteri",
+      "extract_time": 8.26
+    },
+    {
+      "source_id": "7743d7d5-60ee-4050-910b-ee4db079a4e1",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41516054/",
+      "title": "The Association Between miRNA-223-3p Levels and Pain Severity in Fibromyalgia Syndrome: A Molecular Approach.",
+      "extract_success": true,
+      "save_success": false,
+      "entities_extracted": 6,
+      "relations_extracted": 3,
+      "error": "Save failed: 422 - {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"source_id\"],\"msg\":\"Field required\",\"input\":{\"entities_to_create\":[{\"slug\":\"fibromyalgia-syndrome\",\"summary\":{\"en\":\"Fibromyalgia Syndrome (FMS) is a chronic ",
+      "extract_time": 16.06
+    },
+    {
+      "source_id": "c35c3848-44e0-4353-ae6a-39abea337e4a",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41517404/",
+      "title": "Elevated Monocyte-to-Lymphocyte and Platelet-to-Lymphocyte Ratios Are Associated with Disease Activity and Pain in Fibromyalgia: A Cross-Sectional Study.",
+      "extract_success": true,
+      "save_success": false,
+      "entities_extracted": 5,
+      "relations_extracted": 3,
+      "error": "Save failed: 422 - {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"source_id\"],\"msg\":\"Field required\",\"input\":{\"entities_to_create\":[{\"slug\":\"fibromyalgia\",\"summary\":{\"en\":\"Fibromyalgia is a chronic pain disorder characteri",
+      "extract_time": 12.64
+    },
+    {
+      "source_id": "e78489c4-5a44-4f1c-89f3-a1f31501ba7a",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41518021/",
+      "title": "Disrupted Sensorimotor Network Integration in Women With Fibromyalgia Revealed by Resting-State Functional MRI.",
+      "extract_success": true,
+      "save_success": false,
+      "entities_extracted": 10,
+      "relations_extracted": 4,
+      "error": "Save failed: 422 - {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"source_id\"],\"msg\":\"Field required\",\"input\":{\"entities_to_create\":[{\"slug\":\"fibromyalgia\",\"summary\":{\"en\":\"Fibromyalgia is a chronic syndrome characterized b",
+      "extract_time": 25.4
+    },
+    {
+      "source_id": "990fa10c-fb2d-4610-8569-021ff33e4bff",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41518584/",
+      "title": "Do the Psoriatic Arthritis Impact of Disease's cutoffs vary across ethnicities? Insights from the TACTIC initiative.",
+      "extract_success": true,
+      "save_success": false,
+      "entities_extracted": 8,
+      "relations_extracted": 3,
+      "error": "Save failed: 422 - {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"source_id\"],\"msg\":\"Field required\",\"input\":{\"entities_to_create\":[{\"slug\":\"psoriatic-arthritis\",\"summary\":{\"en\":\"Psoriatic arthritis is a chronic inflammato",
+      "extract_time": 18.88
+    },
+    {
+      "source_id": "b6e7b29a-3f6b-4127-9b88-ce57c6fa741c",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41519678/",
+      "title": "Kinesiophobia and depression in patients with sickle cell disease: A review of gender differences, pathophysiology, and clinical implications.",
+      "extract_success": true,
+      "save_success": false,
+      "entities_extracted": 13,
+      "relations_extracted": 8,
+      "error": "Save failed: 422 - {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"source_id\"],\"msg\":\"Field required\",\"input\":{\"entities_to_create\":[{\"slug\":\"sickle-cell-disease\",\"summary\":{\"en\":\"Sickle cell disease (SCD) is a genetic hema",
+      "extract_time": 31.09
+    },
+    {
+      "source_id": "d883dc37-8351-4242-987f-d414ba4b577d",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41520025/",
+      "title": "Brain sensory network activity underlies reduced nociceptive initiated and nociplastic pain via acupuncture in fibromyalgia.",
+      "extract_success": true,
+      "save_success": false,
+      "entities_extracted": 8,
+      "relations_extracted": 5,
+      "error": "Save failed: 422 - {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"source_id\"],\"msg\":\"Field required\",\"input\":{\"entities_to_create\":[{\"slug\":\"fibromyalgia\",\"summary\":{\"en\":\"Fibromyalgia is a chronic pain disorder characteri",
+      "extract_time": 22.22
+    },
+    {
+      "source_id": "6a2c9b1c-5031-45a9-b532-ddc1de9c813f",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41523434/",
+      "title": "From Years of Pain to a Name: Fibromyalgia Uncovered.",
+      "extract_success": true,
+      "save_success": false,
+      "entities_extracted": 18,
+      "relations_extracted": 10,
+      "error": "Save failed: 422 - {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"source_id\"],\"msg\":\"Field required\",\"input\":{\"entities_to_create\":[{\"slug\":\"fibromyalgia\",\"summary\":{\"en\":\"Fibromyalgia is a chronic multisystem disorder mar",
+      "extract_time": 37.65
+    },
+    {
+      "source_id": "d65963e1-cd43-48f1-98e2-696398f1e034",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41526946/",
+      "title": "Multidimensional contributors to disease burden in axial spondyloarthritis: role of central sensitization, catastrophizing and sleep disturbance.",
+      "extract_success": true,
+      "save_success": false,
+      "entities_extracted": 10,
+      "relations_extracted": 11,
+      "error": "Save failed: 422 - {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"source_id\"],\"msg\":\"Field required\",\"input\":{\"entities_to_create\":[{\"slug\":\"axial-spondyloarthritis\",\"summary\":{\"en\":\"Axial spondyloarthritis (axSpA) is a ty",
+      "extract_time": 31.97
+    },
+    {
+      "source_id": "6310ff09-7f80-4fdc-8e35-da6edcdd0c82",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41528744/",
+      "title": "Prevalence of Central Sensitization in Postural Tachycardia Syndrome.",
+      "extract_success": true,
+      "save_success": false,
+      "entities_extracted": 14,
+      "relations_extracted": 15,
+      "error": "Save failed: 422 - {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"source_id\"],\"msg\":\"Field required\",\"input\":{\"entities_to_create\":[{\"slug\":\"postural-tachycardia-syndrome\",\"summary\":{\"en\":\"Postural Tachycardia Syndrome (PO",
+      "extract_time": 46.59
+    },
+    {
+      "source_id": "3b4bbddb-143f-41fa-90ad-551ef8023a8d",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41501867/",
+      "title": "Effect of different types of exercise in fibromyalgia syndrome: a network meta-analysis.",
+      "extract_success": true,
+      "save_success": false,
+      "entities_extracted": 10,
+      "relations_extracted": 4,
+      "error": "Save failed: 422 - {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"source_id\"],\"msg\":\"Field required\",\"input\":{\"entities_to_create\":[{\"slug\":\"fibromyalgia-syndrome\",\"summary\":{\"en\":\"Fibromyalgia syndrome (FMS) is a chronic ",
+      "extract_time": 53.07
+    }
+  ],
+  "database_stats": {
+    "total_entities": 1,
+    "total_relations": 0,
+    "top_entities": [
+      {
+        "id": "de334806-3edc-40c3-8b82-8e4c05f29481",
+        "name": "fibromyalgia",
+        "type": "entity",
+        "connections": 0
+      }
+    ],
+    "relation_types": []
+  },
+  "inferences": {
+    "entity_id": "de334806-3edc-40c3-8b82-8e4c05f29481",
+    "relations_by_kind": {},
+    "role_inferences": []
+  },
+  "errors": [],
+  "end_time": "2026-01-14T08:38:26.817075"
+}

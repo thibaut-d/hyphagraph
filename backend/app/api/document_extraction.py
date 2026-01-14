@@ -691,7 +691,7 @@ async def smart_discovery(
         entity_names = []
         for slug in request.entity_slugs:
             stmt = select(EntityRevision.slug).join(Entity).where(
-                Entity.slug == slug,
+                EntityRevision.slug == slug,
                 EntityRevision.is_current == True
             )
             result = await db.execute(stmt)
