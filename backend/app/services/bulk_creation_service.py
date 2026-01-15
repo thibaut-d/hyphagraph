@@ -167,19 +167,32 @@ class BulkCreationService:
         # Process relations one at a time with individual transactions
         # This ensures session stays clean even if individual relations fail
         for extracted in relations:
-            # Resolve subject and object entity IDs
-            subject_id = entity_mapping.get(extracted.subject_slug)
-            object_id = entity_mapping.get(extracted.object_slug)
+            # NEW: Resolve ALL entity slugs in roles array (N-ary relations)
+            resolved_roles = []
+            missing_entities = []
 
-            # Skip relation if either entity is missing
-            if not subject_id:
-                warning = f"Skipping relation: subject '{extracted.subject_slug}' not in mapping"
+            for role in extracted.roles:
+                entity_id = entity_mapping.get(role.entity_slug)
+
+                if not entity_id:
+                    missing_entities.append(role.entity_slug)
+                else:
+                    resolved_roles.append({
+                        'entity_id': entity_id,
+                        'entity_slug': role.entity_slug,
+                        'role_type': role.role_type
+                    })
+
+            # Skip relation if ANY entity is missing
+            if missing_entities:
+                warning = f"Skipping relation {extracted.relation_type}: missing entities {missing_entities}"
                 warnings.append(warning)
                 logger.warning(warning)
                 continue
 
-            if not object_id:
-                warning = f"Skipping relation: object '{extracted.object_slug}' not in mapping"
+            # Need at least 2 entities for a relation
+            if len(resolved_roles) < 2:
+                warning = f"Skipping relation {extracted.relation_type}: only {len(resolved_roles)} entities (need ≥2)"
                 warnings.append(warning)
                 logger.warning(warning)
                 continue
@@ -210,47 +223,22 @@ class BulkCreationService:
                     set_as_current=True,
                 )
 
-                # Create role revisions (subject and object)
-                # Subject role
-                subject_role = RelationRoleRevision(
-                    relation_revision_id=revision.id,
-                    entity_id=subject_id,
-                    role_type="subject",
-                    weight=1.0,  # Default weight
-                    coverage=None,  # No coverage for subject
+                # Create role revisions for ALL entities in the relation (N-ary support)
+                # Each resolved role becomes a RelationRoleRevision
+                for role_data in resolved_roles:
+                    role_revision = RelationRoleRevision(
+                        relation_revision_id=revision.id,
+                        entity_id=role_data['entity_id'],
+                        role_type=role_data['role_type'],  # Semantic role (agent, target, population, etc.)
+                        weight=1.0,  # Default weight (can be adjusted based on evidence)
+                        coverage=None,  # No coverage for individual roles
+                    )
+                    self.db.add(role_revision)
+
+                logger.debug(
+                    f"Created relation {extracted.relation_type} with {len(resolved_roles)} roles: "
+                    f"{[r['role_type'] for r in resolved_roles]}"
                 )
-                self.db.add(subject_role)
-
-                # Object role
-                object_role = RelationRoleRevision(
-                    relation_revision_id=revision.id,
-                    entity_id=object_id,
-                    role_type="object",
-                    weight=1.0,  # Default weight
-                    coverage=None,  # No coverage for object
-                )
-                self.db.add(object_role)
-
-                # Add contextual roles if present
-                if extracted.roles:
-                    # Dosage role
-                    if extracted.roles.get("dosage"):
-                        # For now, store dosage in notes (would need entity resolution for proper linking)
-                        pass
-
-                    # Population role (if entity exists in mapping)
-                    if extracted.roles.get("population"):
-                        pop_slug = extracted.roles["population"]
-                        pop_id = entity_mapping.get(pop_slug)
-                        if pop_id:
-                            pop_role = RelationRoleRevision(
-                                relation_revision_id=revision.id,
-                                entity_id=pop_id,
-                                role_type="population",
-                                weight=1.0,
-                                coverage=None,
-                            )
-                            self.db.add(pop_role)
 
                 # Don't commit here - will commit at transaction end to avoid greenlet issues
                 # await self.db.commit()  # REMOVED - commit happens at endpoint level
@@ -259,7 +247,8 @@ class BulkCreationService:
 
             except Exception as e:
                 # Rollback this relation and continue
-                warning = f"Skipping relation {extracted.subject_slug}--{extracted.relation_type}-->{extracted.object_slug}: {str(e)}"
+                role_summary = " + ".join([f"{r['entity_slug']}({r['role_type']})" for r in resolved_roles[:3]])
+                warning = f"Skipping relation {extracted.relation_type} [{role_summary}]: {str(e)}"
                 warnings.append(warning)
                 logger.warning(warning)
                 await self.db.rollback()
