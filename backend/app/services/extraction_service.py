@@ -80,6 +80,27 @@ class ExtractionService:
         return """CRITICAL: relation_type MUST be one of the types in the list above.
    If unsure, use 'other'."""
 
+    async def _get_semantic_roles_prompt(self) -> str:
+        """
+        Generate dynamic semantic roles prompt from database.
+
+        Returns formatted string with all active semantic roles from DB.
+        """
+        if self.db:
+            try:
+                from app.services.semantic_role_service import SemanticRoleService
+                service = SemanticRoleService(self.db)
+                prompt_text = await service.get_for_llm_prompt()
+                logger.info("Using DYNAMIC semantic roles from database")
+                return prompt_text
+            except Exception as e:
+                logger.warning(f"Failed to load dynamic semantic roles, using fallback: {e}")
+
+        # Fallback
+        logger.warning("Using STATIC semantic roles (database not available)")
+        return """SEMANTIC ROLES: agent, target, population, mechanism, dosage, etc.
+   Use appropriate semantic roles for each entity in the relation."""
+
     async def extract_entities(
         self,
         text: str,
