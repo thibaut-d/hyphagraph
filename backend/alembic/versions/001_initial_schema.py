@@ -379,6 +379,62 @@ def upgrade() -> None:
             )
         """)
 
+    # ============================================================================
+    # 17. CREATE SEMANTIC_ROLE_TYPES TABLE
+    # ============================================================================
+    op.create_table(
+        'semantic_role_types',
+        sa.Column('role_type', sa.String(50), primary_key=True),
+        sa.Column('label', sa.Text(), nullable=False),
+        sa.Column('description', sa.Text(), nullable=False),
+        sa.Column('category', sa.String(50), nullable=True),
+        sa.Column('examples', sa.Text(), nullable=True),
+        sa.Column('is_active', sa.Boolean(), nullable=False, server_default='true'),
+        sa.Column('is_system', sa.Boolean(), nullable=False, server_default='false'),
+        sa.Column('created_at', sa.DateTime(timezone=True), nullable=False, server_default=text('now()')),
+    )
+
+    # ============================================================================
+    # 18. SEED SEMANTIC ROLE TYPES
+    # ============================================================================
+    # 16 semantic roles for hypergraph model
+    semantic_roles = [
+        # Core roles
+        ('agent', '{"en": "Agent", "fr": "Agent"}', 'Entity performing action or causing effect', 'core', 'duloxetine (agent) treats fibromyalgia'),
+        ('target', '{"en": "Target", "fr": "Cible"}', 'Entity receiving action or being affected', 'core', 'fibromyalgia (target) in duloxetine treats fibromyalgia'),
+        ('outcome', '{"en": "Outcome", "fr": "Résultat"}', 'Result or effect produced', 'core', 'pain-relief (outcome) produced by treatment'),
+        ('mechanism', '{"en": "Mechanism", "fr": "Mécanisme"}', 'Biological mechanism involved', 'core', 'serotonin-reuptake (mechanism) of duloxetine'),
+        ('population', '{"en": "Population", "fr": "Population"}', 'Patient population or demographic group', 'core', 'adults, women, elderly'),
+        ('condition', '{"en": "Condition", "fr": "Condition"}', 'Clinical condition or context', 'core', 'chronic-pain, depression'),
+        # Measurement roles
+        ('measured_by', '{"en": "Measured By", "fr": "Mesuré Par"}', 'Assessment tool or instrument', 'measurement', 'VAS, MoCA as measurement tools'),
+        ('biomarker', '{"en": "Biomarker", "fr": "Biomarqueur"}', 'Diagnostic or prognostic marker', 'measurement', 'CRP, miRNA as biomarkers'),
+        ('control_group', '{"en": "Control Group", "fr": "Groupe Témoin"}', 'Comparison group in study', 'measurement', 'healthy-controls, placebo'),
+        ('study_group', '{"en": "Study Group", "fr": "Groupe Étude"}', 'Experimental or patient group', 'measurement', 'fibromyalgia-patients'),
+        # Contextual roles
+        ('location', '{"en": "Location", "fr": "Localisation"}', 'Anatomical location', 'contextual', 'brain, joints, muscles'),
+        ('dosage', '{"en": "Dosage", "fr": "Dosage"}', 'Dose or quantity', 'contextual', '60mg-daily, 100mg-bid'),
+        ('duration', '{"en": "Duration", "fr": "Durée"}', 'Time period or duration', 'contextual', '12-weeks, 6-months'),
+        ('frequency', '{"en": "Frequency", "fr": "Fréquence"}', 'How often or frequency', 'contextual', 'daily, weekly'),
+        ('severity', '{"en": "Severity", "fr": "Sévérité"}', 'Intensity or severity level', 'contextual', 'mild, moderate, severe'),
+        ('effect_size', '{"en": "Effect Size", "fr": "Taille Effet"}', 'Magnitude of effect', 'contextual', '25-percent-reduction'),
+    ]
+
+    for role_type, label, description, category, examples in semantic_roles:
+        examples_sql = f"'{examples}'" if examples else 'NULL'
+        op.execute(f"""
+            INSERT INTO semantic_role_types (role_type, label, description, category, examples, is_active, is_system)
+            VALUES (
+                '{role_type}',
+                '{label}',
+                '{description}',
+                '{category}',
+                {examples_sql},
+                true,
+                true
+            )
+        """)
+
 
 def downgrade() -> None:
     """
@@ -388,6 +444,7 @@ def downgrade() -> None:
     """
     # Drop tables in reverse order (respecting foreign keys)
     op.drop_table('computed_relations')
+    op.drop_table('semantic_role_types')
     op.drop_table('relation_types')
     op.drop_table('relation_role_revisions')
     op.drop_table('relation_revisions')
