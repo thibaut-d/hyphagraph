@@ -139,13 +139,25 @@ Text to analyze:
 {text}
 
 For each relation, provide:
-- subject_slug: The entity that is the subject of the relation
 - relation_type: The type of relation (MUST be from the exact list below)
-- object_slug: The entity that is the object of the relation
-- roles: Additional context about the relation (optional)
+- roles: Array of entities with their semantic roles (CRITICAL - see semantic roles below)
 - confidence: Your confidence in this relation (high, medium, low)
 - text_span: The exact text that states this relation
 - notes: Any important caveats, conditions, or context
+
+SEMANTIC ROLES (use these instead of subject/object):
+- agent: Entity performing action (drug, treatment)
+- target: Entity being treated/affected (disease, symptom)
+- outcome: Result produced (pain-relief, mortality-reduction)
+- mechanism: Biological mechanism (serotonin-reuptake, cox-inhibition)
+- population: Patient group (adults, women, elderly)
+- condition: Clinical context (chronic-pain, depression)
+- biomarker: Diagnostic marker (crp, mirna-223-3p)
+- measured_by: Assessment tool (vas, moca)
+- control_group: Comparison group (healthy-controls, placebo)
+- dosage: Dose (60mg-daily, 100mg-bid)
+- duration: Time period (12-weeks, 6-months)
+- location: Anatomical site (brain, joints)
 
 CRITICAL: relation_type MUST be EXACTLY one of these values (no variations):
 - treats: Drug/treatment treats disease/symptom
@@ -375,28 +387,34 @@ Respond with JSON containing three arrays:
   ],
   "relations": [
     {{
-      "subject_slug": "duloxetine",
       "relation_type": "treats",
-      "object_slug": "fibromyalgia",
-      "roles": {{"dosage": "60mg daily"}},
+      "roles": [
+        {{"entity_slug": "duloxetine", "role_type": "agent"}},
+        {{"entity_slug": "fibromyalgia", "role_type": "target"}},
+        {{"entity_slug": "adults", "role_type": "population"}},
+        {{"entity_slug": "60mg-daily", "role_type": "dosage"}}
+      ],
       "confidence": "high",
-      "text_span": "duloxetine 60mg daily is effective for fibromyalgia",
+      "text_span": "duloxetine 60mg daily is effective for fibromyalgia in adults",
       "notes": "FDA approved indication"
     }},
     {{
-      "subject_slug": "aspirin",
-      "relation_type": "decreases_risk",
-      "object_slug": "myocardial-infarction",
-      "roles": {{"dosage": "low-dose daily"}},
+      "relation_type": "biomarker_for",
+      "roles": [
+        {{"entity_slug": "mirna-223-3p", "role_type": "biomarker"}},
+        {{"entity_slug": "fibromyalgia", "role_type": "target"}},
+        {{"entity_slug": "women", "role_type": "population"}}
+      ],
       "confidence": "high",
-      "text_span": "daily aspirin therapy reduces heart attack risk",
-      "notes": "Evidence from clinical trials"
+      "text_span": "miRNA-223-3p levels correlate with pain severity in women with fibromyalgia",
+      "notes": "Potential diagnostic biomarker"
     }},
     {{
-      "subject_slug": "duloxetine",
       "relation_type": "mechanism",
-      "object_slug": "serotonin-reuptake-inhibition",
-      "roles": {{}},
+      "roles": [
+        {{"entity_slug": "duloxetine", "role_type": "agent"}},
+        {{"entity_slug": "serotonin-reuptake-inhibition", "role_type": "mechanism"}}
+      ],
       "confidence": "high",
       "text_span": "duloxetine inhibits serotonin and norepinephrine reuptake",
       "notes": "SNRI mechanism of action"
