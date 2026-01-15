@@ -20,7 +20,7 @@ class SemanticRoleService:
     async def get_all_active(self) -> list[dict]:
         """Get all active semantic role types."""
         stmt = text("""
-            SELECT role_type, label, description, category, examples
+            SELECT role_type, label::text, description, category, examples
             FROM semantic_role_types
             WHERE is_active = true
             ORDER BY category, role_type
@@ -30,9 +30,18 @@ class SemanticRoleService:
         roles = []
 
         for row in result:
+            # Parse label JSON safely
+            label = row[1]
+            if isinstance(label, str):
+                try:
+                    label = json_module.loads(label)
+                except json_module.JSONDecodeError:
+                    # If parsing fails, use the raw string
+                    label = {'en': label}
+
             roles.append({
                 'role_type': row[0],
-                'label': json_module.loads(row[1]) if isinstance(row[1], str) else row[1],
+                'label': label,
                 'description': row[2],
                 'category': row[3],
                 'examples': row[4]

@@ -1,0 +1,1375 @@
+# HyphaGraph Data for TypeDB
+# Generated from PostgreSQL database
+
+# ============================================================================
+# Entities
+# ============================================================================
+
+insert
+$e isa entity-node,
+    has slug "fibromyalgia",
+    has summary "Fibromyalgia is a chronic disorder characterized by widespread musculoskeletal pain, fatigue, and tenderness.",
+    has entity-id "de334806-3edc-40c3-8b82-8e4c05f29481";
+
+insert
+$e isa entity-node,
+    has slug "axial-spondyloarthritis",
+    has summary "Axial spondyloarthritis (axSpA) is a form of inflammatory arthritis that primarily affects the spine and the sacroiliac joints.",
+    has entity-id "ebd3b072-e219-4a0a-ab99-81a328ef7541";
+
+insert
+$e isa entity-node,
+    has slug "central-sensitization",
+    has summary "Central sensitization (CS) refers to an increased sensitivity of the central nervous system to stimulation.",
+    has entity-id "67d05ea8-a467-4534-897a-9f8084df2b48";
+
+insert
+$e isa entity-node,
+    has slug "pain-catastrophizing",
+    has summary "Pain catastrophizing (PC) is a psychological condition characterized by an exaggerated negative response to anticipated or actual pain.",
+    has entity-id "e3bad690-3578-4e9a-8674-f2dd10c857b9";
+
+insert
+$e isa entity-node,
+    has slug "sleep-disturbance",
+    has summary "Sleep disturbance refers to difficulties in sleeping, which can include insomnia or disrupted sleep patterns.",
+    has entity-id "1ee141f7-698b-484e-b80b-5e1c473efae9";
+
+insert
+$e isa entity-node,
+    has slug "tnf-inhibitors",
+    has summary "TNF inhibitors are a class of medications that block tumor necrosis factor, a substance in the body that causes inflammation.",
+    has entity-id "a0dd8b8a-5cfd-4b41-b665-6122724355c7";
+
+insert
+$e isa entity-node,
+    has slug "pain-modulating-therapy",
+    has summary "Pain-modulating therapy refers to treatments aimed at reducing pain perception and improving pain management.",
+    has entity-id "d1749530-d0c7-4996-8180-39a8d9dfc04c";
+
+insert
+$e isa entity-node,
+    has slug "disease-activity",
+    has summary "Disease activity refers to the current state of a disease, including the severity and extent of symptoms.",
+    has entity-id "b9564343-2c92-4881-99a4-9013158d9cc8";
+
+insert
+$e isa entity-node,
+    has slug "quality-of-life",
+    has summary "Quality of life refers to the general well-being of individuals and societies, encompassing negative and positive features of life.",
+    has entity-id "16b48b93-7662-454d-b6b1-83da9a5a5835";
+
+insert
+$e isa entity-node,
+    has slug "demographics",
+    has summary "Demographics refer to statistical data relating to the population and particular groups within it.",
+    has entity-id "2ce8b7ee-5f81-4d19-a070-8b7dcdd7a50a";
+
+insert
+$e isa entity-node,
+    has slug "statistical-analyses",
+    has summary "Statistical analyses involve the collection and interpretation of data to uncover patterns and relationships.",
+    has entity-id "348a1fd5-3a11-4cb8-aef5-b5343f5f2e95";
+
+insert
+$e isa entity-node,
+    has slug "postural-tachycardia-syndrome",
+    has summary "Postural Tachycardia Syndrome (POTS) is a condition characterized by an abnormal increase in heart rate when transitioning to an upright position.",
+    has entity-id "e71e9376-36d6-421d-abc2-0b25b72bad4a";
+
+insert
+$e isa entity-node,
+    has slug "central-sensitization-syndrome",
+    has summary "Central Sensitization Syndrome (CSS) is a condition where the central nervous system becomes sensitized to stimuli, leading to increased pain perception.",
+    has entity-id "04080cde-98b5-47ec-b5fc-3446e3aa0485";
+
+insert
+$e isa entity-node,
+    has slug "anxiety",
+    has summary "Anxiety is a mental health disorder characterized by feelings of worry, anxiety, or fear that are strong enough to interfere with one\'s daily activities.",
+    has entity-id "d981c303-496b-48ae-9af5-7279464bff05";
+
+insert
+$e isa entity-node,
+    has slug "depression",
+    has summary "Depression is a mood disorder that causes a persistent feeling of sadness and loss of interest.",
+    has entity-id "d0e8c8d5-d181-463d-b40a-44fb9432eb75";
+
+insert
+$e isa entity-node,
+    has slug "irritable-bowel-syndrome",
+    has summary "Irritable Bowel Syndrome (IBS) is a common disorder affecting the large intestine, causing cramping, abdominal pain, bloating, gas, and diarrhea or constipation.",
+    has entity-id "ac7c270b-03a9-4ad9-9b3f-d6f60a3b44a2";
+
+insert
+$e isa entity-node,
+    has slug "headaches",
+    has summary "Headaches are a common condition characterized by pain in the head, scalp, or neck.",
+    has entity-id "d96f59bf-830d-4a30-b52c-fad42c4bbd20";
+
+insert
+$e isa entity-node,
+    has slug "antihistamine-medication",
+    has summary "Antihistamines are drugs that counteract the effects of histamine in the body, commonly used to treat allergies.",
+    has entity-id "11873679-cebd-44b0-99dc-79931f6bde2b";
+
+insert
+$e isa entity-node,
+    has slug "psychiatric-medication",
+    has summary "Psychiatric medications are drugs used to treat mental health disorders.",
+    has entity-id "ee8c7cc1-aff4-4b6f-ba4b-0f06e0a171ea";
+
+insert
+$e isa entity-node,
+    has slug "pain-medication",
+    has summary "Pain medications are drugs used to relieve pain.",
+    has entity-id "9be13ac8-db3d-47ab-a13b-b0cd4da9926f";
+
+insert
+$e isa entity-node,
+    has slug "gastrointestinal-medication",
+    has summary "Gastrointestinal medications are drugs used to treat conditions affecting the digestive system.",
+    has entity-id "a0379dca-ef84-48dd-8b4c-f96a34aae7d4";
+
+insert
+$e isa entity-node,
+    has slug "compass-31",
+    has summary "COMPASS-31 is a questionnaire used to assess autonomic symptoms.",
+    has entity-id "dafc5e4a-cb6a-4cb9-817d-73f344b2f3db";
+
+insert
+$e isa entity-node,
+    has slug "ntss-6",
+    has summary "Neuropathy Total Symptom Score-6 (NTSS-6) is a measure used to assess sensory symptoms related to neuropathy.",
+    has entity-id "33652f23-0640-4542-9aba-b2057a8039e1";
+
+insert
+$e isa entity-node,
+    has slug "promis",
+    has summary "PROMIS is a set of person-centered measures that evaluates physical, mental, and social health.",
+    has entity-id "1643bec5-e07d-49c4-b219-3e62e141274d";
+
+insert
+$e isa entity-node,
+    has slug "chronic-pain",
+    has summary "Chronic pain is a complex condition characterized by persistent pain lasting longer than expected.",
+    has entity-id "0e796ad9-3869-4b37-9534-124c9d2edd03";
+
+insert
+$e isa entity-node,
+    has slug "oral-microbiome",
+    has summary "The oral microbiome consists of the community of microorganisms residing in the oral cavity.",
+    has entity-id "c7cb2037-dd0f-4e8a-9ce0-f24b951d2faa";
+
+insert
+$e isa entity-node,
+    has slug "gut-microbiome",
+    has summary "The gut microbiome refers to the complex community of microorganisms living in the gastrointestinal tract.",
+    has entity-id "4c8a312c-f421-498a-914b-58d32b689ecf";
+
+insert
+$e isa entity-node,
+    has slug "short-chain-fatty-acids",
+    has summary "Short-chain fatty acids (SCFAs) are fatty acids with fewer than six carbon atoms, produced by gut bacteria.",
+    has entity-id "944ec6f6-ab88-4fcb-bee0-446864afe7c2";
+
+insert
+$e isa entity-node,
+    has slug "pro-inflammatory-species",
+    has summary "Pro-inflammatory species are microorganisms that promote inflammation in the body.",
+    has entity-id "2e2657a8-83a1-424b-8823-c663d812a663";
+
+insert
+$e isa entity-node,
+    has slug "neuroinflammation",
+    has summary "Neuroinflammation is the inflammation of nervous tissue, often associated with chronic pain.",
+    has entity-id "a3089ecf-08c3-46c9-b46a-f5662beb08f8";
+
+insert
+$e isa entity-node,
+    has slug "peripheral-sensitization",
+    has summary "Peripheral sensitization is an increased sensitivity to pain at the site of injury or inflammation.",
+    has entity-id "69331313-eedd-436c-bedc-f3a97f06249c";
+
+insert
+$e isa entity-node,
+    has slug "dietary-modulation",
+    has summary "Dietary modulation refers to changes in diet aimed at influencing health outcomes.",
+    has entity-id "4c9b9866-d4df-4b01-9bcd-f8c177f40b82";
+
+insert
+$e isa entity-node,
+    has slug "lifestyle-measures",
+    has summary "Lifestyle measures include practices such as sleep, physical activity, and stress management.",
+    has entity-id "53f64f49-b1db-4a70-b42d-f3e09a987242";
+
+insert
+$e isa entity-node,
+    has slug "oral-hygiene",
+    has summary "Oral hygiene refers to practices that maintain the health of the mouth and teeth.",
+    has entity-id "6584c172-2c2b-44b0-9060-13b5edc6ca0e";
+
+insert
+$e isa entity-node,
+    has slug "jak-inhibitors",
+    has summary "JAK inhibitors are a class of medications that inhibit Janus kinase pathways, used in the treatment of autoimmune diseases.",
+    has entity-id "99ed7f4e-048f-4107-a36e-f825969f4c76";
+
+insert
+$e isa entity-node,
+    has slug "rheumatoid-arthritis",
+    has summary "Rheumatoid arthritis is a chronic inflammatory disorder affecting joints, characterized by pain and swelling.",
+    has entity-id "88eacf5f-1053-4504-a9e3-2446b8ab0a79";
+
+insert
+$e isa entity-node,
+    has slug "clinical-remission",
+    has summary "Clinical remission refers to the absence of disease activity in patients.",
+    has entity-id "122e052e-09b1-4d72-bff7-45ef17302805";
+
+insert
+$e isa entity-node,
+    has slug "ultrasound-remission",
+    has summary "Ultrasound remission indicates no detectable inflammation in joints as assessed by ultrasound imaging.",
+    has entity-id "75e01a7a-a271-4f30-9a19-ca8393334b99";
+
+insert
+$e isa entity-node,
+    has slug "pregabalin",
+    has summary "Pregabalin is a gabapentinoid that inhibits calcium influx into neurons.",
+    has entity-id "b6524b32-cac7-4db5-87bc-e39edcb028e7";
+
+insert
+$e isa entity-node,
+    has slug "neuropathic-pain",
+    has summary "Neuropathic pain is a chronic pain condition caused by nerve damage.",
+    has entity-id "0bc63ebc-5bf5-4e84-85e2-895076d413c2";
+
+insert
+$e isa entity-node,
+    has slug "partial-onset-seizures",
+    has summary "Partial-onset seizures are seizures that originate in a specific area of the brain.",
+    has entity-id "917681d4-5df9-462a-ad36-946ec20d1a4d";
+
+insert
+$e isa entity-node,
+    has slug "generalized-anxiety-disorder",
+    has summary "Generalized anxiety disorder is characterized by excessive anxiety and worry.",
+    has entity-id "c9aa50c0-1ae4-4604-8d61-9ab898a30fdc";
+
+insert
+$e isa entity-node,
+    has slug "alcohol-use-disorder",
+    has summary "Alcohol use disorder is a medical condition characterized by an inability to control alcohol consumption.",
+    has entity-id "62b62104-4d7f-4b4a-b7e2-46a63205cf56";
+
+insert
+$e isa entity-node,
+    has slug "pruritus",
+    has summary "Pruritus is an uncomfortable sensation that leads to the urge to scratch.",
+    has entity-id "768c4c7c-cfb1-459e-987f-7d569aba7438";
+
+insert
+$e isa entity-node,
+    has slug "restless-legs-syndrome",
+    has summary "Restless legs syndrome is a condition characterized by an uncontrollable urge to move the legs.",
+    has entity-id "52ee2bb1-90aa-4101-9489-69a139125533";
+
+insert
+$e isa entity-node,
+    has slug "sleep-disorders",
+    has summary "Sleep disorders are conditions that affect the quality, timing, and duration of sleep.",
+    has entity-id "82ecc0ee-e50a-4945-8fba-7f2d411d56cf";
+
+insert
+$e isa entity-node,
+    has slug "major-congenital-malformations",
+    has summary "Major congenital malformations are structural abnormalities present at birth.",
+    has entity-id "caabac7f-62f3-45ed-9fc0-42c232e6b0fc";
+
+insert
+$e isa entity-node,
+    has slug "stillbirth",
+    has summary "Stillbirth is the loss of a baby at or after 20 weeks of pregnancy.",
+    has entity-id "bcef323e-05b1-49bb-8854-067edd376320";
+
+insert
+$e isa entity-node,
+    has slug "low-birth-weight",
+    has summary "Low birth weight is defined as a birth weight of less than 2,500 grams.",
+    has entity-id "51fb096f-9b52-4f89-8614-88c64a183c2a";
+
+insert
+$e isa entity-node,
+    has slug "preterm-birth",
+    has summary "Preterm birth is defined as birth that occurs before 37 weeks of pregnancy.",
+    has entity-id "1642b558-1017-456b-b687-2ec66cb0a3ef";
+
+insert
+$e isa entity-node,
+    has slug "small-for-gestational-age",
+    has summary "Small for gestational age refers to a baby whose weight is below the 10th percentile for their gestational age.",
+    has entity-id "5c62e439-deab-4e79-8b24-3cd4b2c1fa5b";
+
+insert
+$e isa entity-node,
+    has slug "low-apgar-score",
+    has summary "A low Apgar score indicates a newborn\'s health status immediately after birth.",
+    has entity-id "86274124-2e28-4e2f-adbb-0afb21985efd";
+
+insert
+$e isa entity-node,
+    has slug "microcephaly",
+    has summary "Microcephaly is a medical condition where a baby\'s head is significantly smaller than expected.",
+    has entity-id "0ca16826-0496-496a-9237-91c6b29e7ee8";
+
+insert
+$e isa entity-node,
+    has slug "attention-deficit-hyperactivity-disorder",
+    has summary "Attention-deficit/hyperactivity disorder is a neurodevelopmental disorder characterized by inattention and hyperactivity.",
+    has entity-id "57ff21d8-709b-4b15-a14d-e0ab1b1f5d03";
+
+insert
+$e isa entity-node,
+    has slug "autism-spectrum-disorder",
+    has summary "Autism spectrum disorder is a developmental disorder that affects communication and behavior.",
+    has entity-id "be091b16-1e23-46b0-9118-65945deab367";
+
+insert
+$e isa entity-node,
+    has slug "intellectual-disability",
+    has summary "Intellectual disability is characterized by limitations in intellectual functioning and adaptive behavior.",
+    has entity-id "1194244a-64ee-460e-b28e-6a1680c6708c";
+
+insert
+$e isa entity-node,
+    has slug "cyclobenzaprine",
+    has summary "Cyclobenzaprine is a muscle relaxant used to relieve muscle spasms.",
+    has entity-id "30187714-718e-4363-83a3-930e70293cb2";
+
+insert
+$e isa entity-node,
+    has slug "chronic-low-back-pain",
+    has summary "Chronic low back pain (CLBP) is a persistent pain condition affecting the lower back.",
+    has entity-id "44041f0d-9fbe-456a-a3dd-d662adcd1513";
+
+insert
+$e isa entity-node,
+    has slug "nociplastic-pain",
+    has summary "Nociplastic pain is characterized by altered central nervous system processing and widespread pain.",
+    has entity-id "7dcbf1f0-7176-465d-bfc3-50a397432bb0";
+
+insert
+$e isa entity-node,
+    has slug "veterans",
+    has summary "Veterans are individuals who have served in the military.",
+    has entity-id "45b1dcb0-e643-4f10-a658-a030e93990f1";
+
+insert
+$e isa entity-node,
+    has slug "pain-intensity",
+    has summary "Pain intensity refers to the severity of pain experienced by an individual.",
+    has entity-id "cababacc-3d02-4fe7-b5e4-f73d376cadd1";
+
+insert
+$e isa entity-node,
+    has slug "physical-function",
+    has summary "Physical function refers to the ability to perform physical activities and tasks.",
+    has entity-id "f582749b-18c0-4533-8c3c-2847c5d83b93";
+
+insert
+$e isa entity-node,
+    has slug "psychological-function",
+    has summary "Psychological function refers to mental health and cognitive abilities.",
+    has entity-id "37684b1a-51b7-4fba-9413-100515dee31e";
+
+insert
+$e isa entity-node,
+    has slug "health-survey",
+    has summary "The Veterans RAND 12-Item Health Survey (VR-12) is a tool used to assess health-related quality of life.",
+    has entity-id "eb52c1f4-cf63-4f29-b8f4-f645ccc83b78";
+
+insert
+$e isa entity-node,
+    has slug "sarcopenia",
+    has summary "Sarcopenia is the loss of muscle mass and strength associated with aging.",
+    has entity-id "9a5c226f-133f-4cf1-aec4-b06cb86b2b64";
+
+insert
+$e isa entity-node,
+    has slug "sarc-f",
+    has summary "SARC-F is a screening tool for sarcopenia that assesses strength, assistance with walking, rise from a chair, climb stairs, and falls.",
+    has entity-id "4b3113d4-bdc7-4dd5-a46c-89e9eec70b81";
+
+insert
+$e isa entity-node,
+    has slug "pain",
+    has summary "Pain is a symptom commonly associated with fibromyalgia syndrome.",
+    has entity-id "6eb9cf10-6c86-464d-a422-788a2180f60c";
+
+insert
+$e isa entity-node,
+    has slug "fatigue",
+    has summary "Fatigue is a symptom commonly associated with fibromyalgia syndrome.",
+    has entity-id "a114b43a-b3ac-413a-9146-cb722d19c7e7";
+
+insert
+$e isa entity-node,
+    has slug "mirna-223-3p",
+    has summary "miRNA-223-3p is a microRNA proposed to play a role in the pathogenesis of fibromyalgia syndrome.",
+    has entity-id "a08d4ffc-252e-457c-8c1d-bec5b8d94c2d";
+
+insert
+$e isa entity-node,
+    has slug "visual-analog-scale",
+    has summary "The Visual Analog Scale (VAS) is a method used to assess pain intensity.",
+    has entity-id "772eac3d-01d0-4096-9fa9-1117f3b26ba6";
+
+insert
+$e isa entity-node,
+    has slug "interleukin-1-beta",
+    has summary "Interleukin-1 beta (IL-1β) is a cytokine measured to understand the inflammatory response in fibromyalgia syndrome.",
+    has entity-id "ccaf5c22-2e9d-468b-a090-768adfd6b41b";
+
+insert
+$e isa entity-node,
+    has slug "healthy-controls",
+    has summary "Healthy controls are individuals without fibromyalgia syndrome used for comparison in studies.",
+    has entity-id "2fcea397-8042-4a55-848f-f9149cdd2484";
+
+insert
+$e isa entity-node,
+    has slug "monocyte-to-lymphocyte-ratio",
+    has summary "Monocyte-to-Lymphocyte Ratio is a biomarker that may indicate inflammation or immune response.",
+    has entity-id "7564778e-9b24-412d-801c-af05986a4213";
+
+insert
+$e isa entity-node,
+    has slug "platelet-to-lymphocyte-ratio",
+    has summary "Platelet-to-Lymphocyte Ratio is a biomarker associated with inflammation and disease activity.",
+    has entity-id "3fc2af07-64cf-486a-9d53-8068eae0a68c";
+
+insert
+$e isa entity-node,
+    has slug "sensorimotor-network",
+    has summary "The sensorimotor network is involved in the integration of sensory and motor functions.",
+    has entity-id "70860926-4f14-4363-b161-0cdc65ffc4fd";
+
+insert
+$e isa entity-node,
+    has slug "mri",
+    has summary "Magnetic resonance imaging is a medical imaging technique used to visualize internal structures.",
+    has entity-id "92ad7fe3-6e58-4986-b158-ecd2681fe9e9";
+
+insert
+$e isa entity-node,
+    has slug "mcgill-pain-questionnaire",
+    has summary "The McGill Pain Questionnaire is a tool used to assess the sensory dimension of pain.",
+    has entity-id "436378f4-f1d5-47be-9603-d4ae2dc91436";
+
+insert
+$e isa entity-node,
+    has slug "functional-connectivity",
+    has summary "Functional connectivity refers to the temporal correlation between spatially remote neurophysiological events.",
+    has entity-id "1985c847-de1c-4581-bcf2-541150285cf0";
+
+insert
+$e isa entity-node,
+    has slug "pain-amplification",
+    has summary "Pain amplification refers to the increased perception of pain intensity.",
+    has entity-id "67ef730d-385d-4fa1-9ba9-ba0350ad8013";
+
+insert
+$e isa entity-node,
+    has slug "cognitive-impairments",
+    has summary "Cognitive impairments refer to deficits in cognitive function, including memory and attention.",
+    has entity-id "8bd6b549-3df0-4ddd-82b4-d35b60775ded";
+
+insert
+$e isa entity-node,
+    has slug "hypersensitivity",
+    has summary "Hypersensitivity refers to an increased sensitivity to stimuli, often resulting in pain.",
+    has entity-id "51de64a7-a97d-4d4c-933a-da0d4d7f7ec0";
+
+insert
+$e isa entity-node,
+    has slug "age-matched-controls",
+    has summary "Age-matched controls are individuals in a study who are similar in age to the experimental group.",
+    has entity-id "71ea3dae-5e83-4cbe-b3bd-88ced7929084";
+
+insert
+$e isa entity-node,
+    has slug "psoriatic-arthritis",
+    has summary "Psoriatic arthritis is a chronic inflammatory arthritis associated with psoriasis.",
+    has entity-id "30d8de5b-077d-4842-b072-ea7e65a45c39";
+
+insert
+$e isa entity-node,
+    has slug "psaid",
+    has summary "The Psoriatic Arthritis Impact of Disease (PsAID) questionnaire assesses the impact of psoriatic arthritis on patients\' quality of life.",
+    has entity-id "7aa9263e-54b3-4acc-8dec-79dc17ca652b";
+
+insert
+$e isa entity-node,
+    has slug "dapsa",
+    has summary "The Disease Activity in Psoriatic Arthritis (DAPSA) score is a measure used to assess disease activity in psoriatic arthritis.",
+    has entity-id "0f113639-5312-4dad-9f6e-c6dad31ab2cb";
+
+insert
+$e isa entity-node,
+    has slug "patient-global-assessment",
+    has summary "The Patient Global Assessment (PGA) is a psychometric score used to evaluate patients\' overall health status.",
+    has entity-id "978fb21e-8277-4f00-b782-9895074d0fff";
+
+insert
+$e isa entity-node,
+    has slug "health-assessment-questionnaire",
+    has summary "The Health Assessment Questionnaire (HAQ) measures the functional ability of patients.",
+    has entity-id "9adf9c64-c1ac-42e6-beea-86f86828a060";
+
+insert
+$e isa entity-node,
+    has slug "patient-health-questionnaire",
+    has summary "The Patient Health Questionnaire (PHQ-4) is a screening tool for depression and anxiety.",
+    has entity-id "fe40342a-add1-4778-951e-658c946b8908";
+
+insert
+$e isa entity-node,
+    has slug "fibromyalgia-screening-tool",
+    has summary "The Fibromyalgia Screening Tool (FiRST) is used to identify fibromyalgia in patients.",
+    has entity-id "f5f50f98-03f3-4d56-b873-8ddc44fabb7f";
+
+insert
+$e isa entity-node,
+    has slug "arab-population",
+    has summary "The study involved patients from 13 Arab countries.",
+    has entity-id "e565dd52-f1be-4184-8783-22f988c56140";
+
+insert
+$e isa entity-node,
+    has slug "sickle-cell-disease",
+    has summary "Sickle cell disease (SCD) is a genetic hematologic disorder characterized by the production of abnormal hemoglobin, leading to various complications.",
+    has entity-id "c0843c01-4e46-46b5-866b-8877768e2a3d";
+
+insert
+$e isa entity-node,
+    has slug "kinesiophobia",
+    has summary "Kinesiophobia is the fear of movement, which can significantly impact patients\' quality of life.",
+    has entity-id "2a9727cc-0f4c-44ab-8f06-564e8f5edd5a";
+
+insert
+$e isa entity-node,
+    has slug "african-americans",
+    has summary "African Americans are a racial and ethnic group in the United States, significantly affected by sickle cell disease.",
+    has entity-id "e6874886-6890-4792-9aeb-b9fb15da0878";
+
+insert
+$e isa entity-node,
+    has slug "tampa-scale-for-kinesiophobia",
+    has summary "The Tampa Scale for Kinesiophobia (TSK) is an assessment tool used to measure fear of movement.",
+    has entity-id "3d206697-87cd-460b-9249-37da118e5c78";
+
+insert
+$e isa entity-node,
+    has slug "beck-depression-inventory",
+    has summary "The Beck Depression Inventory (BDI) is a widely used questionnaire for assessing the severity of depression.",
+    has entity-id "674cea76-5420-40d3-98b2-98f7c29fe721";
+
+insert
+$e isa entity-node,
+    has slug "center-for-epidemiologic-studies-depression-scale-revised",
+    has summary "The Center for Epidemiologic Studies Depression Scale-Revised (CESD-r) is a tool for measuring depressive symptoms.",
+    has entity-id "6db71871-e65d-4390-a83b-48989d574ee9";
+
+insert
+$e isa entity-node,
+    has slug "psychomotor-retardation",
+    has summary "Psychomotor retardation is a slowing of thought and movement, often associated with depression.",
+    has entity-id "4e25b140-1949-412a-804f-0dcdcb5f00b7";
+
+insert
+$e isa entity-node,
+    has slug "somatization",
+    has summary "Somatization is the expression of psychological distress through physical symptoms.",
+    has entity-id "2023d918-f9a7-4709-93a8-3636bfbebb24";
+
+insert
+$e isa entity-node,
+    has slug "electroacupuncture",
+    has summary "Electroacupuncture is a form of acupuncture that uses electrical stimulation.",
+    has entity-id "743ed615-7233-4ba9-99ac-6fcd522ca479";
+
+insert
+$e isa entity-node,
+    has slug "sham-treatment",
+    has summary "Sham treatment refers to a placebo intervention that mimics the real treatment without active components.",
+    has entity-id "2632ea1e-90eb-4b2f-811a-b13959fd6622";
+
+insert
+$e isa entity-node,
+    has slug "pressure-pain-tolerance",
+    has summary "Pressure-pain tolerance is the maximum pressure that a person can withstand before feeling pain.",
+    has entity-id "7bca295b-313e-4a09-898c-a7f28fab38ad";
+
+insert
+$e isa entity-node,
+    has slug "widespread-pain",
+    has summary "Widespread pain refers to pain that occurs in multiple areas of the body.",
+    has entity-id "7dd31a0e-d1d5-4265-8a33-d8eef2288a02";
+
+insert
+$e isa entity-node,
+    has slug "primary-somatosensory-cortex",
+    has summary "The primary somatosensory cortex is a brain region responsible for processing sensory information from the body.",
+    has entity-id "0de4bc23-d7b6-4233-a2a2-1e94d27aebd2";
+
+insert
+$e isa entity-node,
+    has slug "insular-regions",
+    has summary "Insular regions refer to areas of the brain involved in interoceptive awareness and emotional processing.",
+    has entity-id "56dd2560-2647-4056-bcda-5681e46afe21";
+
+insert
+$e isa entity-node,
+    has slug "precuneus",
+    has summary "The precuneus is a region of the brain associated with self-awareness and aspects of consciousness.",
+    has entity-id "fa71f804-e276-4eec-994e-c83bb7d55e8b";
+
+insert
+$e isa entity-node,
+    has slug "duloxetine",
+    has summary "Duloxetine is an effective pharmacologic option for treating fibromyalgia.",
+    has entity-id "70593f67-3c57-43a2-a645-bf2f7e235871";
+
+insert
+$e isa entity-node,
+    has slug "milnacipran",
+    has summary "Milnacipran is an effective pharmacologic option for treating fibromyalgia.",
+    has entity-id "e2bbd8a0-f330-4d3b-8a07-e690d5f2ba5b";
+
+insert
+$e isa entity-node,
+    has slug "amitriptyline",
+    has summary "Amitriptyline is an effective pharmacologic option for treating fibromyalgia.",
+    has entity-id "f8a62fea-3abd-4a9c-820f-580d29abc4a7";
+
+insert
+$e isa entity-node,
+    has slug "sleep-disturbances",
+    has summary "Sleep disturbances are symptoms experienced by patients with fibromyalgia.",
+    has entity-id "5af5d6ba-1bcc-4d48-b189-c416489c3b98";
+
+insert
+$e isa entity-node,
+    has slug "mood-disturbances",
+    has summary "Mood disturbances are symptoms experienced by patients with fibromyalgia.",
+    has entity-id "df8f0d60-77d9-4001-9080-b2ab34726163";
+
+insert
+$e isa entity-node,
+    has slug "bipolar-ii-disorder",
+    has summary "Bipolar II disorder is a comorbidity present in the patient described.",
+    has entity-id "ba4f5f79-9c21-4534-b5d9-327721729e66";
+
+insert
+$e isa entity-node,
+    has slug "major-depressive-disorder",
+    has summary "Major depressive disorder is a comorbidity present in the patient described.",
+    has entity-id "9bb7d20f-d6f5-4990-bc55-ba8b1f0d4df5";
+
+insert
+$e isa entity-node,
+    has slug "post-traumatic-stress-disorder",
+    has summary "Post-traumatic stress disorder is a comorbidity present in the patient described.",
+    has entity-id "bcba1393-38e3-42ed-a38f-a92a945e3d26";
+
+insert
+$e isa entity-node,
+    has slug "cardiomyopathy",
+    has summary "Cardiomyopathy is a comorbidity present in the patient described.",
+    has entity-id "526516bf-a330-4455-a14b-565705da6d2d";
+
+insert
+$e isa entity-node,
+    has slug "chronic-kidney-disease-stage-3",
+    has summary "Stage 3 chronic kidney disease is a comorbidity present in the patient described.",
+    has entity-id "c5690edd-a4bd-43c9-8adc-bec3a4dc65af";
+
+insert
+$e isa entity-node,
+    has slug "hidradenitis-suppurativa",
+    has summary "Hidradenitis suppurativa is a comorbidity present in the patient described.",
+    has entity-id "c14bcbc1-8712-406d-816c-1de22a500499";
+
+insert
+$e isa entity-node,
+    has slug "melanoma",
+    has summary "Melanoma is a comorbidity present in the patient described.",
+    has entity-id "33bc3d9d-e88c-41c0-abc1-912b62aba40a";
+
+insert
+$e isa entity-node,
+    has slug "female-population",
+    has summary "Fibromyalgia predominantly affects women.",
+    has entity-id "5cdb65d2-82f9-4d10-8b2c-a85a2b12672b";
+
+insert
+$e isa entity-node,
+    has slug "function",
+    has summary "Function refers to the ability to perform daily activities and tasks.",
+    has entity-id "e1b4023b-0e0b-4a2d-a79d-27372c517201";
+
+insert
+$e isa entity-node,
+    has slug "stretching",
+    has summary "Stretching is a form of exercise that involves the elongation of muscles to improve flexibility.",
+    has entity-id "7ab98086-fe07-4884-8107-9e6d9b997c11";
+
+insert
+$e isa entity-node,
+    has slug "balance-training",
+    has summary "Balance training involves exercises that improve stability and coordination.",
+    has entity-id "a78dbf69-f523-4254-8440-3e733e34dfcc";
+
+insert
+$e isa entity-node,
+    has slug "aerobic-exercise",
+    has summary "Aerobic exercise (AE) is a form of physical activity that improves cardiovascular fitness and endurance.",
+    has entity-id "eca0219e-eace-4a43-af72-29b40c8c94f0";
+
+insert
+$e isa entity-node,
+    has slug "strength-training",
+    has summary "Strength training involves exercises designed to improve strength and endurance by working against resistance.",
+    has entity-id "aab7139a-b023-46ed-b3f4-94709538d489";
+
+insert
+$e isa entity-node,
+    has slug "whole-body-vibration",
+    has summary "Whole-body vibration (WBV) is a form of exercise that involves standing on a vibrating platform to enhance muscle strength and improve aerobic capacity.",
+    has entity-id "783db4c7-9dbe-4383-8a94-113b5c2a3d44";
+
+insert
+$e isa entity-node,
+    has slug "tender-points",
+    has summary "Tender points are specific areas on the body that are painful when pressure is applied, commonly assessed in fibromyalgia.",
+    has entity-id "6205db63-9058-4feb-b4c8-4f99aab99e45";
+
+insert
+$e isa entity-node,
+    has slug "aerobic-capacity",
+    has summary "Aerobic capacity is the maximum amount of oxygen the body can utilize during intense exercise, an indicator of cardiovascular fitness.",
+    has entity-id "6df38c39-6994-486f-961b-b39abb32effb";
+
+insert
+$e isa entity-node,
+    has slug "health-status",
+    has summary "Health status refers to the overall condition of an individual\'s physical and mental well-being.",
+    has entity-id "a79b80dc-85e2-4775-9a3c-8c9fe2f8c61b";
+
+insert
+$e isa entity-node,
+    has slug "tonmya",
+    has summary "Tonmya is a brand name for sublingual cyclobenzaprine.",
+    has entity-id "146b0e53-b06e-4f76-b024-4af9533d8aa7";
+
+insert
+$e isa entity-node,
+    has slug "gut-microbiota",
+    has summary "Gut microbiota refers to the community of microorganisms residing in the gastrointestinal tract.",
+    has entity-id "dffe8337-212f-438e-a786-cca50bc7d789";
+
+insert
+$e isa entity-node,
+    has slug "psychological-distress",
+    has summary "Psychological distress encompasses emotional, cognitive, and somatic symptoms of stress.",
+    has entity-id "3989edaf-b966-42bf-8435-c8c4c58dbfeb";
+
+insert
+$e isa entity-node,
+    has slug "intestinal-dysbiosis",
+    has summary "Intestinal dysbiosis refers to an imbalance in the gut microbial communities.",
+    has entity-id "5f4e559a-4753-4f63-bd1e-8f9dc9efcc58";
+
+insert
+$e isa entity-node,
+    has slug "gut-permeability",
+    has summary "Gut permeability refers to the ability of the intestinal barrier to allow substances to pass through.",
+    has entity-id "5088d22e-fd6b-4a52-b4ed-5475475fd9b0";
+
+insert
+$e isa entity-node,
+    has slug "il-1beta",
+    has summary "Interleukin-1 beta (IL-1β) is a cytokine measured to understand the inflammatory response in Fibromyalgia Syndrome.",
+    has entity-id "68f441b3-3508-45d9-a089-68f94df81d44";
+
+insert
+$e isa entity-node,
+    has slug "cognitive-behavioral-therapy",
+    has summary "Cognitive Behavioral Therapy (CBT) is a treatment approach for fibromyalgia.",
+    has entity-id "debc903f-e44f-45dd-9a3b-84a2da171ce5";
+
+insert
+$e isa entity-node,
+    has slug "chronic-widespread-pain",
+    has summary "Chronic widespread pain is a primary symptom of fibromyalgia.",
+    has entity-id "2e41cddb-d089-477e-ab53-d2402e8e95dc";
+
+insert
+$e isa entity-node,
+    has slug "female",
+    has summary "The patient described is a female in her late thirties.",
+    has entity-id "5daba0bd-8030-4e2c-b256-4d8401575709";
+
+insert
+$e isa entity-node,
+    has slug "chronic-kidney-disease",
+    has summary "Stage 3 chronic kidney disease is a comorbidity present in the patient described.",
+    has entity-id "5b1c36df-1573-4ce6-a874-776420d7899b";
+
+insert
+$e isa entity-node,
+    has slug "women",
+    has summary "Fibromyalgia predominantly affects women.",
+    has entity-id "9858c327-6258-4832-b952-956c52118a9f";
+
+insert
+$e isa entity-node,
+    has slug "respiratory-muscle-training",
+    has summary "Respiratory muscle training (RMT) is an intervention aimed at improving respiratory muscle strength and endurance.",
+    has entity-id "0ad593ef-3dfd-4537-ba94-6714037c0a0a";
+
+insert
+$e isa entity-node,
+    has slug "sleep-quality",
+    has summary "Sleep quality refers to the subjective quality of sleep, including aspects such as duration, depth, and restfulness.",
+    has entity-id "325076fa-1c5c-4ea7-8f42-5c17e0b6b881";
+
+insert
+$e isa entity-node,
+    has slug "maximal-occlusion-pressure",
+    has summary "Maximal occlusion pressure is a measure of respiratory muscle strength.",
+    has entity-id "297c7a21-4b3e-4bbe-a5d9-878706df50b6";
+
+# ============================================================================
+# Relations with Semantic Roles
+# ============================================================================
+
+insert
+$r (object: $e0, subject: $e1) isa treats,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "cyclobenzaprine";
+
+insert
+$r (subject: $e0, object: $e1) isa mechanism,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "sham-treatment";
+$e1 isa entity-node, has slug "precuneus";
+
+insert
+$r (subject: $e0, object: $e1) isa mechanism,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "electroacupuncture";
+$e1 isa entity-node, has slug "insular-regions";
+
+insert
+$r (subject: $e0, object: $e1) isa mechanism,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "electroacupuncture";
+$e1 isa entity-node, has slug "primary-somatosensory-cortex";
+
+insert
+$r (object: $e0, subject: $e1) isa treats,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "electroacupuncture";
+
+insert
+$r (object: $e0, subject: $e1) isa increases-risk,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "pressure-pain-tolerance";
+$e1 isa entity-node, has slug "widespread-pain";
+
+insert
+$r (subject: $e0, object: $e1) isa mechanism,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "sham-treatment";
+$e1 isa entity-node, has slug "precuneus";
+
+insert
+$r (subject: $e0, object: $e1) isa mechanism,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "electroacupuncture";
+$e1 isa entity-node, has slug "insular-regions";
+
+insert
+$r (subject: $e0, object: $e1) isa mechanism,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "electroacupuncture";
+$e1 isa entity-node, has slug "primary-somatosensory-cortex";
+
+insert
+$r (object: $e0, subject: $e1) isa treats,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "electroacupuncture";
+
+insert
+$r (object: $e0, subject: $e1) isa treats,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "whole-body-vibration";
+
+insert
+$r (object: $e0, subject: $e1) isa treats,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "aerobic-exercise";
+
+insert
+$r (object: $e0, subject: $e1) isa treats,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "aerobic-exercise";
+
+insert
+$r (object: $e0, subject: $e1) isa treats,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "stretching";
+
+insert
+$r (subject: $e0, object: $e1) isa increases-risk,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "sarcopenia";
+
+insert
+$r (object: $e0, subject: $e1) isa increases-risk,
+    has confidence 0.6;
+$e0 isa entity-node, has slug "pain";
+$e1 isa entity-node, has slug "platelet-to-lymphocyte-ratio";
+
+insert
+$r (object: $e0, subject: $e1) isa increases-risk,
+    has confidence 0.6;
+$e0 isa entity-node, has slug "pain";
+$e1 isa entity-node, has slug "monocyte-to-lymphocyte-ratio";
+
+insert
+$r (object: $e0, subject: $e1) isa biomarker-for,
+    has confidence 0.6;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "platelet-to-lymphocyte-ratio";
+
+insert
+$r (object: $e0, subject: $e1) isa biomarker-for,
+    has confidence 0.6;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "monocyte-to-lymphocyte-ratio";
+
+insert
+$r (subject: $e0, object: $e1) isa affects-population,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "female";
+
+insert
+$r (object: $e0, subject: $e1) isa treats,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "amitriptyline";
+
+insert
+$r (object: $e0, subject: $e1) isa treats,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "pregabalin";
+
+insert
+$r (object: $e0, subject: $e1) isa treats,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "milnacipran";
+
+insert
+$r (object: $e0, subject: $e1) isa treats,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "duloxetine";
+
+insert
+$r (subject: $e0, object: $e1) isa treats,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "whole-body-vibration";
+$e1 isa entity-node, has slug "aerobic-capacity";
+
+insert
+$r (object: $e0, subject: $e1) isa treats,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "pain-intensity";
+$e1 isa entity-node, has slug "aerobic-exercise";
+
+insert
+$r (object: $e0, subject: $e1) isa treats,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "aerobic-exercise";
+
+insert
+$r (object: $e0, subject: $e1) isa treats,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "stretching";
+
+insert
+$r (subject: $e0, object: $e1) isa mechanism,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "functional-connectivity";
+$e1 isa entity-node, has slug "pain-amplification";
+
+insert
+$r (subject: $e0, object: $e1) isa decreases-risk,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "sensorimotor-network";
+$e1 isa entity-node, has slug "pain-amplification";
+
+insert
+$r (object: $e0, subject: $e1) isa causes,
+    has confidence 0.6;
+$e0 isa entity-node, has slug "psychological-distress";
+$e1 isa entity-node, has slug "gut-permeability";
+
+insert
+$r (object: $e0, subject: $e1) isa causes,
+    has confidence 0.6;
+$e0 isa entity-node, has slug "psychological-distress";
+$e1 isa entity-node, has slug "intestinal-dysbiosis";
+
+insert
+$r (subject: $e0, object: $e1) isa affects-population,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "healthy-controls";
+
+insert
+$r (object: $e0, subject: $e1) isa treats,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "cyclobenzaprine";
+
+insert
+$r (subject: $e0, object: $e1) isa increases-risk,
+    has confidence 0.6;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "sarcopenia";
+
+insert
+$r (subject: $e0, object: $e1) isa increases-risk,
+    has confidence 0.6;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "disease-activity";
+
+insert
+$r (subject: $e0, object: $e1) isa increases-risk,
+    has confidence 0.6;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "pain";
+
+insert
+$r (object: $e0, subject: $e1) isa biomarker-for,
+    has confidence 0.6;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "platelet-to-lymphocyte-ratio";
+
+insert
+$r (object: $e0, subject: $e1) isa biomarker-for,
+    has confidence 0.6;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "monocyte-to-lymphocyte-ratio";
+
+insert
+$r (object: $e0, subject: $e1) isa biomarker-for,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "sensorimotor-network";
+
+insert
+$r (subject: $e0, object: $e1) isa mechanism,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "functional-connectivity";
+$e1 isa entity-node, has slug "pain-amplification";
+
+insert
+$r (subject: $e0, object: $e1) isa affects-population,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "women";
+
+insert
+$r (object: $e0, subject: $e1) isa treats,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "amitriptyline";
+
+insert
+$r (object: $e0, subject: $e1) isa treats,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "pregabalin";
+
+insert
+$r (object: $e0, subject: $e1) isa treats,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "milnacipran";
+
+insert
+$r (object: $e0, subject: $e1) isa treats,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "duloxetine";
+
+insert
+$r (subject: $e0, object: $e1) isa measures,
+    has confidence 0.6;
+$e0 isa entity-node, has slug "respiratory-muscle-training";
+$e1 isa entity-node, has slug "maximal-occlusion-pressure";
+
+insert
+$r (object: $e0, subject: $e1) isa treats,
+    has confidence 0.6;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "respiratory-muscle-training";
+
+insert
+$r (object: $e0, subject: $e1) isa treats,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "whole-body-vibration";
+
+insert
+$r (object: $e0, subject: $e1) isa treats,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "aerobic-exercise";
+
+insert
+$r (object: $e0, subject: $e1) isa treats,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "aerobic-exercise";
+
+insert
+$r (object: $e0, subject: $e1) isa treats,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "stretching";
+
+insert
+$r (object: $e0, subject: $e1) isa treats,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "cyclobenzaprine";
+
+insert
+$r (subject: $e0, object: $e1) isa increases-risk,
+    has confidence 0.6;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "disease-activity";
+
+insert
+$r (subject: $e0, object: $e1) isa increases-risk,
+    has confidence 0.6;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "pain";
+
+insert
+$r (object: $e0, subject: $e1) isa biomarker-for,
+    has confidence 0.6;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "platelet-to-lymphocyte-ratio";
+
+insert
+$r (object: $e0, subject: $e1) isa biomarker-for,
+    has confidence 0.6;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "monocyte-to-lymphocyte-ratio";
+
+insert
+$r (subject: $e0, object: $e1) isa increases-risk,
+    has confidence 0.6;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "sarcopenia";
+
+insert
+$r (subject: $e0, object: $e1) isa other,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "psaid";
+$e1 isa entity-node, has slug "dapsa";
+
+insert
+$r (object: $e0, subject: $e1) isa measures,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "psoriatic-arthritis";
+$e1 isa entity-node, has slug "dapsa";
+
+insert
+$r (object: $e0, subject: $e1) isa measures,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "psoriatic-arthritis";
+$e1 isa entity-node, has slug "psaid";
+
+insert
+$r (object: $e0, subject: $e1) isa mechanism,
+    has confidence 0.6;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "gut-microbiota";
+
+insert
+$r (object: $e0, subject: $e1) isa causes,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "psychological-distress";
+$e1 isa entity-node, has slug "intestinal-dysbiosis";
+
+insert
+$r (subject: $e0, object: $e1) isa affects-population,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "healthy-controls";
+
+insert
+$r (subject: $e0, object: $e1) isa affects-population,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "healthy-controls";
+
+insert
+$r (object: $e0, subject: $e1) isa biomarker-for,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "mirna-223-3p";
+
+insert
+$r (subject: $e0, object: $e1) isa affects-population,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "healthy-controls";
+
+insert
+$r (object: $e0, subject: $e1) isa biomarker-for,
+    has confidence 0.6;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "mirna-223-3p";
+
+insert
+$r (subject: $e0, object: $e1) isa measures,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "jak-inhibitors";
+$e1 isa entity-node, has slug "ultrasound-remission";
+
+insert
+$r (subject: $e0, object: $e1) isa measures,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "jak-inhibitors";
+$e1 isa entity-node, has slug "clinical-remission";
+
+insert
+$r (subject: $e0, object: $e1) isa treats,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "jak-inhibitors";
+$e1 isa entity-node, has slug "rheumatoid-arthritis";
+
+insert
+$r (subject: $e0, object: $e1) isa affects-population,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "women";
+
+insert
+$r (object: $e0, subject: $e1) isa treats,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "amitriptyline";
+
+insert
+$r (object: $e0, subject: $e1) isa treats,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "pregabalin";
+
+insert
+$r (object: $e0, subject: $e1) isa treats,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "milnacipran";
+
+insert
+$r (object: $e0, subject: $e1) isa treats,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "duloxetine";
+
+insert
+$r (object: $e0, subject: $e1) isa causes,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "psychological-distress";
+$e1 isa entity-node, has slug "gut-permeability";
+
+insert
+$r (object: $e0, subject: $e1) isa causes,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "psychological-distress";
+$e1 isa entity-node, has slug "intestinal-dysbiosis";
+
+insert
+$r (subject: $e0, object: $e1) isa affects-population,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "healthy-controls";
+
+insert
+$r (object: $e0, subject: $e1) isa increases-risk,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "pressure-pain-tolerance";
+$e1 isa entity-node, has slug "widespread-pain";
+
+insert
+$r (subject: $e0, object: $e1) isa mechanism,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "sham-treatment";
+$e1 isa entity-node, has slug "precuneus";
+
+insert
+$r (subject: $e0, object: $e1) isa mechanism,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "electroacupuncture";
+$e1 isa entity-node, has slug "insular-regions";
+
+insert
+$r (subject: $e0, object: $e1) isa mechanism,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "electroacupuncture";
+$e1 isa entity-node, has slug "primary-somatosensory-cortex";
+
+insert
+$r (object: $e0, subject: $e1) isa treats,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "electroacupuncture";
+
+insert
+$r (subject: $e0, object: $e1) isa affects-population,
+    has confidence 0.6;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "healthy-controls";
+
+insert
+$r (object: $e0, subject: $e1) isa biomarker-for,
+    has confidence 0.6;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "mirna-223-3p";
+
+
+# Exported 141 entities and 86 relations

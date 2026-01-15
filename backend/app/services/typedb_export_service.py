@@ -212,19 +212,26 @@ class TypeDBExportService:
             relation_type = rel_revision.kind.replace('_', '-')
             confidence = rel_revision.confidence or 0.8
 
-            lines.append("insert")
-            lines.append(f"$r isa {relation_type},")
-
-            # Add role players
+            # Build role players list
+            role_players = []
+            entity_vars = []
             for idx, role in enumerate(roles):
                 var_name = f"e{idx}"
                 role_name = role['role_type'].replace('_', '-')
                 slug = role['entity_slug']
 
-                lines.append(f'    has {role_name} $r-{var_name};')
-                lines.append(f'$r-{var_name} isa entity-node, has slug "{slug}";')
+                role_players.append(f"{role_name}: ${var_name}")
+                entity_vars.append(f'${var_name} isa entity-node, has slug "{slug}";')
 
+            # Create proper TypeQL insert statement
+            lines.append("insert")
+            lines.append(f"$r ({', '.join(role_players)}) isa {relation_type},")
             lines.append(f"    has confidence {confidence};")
+
+            # Add entity definitions
+            for entity_var in entity_vars:
+                lines.append(entity_var)
+
             lines.append("")
 
         lines.append("")

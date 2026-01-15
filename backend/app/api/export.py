@@ -10,6 +10,7 @@ from typing import Literal
 
 from app.database import get_db
 from app.services.export_service import ExportService
+from app.services.typedb_export_service import TypeDBExportService
 from app.dependencies.auth import get_current_user
 from app.models.user import User
 
