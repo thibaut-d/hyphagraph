@@ -12,7 +12,7 @@ import {
   Link,
 } from "@mui/material";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
-import { InferenceRead, RoleInference } from "../types/inference";
+import { InferenceRead, RoleInference, EntityRoleInference } from "../types/inference";
 import { RelationRead } from "../types/relation";
 
 function ScoreBar({ score }: { score: number | null }) {
@@ -142,6 +142,48 @@ function RelationDisplay({ relation, kind }: { relation: RelationRead; kind: str
   );
 }
 
+function EntityInferenceItem({
+  entityInference,
+}: {
+  entityInference: EntityRoleInference;
+}) {
+  const { entity_slug, score, source_count, confidence, disagreement } = entityInference;
+
+  return (
+    <Box sx={{ mb: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
+        <Link
+          component={RouterLink}
+          to={`/entities/${entity_slug}`}
+          variant="body1"
+          sx={{ fontWeight: 600, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+        >
+          {entity_slug}
+        </Link>
+        <Stack direction="row" spacing={1}>
+          <Chip
+            label={`${source_count} sources`}
+            size="small"
+            variant="outlined"
+          />
+          <Chip
+            label={`${(confidence * 100).toFixed(0)}% confidence`}
+            size="small"
+            color={confidence > 0.7 ? "success" : confidence > 0.4 ? "warning" : "default"}
+            variant="outlined"
+          />
+        </Stack>
+      </Stack>
+      <ScoreBar score={score} />
+      {disagreement > 0.3 && (
+        <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
+          {(disagreement * 100).toFixed(0)}% disagreement
+        </Typography>
+      )}
+    </Box>
+  );
+}
+
 function RoleInferenceCard({
   roleInference,
   entityId,
@@ -151,39 +193,24 @@ function RoleInferenceCard({
   entityId: string;
   currentEntitySlug?: string;
 }) {
-  const { role_type, score, coverage, confidence, disagreement, connected_entities } = roleInference;
-
-  // Filter out current entity from connected entities
-  const otherEntities = connected_entities?.filter(slug => slug !== currentEntitySlug) || [];
+  const { relation_type, semantic_role, entity_inferences, total_entities, avg_score } = roleInference;
 
   return (
     <Card variant="outlined">
       <CardContent>
-        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={1}>
+        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={2}>
           <Box sx={{ flex: 1 }}>
             <Typography variant="h6">
-              {role_type}
+              {relation_type} ({semantic_role}s)
             </Typography>
-            {otherEntities.length > 0 && (
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                Connected to: {otherEntities.map((slug, idx) => (
-                  <span key={slug}>
-                    {idx > 0 && ", "}
-                    <Link
-                      component={RouterLink}
-                      to={`/entities/${slug}`}
-                      sx={{ fontWeight: 500 }}
-                    >
-                      {slug}
-                    </Link>
-                  </span>
-                ))}
-              </Typography>
-            )}
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              {total_entities} {total_entities === 1 ? 'entity' : 'entities'} found
+              {avg_score !== null && ` • Avg score: ${avg_score.toFixed(2)}`}
+            </Typography>
           </Box>
           <Button
             component={RouterLink}
-            to={`/explain/${entityId}/${role_type}`}
+            to={`/explain/${entityId}/${relation_type}`}
             size="small"
             startIcon={<HelpOutlineIcon />}
             variant="outlined"
@@ -192,44 +219,13 @@ function RoleInferenceCard({
           </Button>
         </Stack>
 
-        <Stack spacing={2}>
-          {/* Main inference score */}
-          <Box>
-            <Typography variant="caption" color="text.secondary" gutterBottom>
-              Inference Score
-            </Typography>
-            <ScoreBar score={score} />
-          </Box>
-
-          {/* Metadata */}
-          <Stack direction="row" spacing={2} flexWrap="wrap">
-            <Chip
-              label={`Coverage: ${coverage.toFixed(1)}`}
-              size="small"
-              variant="outlined"
+        <Stack spacing={1}>
+          {entity_inferences.map((entityInf) => (
+            <EntityInferenceItem
+              key={entityInf.entity_slug}
+              entityInference={entityInf}
             />
-            <Chip
-              label={`Confidence: ${(confidence * 100).toFixed(0)}%`}
-              size="small"
-              color={confidence > 0.7 ? "success" : confidence > 0.4 ? "warning" : "default"}
-              variant="outlined"
-            />
-            {disagreement > 0.3 && (
-              <Chip
-                label={`Disagreement: ${(disagreement * 100).toFixed(0)}%`}
-                size="small"
-                color="error"
-                variant="outlined"
-              />
-            )}
-          </Stack>
-
-          {/* Warning for contradictory evidence */}
-          {disagreement > 0.5 && (
-            <Alert severity="warning" sx={{ mt: 1 }}>
-              High disagreement detected - sources contradict each other
-            </Alert>
-          )}
+          ))}
         </Stack>
       </CardContent>
     </Card>
@@ -252,7 +248,7 @@ export function InferenceBlock({ inference, currentEntitySlug }: { inference: In
           <Stack spacing={2}>
             {inference.role_inferences.map((roleInf) => (
               <RoleInferenceCard
-                key={roleInf.role_type}
+                key={`${roleInf.relation_type}-${roleInf.semantic_role}`}
                 roleInference={roleInf}
                 entityId={inference.entity_id}
                 currentEntitySlug={currentEntitySlug}
