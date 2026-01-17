@@ -724,20 +724,21 @@ async def smart_discovery(
 
             pubmed_fetcher = PubMedFetcher()
 
-            # Adaptive fetching: keep searching until we have enough high-quality results
-            # or we've exhausted the search results
+            # Adaptive fetching: keep searching until we have enough high-quality NEW results
+            # Strategy: Fetch batches, check for duplicates, continue until budget filled with NEW sources
             batch_size = 50  # Fetch in batches of 50
             max_fetch_limit = 500  # Don't fetch more than 500 total articles
             offset = 0
             total_count = 0
-            high_quality_count = 0
+            high_quality_count = 0  # Total high-quality sources found (including duplicates)
 
             logger.info(
                 f"Starting adaptive fetch: target={request.max_results}, "
                 f"min_quality={request.min_quality}, batch_size={batch_size}"
             )
 
-            while high_quality_count < request.max_results and offset < max_fetch_limit:
+            # We'll check for duplicates in batches and continue until we have enough NEW sources
+            while offset < max_fetch_limit:
                 # Search for next batch
                 pmids, total_count = await pubmed_fetcher.search_pubmed(
                     query=query,
@@ -757,8 +758,33 @@ async def smart_discovery(
                 # Fetch article metadata (skip PMC enrichment for speed during discovery)
                 articles = await pubmed_fetcher.bulk_fetch_articles(pmids, skip_pmc_enrichment=True)
 
+                # Check for existing PMIDs in database BEFORE adding to results
+                # This allows us to skip duplicates early and keep fetching NEW sources
+                from app.models.source_revision import SourceRevision
+                from sqlalchemy import select, cast
+                from sqlalchemy.dialects.postgresql import JSONB
+
+                batch_pmids = [article.pmid for article in articles]
+                stmt = select(
+                    cast(SourceRevision.source_metadata['pmid'], JSONB).as_string()
+                ).where(
+                    SourceRevision.is_current == True,
+                    SourceRevision.source_metadata.has_key('pmid'),
+                    cast(SourceRevision.source_metadata['pmid'], JSONB).as_string().in_(batch_pmids)
+                )
+                result = await db.execute(stmt)
+
+                batch_existing_pmids = set()
+                for row in result:
+                    pmid_value = row[0]
+                    if pmid_value:
+                        batch_existing_pmids.add(pmid_value.strip('"'))
+
                 # Calculate quality scores and convert to results
                 batch_high_quality = 0
+                batch_new_high_quality = 0
+                batch_duplicate_high_quality = 0
+
                 for article in articles:
                     trust_level = infer_trust_level_from_pubmed_metadata(
                         title=article.title,
@@ -771,6 +797,13 @@ async def smart_discovery(
                     if trust_level >= request.min_quality:
                         batch_high_quality += 1
                         high_quality_count += 1
+
+                        # Check if already imported
+                        already_imported = article.pmid in batch_existing_pmids
+                        if already_imported:
+                            batch_duplicate_high_quality += 1
+                        else:
+                            batch_new_high_quality += 1
 
                         # Calculate relevance (how many entities mentioned in title/abstract)
                         relevance = _calculate_relevance(
@@ -788,93 +821,67 @@ async def smart_discovery(
                             url=article.url,
                             trust_level=trust_level,
                             relevance_score=relevance,
-                            database="pubmed"
+                            database="pubmed",
+                            already_imported=already_imported
                         ))
+
+                # Count how many NEW high-quality sources we have so far
+                new_sources_count = len([r for r in all_results if not r.already_imported])
 
                 logger.info(
                     f"Batch {offset//batch_size + 1} complete: "
                     f"{batch_high_quality}/{len(articles)} passed quality filter "
-                    f"(total high-quality: {high_quality_count}/{request.max_results})"
+                    f"({batch_new_high_quality} new, {batch_duplicate_high_quality} duplicates) | "
+                    f"Total: {new_sources_count} new sources found (target: {request.max_results})"
                 )
 
-                # Check if we have enough results
-                if high_quality_count >= request.max_results:
+                # Check if we have enough NEW results
+                if new_sources_count >= request.max_results:
                     logger.info(
-                        f"Target reached: {high_quality_count} high-quality sources found "
-                        f"after searching {offset + len(pmids)} articles"
+                        f"✅ Target reached: {new_sources_count} NEW high-quality sources found "
+                        f"after searching {offset + len(pmids)} articles "
+                        f"({high_quality_count - new_sources_count} were duplicates)"
                     )
                     break
 
                 # Check if we've reached the end of results
                 if offset + len(pmids) >= total_count:
                     logger.info(
-                        f"Exhausted all {total_count} available results, "
-                        f"found {high_quality_count} high-quality sources"
+                        f"⚠️  Exhausted all {total_count} available results, "
+                        f"found {new_sources_count} NEW high-quality sources (target was {request.max_results})"
                     )
                     break
 
                 # Move to next batch
                 offset += batch_size
 
+            # Final summary
+            new_sources_count = len([r for r in all_results if not r.already_imported])
+            duplicate_count = len([r for r in all_results if r.already_imported])
+
             logger.info(
-                f"PubMed search complete: {high_quality_count} high-quality sources "
+                f"PubMed search complete: {len(all_results)} high-quality sources found "
+                f"({new_sources_count} new, {duplicate_count} already imported) "
                 f"from {total_count} total available results"
             )
 
         # TODO: Add arXiv, bioRxiv, Wikipedia support here
 
-        # Step 4: Check which sources already exist in our database
-        if all_results:
-            # Check by PMID for PubMed articles
-            pubmed_results = [r for r in all_results if r.pmid]
-            existing_pmids = set()
-
-            if pubmed_results:
-                from app.models.source_revision import SourceRevision
-                from sqlalchemy import select, cast
-                from sqlalchemy.dialects.postgresql import JSONB
-
-                pmids_to_check = [r.pmid for r in pubmed_results]
-
-                # Optimized query: Only fetch sources with PMIDs in the discovered results
-                # Uses JSON key lookup for efficiency
-                stmt = select(
-                    cast(SourceRevision.source_metadata['pmid'], JSONB).as_string()
-                ).where(
-                    SourceRevision.is_current == True,
-                    SourceRevision.source_metadata.has_key('pmid'),
-                    cast(SourceRevision.source_metadata['pmid'], JSONB).as_string().in_(pmids_to_check)
-                )
-                result = await db.execute(stmt)
-
-                for row in result:
-                    pmid_value = row[0]
-                    if pmid_value:
-                        # Remove quotes from JSON string
-                        existing_pmids.add(pmid_value.strip('"'))
-
-                logger.info(
-                    f"Deduplication check: {len(existing_pmids)} of {len(pmids_to_check)} "
-                    f"sources already imported"
-                )
-
-                # Mark already imported
-                for r in all_results:
-                    if r.pmid in existing_pmids:
-                        r.already_imported = True
-
-        # Step 5: Sort by quality (descending), then relevance
+        # Step 4: Sort by quality (descending), then relevance
         sorted_results = sorted(
             all_results,
             key=lambda r: (r.trust_level, r.relevance_score),
             reverse=True
         )
 
-        # Step 6: Limit to max_results (but return all for user choice)
+        # Step 5: Return results
+        new_count = len([r for r in sorted_results if not r.already_imported])
+        duplicate_count = len([r for r in sorted_results if r.already_imported])
+
         logger.info(
-            f"Smart discovery complete: {len(sorted_results)} results "
-            f"(filtered from {total_count if 'pubmed' in request.databases else 0} total), "
-            f"top {min(request.max_results, len(sorted_results))} will be pre-selected"
+            f"Smart discovery complete: {len(sorted_results)} total results "
+            f"({new_count} new, {duplicate_count} duplicates), "
+            f"top {min(new_count, request.max_results)} new sources will be pre-selected"
         )
 
         return SmartDiscoveryResponse(
