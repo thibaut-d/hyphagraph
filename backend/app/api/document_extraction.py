@@ -724,19 +724,41 @@ async def smart_discovery(
 
             pubmed_fetcher = PubMedFetcher()
 
-            # Search with 2x max_results to allow for filtering
-            pmids, total_count = await pubmed_fetcher.search_pubmed(
-                query=query,
-                max_results=min(request.max_results * 2, 100)
+            # Adaptive fetching: keep searching until we have enough high-quality results
+            # or we've exhausted the search results
+            batch_size = 50  # Fetch in batches of 50
+            max_fetch_limit = 500  # Don't fetch more than 500 total articles
+            offset = 0
+            total_count = 0
+            high_quality_count = 0
+
+            logger.info(
+                f"Starting adaptive fetch: target={request.max_results}, "
+                f"min_quality={request.min_quality}, batch_size={batch_size}"
             )
 
-            logger.info(f"Found {total_count} total results in PubMed, fetching {len(pmids)} articles")
+            while high_quality_count < request.max_results and offset < max_fetch_limit:
+                # Search for next batch
+                pmids, total_count = await pubmed_fetcher.search_pubmed(
+                    query=query,
+                    max_results=batch_size,
+                    retstart=offset
+                )
 
-            if pmids:
-                # Fetch article metadata
-                articles = await pubmed_fetcher.bulk_fetch_articles(pmids)
+                if not pmids:
+                    logger.info(f"No more results available after {offset} articles")
+                    break
+
+                logger.info(
+                    f"Fetching batch {offset//batch_size + 1}: "
+                    f"{len(pmids)} articles (offset={offset}, total_available={total_count})"
+                )
+
+                # Fetch article metadata (skip PMC enrichment for speed during discovery)
+                articles = await pubmed_fetcher.bulk_fetch_articles(pmids, skip_pmc_enrichment=True)
 
                 # Calculate quality scores and convert to results
+                batch_high_quality = 0
                 for article in articles:
                     trust_level = infer_trust_level_from_pubmed_metadata(
                         title=article.title,
@@ -747,6 +769,9 @@ async def smart_discovery(
 
                     # Filter by minimum quality
                     if trust_level >= request.min_quality:
+                        batch_high_quality += 1
+                        high_quality_count += 1
+
                         # Calculate relevance (how many entities mentioned in title/abstract)
                         relevance = _calculate_relevance(
                             article.title + " " + (article.abstract or ""),
@@ -765,6 +790,36 @@ async def smart_discovery(
                             relevance_score=relevance,
                             database="pubmed"
                         ))
+
+                logger.info(
+                    f"Batch {offset//batch_size + 1} complete: "
+                    f"{batch_high_quality}/{len(articles)} passed quality filter "
+                    f"(total high-quality: {high_quality_count}/{request.max_results})"
+                )
+
+                # Check if we have enough results
+                if high_quality_count >= request.max_results:
+                    logger.info(
+                        f"Target reached: {high_quality_count} high-quality sources found "
+                        f"after searching {offset + len(pmids)} articles"
+                    )
+                    break
+
+                # Check if we've reached the end of results
+                if offset + len(pmids) >= total_count:
+                    logger.info(
+                        f"Exhausted all {total_count} available results, "
+                        f"found {high_quality_count} high-quality sources"
+                    )
+                    break
+
+                # Move to next batch
+                offset += batch_size
+
+            logger.info(
+                f"PubMed search complete: {high_quality_count} high-quality sources "
+                f"from {total_count} total available results"
+            )
 
         # TODO: Add arXiv, bioRxiv, Wikipedia support here
 

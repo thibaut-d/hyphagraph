@@ -77,12 +77,13 @@ class PubMedFetcher:
 
         return None
 
-    async def fetch_by_pmid(self, pmid: str) -> PubMedArticle:
+    async def fetch_by_pmid(self, pmid: str, skip_pmc_enrichment: bool = False) -> PubMedArticle:
         """
         Fetch PubMed article by PMID using E-utilities API.
 
         Args:
             pmid: PubMed ID (e.g., "30280642")
+            skip_pmc_enrichment: If True, skip PMC full-text enrichment for speed (default False)
 
         Returns:
             PubMedArticle with extracted data
@@ -118,22 +119,23 @@ class PubMedFetcher:
                     f"'{article.title[:50]}...'"
                 )
 
-                # Try to enrich with PMC full text if available
-                try:
-                    from app.services.pmc_fetcher import PMCFetcher
-                    pmc_fetcher = PMCFetcher()
-                    pmc_article = await pmc_fetcher.fetch_by_pmid(pmid)
+                # Try to enrich with PMC full text if available (unless skipped)
+                if not skip_pmc_enrichment:
+                    try:
+                        from app.services.pmc_fetcher import PMCFetcher
+                        pmc_fetcher = PMCFetcher()
+                        pmc_article = await pmc_fetcher.fetch_by_pmid(pmid)
 
-                    if pmc_article:
-                        # Replace abstract-only full_text with PMC full text
-                        article.full_text = pmc_article.full_text
-                        logger.info(
-                            f"✅ Enriched PMID {pmid} with PMC full text: "
-                            f"{pmc_article.char_count} chars ({len(pmc_article.sections)} sections)"
-                        )
-                except Exception as e:
-                    # PMC enrichment is optional - don't fail if it doesn't work
-                    logger.debug(f"PMC enrichment not available for PMID {pmid}: {e}")
+                        if pmc_article:
+                            # Replace abstract-only full_text with PMC full text
+                            article.full_text = pmc_article.full_text
+                            logger.info(
+                                f"✅ Enriched PMID {pmid} with PMC full text: "
+                                f"{pmc_article.char_count} chars ({len(pmc_article.sections)} sections)"
+                            )
+                    except Exception as e:
+                        # PMC enrichment is optional - don't fail if it doesn't work
+                        logger.debug(f"PMC enrichment not available for PMID {pmid}: {e}")
 
                 return article
 
@@ -333,7 +335,8 @@ class PubMedFetcher:
     async def search_pubmed(
         self,
         query: str,
-        max_results: int = 20
+        max_results: int = 20,
+        retstart: int = 0
     ) -> tuple[list[str], int]:
         """
         Search PubMed using esearch API.
@@ -341,6 +344,7 @@ class PubMedFetcher:
         Args:
             query: PubMed search query (e.g., "cancer AND 2024[pdat]")
             max_results: Maximum number of PMIDs to return (default 20, max 10000)
+            retstart: Starting index for pagination (default 0)
 
         Returns:
             Tuple of (pmid_list, total_count)
@@ -357,6 +361,7 @@ class PubMedFetcher:
                 f"?db=pubmed"
                 f"&term={query}"
                 f"&retmax={min(max_results, 10000)}"
+                f"&retstart={retstart}"
                 f"&retmode=xml"
                 f"&usehistory=y"
             )
@@ -420,7 +425,8 @@ class PubMedFetcher:
     async def bulk_fetch_articles(
         self,
         pmids: list[str],
-        rate_limit_delay: float = 0.34
+        rate_limit_delay: float = 0.34,
+        skip_pmc_enrichment: bool = False
     ) -> list[PubMedArticle]:
         """
         Fetch multiple PubMed articles with rate limiting.
@@ -432,6 +438,7 @@ class PubMedFetcher:
         Args:
             pmids: List of PubMed IDs to fetch
             rate_limit_delay: Delay between requests in seconds (default 0.34 for ~3 req/sec)
+            skip_pmc_enrichment: If True, skip PMC full-text enrichment for speed (default False)
 
         Returns:
             List of PubMedArticle objects (may be shorter if some fetches fail)
@@ -446,7 +453,7 @@ class PubMedFetcher:
 
         for i, pmid in enumerate(pmids, 1):
             try:
-                article = await self.fetch_by_pmid(pmid)
+                article = await self.fetch_by_pmid(pmid, skip_pmc_enrichment=skip_pmc_enrichment)
                 articles.append(article)
 
                 logger.info(f"Progress: {i}/{total} articles fetched")
