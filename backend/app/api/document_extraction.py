@@ -831,20 +831,32 @@ async def smart_discovery(
 
             if pubmed_results:
                 from app.models.source_revision import SourceRevision
-                from sqlalchemy import select
+                from sqlalchemy import select, cast
+                from sqlalchemy.dialects.postgresql import JSONB
 
                 pmids_to_check = [r.pmid for r in pubmed_results]
 
-                # Query for existing PMIDs in source_metadata
-                stmt = select(SourceRevision.source_metadata).where(
-                    SourceRevision.is_current == True
+                # Optimized query: Only fetch sources with PMIDs in the discovered results
+                # Uses JSON key lookup for efficiency
+                stmt = select(
+                    cast(SourceRevision.source_metadata['pmid'], JSONB).as_string()
+                ).where(
+                    SourceRevision.is_current == True,
+                    SourceRevision.source_metadata.has_key('pmid'),
+                    cast(SourceRevision.source_metadata['pmid'], JSONB).as_string().in_(pmids_to_check)
                 )
                 result = await db.execute(stmt)
 
                 for row in result:
-                    metadata = row[0]
-                    if metadata and "pmid" in metadata:
-                        existing_pmids.add(metadata["pmid"])
+                    pmid_value = row[0]
+                    if pmid_value:
+                        # Remove quotes from JSON string
+                        existing_pmids.add(pmid_value.strip('"'))
+
+                logger.info(
+                    f"Deduplication check: {len(existing_pmids)} of {len(pmids_to_check)} "
+                    f"sources already imported"
+                )
 
                 # Mark already imported
                 for r in all_results:
