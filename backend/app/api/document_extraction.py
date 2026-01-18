@@ -761,24 +761,27 @@ async def smart_discovery(
                 # Check for existing PMIDs in database BEFORE adding to results
                 # This allows us to skip duplicates early and keep fetching NEW sources
                 from app.models.source_revision import SourceRevision
-                from sqlalchemy import select, cast
-                from sqlalchemy.dialects.postgresql import JSONB
+                from sqlalchemy import select
 
                 batch_pmids = [article.pmid for article in articles]
+
+                # Query all current sources and check PMIDs in Python
+                # (JSON querying in SQLAlchemy is database-dependent, so we do it in Python)
                 stmt = select(
-                    SourceRevision.source_metadata['pmid'].astext
+                    SourceRevision.source_metadata
                 ).where(
                     SourceRevision.is_current == True,
-                    SourceRevision.source_metadata.has_key('pmid'),
-                    SourceRevision.source_metadata['pmid'].astext.in_(batch_pmids)
+                    SourceRevision.source_metadata.isnot(None)
                 )
                 result = await db.execute(stmt)
 
                 batch_existing_pmids = set()
                 for row in result:
-                    pmid_value = row[0]
-                    if pmid_value:
-                        batch_existing_pmids.add(pmid_value)
+                    metadata = row[0]
+                    if metadata and isinstance(metadata, dict) and 'pmid' in metadata:
+                        pmid = metadata['pmid']
+                        if pmid in batch_pmids:
+                            batch_existing_pmids.add(pmid)
 
                 # Calculate quality scores and convert to results
                 batch_high_quality = 0
