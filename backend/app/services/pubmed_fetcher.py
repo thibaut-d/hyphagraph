@@ -118,6 +118,23 @@ class PubMedFetcher:
                     f"'{article.title[:50]}...'"
                 )
 
+                # Try to enrich with PMC full text if available
+                try:
+                    from app.services.pmc_fetcher import PMCFetcher
+                    pmc_fetcher = PMCFetcher()
+                    pmc_article = await pmc_fetcher.fetch_by_pmid(pmid)
+
+                    if pmc_article:
+                        # Replace abstract-only full_text with PMC full text
+                        article.full_text = pmc_article.full_text
+                        logger.info(
+                            f"✅ Enriched PMID {pmid} with PMC full text: "
+                            f"{pmc_article.char_count} chars ({len(pmc_article.sections)} sections)"
+                        )
+                except Exception as e:
+                    # PMC enrichment is optional - don't fail if it doesn't work
+                    logger.debug(f"PMC enrichment not available for PMID {pmid}: {e}")
+
                 return article
 
         except httpx.HTTPStatusError as e:

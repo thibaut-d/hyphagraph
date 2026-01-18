@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_, and_, cast, String, func
+from sqlalchemy import select, or_, and_, cast, String, func, distinct, case
 from fastapi import HTTPException, status
 from typing import Optional, Tuple
 from uuid import UUID
@@ -9,11 +9,14 @@ from app.schemas.filters import SourceFilters, SourceFilterOptions
 from app.repositories.source_repo import SourceRepository
 from app.models.source import Source
 from app.models.source_revision import SourceRevision
+from app.models.relation import Relation
+from app.models.relation_revision import RelationRevision
 from app.mappers.source_mapper import (
     source_revision_from_write,
     source_to_read,
 )
 from app.utils.revision_helpers import get_current_revision, create_new_revision
+from app.services.derived_properties_service import DerivedPropertiesService
 
 
 class SourceService:
@@ -84,6 +87,8 @@ class SourceService:
         - year_min/year_max: Filter by publication year range
         - trust_level_min/trust_level_max: Filter by trust level range
         - search: Case-insensitive search in title, authors, or origin
+        - domain: Filter by medical domain (advanced)
+        - role: Filter by role in graph (advanced)
         - limit: Maximum number of results to return
         - offset: Number of results to skip
 
@@ -97,7 +102,7 @@ class SourceService:
             .where(SourceRevision.is_current == True)
         )
 
-        # Apply filters if provided
+        # Apply basic filters if provided
         if filters:
             # Filter by kind (OR logic)
             if filters.kind:
@@ -127,6 +132,89 @@ class SourceService:
                     )
                 )
 
+            # === Advanced Filters (computed properties) ===
+
+            # Filter by domain (keyword matching on origin/title)
+            if filters.domain:
+                # Build keyword search for domains
+                domain_conditions = []
+                for domain in filters.domain:
+                    # Domain keyword patterns (simplified - matches derived_properties_service logic)
+                    domain_keywords = {
+                        "cardiology": ["cardio", "heart", "cardiac", "cardiovascular"],
+                        "neurology": ["neuro", "brain", "neural", "cognitive"],
+                        "psychiatry": ["psychiatry", "mental", "psychology", "behavioral"],
+                        "oncology": ["cancer", "oncology", "tumor", "carcinoma"],
+                        "endocrinology": ["endocrine", "diabetes", "hormone", "metabolic"],
+                        "immunology": ["immune", "immunology", "antibody", "vaccine"],
+                        "gastroenterology": ["gastro", "digestive", "intestinal", "gi"],
+                        "nephrology": ["kidney", "renal", "nephrology"],
+                        "pulmonology": ["lung", "respiratory", "pulmonary"],
+                        "rheumatology": ["rheumat", "arthritis", "autoimmune"],
+                    }
+
+                    keywords = domain_keywords.get(domain, [])
+                    if keywords or domain == "general":
+                        # Build OR conditions for keywords in this domain
+                        keyword_conditions = []
+                        for keyword in keywords:
+                            keyword_pattern = f"%{keyword}%"
+                            keyword_conditions.append(
+                                or_(
+                                    SourceRevision.origin.ilike(keyword_pattern),
+                                    SourceRevision.title.ilike(keyword_pattern),
+                                )
+                            )
+                        if keyword_conditions:
+                            domain_conditions.append(or_(*keyword_conditions))
+
+                if domain_conditions:
+                    base_query = base_query.where(or_(*domain_conditions))
+
+            # Filter by role in graph (requires computing relation count)
+            if filters.role:
+                # Subquery to compute relation count per source
+                relation_count_subquery = (
+                    select(
+                        Relation.source_id,
+                        func.count(distinct(Relation.id)).label('relation_count'),
+                        func.sum(
+                            case(
+                                (RelationRevision.direction == "contradicts", 1),
+                                else_=0
+                            )
+                        ).label('contradictory_count')
+                    )
+                    .join(RelationRevision, Relation.id == RelationRevision.relation_id)
+                    .where(RelationRevision.is_current == True)
+                    .group_by(Relation.source_id)
+                    .subquery()
+                )
+
+                # Join with the relation count subquery
+                base_query = base_query.join(
+                    relation_count_subquery,
+                    Source.id == relation_count_subquery.c.source_id,
+                    isouter=True  # LEFT JOIN to include sources with 0 relations
+                )
+
+                # Build role conditions
+                role_conditions = []
+                if "pillar" in filters.role:
+                    role_conditions.append(relation_count_subquery.c.relation_count > 5)
+                if "supporting" in filters.role:
+                    role_conditions.append(and_(
+                        relation_count_subquery.c.relation_count >= 2,
+                        relation_count_subquery.c.relation_count <= 5
+                    ))
+                if "contradictory" in filters.role:
+                    role_conditions.append(relation_count_subquery.c.contradictory_count > 0)
+                if "single" in filters.role:
+                    role_conditions.append(relation_count_subquery.c.relation_count == 1)
+
+                if role_conditions:
+                    base_query = base_query.where(or_(*role_conditions))
+
         # Count total results before pagination
         count_query = select(func.count()).select_from(
             base_query.subquery()
@@ -144,7 +232,14 @@ class SourceService:
         results = result_rows.all()
 
         # Convert to SourceRead objects
-        items = [source_to_read(source, revision) for source, revision in results]
+        # Note: results may have extra columns from subqueries, extract just (Source, SourceRevision)
+        items = []
+        for row in results:
+            # row is a tuple, first two elements are Source and SourceRevision
+            source = row[0] if hasattr(row[0], '__tablename__') else row[0]
+            revision = row[1] if len(row) > 1 else None
+            if source and revision:
+                items.append(source_to_read(source, revision))
 
         return items, total
 
@@ -220,7 +315,7 @@ class SourceService:
         This avoids fetching all records when populating filter UI controls.
 
         Returns:
-            SourceFilterOptions with available kinds and year range
+            SourceFilterOptions with available kinds, year range, and advanced options
         """
         # Get distinct kinds (only from current revisions)
         kind_query = select(SourceRevision.kind).distinct().where(
@@ -237,9 +332,17 @@ class SourceService:
         year_result = await self.db.execute(year_query)
         min_year, max_year = year_result.one()
 
+        # Get advanced filter options using derived properties service
+        derived_service = DerivedPropertiesService(self.db)
+
+        # Get available domains
+        domains = await derived_service.get_all_domains()
+
         return SourceFilterOptions(
             kinds=sorted(kinds),
             year_range=(min_year, max_year) if min_year and max_year else None,
+            domains=domains,
+            roles=["pillar", "supporting", "contradictory", "single"],
         )
 
     async def add_document_to_source(

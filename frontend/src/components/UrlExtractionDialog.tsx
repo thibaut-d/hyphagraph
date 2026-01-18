@@ -24,6 +24,7 @@ interface UrlExtractionDialogProps {
   onClose: () => void;
   onSubmit: (url: string) => Promise<void>;
   loading?: boolean;
+  defaultUrl?: string;  // Pre-fill URL from source
 }
 
 /**
@@ -34,14 +35,23 @@ interface UrlExtractionDialogProps {
  * - PubMed URL detection
  * - Loading state
  * - Error handling
+ * - Auto-fill from source URL (if provided)
  */
 export function UrlExtractionDialog({
   open,
   onClose,
   onSubmit,
   loading = false,
+  defaultUrl,
 }: UrlExtractionDialogProps) {
-  const [url, setUrl] = useState("");
+  const [url, setUrl] = useState(defaultUrl || "");
+
+  // Update URL when defaultUrl changes or dialog opens
+  React.useEffect(() => {
+    if (open && defaultUrl) {
+      setUrl(defaultUrl);
+    }
+  }, [open, defaultUrl]);
   const [error, setError] = useState<string | null>(null);
 
   const isPubMedUrl = (urlString: string): boolean => {

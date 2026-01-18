@@ -139,13 +139,25 @@ Text to analyze:
 {text}
 
 For each relation, provide:
-- subject_slug: The entity that is the subject of the relation
 - relation_type: The type of relation (MUST be from the exact list below)
-- object_slug: The entity that is the object of the relation
-- roles: Additional context about the relation (optional)
+- roles: Array of entities with their semantic roles (CRITICAL - see semantic roles below)
 - confidence: Your confidence in this relation (high, medium, low)
 - text_span: The exact text that states this relation
 - notes: Any important caveats, conditions, or context
+
+SEMANTIC ROLES (use these instead of subject/object):
+- agent: Entity performing action (drug, treatment)
+- target: Entity being treated/affected (disease, symptom)
+- outcome: Result produced (pain-relief, mortality-reduction)
+- mechanism: Biological mechanism (serotonin-reuptake, cox-inhibition)
+- population: Patient group (adults, women, elderly)
+- condition: Clinical context (chronic-pain, depression)
+- biomarker: Diagnostic marker (crp, mirna-223-3p)
+- measured_by: Assessment tool (vas, moca)
+- control_group: Comparison group (healthy-controls, placebo)
+- dosage: Dose (60mg-daily, 100mg-bid)
+- duration: Time period (12-weeks, 6-months)
+- location: Anatomical site (brain, joints)
 
 CRITICAL: relation_type MUST be EXACTLY one of these values (no variations):
 - treats: Drug/treatment treats disease/symptom
@@ -159,6 +171,7 @@ CRITICAL: relation_type MUST be EXACTLY one of these values (no variations):
 - metabolized_by: Drug is metabolized by enzyme/pathway
 - biomarker_for: Biomarker indicates disease/condition
 - affects_population: Treatment affects specific population
+- measures: Assessment tool/test measures condition/symptom (e.g., "VAS measures pain", "MoCA measures cognition")
 - other: Any other type of relationship
 
 IMPORTANT: Do NOT create new relation types. If a relationship doesn't fit the above categories, use "other".
@@ -295,10 +308,35 @@ Extract:
    - metabolized_by
    - biomarker_for
    - affects_population
+   - measures
+   - compared_to
+   - studied_in
+   - correlated_with
    - other
 
    IMPORTANT: If the relationship doesn't clearly fit one of the specific types above, use "other".
    Do NOT invent new relation types like "has", "integrates_with", "diagnosed_by", "negatively-correlates-with", etc.
+
+   CRITICAL GUIDELINES FOR RELATION DIRECTION:
+   - treats: Subject is the treatment/drug, object is the disease/symptom
+     Example: "duloxetine treats fibromyalgia" (NOT "fibromyalgia treats duloxetine")
+   - causes: Subject is the cause, object is the effect/outcome
+     Example: "smoking causes cancer" (NOT "cancer causes smoking")
+   - biomarker_for: Subject is the biomarker/test, object is the disease/condition
+     Example: "crp biomarker_for inflammation" (NOT "inflammation biomarker_for crp")
+   - affects_population: Subject is disease/condition, object is population group
+     Example: "fibromyalgia affects_population women" (NOT "women affects_population fibromyalgia")
+     SPECIAL CASE: "healthy controls" are NOT affected by the disease - they are comparison groups
+     Do NOT create: "disease affects healthy-controls" - this is illogical
+   - measures: Subject is the assessment tool, object is what it measures
+     Example: "vas measures pain" (NOT "pain measures vas")
+   - compared_to: Subject is study group, object is comparison/control group
+     Example: "fibromyalgia-patients compared_to healthy-controls"
+     Use this INSTEAD of affects_population for study comparisons
+   - studied_in: Subject is condition/treatment, object is the study population
+     Example: "fibromyalgia studied_in women; exercise-intervention studied_in elderly"
+   - correlated_with: Statistical correlation (symmetric, no causation implied)
+     Example: "pain-severity correlated_with depression-score"
 
    - confidence: high, medium, low
 
@@ -349,28 +387,34 @@ Respond with JSON containing three arrays:
   ],
   "relations": [
     {{
-      "subject_slug": "duloxetine",
       "relation_type": "treats",
-      "object_slug": "fibromyalgia",
-      "roles": {{"dosage": "60mg daily"}},
+      "roles": [
+        {{"entity_slug": "duloxetine", "role_type": "agent"}},
+        {{"entity_slug": "fibromyalgia", "role_type": "target"}},
+        {{"entity_slug": "adults", "role_type": "population"}},
+        {{"entity_slug": "60mg-daily", "role_type": "dosage"}}
+      ],
       "confidence": "high",
-      "text_span": "duloxetine 60mg daily is effective for fibromyalgia",
+      "text_span": "duloxetine 60mg daily is effective for fibromyalgia in adults",
       "notes": "FDA approved indication"
     }},
     {{
-      "subject_slug": "aspirin",
-      "relation_type": "decreases_risk",
-      "object_slug": "myocardial-infarction",
-      "roles": {{"dosage": "low-dose daily"}},
+      "relation_type": "biomarker_for",
+      "roles": [
+        {{"entity_slug": "mirna-223-3p", "role_type": "biomarker"}},
+        {{"entity_slug": "fibromyalgia", "role_type": "target"}},
+        {{"entity_slug": "women", "role_type": "population"}}
+      ],
       "confidence": "high",
-      "text_span": "daily aspirin therapy reduces heart attack risk",
-      "notes": "Evidence from clinical trials"
+      "text_span": "miRNA-223-3p levels correlate with pain severity in women with fibromyalgia",
+      "notes": "Potential diagnostic biomarker"
     }},
     {{
-      "subject_slug": "duloxetine",
       "relation_type": "mechanism",
-      "object_slug": "serotonin-reuptake-inhibition",
-      "roles": {{}},
+      "roles": [
+        {{"entity_slug": "duloxetine", "role_type": "agent"}},
+        {{"entity_slug": "serotonin-reuptake-inhibition", "role_type": "mechanism"}}
+      ],
       "confidence": "high",
       "text_span": "duloxetine inhibits serotonin and norepinephrine reuptake",
       "notes": "SNRI mechanism of action"

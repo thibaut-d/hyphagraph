@@ -16,6 +16,7 @@ class RoleRevisionRead(RoleRevisionWrite):
     """Schema for reading a role revision."""
     id: UUID
     relation_revision_id: UUID
+    entity_slug: Optional[str] = None  # Resolved entity slug for display
 
 
 class RelationWrite(Schema):

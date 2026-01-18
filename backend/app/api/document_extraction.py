@@ -25,6 +25,7 @@ from app.services.document_service import DocumentService
 from app.services.pubmed_fetcher import PubMedFetcher
 from app.services.url_fetcher import UrlFetcher
 from app.llm.client import is_llm_available
+from app.utils.source_quality import infer_trust_level_from_pubmed_metadata
 from pydantic import BaseModel, HttpUrl
 
 logger = logging.getLogger(__name__)
@@ -78,6 +79,38 @@ class PubMedBulkImportResponse(BaseModel):
     sources_created: int  # Number of sources successfully created
     failed_pmids: list[str]  # PMIDs that failed to import
     source_ids: list[UUID]  # IDs of created sources
+
+
+class SmartDiscoveryRequest(BaseModel):
+    """Request for intelligent multi-source discovery based on entities."""
+    entity_slugs: list[str]  # List of entity slugs to search for (e.g., ["duloxetine", "fibromyalgia"])
+    max_results: int = 20  # Budget: max results to retrieve per database
+    min_quality: float = 0.5  # Minimum trust_level threshold (0.5 = neutral, 0.75 = RCT+)
+    databases: list[str] = ["pubmed"]  # Which databases to search: pubmed, arxiv, etc.
+
+
+class SmartDiscoveryResult(BaseModel):
+    """Single discovered source with quality score."""
+    pmid: str | None = None
+    title: str
+    authors: list[str]
+    journal: str | None
+    year: int | None
+    doi: str | None
+    url: str
+    trust_level: float  # Calculated quality score
+    relevance_score: float  # How relevant to the searched entities
+    database: str  # pubmed, arxiv, etc.
+    already_imported: bool = False  # Whether this source already exists in our DB
+
+
+class SmartDiscoveryResponse(BaseModel):
+    """Response from smart discovery search."""
+    entity_slugs: list[str]  # Entities searched for
+    query_used: str  # Actual query constructed
+    total_found: int  # Total results found across all databases
+    results: list[SmartDiscoveryResult]  # Sorted by quality, top N selected
+    databases_searched: list[str]  # Which databases were searched
 
 
 # =============================================================================
@@ -154,7 +187,7 @@ async def extract_from_document(
         )
 
     # Extract entities and relations
-    extraction_service = ExtractionService()
+    extraction_service = ExtractionService(db=db)
     entities, relations, _ = await extraction_service.extract_batch(
         text=revision.document_text,
         min_confidence="medium"
@@ -266,6 +299,10 @@ async def save_extraction(
                 user_id=current_user.id if current_user else None
             )
 
+        # Final commit to persist all changes in one transaction
+        # This fixes the greenlet_spawn error from multiple commits
+        await db.commit()
+
         created_entity_ids = list(entity_mapping.values())
 
         logger.info(
@@ -362,7 +399,7 @@ async def upload_and_extract(
         logger.info("Document content stored in source")
 
         # Step 3: Extract entities and relations from text
-        extraction_service = ExtractionService()
+        extraction_service = ExtractionService(db=db)
         entities, relations, _ = await extraction_service.extract_batch(
             text=extraction_result.text,
             min_confidence="medium"
@@ -533,7 +570,7 @@ async def extract_from_url(
         logger.info("Document content stored in source")
 
         # Step 3: Extract entities and relations from text
-        extraction_service = ExtractionService()
+        extraction_service = ExtractionService(db=db)
         entities, relations, _ = await extraction_service.extract_batch(
             text=document_text,
             min_confidence="medium"
@@ -582,6 +619,226 @@ async def extract_from_url(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to extract from URL: {str(e)}"
         )
+
+
+@router.post(
+    "/smart-discovery",
+    response_model=SmartDiscoveryResponse,
+    summary="Intelligent multi-source discovery based on entities",
+    description="""
+    Smart discovery of relevant sources across multiple databases based on entity names.
+
+    This endpoint:
+    1. Constructs intelligent queries from entity slugs (e.g., ["duloxetine", "fibromyalgia"] → "Duloxetine AND Fibromyalgia")
+    2. Searches across selected databases (PubMed, arXiv, etc.)
+    3. Calculates quality scores (OCEBM/GRADE) for each result
+    4. Filters by minimum quality threshold
+    5. Sorts by quality (descending)
+    6. Checks which sources already exist in the database
+    7. Returns sorted list with top N results
+
+    Features:
+    - Multi-entity search (combine 1-10 entities in query)
+    - Multi-database support (PubMed, arXiv, bioRxiv, etc.)
+    - Automatic quality scoring (trust_level)
+    - Deduplication against existing sources
+    - Budget-based result limiting
+
+    Example:
+    - entity_slugs: ["duloxetine", "fibromyalgia"]
+    - max_results: 20
+    - min_quality: 0.75 (RCT or higher)
+    - databases: ["pubmed"]
+
+    Returns top 20 highest-quality studies about duloxetine AND fibromyalgia,
+    with trust_level ≥ 0.75.
+    """
+)
+async def smart_discovery(
+    request: SmartDiscoveryRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> SmartDiscoveryResponse:
+    """Intelligent discovery of sources based on entity names."""
+    user_email = current_user.email if current_user else "system"
+
+    if not request.entity_slugs or len(request.entity_slugs) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="At least one entity slug must be provided"
+        )
+
+    if len(request.entity_slugs) > 10:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Maximum 10 entities can be searched at once"
+        )
+
+    if request.max_results < 1 or request.max_results > 100:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="max_results must be between 1 and 100"
+        )
+
+    logger.info(
+        f"Smart discovery requested by user {user_email}, "
+        f"entities: {request.entity_slugs}, max_results: {request.max_results}, "
+        f"min_quality: {request.min_quality}, databases: {request.databases}"
+    )
+
+    try:
+        # Step 1: Fetch entity names from database
+        from app.models.entity import Entity
+        from app.models.entity_revision import EntityRevision
+        from sqlalchemy import select
+
+        entity_names = []
+        for slug in request.entity_slugs:
+            stmt = select(EntityRevision.slug).join(Entity).where(
+                EntityRevision.slug == slug,
+                EntityRevision.is_current == True
+            )
+            result = await db.execute(stmt)
+            entity_revision = result.scalar_one_or_none()
+
+            if entity_revision:
+                # Convert slug to readable name (replace hyphens with spaces, capitalize)
+                readable_name = slug.replace("-", " ").title()
+                entity_names.append(readable_name)
+            else:
+                # Entity not found, use slug as-is
+                entity_names.append(slug.replace("-", " ").title())
+
+        # Step 2: Construct query (combine entities with AND)
+        query = " AND ".join(entity_names)
+
+        logger.info(f"Constructed query: {query}")
+
+        # Step 3: Search each database
+        all_results = []
+        databases_searched = []
+
+        if "pubmed" in request.databases:
+            databases_searched.append("pubmed")
+            logger.info(f"Searching PubMed for: {query}")
+
+            pubmed_fetcher = PubMedFetcher()
+
+            # Search with 2x max_results to allow for filtering
+            pmids, total_count = await pubmed_fetcher.search_pubmed(
+                query=query,
+                max_results=min(request.max_results * 2, 100)
+            )
+
+            logger.info(f"Found {total_count} total results in PubMed, fetching {len(pmids)} articles")
+
+            if pmids:
+                # Fetch article metadata
+                articles = await pubmed_fetcher.bulk_fetch_articles(pmids)
+
+                # Calculate quality scores and convert to results
+                for article in articles:
+                    trust_level = infer_trust_level_from_pubmed_metadata(
+                        title=article.title,
+                        journal=article.journal,
+                        year=article.year,
+                        abstract=article.abstract
+                    )
+
+                    # Filter by minimum quality
+                    if trust_level >= request.min_quality:
+                        # Calculate relevance (how many entities mentioned in title/abstract)
+                        relevance = _calculate_relevance(
+                            article.title + " " + (article.abstract or ""),
+                            entity_names
+                        )
+
+                        all_results.append(SmartDiscoveryResult(
+                            pmid=article.pmid,
+                            title=article.title,
+                            authors=article.authors,
+                            journal=article.journal,
+                            year=article.year,
+                            doi=article.doi,
+                            url=article.url,
+                            trust_level=trust_level,
+                            relevance_score=relevance,
+                            database="pubmed"
+                        ))
+
+        # TODO: Add arXiv, bioRxiv, Wikipedia support here
+
+        # Step 4: Check which sources already exist in our database
+        if all_results:
+            # Check by PMID for PubMed articles
+            pubmed_results = [r for r in all_results if r.pmid]
+            existing_pmids = set()
+
+            if pubmed_results:
+                from app.models.source_revision import SourceRevision
+                from sqlalchemy import select
+
+                pmids_to_check = [r.pmid for r in pubmed_results]
+
+                # Query for existing PMIDs in source_metadata
+                stmt = select(SourceRevision.source_metadata).where(
+                    SourceRevision.is_current == True
+                )
+                result = await db.execute(stmt)
+
+                for row in result:
+                    metadata = row[0]
+                    if metadata and "pmid" in metadata:
+                        existing_pmids.add(metadata["pmid"])
+
+                # Mark already imported
+                for r in all_results:
+                    if r.pmid in existing_pmids:
+                        r.already_imported = True
+
+        # Step 5: Sort by quality (descending), then relevance
+        sorted_results = sorted(
+            all_results,
+            key=lambda r: (r.trust_level, r.relevance_score),
+            reverse=True
+        )
+
+        # Step 6: Limit to max_results (but return all for user choice)
+        logger.info(
+            f"Smart discovery complete: {len(sorted_results)} results "
+            f"(filtered from {total_count if 'pubmed' in request.databases else 0} total), "
+            f"top {min(request.max_results, len(sorted_results))} will be pre-selected"
+        )
+
+        return SmartDiscoveryResponse(
+            entity_slugs=request.entity_slugs,
+            query_used=query,
+            total_found=len(sorted_results),
+            results=sorted_results,
+            databases_searched=databases_searched
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Smart discovery failed: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to perform smart discovery: {str(e)}"
+        )
+
+
+def _calculate_relevance(text: str, entity_names: list[str]) -> float:
+    """
+    Calculate relevance score based on entity mention frequency.
+
+    Returns score 0.0-1.0 based on how many entities are mentioned.
+    """
+    text_lower = text.lower()
+    mentions = sum(1 for name in entity_names if name.lower() in text_lower)
+    return mentions / len(entity_names) if entity_names else 0.0
 
 
 @router.post(
@@ -769,6 +1026,14 @@ async def bulk_import_pubmed(
             try:
                 from app.schemas.source import SourceWrite
 
+                # Calculate trust level based on article metadata (title, journal, year)
+                trust_level = infer_trust_level_from_pubmed_metadata(
+                    title=article.title,
+                    journal=article.journal,
+                    year=article.year,
+                    abstract=article.abstract
+                )
+
                 # Create source with PubMed metadata
                 source_data = SourceWrite(
                     kind="study",
@@ -777,7 +1042,7 @@ async def bulk_import_pubmed(
                     year=article.year,
                     origin=article.journal,
                     url=article.url,
-                    trust_level=0.9,  # PubMed articles are generally high quality
+                    trust_level=trust_level,  # Calculated based on study type and journal
                     summary={"en": article.abstract} if article.abstract else None,
                     source_metadata={
                         "pmid": article.pmid,

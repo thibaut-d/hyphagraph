@@ -29,6 +29,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import CloseIcon from "@mui/icons-material/Close";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import SearchIcon from "@mui/icons-material/Search";
 
 import { getEntity, deleteEntity } from "../api/entities";
 import { getInferenceForEntity, ScopeFilter } from "../api/inferences";
@@ -357,6 +358,17 @@ export function EntityDetailView() {
             >
               <Button
                 component={RouterLink}
+                to={`/sources/smart-discovery?entity=${entity.slug}`}
+                variant="contained"
+                color="secondary"
+                startIcon={<SearchIcon />}
+                size="small"
+                fullWidth={{ xs: true, sm: false }}
+              >
+                {t("entity.discover_sources", "Discover Sources")}
+              </Button>
+              <Button
+                component={RouterLink}
                 to={`/entities/${entity.id}/edit`}
                 color="primary"
                 startIcon={<EditIcon />}
@@ -377,7 +389,7 @@ export function EntityDetailView() {
               <Button
                 component={RouterLink}
                 to={`/relations/new?entity_id=${entity.id}`}
-                variant="contained"
+                variant="outlined"
                 startIcon={<AddIcon />}
                 size="small"
                 fullWidth={{ xs: true, sm: false }}
@@ -521,7 +533,7 @@ export function EntityDetailView() {
 
           {/* Inference Display */}
           {filteredInference ? (
-            <InferenceBlock inference={filteredInference} />
+            <InferenceBlock inference={filteredInference} currentEntitySlug={entity.slug} />
           ) : (
             <Typography color="text.secondary">
               {t("common.no_data", "No data")}

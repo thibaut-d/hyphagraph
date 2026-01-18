@@ -22,8 +22,9 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import FilterListIcon from "@mui/icons-material/FilterList";
 
-import { FilterDrawer, FilterSection, CheckboxFilter, SearchFilter } from "../components/filters";
+import { FilterDrawer, FilterSection, CheckboxFilter, SearchFilter, RangeFilter } from "../components/filters";
 import { ScrollToTop } from "../components/ScrollToTop";
+import { ExportMenu } from "../components/ExportMenu";
 import { useFilterDrawer } from "../hooks/useFilterDrawer";
 import { usePersistedFilters } from "../hooks/usePersistedFilters";
 import { useDebounce } from "../hooks/useDebounce";
@@ -115,6 +116,33 @@ export function EntitiesView() {
     }));
   }, [filterOptions, i18n.language]);
 
+  // Extract clinical effects options
+  const clinicalEffectsOptions = useMemo(() => {
+    if (!filterOptions?.clinical_effects) return [];
+
+    const currentLanguage = i18n.language || 'en';
+
+    return filterOptions.clinical_effects.map(effect => ({
+      value: effect.type_id,
+      label: effect.label[currentLanguage] || effect.label.en || effect.type_id
+    }));
+  }, [filterOptions, i18n.language]);
+
+  // Consensus level options (static)
+  const consensusOptions = useMemo(() => [
+    { value: 'strong', label: t('filters.consensus_strong', 'Strong Consensus (<10% disagreement)') },
+    { value: 'moderate', label: t('filters.consensus_moderate', 'Moderate (10-30%)') },
+    { value: 'weak', label: t('filters.consensus_weak', 'Weak (30-50%)') },
+    { value: 'disputed', label: t('filters.consensus_disputed', 'Disputed (>50%)') },
+  ], [t]);
+
+  // Recency options (static)
+  const recencyOptions = useMemo(() => [
+    { value: 'recent', label: t('filters.recency_recent', 'Recent (<5 years)') },
+    { value: 'older', label: t('filters.recency_older', 'Older (5-10 years)') },
+    { value: 'historical', label: t('filters.recency_historical', 'Historical (>10 years)') },
+  ], [t]);
+
   // Helper function to get category label from ID
   const getCategoryLabel = useCallback((categoryId: string | undefined) => {
     if (!categoryId) return null;
@@ -127,7 +155,15 @@ export function EntitiesView() {
     setEntities([]);
     setOffset(0);
     setHasMore(true);
-  }, [debouncedSearch, filters.ui_category_id]);
+  }, [
+    debouncedSearch,
+    filters.ui_category_id,
+    filters.clinical_effects,
+    filters.consensus_level,
+    filters.evidence_quality_min,
+    filters.evidence_quality_max,
+    filters.recency
+  ]);
 
   // Fetch entities with server-side filtering and pagination
   const loadEntities = useCallback(async (currentOffset: number) => {
@@ -144,6 +180,26 @@ export function EntitiesView() {
 
     if (filters.ui_category_id && Array.isArray(filters.ui_category_id)) {
       apiFilters.ui_category_id = filters.ui_category_id;
+    }
+
+    if (filters.clinical_effects && Array.isArray(filters.clinical_effects)) {
+      apiFilters.clinical_effects = filters.clinical_effects;
+    }
+
+    if (filters.consensus_level && Array.isArray(filters.consensus_level)) {
+      apiFilters.consensus_level = filters.consensus_level;
+    }
+
+    if (filters.evidence_quality_min !== undefined) {
+      apiFilters.evidence_quality_min = filters.evidence_quality_min;
+    }
+
+    if (filters.evidence_quality_max !== undefined) {
+      apiFilters.evidence_quality_max = filters.evidence_quality_max;
+    }
+
+    if (filters.recency && Array.isArray(filters.recency)) {
+      apiFilters.recency = filters.recency;
     }
 
     try {
@@ -204,6 +260,7 @@ export function EntitiesView() {
               </Box>
             </Button>
           </Badge>
+          <ExportMenu exportType="entities" buttonText={t("entities.export", "Export")} size="small" />
           <Button
             component={RouterLink}
             to="/entities/new"
@@ -323,6 +380,55 @@ export function EntitiesView() {
             value={(filters.search as string) || ''}
             onChange={(value) => setFilter('search', value)}
             placeholder={t("filters.search_placeholder", "Search by slug...")}
+          />
+        </FilterSection>
+
+        {/* Advanced Filter: Clinical Effects */}
+        {clinicalEffectsOptions.length > 0 && (
+          <FilterSection title={t("filters.clinical_effects", "Clinical Effects")}>
+            <CheckboxFilter
+              options={clinicalEffectsOptions}
+              value={(filters.clinical_effects as string[]) || []}
+              onChange={(value) => setFilter('clinical_effects', value)}
+            />
+          </FilterSection>
+        )}
+
+        {/* Advanced Filter: Consensus Level */}
+        <FilterSection title={t("filters.consensus_level", "Consensus Level")}>
+          <CheckboxFilter
+            options={consensusOptions}
+            value={(filters.consensus_level as string[]) || []}
+            onChange={(value) => setFilter('consensus_level', value)}
+          />
+        </FilterSection>
+
+        {/* Advanced Filter: Evidence Quality */}
+        {filterOptions?.evidence_quality_range && (
+          <FilterSection title={t("filters.evidence_quality", "Evidence Quality")}>
+            <RangeFilter
+              value={[
+                (filters.evidence_quality_min as number) ?? filterOptions.evidence_quality_range[0],
+                (filters.evidence_quality_max as number) ?? filterOptions.evidence_quality_range[1]
+              ]}
+              onChange={(value) => {
+                setFilter('evidence_quality_min', value[0]);
+                setFilter('evidence_quality_max', value[1]);
+              }}
+              min={filterOptions.evidence_quality_range[0]}
+              max={filterOptions.evidence_quality_range[1]}
+              step={0.05}
+              formatValue={(v) => `${(v * 100).toFixed(0)}%`}
+            />
+          </FilterSection>
+        )}
+
+        {/* Advanced Filter: Recency */}
+        <FilterSection title={t("filters.recency", "Source Recency")}>
+          <CheckboxFilter
+            options={recencyOptions}
+            value={(filters.recency as string[]) || []}
+            onChange={(value) => setFilter('recency', value)}
           />
         </FilterSection>
       </FilterDrawer>

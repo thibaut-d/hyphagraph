@@ -15,6 +15,7 @@ import {
   Settings as SettingsIcon,
   Logout as LogoutIcon,
   VpnKey as VpnKeyIcon,
+  AdminPanelSettings as AdminIcon,
 } from "@mui/icons-material";
 
 import { UserAvatar } from "./UserAvatar";
@@ -58,6 +59,11 @@ export function ProfileMenu({ size = 40 }: ProfileMenuProps) {
   const handleSettings = () => {
     handleClose();
     navigate("/settings");
+  };
+
+  const handleAdmin = () => {
+    handleClose();
+    navigate("/admin");
   };
 
   const handleLogout = () => {
@@ -125,6 +131,16 @@ export function ProfileMenu({ size = 40 }: ProfileMenuProps) {
           </ListItemIcon>
           <ListItemText>{t("profile.settings", "Settings")}</ListItemText>
         </MenuItem>
+
+        {/* Admin panel link (superusers only) */}
+        {user.is_superuser && (
+          <MenuItem onClick={handleAdmin}>
+            <ListItemIcon>
+              <AdminIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>{t("admin.panel", "Administration")}</ListItemText>
+          </MenuItem>
+        )}
 
         <Divider />
 

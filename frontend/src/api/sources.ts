@@ -21,6 +21,8 @@ export interface SourceFilters {
   trust_level_min?: number;
   trust_level_max?: number;
   search?: string;
+  domain?: string[];
+  role?: string[];
   limit?: number;
   offset?: number;
 }
@@ -29,12 +31,34 @@ export interface PaginatedResponse<T> {
   items: T[];
   total: number;
   limit: number;
-  offset: number;
+  offset?: number;
 }
 
 export interface SourceFilterOptions {
   kinds: string[];
   year_range: [number, number] | null;
+  domains?: string[];
+  roles?: string[];
+}
+
+export interface SourceMetadataSuggestion {
+  url: string;
+  title?: string | null;
+  authors?: string[] | null;
+  year?: number | null;
+  origin?: string | null;
+  kind?: string | null;
+  trust_level?: number | null;  // Calculated quality score (0.0-1.0)
+  summary_en?: string | null;
+  summary_fr?: string | null;
+  source_metadata?: Record<string, any> | null;
+}
+
+export function extractMetadataFromUrl(url: string): Promise<SourceMetadataSuggestion> {
+  return apiFetch("/sources/extract-metadata-from-url", {
+    method: "POST",
+    body: JSON.stringify({ url }),
+  });
 }
 
 export function listSources(filters?: SourceFilters): Promise<PaginatedResponse<SourceRead>> {
@@ -62,6 +86,14 @@ export function listSources(filters?: SourceFilters): Promise<PaginatedResponse<
 
   if (filters?.search) {
     params.append('search', filters.search);
+  }
+
+  if (filters?.domain) {
+    filters.domain.forEach(d => params.append('domain', d));
+  }
+
+  if (filters?.role) {
+    filters.role.forEach(r => params.append('role', r));
   }
 
   if (filters?.limit !== undefined) {

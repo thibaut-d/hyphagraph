@@ -48,6 +48,11 @@ async def create_entity(
 async def list_entities(
     ui_category_id: Optional[List[str]] = Query(None, description="Filter by UI category"),
     search: Optional[str] = Query(None, description="Search in slug", max_length=100),
+    clinical_effects: Optional[List[str]] = Query(None, description="Filter by clinical effects (relation types)"),
+    consensus_level: Optional[List[str]] = Query(None, description="Filter by consensus level"),
+    evidence_quality_min: Optional[float] = Query(None, description="Minimum evidence quality", ge=0.0, le=1.0),
+    evidence_quality_max: Optional[float] = Query(None, description="Maximum evidence quality", ge=0.0, le=1.0),
+    recency: Optional[List[str]] = Query(None, description="Filter by recency (recent/older/historical)"),
     limit: int = Query(50, description="Maximum number of results", ge=1, le=100),
     offset: int = Query(0, description="Number of results to skip", ge=0),
     db: AsyncSession = Depends(get_db),
@@ -57,8 +62,17 @@ async def list_entities(
 
     Returns paginated results with total count.
 
+    Basic Filters:
     - **ui_category_id**: Filter by UI category (multiple values use OR logic)
     - **search**: Case-insensitive search in slug
+
+    Advanced Filters (require aggregations):
+    - **clinical_effects**: Filter by clinical effects/relation types (treats, causes, etc.)
+    - **consensus_level**: Filter by consensus strength (strong, moderate, weak, disputed)
+    - **evidence_quality_min/max**: Filter by average trust level of citing sources
+    - **recency**: Filter by most recent source year (recent <5y, older 5-10y, historical >10y)
+
+    Pagination:
     - **limit**: Maximum number of results to return (default: 50, max: 100)
     - **offset**: Number of results to skip for pagination (default: 0)
     """
@@ -66,6 +80,11 @@ async def list_entities(
     filters = EntityFilters(
         ui_category_id=ui_category_id,
         search=search,
+        clinical_effects=clinical_effects,
+        consensus_level=consensus_level,
+        evidence_quality_min=evidence_quality_min,
+        evidence_quality_max=evidence_quality_max,
+        recency=recency,
         limit=limit,
         offset=offset
     )

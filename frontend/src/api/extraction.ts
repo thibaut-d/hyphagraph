@@ -64,7 +64,7 @@ export async function extractFromDocument(
   sourceId: string
 ): Promise<DocumentExtractionPreview> {
   return apiFetch<DocumentExtractionPreview>(
-    `/api/sources/${sourceId}/extract-from-document`,
+    `/sources/${sourceId}/extract-from-document`,
     {
       method: "POST",
     }
@@ -136,7 +136,7 @@ export async function extractFromUrl(
   url: string
 ): Promise<DocumentExtractionPreview> {
   return apiFetch<DocumentExtractionPreview>(
-    `/api/sources/${sourceId}/extract-from-url`,
+    `/sources/${sourceId}/extract-from-url`,
     {
       method: "POST",
       headers: {
@@ -164,7 +164,7 @@ export async function saveExtraction(
   request: SaveExtractionRequest
 ): Promise<SaveExtractionResult> {
   return apiFetch<SaveExtractionResult>(
-    `/api/sources/${sourceId}/save-extraction`,
+    `/sources/${sourceId}/save-extraction`,
     {
       method: "POST",
       headers: {

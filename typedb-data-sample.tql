@@ -1,0 +1,73 @@
+# HyphaGraph Data for TypeDB
+# Generated from PostgreSQL database
+
+# ============================================================================
+# Entities
+# ============================================================================
+
+insert
+$e isa entity-node,
+    has slug "fibromyalgia",
+    has summary "Fibromyalgia is a chronic disorder characterized by widespread musculoskeletal pain, fatigue, and tenderness.",
+    has entity-id "de334806-3edc-40c3-8b82-8e4c05f29481";
+
+insert
+$e isa entity-node,
+    has slug "axial-spondyloarthritis",
+    has summary "Axial spondyloarthritis (axSpA) is a form of inflammatory arthritis that primarily affects the spine and the sacroiliac joints.",
+    has entity-id "ebd3b072-e219-4a0a-ab99-81a328ef7541";
+
+insert
+$e isa entity-node,
+    has slug "central-sensitization",
+    has summary "Central sensitization (CS) refers to an increased sensitivity of the central nervous system to stimulation.",
+    has entity-id "67d05ea8-a467-4534-897a-9f8084df2b48";
+
+insert
+$e isa entity-node,
+    has slug "pain-catastrophizing",
+    has summary "Pain catastrophizing (PC) is a psychological condition characterized by an exaggerated negative response to anticipated or actual pain.",
+    has entity-id "e3bad690-3578-4e9a-8674-f2dd10c857b9";
+
+insert
+$e isa entity-node,
+    has slug "sleep-disturbance",
+    has summary "Sleep disturbance refers to difficulties in sleeping, which can include insomnia or disrupted sleep patterns.",
+    has entity-id "1ee141f7-698b-484e-b80b-5e1c473efae9";
+
+# ============================================================================
+# Relations with Semantic Roles
+# ============================================================================
+
+insert
+$r (subject: $e0, object: $e1) isa treats,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "jak-inhibitors";
+$e1 isa entity-node, has slug "rheumatoid-arthritis";
+
+insert
+$r (subject: $e0, object: $e1) isa measures,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "jak-inhibitors";
+$e1 isa entity-node, has slug "clinical-remission";
+
+insert
+$r (subject: $e0, object: $e1) isa measures,
+    has confidence 0.8;
+$e0 isa entity-node, has slug "jak-inhibitors";
+$e1 isa entity-node, has slug "ultrasound-remission";
+
+insert
+$r (object: $e0, subject: $e1) isa biomarker-for,
+    has confidence 0.6;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "mirna-223-3p";
+
+insert
+$r (subject: $e0, object: $e1) isa affects-population,
+    has confidence 0.6;
+$e0 isa entity-node, has slug "fibromyalgia";
+$e1 isa entity-node, has slug "healthy-controls";
+
+
+# Exported 5 entities and 5 relations

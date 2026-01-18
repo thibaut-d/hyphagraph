@@ -9,9 +9,11 @@ import {
   LinearProgress,
   Alert,
   Button,
+  Link,
 } from "@mui/material";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
-import { InferenceRead, RoleInference } from "../types/inference";
+import { InferenceRead, RoleInference, EntityRoleInference } from "../types/inference";
+import { RelationRead } from "../types/relation";
 
 function ScoreBar({ score }: { score: number | null }) {
   if (score === null) {
@@ -51,25 +53,164 @@ function ScoreBar({ score }: { score: number | null }) {
   );
 }
 
+function RelationDisplay({ relation, kind }: { relation: RelationRead; kind: string }) {
+  // Sort roles by role_type (subject first, then object, then others)
+  const sortedRoles = [...relation.roles].sort((a, b) => {
+    const order: Record<string, number> = { subject: 0, object: 1 };
+    return (order[a.role_type] ?? 2) - (order[b.role_type] ?? 2);
+  });
+
+  // Find subject and object roles
+  const subject = sortedRoles.find(r => r.role_type === "subject");
+  const object = sortedRoles.find(r => r.role_type === "object");
+
+  // Build natural language sentence
+  let sentence = "";
+
+  if (subject?.entity_slug && object?.entity_slug) {
+    // Use natural language based on relation kind
+    const kindLower = kind.toLowerCase();
+
+    if (kindLower.includes("treat") || kindLower === "treats") {
+      sentence = `${subject.entity_slug} treats ${object.entity_slug}`;
+    } else if (kindLower.includes("biomarker")) {
+      sentence = `${subject.entity_slug} is biomarker for ${object.entity_slug}`;
+    } else if (kindLower.includes("affect") || kindLower.includes("population")) {
+      sentence = `${subject.entity_slug} affects ${object.entity_slug}`;
+    } else if (kindLower.includes("cause") || kindLower === "causes") {
+      sentence = `${subject.entity_slug} causes ${object.entity_slug}`;
+    } else if (kindLower.includes("correlate") || kindLower === "correlates") {
+      sentence = `${subject.entity_slug} correlates with ${object.entity_slug}`;
+    } else {
+      // Default: just display as "subject kind object"
+      sentence = `${subject.entity_slug} ${kind} ${object.entity_slug}`;
+    }
+  } else {
+    // Fallback: display all roles with their types
+    sentence = sortedRoles
+      .map(r => `${r.entity_slug || r.entity_id} (${r.role_type})`)
+      .join(" → ");
+  }
+
+  return (
+    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+      <Chip
+        label={relation.direction || "neutral"}
+        size="small"
+        color={
+          relation.direction === "supports" ? "success" :
+          relation.direction === "contradicts" ? "error" : "default"
+        }
+      />
+      <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+        {subject?.entity_slug && (
+          <Link
+            component={RouterLink}
+            to={`/entities/${subject.entity_slug}`}
+            sx={{ fontWeight: 'bold', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+          >
+            {subject.entity_slug}
+          </Link>
+        )}
+        {subject?.entity_slug && object?.entity_slug && (
+          <span style={{ marginLeft: 4, marginRight: 4 }}>
+            {kind.toLowerCase().includes("treat") ? "treats" :
+             kind.toLowerCase().includes("biomarker") ? "is biomarker for" :
+             kind.toLowerCase().includes("affect") ? "affects" :
+             kind.toLowerCase().includes("cause") ? "causes" :
+             kind.toLowerCase().includes("correlate") ? "correlates with" :
+             kind}
+          </span>
+        )}
+        {object?.entity_slug && (
+          <Link
+            component={RouterLink}
+            to={`/entities/${object.entity_slug}`}
+            sx={{ fontWeight: 'bold', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+          >
+            {object.entity_slug}
+          </Link>
+        )}
+        {!subject?.entity_slug && !object?.entity_slug && (
+          <span>{sentence}</span>
+        )}
+      </Typography>
+      <Typography variant="caption" color="text.secondary">
+        confidence: {relation.confidence?.toFixed(2) || "N/A"}
+      </Typography>
+    </Stack>
+  );
+}
+
+function EntityInferenceItem({
+  entityInference,
+}: {
+  entityInference: EntityRoleInference;
+}) {
+  const { entity_slug, score, source_count, confidence, disagreement } = entityInference;
+
+  return (
+    <Box sx={{ mb: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
+        <Link
+          component={RouterLink}
+          to={`/entities/${entity_slug}`}
+          variant="body1"
+          sx={{ fontWeight: 600, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+        >
+          {entity_slug}
+        </Link>
+        <Stack direction="row" spacing={1}>
+          <Chip
+            label={`${source_count} sources`}
+            size="small"
+            variant="outlined"
+          />
+          <Chip
+            label={`${(confidence * 100).toFixed(0)}% confidence`}
+            size="small"
+            color={confidence > 0.7 ? "success" : confidence > 0.4 ? "warning" : "default"}
+            variant="outlined"
+          />
+        </Stack>
+      </Stack>
+      <ScoreBar score={score} />
+      {disagreement > 0.3 && (
+        <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
+          {(disagreement * 100).toFixed(0)}% disagreement
+        </Typography>
+      )}
+    </Box>
+  );
+}
+
 function RoleInferenceCard({
   roleInference,
-  entityId
+  entityId,
+  currentEntitySlug
 }: {
   roleInference: RoleInference;
   entityId: string;
+  currentEntitySlug?: string;
 }) {
-  const { role_type, score, coverage, confidence, disagreement } = roleInference;
+  const { relation_type, semantic_role, entity_inferences, total_entities, avg_score } = roleInference;
 
   return (
     <Card variant="outlined">
       <CardContent>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
-          <Typography variant="h6">
-            {role_type}
-          </Typography>
+        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={2}>
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="h6">
+              {relation_type} ({semantic_role}s)
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              {total_entities} {total_entities === 1 ? 'entity' : 'entities'} found
+              {avg_score !== null && ` • Avg score: ${avg_score.toFixed(2)}`}
+            </Typography>
+          </Box>
           <Button
             component={RouterLink}
-            to={`/explain/${entityId}/${role_type}`}
+            to={`/explain/${entityId}/${relation_type}`}
             size="small"
             startIcon={<HelpOutlineIcon />}
             variant="outlined"
@@ -78,51 +219,20 @@ function RoleInferenceCard({
           </Button>
         </Stack>
 
-        <Stack spacing={2}>
-          {/* Main inference score */}
-          <Box>
-            <Typography variant="caption" color="text.secondary" gutterBottom>
-              Inference Score
-            </Typography>
-            <ScoreBar score={score} />
-          </Box>
-
-          {/* Metadata */}
-          <Stack direction="row" spacing={2} flexWrap="wrap">
-            <Chip
-              label={`Coverage: ${coverage.toFixed(1)}`}
-              size="small"
-              variant="outlined"
+        <Stack spacing={1}>
+          {entity_inferences.map((entityInf) => (
+            <EntityInferenceItem
+              key={entityInf.entity_slug}
+              entityInference={entityInf}
             />
-            <Chip
-              label={`Confidence: ${(confidence * 100).toFixed(0)}%`}
-              size="small"
-              color={confidence > 0.7 ? "success" : confidence > 0.4 ? "warning" : "default"}
-              variant="outlined"
-            />
-            {disagreement > 0.3 && (
-              <Chip
-                label={`Disagreement: ${(disagreement * 100).toFixed(0)}%`}
-                size="small"
-                color="error"
-                variant="outlined"
-              />
-            )}
-          </Stack>
-
-          {/* Warning for contradictory evidence */}
-          {disagreement > 0.5 && (
-            <Alert severity="warning" sx={{ mt: 1 }}>
-              High disagreement detected - sources contradict each other
-            </Alert>
-          )}
+          ))}
         </Stack>
       </CardContent>
     </Card>
   );
 }
 
-export function InferenceBlock({ inference }: { inference: InferenceRead | null }) {
+export function InferenceBlock({ inference, currentEntitySlug }: { inference: InferenceRead | null; currentEntitySlug?: string }) {
   if (!inference) {
     return null;
   }
@@ -138,9 +248,10 @@ export function InferenceBlock({ inference }: { inference: InferenceRead | null 
           <Stack spacing={2}>
             {inference.role_inferences.map((roleInf) => (
               <RoleInferenceCard
-                key={roleInf.role_type}
+                key={`${roleInf.relation_type}-${roleInf.semantic_role}`}
                 roleInference={roleInf}
                 entityId={inference.entity_id}
+                currentEntitySlug={currentEntitySlug}
               />
             ))}
           </Stack>
@@ -161,17 +272,7 @@ export function InferenceBlock({ inference }: { inference: InferenceRead | null 
 
                   <Stack spacing={1} mt={1}>
                     {relations.map((r) => (
-                      <Stack
-                        key={r.id}
-                        direction="row"
-                        spacing={1}
-                        alignItems="center"
-                      >
-                        <Chip label={r.direction} size="small" />
-                        <Typography variant="body2">
-                          confidence: {r.confidence}
-                        </Typography>
-                      </Stack>
+                      <RelationDisplay key={r.id} relation={r} kind={kind} />
                     ))}
                   </Stack>
                 </CardContent>

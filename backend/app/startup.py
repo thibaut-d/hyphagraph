@@ -91,7 +91,7 @@ async def create_system_source(db: AsyncSession) -> None:
         db: Database session
     """
     try:
-        # Check if system source already exists
+        # Check if system source already exists by ID or by title
         if settings.SYSTEM_SOURCE_ID:
             from uuid import UUID
             stmt = select(Source).where(Source.id == UUID(settings.SYSTEM_SOURCE_ID))
@@ -101,6 +101,19 @@ async def create_system_source(db: AsyncSession) -> None:
             if existing:
                 logger.info(f"System source already exists: {settings.SYSTEM_SOURCE_ID}")
                 return
+
+        # Also check by title to avoid duplicates
+        stmt = select(Source).join(SourceRevision).where(
+            SourceRevision.title == "HyphaGraph Inference Engine",
+            SourceRevision.is_current == True
+        )
+        result = await db.execute(stmt)
+        existing = result.scalar_one_or_none()
+
+        if existing:
+            logger.info(f"System source already exists (found by title): {existing.id}")
+            logger.info(f"Consider setting SYSTEM_SOURCE_ID={existing.id} in .env to avoid this check")
+            return
 
         # Create system source
         logger.info("Creating system source for computed inferences...")

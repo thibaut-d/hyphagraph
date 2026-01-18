@@ -78,6 +78,28 @@ class SourceWithHistory(SourceRead):
 
 
 # =============================================================================
+# Metadata Extraction Schemas (for autofill)
+# =============================================================================
+
+class SourceMetadataSuggestion(Schema):
+    """
+    Suggested metadata extracted from a URL for autofilling source creation form.
+
+    All fields are optional suggestions that the user can review and edit.
+    """
+    url: str
+    title: Optional[str] = None
+    authors: Optional[List[str]] = None
+    year: Optional[int] = None
+    origin: Optional[str] = None  # journal, publisher, platform
+    kind: Optional[str] = None  # article, website, video, etc.
+    trust_level: Optional[float] = None  # Calculated quality score (0.0-1.0)
+    summary_en: Optional[str] = None
+    summary_fr: Optional[str] = None
+    source_metadata: Optional[dict] = None  # pmid, doi, etc.
+
+
+# =============================================================================
 # Document Upload Schemas
 # =============================================================================
 
@@ -112,10 +134,10 @@ class DocumentExtractionPreview(Schema):
 
 class SaveExtractionRequest(Schema):
     """Request to save user-approved extracted data."""
-    source_id: UUID
     entities_to_create: List[ExtractedEntity]  # User-approved entities
     entity_links: dict[str, UUID]  # extracted_slug -> existing_entity_id
     relations_to_create: List[ExtractedRelation]
+    # Note: source_id is in URL path, not needed in body
 
 
 class SaveExtractionResult(Schema):

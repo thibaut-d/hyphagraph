@@ -23,11 +23,21 @@ def entity_to_read(entity: Entity, current_revision: EntityRevision) -> EntityRe
 
     Combines base entity + current revision data.
     """
+    import json
+
+    # Parse summary if it's a JSON string
+    summary = current_revision.summary
+    if isinstance(summary, str):
+        try:
+            summary = json.loads(summary)
+        except (json.JSONDecodeError, TypeError):
+            summary = {"en": summary}  # Fallback to plain string
+
     return EntityRead(
         id=entity.id,
         created_at=entity.created_at,
         slug=current_revision.slug,
-        summary=current_revision.summary,
+        summary=summary,
         ui_category_id=current_revision.ui_category_id,
         # Legacy fields (deprecated but still in schema for transition)
         kind=None,
@@ -39,11 +49,21 @@ def entity_to_read(entity: Entity, current_revision: EntityRevision) -> EntityRe
 
 def entity_revision_to_read(revision: EntityRevision) -> EntityRevisionRead:
     """Convert EntityRevision ORM to EntityRevisionRead schema."""
+    import json
+
+    # Parse summary if it's a JSON string
+    summary = revision.summary
+    if isinstance(summary, str):
+        try:
+            summary = json.loads(summary)
+        except (json.JSONDecodeError, TypeError):
+            summary = {"en": summary}
+
     return EntityRevisionRead(
         id=revision.id,
         entity_id=revision.entity_id,
         slug=revision.slug,
-        summary=revision.summary,
+        summary=summary,
         ui_category_id=revision.ui_category_id,
         created_with_llm=revision.created_with_llm,
         created_by_user_id=revision.created_by_user_id,

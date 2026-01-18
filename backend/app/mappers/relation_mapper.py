@@ -1,3 +1,4 @@
+from uuid import UUID
 from app.models.relation import Relation
 from app.models.relation_revision import RelationRevision
 from app.models.relation_role_revision import RelationRoleRevision
@@ -27,12 +28,19 @@ def relation_revision_from_write(payload: RelationWrite) -> dict:
 
 
 def relation_to_read(
-    relation: Relation, current_revision: RelationRevision
+    relation: Relation,
+    current_revision: RelationRevision,
+    entity_slug_map: dict[UUID, str] = None
 ) -> RelationRead:
     """
     ORM → Read
 
     Combines base relation + current revision data.
+
+    Args:
+        relation: Base relation ORM object
+        current_revision: Current revision ORM object
+        entity_slug_map: Optional mapping of entity_id to slug for resolving entity names
     """
     # Convert role revisions to read schema
     roles = [
@@ -43,6 +51,7 @@ def relation_to_read(
             role_type=role.role_type,
             weight=role.weight,
             coverage=role.coverage,
+            entity_slug=entity_slug_map.get(role.entity_id) if entity_slug_map else None,
         )
         for role in current_revision.roles
     ]

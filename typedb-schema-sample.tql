@@ -1,0 +1,348 @@
+# HyphaGraph Schema for TypeDB
+# Generated from PostgreSQL database
+
+define
+
+# ============================================================================
+# Entity Types
+# ============================================================================
+
+entity entity-node,
+    owns slug,
+    owns summary,
+    owns entity-id;
+
+# ============================================================================
+# Attributes
+# ============================================================================
+
+slug sub attribute, value string;
+summary sub attribute, value string;
+entity-id sub attribute, value string;
+confidence sub attribute, value double;
+source-title sub attribute, value string;
+source-pmid sub attribute, value string;
+
+# ============================================================================
+# Relation Types with Semantic Roles
+# ============================================================================
+
+# Drug/treatment treats disease/symptom
+treats sub relation,
+    relates dosage,
+    relates duration,
+    relates effect-size,
+    relates frequency,
+    relates location,
+    relates severity,
+    relates agent,
+    relates condition,
+    relates mechanism,
+    relates outcome,
+    relates population,
+    relates target,
+    relates biomarker,
+    relates control-group,
+    relates measured-by,
+    relates study-group,
+    owns confidence;
+
+# Drug/disease causes symptom/outcome
+causes sub relation,
+    relates dosage,
+    relates duration,
+    relates effect-size,
+    relates frequency,
+    relates location,
+    relates severity,
+    relates agent,
+    relates condition,
+    relates mechanism,
+    relates outcome,
+    relates population,
+    relates target,
+    relates biomarker,
+    relates control-group,
+    relates measured-by,
+    relates study-group,
+    owns confidence;
+
+# Drug/treatment prevents disease/outcome
+prevents sub relation,
+    relates dosage,
+    relates duration,
+    relates effect-size,
+    relates frequency,
+    relates location,
+    relates severity,
+    relates agent,
+    relates condition,
+    relates mechanism,
+    relates outcome,
+    relates population,
+    relates target,
+    relates biomarker,
+    relates control-group,
+    relates measured-by,
+    relates study-group,
+    owns confidence;
+
+# Factor increases risk of disease/outcome
+increases-risk sub relation,
+    relates dosage,
+    relates duration,
+    relates effect-size,
+    relates frequency,
+    relates location,
+    relates severity,
+    relates agent,
+    relates condition,
+    relates mechanism,
+    relates outcome,
+    relates population,
+    relates target,
+    relates biomarker,
+    relates control-group,
+    relates measured-by,
+    relates study-group,
+    owns confidence;
+
+# Factor decreases risk of disease/outcome
+decreases-risk sub relation,
+    relates dosage,
+    relates duration,
+    relates effect-size,
+    relates frequency,
+    relates location,
+    relates severity,
+    relates agent,
+    relates condition,
+    relates mechanism,
+    relates outcome,
+    relates population,
+    relates target,
+    relates biomarker,
+    relates control-group,
+    relates measured-by,
+    relates study-group,
+    owns confidence;
+
+# Biological mechanism underlying an effect
+mechanism sub relation,
+    relates dosage,
+    relates duration,
+    relates effect-size,
+    relates frequency,
+    relates location,
+    relates severity,
+    relates agent,
+    relates condition,
+    relates mechanism,
+    relates outcome,
+    relates population,
+    relates target,
+    relates biomarker,
+    relates control-group,
+    relates measured-by,
+    relates study-group,
+    owns confidence;
+
+# Drug/treatment should not be used with disease/drug
+contraindicated sub relation,
+    relates dosage,
+    relates duration,
+    relates effect-size,
+    relates frequency,
+    relates location,
+    relates severity,
+    relates agent,
+    relates condition,
+    relates mechanism,
+    relates outcome,
+    relates population,
+    relates target,
+    relates biomarker,
+    relates control-group,
+    relates measured-by,
+    relates study-group,
+    owns confidence;
+
+# Drug interacts with another drug
+interacts-with sub relation,
+    relates dosage,
+    relates duration,
+    relates effect-size,
+    relates frequency,
+    relates location,
+    relates severity,
+    relates agent,
+    relates condition,
+    relates mechanism,
+    relates outcome,
+    relates population,
+    relates target,
+    relates biomarker,
+    relates control-group,
+    relates measured-by,
+    relates study-group,
+    owns confidence;
+
+# Drug is metabolized by enzyme/pathway
+metabolized-by sub relation,
+    relates dosage,
+    relates duration,
+    relates effect-size,
+    relates frequency,
+    relates location,
+    relates severity,
+    relates agent,
+    relates condition,
+    relates mechanism,
+    relates outcome,
+    relates population,
+    relates target,
+    relates biomarker,
+    relates control-group,
+    relates measured-by,
+    relates study-group,
+    owns confidence;
+
+# Biomarker indicates disease/condition
+biomarker-for sub relation,
+    relates dosage,
+    relates duration,
+    relates effect-size,
+    relates frequency,
+    relates location,
+    relates severity,
+    relates agent,
+    relates condition,
+    relates mechanism,
+    relates outcome,
+    relates population,
+    relates target,
+    relates biomarker,
+    relates control-group,
+    relates measured-by,
+    relates study-group,
+    owns confidence;
+
+# Treatment affects specific population
+affects-population sub relation,
+    relates dosage,
+    relates duration,
+    relates effect-size,
+    relates frequency,
+    relates location,
+    relates severity,
+    relates agent,
+    relates condition,
+    relates mechanism,
+    relates outcome,
+    relates population,
+    relates target,
+    relates biomarker,
+    relates control-group,
+    relates measured-by,
+    relates study-group,
+    owns confidence;
+
+# Assessment tool/test measures condition/symptom
+measures sub relation,
+    relates dosage,
+    relates duration,
+    relates effect-size,
+    relates frequency,
+    relates location,
+    relates severity,
+    relates agent,
+    relates condition,
+    relates mechanism,
+    relates outcome,
+    relates population,
+    relates target,
+    relates biomarker,
+    relates control-group,
+    relates measured-by,
+    relates study-group,
+    owns confidence;
+
+# Any other type of relationship not fitting above categories
+other sub relation,
+    relates dosage,
+    relates duration,
+    relates effect-size,
+    relates frequency,
+    relates location,
+    relates severity,
+    relates agent,
+    relates condition,
+    relates mechanism,
+    relates outcome,
+    relates population,
+    relates target,
+    relates biomarker,
+    relates control-group,
+    relates measured-by,
+    relates study-group,
+    owns confidence;
+
+# Entity compared to control group or comparison entity in a study
+compared-to sub relation,
+    relates dosage,
+    relates duration,
+    relates effect-size,
+    relates frequency,
+    relates location,
+    relates severity,
+    relates agent,
+    relates condition,
+    relates mechanism,
+    relates outcome,
+    relates population,
+    relates target,
+    relates biomarker,
+    relates control-group,
+    relates measured-by,
+    relates study-group,
+    owns confidence;
+
+# Condition or intervention studied in a specific population
+studied-in sub relation,
+    relates dosage,
+    relates duration,
+    relates effect-size,
+    relates frequency,
+    relates location,
+    relates severity,
+    relates agent,
+    relates condition,
+    relates mechanism,
+    relates outcome,
+    relates population,
+    relates target,
+    relates biomarker,
+    relates control-group,
+    relates measured-by,
+    relates study-group,
+    owns confidence;
+
+# Statistical correlation between two factors (does not imply causation)
+correlated-with sub relation,
+    relates dosage,
+    relates duration,
+    relates effect-size,
+    relates frequency,
+    relates location,
+    relates severity,
+    relates agent,
+    relates condition,
+    relates mechanism,
+    relates outcome,
+    relates population,
+    relates target,
+    relates biomarker,
+    relates control-group,
+    relates measured-by,
+    relates study-group,
+    owns confidence;

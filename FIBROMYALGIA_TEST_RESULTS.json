@@ -1,0 +1,335 @@
+{
+  "start_time": "2026-01-14T09:13:11.749932",
+  "login": {
+    "success": true,
+    "token_length": 165
+  },
+  "extractions": [
+    {
+      "source_id": "505edb82-4a99-4c1e-9df9-02fcf144d2d1",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41526946/",
+      "title": "Multidimensional contributors to disease burden in axial spondyloarthritis: role of central sensitization, catastrophizing and sleep disturbance.",
+      "extract_success": true,
+      "save_success": false,
+      "entities_extracted": 11,
+      "relations_extracted": 8,
+      "error": "Save failed: 500 - {\"detail\":\"Failed to save extraction: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/",
+      "extract_time": 29.55
+    },
+    {
+      "source_id": "0c01ddac-8429-488c-a8a4-9878dcb11e0e",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41528744/",
+      "title": "Prevalence of Central Sensitization in Postural Tachycardia Syndrome.",
+      "extract_success": true,
+      "save_success": false,
+      "entities_extracted": 14,
+      "relations_extracted": 13,
+      "error": "Save failed: 500 - {\"detail\":\"Failed to save extraction: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/",
+      "extract_time": 41.22
+    },
+    {
+      "source_id": "1af574cb-c40c-4c7b-9480-d873f656d16a",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41520184/",
+      "title": "Effect of respiratory muscle training on symptoms of fibromyalgia: a systematic review with meta-analysis.",
+      "extract_success": false,
+      "save_success": false,
+      "entities_extracted": 0,
+      "relations_extracted": 0,
+      "error": "Extraction failed: 500 - {\"detail\":\"Failed to extract from URL: 1 validation error for BatchExtractionResponse\\nclaims.1.entities_involved\\n  List should have at least 1 item after validation, not 0 [type=too_short, input_val"
+    },
+    {
+      "source_id": "d3d3a78d-068c-4ca1-b833-479ce4956b27",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41515997/",
+      "title": "Oral and Gut Health, (Neuro) Inflammation, and Central Sensitization in Chronic Pain: A Narrative Review of Mechanisms, Treatment Opportunities, and Research Agenda.",
+      "extract_success": true,
+      "save_success": false,
+      "entities_extracted": 11,
+      "relations_extracted": 8,
+      "error": "Save failed: 500 - {\"detail\":\"Failed to save extraction: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/",
+      "extract_time": 32.46
+    },
+    {
+      "source_id": "66f3dea2-d1fb-4f19-a206-79eed74f4e27",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41517527/",
+      "title": "Clinical and Ultrasound Remission in Rheumatoid Arthritis Patients Treated with JAK Inhibitors: A Real-World Study.",
+      "extract_success": true,
+      "save_success": true,
+      "entities_extracted": 4,
+      "relations_extracted": 3,
+      "error": null,
+      "extract_time": 12.59,
+      "save_time": 0.05,
+      "entities_saved": 4,
+      "relations_saved": 3
+    },
+    {
+      "source_id": "4dc97cb5-b9b1-4181-860c-7b19eff9bfa7",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41499180/",
+      "title": "Pregabalin in Pregnancy: Major Congenital Malformations, Other Birth Outcomes, and Neurodevelopmental Outcomes.",
+      "extract_success": true,
+      "save_success": false,
+      "entities_extracted": 19,
+      "relations_extracted": 4,
+      "error": "Save failed: 500 - {\"detail\":\"Failed to save extraction: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/",
+      "extract_time": 47.53
+    },
+    {
+      "source_id": "7770c9af-174e-487d-9bd1-012a8e694441",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41505652/",
+      "title": "Sublingual cyclobenzaprine (Tonmya) for fibromyalgia.",
+      "extract_success": true,
+      "save_success": false,
+      "entities_extracted": 2,
+      "relations_extracted": 1,
+      "error": "Save failed: 500 - {\"detail\":\"Failed to save extraction: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/",
+      "extract_time": 4.91
+    },
+    {
+      "source_id": "4d9f4f79-545a-42ab-8a21-ddd009639915",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41510279/",
+      "title": "Association of Nociplastic Pain Features with Function in Aging Veterans with Chronic Low Back Pain.",
+      "extract_success": true,
+      "save_success": false,
+      "entities_extracted": 9,
+      "relations_extracted": 6,
+      "error": "Save failed: 500 - {\"detail\":\"Failed to save extraction: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/",
+      "extract_time": 25.54
+    },
+    {
+      "source_id": "5db90ca8-3a6e-40ce-8c44-2d79c46a2cf0",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41513285/",
+      "title": "Are we relaxing muscles or lowering standards? Interpreting pharmacological effects in fibromyalgia.",
+      "extract_success": true,
+      "save_success": true,
+      "entities_extracted": 1,
+      "relations_extracted": 0,
+      "error": null,
+      "extract_time": 2.23,
+      "save_time": 0.02,
+      "entities_saved": 1,
+      "relations_saved": 0
+    },
+    {
+      "source_id": "96ac23a4-c0d4-45b4-b4d8-db3acf16fff8",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41515557/",
+      "title": "Association Between Fibromyalgia and Risk of Developing Sarcopenia According SARC-F: A Cross-Sectional Study.",
+      "extract_success": true,
+      "save_success": false,
+      "entities_extracted": 3,
+      "relations_extracted": 1,
+      "error": "Save failed: 500 - {\"detail\":\"Failed to save extraction: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/",
+      "extract_time": 9.36
+    },
+    {
+      "source_id": "7743d7d5-60ee-4050-910b-ee4db079a4e1",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41516054/",
+      "title": "The Association Between miRNA-223-3p Levels and Pain Severity in Fibromyalgia Syndrome: A Molecular Approach.",
+      "extract_success": true,
+      "save_success": true,
+      "entities_extracted": 7,
+      "relations_extracted": 2,
+      "error": null,
+      "extract_time": 14.07,
+      "save_time": 0.03,
+      "entities_saved": 7,
+      "relations_saved": 2
+    },
+    {
+      "source_id": "c35c3848-44e0-4353-ae6a-39abea337e4a",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41517404/",
+      "title": "Elevated Monocyte-to-Lymphocyte and Platelet-to-Lymphocyte Ratios Are Associated with Disease Activity and Pain in Fibromyalgia: A Cross-Sectional Study.",
+      "extract_success": true,
+      "save_success": false,
+      "entities_extracted": 5,
+      "relations_extracted": 4,
+      "error": "Save failed: 500 - {\"detail\":\"Failed to save extraction: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/",
+      "extract_time": 15.02
+    },
+    {
+      "source_id": "e78489c4-5a44-4f1c-89f3-a1f31501ba7a",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41518021/",
+      "title": "Disrupted Sensorimotor Network Integration in Women With Fibromyalgia Revealed by Resting-State Functional MRI.",
+      "extract_success": true,
+      "save_success": false,
+      "entities_extracted": 9,
+      "relations_extracted": 4,
+      "error": "Save failed: 500 - {\"detail\":\"Failed to save extraction: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/",
+      "extract_time": 18.32
+    },
+    {
+      "source_id": "990fa10c-fb2d-4610-8569-021ff33e4bff",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41518584/",
+      "title": "Do the Psoriatic Arthritis Impact of Disease's cutoffs vary across ethnicities? Insights from the TACTIC initiative.",
+      "extract_success": true,
+      "save_success": true,
+      "entities_extracted": 8,
+      "relations_extracted": 3,
+      "error": null,
+      "extract_time": 21.48,
+      "save_time": 0.03,
+      "entities_saved": 8,
+      "relations_saved": 3
+    },
+    {
+      "source_id": "b6e7b29a-3f6b-4127-9b88-ce57c6fa741c",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41519678/",
+      "title": "Kinesiophobia and depression in patients with sickle cell disease: A review of gender differences, pathophysiology, and clinical implications.",
+      "extract_success": true,
+      "save_success": false,
+      "entities_extracted": 10,
+      "relations_extracted": 5,
+      "error": "Save failed: 500 - {\"detail\":\"Failed to save extraction: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/",
+      "extract_time": 24.53
+    },
+    {
+      "source_id": "d883dc37-8351-4242-987f-d414ba4b577d",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41520025/",
+      "title": "Brain sensory network activity underlies reduced nociceptive initiated and nociplastic pain via acupuncture in fibromyalgia.",
+      "extract_success": true,
+      "save_success": false,
+      "entities_extracted": 8,
+      "relations_extracted": 6,
+      "error": "Save failed: 500 - {\"detail\":\"Failed to save extraction: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/",
+      "extract_time": 17.61
+    },
+    {
+      "source_id": "6a2c9b1c-5031-45a9-b532-ddc1de9c813f",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41523434/",
+      "title": "From Years of Pain to a Name: Fibromyalgia Uncovered.",
+      "extract_success": true,
+      "save_success": false,
+      "entities_extracted": 18,
+      "relations_extracted": 5,
+      "error": "Save failed: 500 - {\"detail\":\"Failed to save extraction: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/",
+      "extract_time": 31.64
+    },
+    {
+      "source_id": "d65963e1-cd43-48f1-98e2-696398f1e034",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41526946/",
+      "title": "Multidimensional contributors to disease burden in axial spondyloarthritis: role of central sensitization, catastrophizing and sleep disturbance.",
+      "extract_success": true,
+      "save_success": false,
+      "entities_extracted": 10,
+      "relations_extracted": 7,
+      "error": "Save failed: 500 - {\"detail\":\"Failed to save extraction: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/",
+      "extract_time": 25.72
+    },
+    {
+      "source_id": "6310ff09-7f80-4fdc-8e35-da6edcdd0c82",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41528744/",
+      "title": "Prevalence of Central Sensitization in Postural Tachycardia Syndrome.",
+      "extract_success": true,
+      "save_success": false,
+      "entities_extracted": 14,
+      "relations_extracted": 13,
+      "error": "Save failed: 500 - {\"detail\":\"Failed to save extraction: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/",
+      "extract_time": 40.55
+    },
+    {
+      "source_id": "3b4bbddb-143f-41fa-90ad-551ef8023a8d",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41501867/",
+      "title": "Effect of different types of exercise in fibromyalgia syndrome: a network meta-analysis.",
+      "extract_success": true,
+      "save_success": false,
+      "entities_extracted": 10,
+      "relations_extracted": 4,
+      "error": "Save failed: 500 - {\"detail\":\"Failed to save extraction: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/",
+      "extract_time": 23.8
+    }
+  ],
+  "database_stats": {
+    "total_entities": 128,
+    "total_relations": 8,
+    "top_entities": [
+      {
+        "id": "99ed7f4e-048f-4107-a36e-f825969f4c76",
+        "name": "jak-inhibitors",
+        "type": "entity",
+        "connections": 3
+      },
+      {
+        "id": "8484dd68-c774-4b34-acea-2ea136176c0a",
+        "name": "fibromyalgia-syndrome",
+        "type": "entity",
+        "connections": 2
+      },
+      {
+        "id": "30d8de5b-077d-4842-b072-ea7e65a45c39",
+        "name": "psoriatic-arthritis",
+        "type": "entity",
+        "connections": 2
+      },
+      {
+        "id": "7aa9263e-54b3-4acc-8dec-79dc17ca652b",
+        "name": "psaid",
+        "type": "entity",
+        "connections": 2
+      },
+      {
+        "id": "0f113639-5312-4dad-9f6e-c6dad31ab2cb",
+        "name": "dapsa",
+        "type": "entity",
+        "connections": 2
+      },
+      {
+        "id": "122e052e-09b1-4d72-bff7-45ef17302805",
+        "name": "clinical-remission",
+        "type": "entity",
+        "connections": 1
+      },
+      {
+        "id": "2fcea397-8042-4a55-848f-f9149cdd2484",
+        "name": "healthy-controls",
+        "type": "entity",
+        "connections": 1
+      },
+      {
+        "id": "88eacf5f-1053-4504-a9e3-2446b8ab0a79",
+        "name": "rheumatoid-arthritis",
+        "type": "entity",
+        "connections": 1
+      },
+      {
+        "id": "a08d4ffc-252e-457c-8c1d-bec5b8d94c2d",
+        "name": "mirna-223-3p",
+        "type": "entity",
+        "connections": 1
+      },
+      {
+        "id": "75e01a7a-a271-4f30-9a19-ca8393334b99",
+        "name": "ultrasound-remission",
+        "type": "entity",
+        "connections": 1
+      }
+    ],
+    "relation_types": [
+      {
+        "type": "measures",
+        "count": 4
+      },
+      {
+        "type": "biomarker_for",
+        "count": 1
+      },
+      {
+        "type": "affects_population",
+        "count": 1
+      },
+      {
+        "type": "treats",
+        "count": 1
+      },
+      {
+        "type": "other",
+        "count": 1
+      }
+    ]
+  },
+  "inferences": {
+    "entity_id": "de334806-3edc-40c3-8b82-8e4c05f29481",
+    "relations_by_kind": {},
+    "role_inferences": []
+  },
+  "errors": [],
+  "end_time": "2026-01-14T09:21:13.809071"
+}

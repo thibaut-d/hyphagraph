@@ -90,32 +90,49 @@ RelationType = Literal[
     "metabolized_by",
     "biomarker_for",
     "affects_population",
+    "measures",  # For diagnostic tools, assessments, biomarkers
     "other"
 ]
 
 
+class ExtractedRole(BaseModel):
+    """Single role in a relation with semantic type."""
+    entity_slug: str = Field(
+        ...,
+        description="Entity slug participating in this role",
+        pattern=r"^[a-z][a-z0-9-]*$",
+        min_length=2
+    )
+    role_type: str = Field(
+        ...,
+        description="Semantic role type (agent, target, population, mechanism, etc.)"
+    )
+
+
 class ExtractedRelation(BaseModel):
     """
-    Schema for an extracted relation between entities.
+    Schema for an extracted N-ary relation with semantic roles.
 
-    Represents a relationship identified by the LLM with contextual
-    information and source attribution.
+    Represents a hypergraph edge connecting multiple entities with explicit roles.
+    Supports both new semantic roles and backward compatibility with subject/object.
     """
-    subject_slug: str = Field(
-        ...,
-        description="Entity slug for the subject of the relation"
-    )
     relation_type: RelationType = Field(
         ...,
         description="Type of relation between entities"
     )
-    object_slug: str = Field(
+    roles: list[ExtractedRole] = Field(
         ...,
-        description="Entity slug for the object of the relation"
+        description="Array of entities with their semantic roles (agent, target, population, etc.)",
+        min_length=2  # At least 2 entities per relation
     )
-    roles: dict[str, str] = Field(
-        default_factory=dict,
-        description="Additional context (dosage, route, duration, effect_size, etc.)"
+    # Backward compatibility fields (optional, auto-populated if roles use subject/object)
+    subject_slug: str | None = Field(
+        None,
+        description="[DEPRECATED] Use roles array instead. Kept for backward compatibility."
+    )
+    object_slug: str | None = Field(
+        None,
+        description="[DEPRECATED] Use roles array instead. Kept for backward compatibility."
     )
     confidence: ConfidenceLevel = Field(
         ...,
@@ -292,6 +309,35 @@ def validate_claim_extraction(data: dict) -> ClaimExtractionResponse:
 
 def validate_batch_extraction(data: dict) -> BatchExtractionResponse:
     """Validate and parse batch extraction response from LLM."""
+    # Convert old subject/object format to new roles format for backward compatibility
+    if "relations" in data:
+        for relation in data["relations"]:
+            # If relation has subject_slug/object_slug but no roles array, convert it
+            if "subject_slug" in relation and "object_slug" in relation and "roles" not in relation:
+                # Map subject/object to semantic roles based on relation type
+                relation_type = relation.get("relation_type", "other")
+
+                # Default mapping (can be refined per relation type)
+                subject_role = "agent"  # Default
+                object_role = "target"   # Default
+
+                # Refine based on relation type
+                if relation_type == "biomarker_for":
+                    subject_role = "biomarker"
+                    object_role = "target"
+                elif relation_type == "measures":
+                    subject_role = "measured_by"
+                    object_role = "target"
+                elif relation_type == "compared_to":
+                    subject_role = "study_group"
+                    object_role = "control_group"
+
+                # Create roles array
+                relation["roles"] = [
+                    {"entity_slug": relation["subject_slug"], "role_type": subject_role},
+                    {"entity_slug": relation["object_slug"], "role_type": object_role}
+                ]
+
     return BatchExtractionResponse.model_validate(data)
 
 
