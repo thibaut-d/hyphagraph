@@ -766,11 +766,11 @@ async def smart_discovery(
 
                 batch_pmids = [article.pmid for article in articles]
                 stmt = select(
-                    cast(SourceRevision.source_metadata['pmid'], JSONB).as_string()
+                    SourceRevision.source_metadata['pmid'].astext
                 ).where(
                     SourceRevision.is_current == True,
                     SourceRevision.source_metadata.has_key('pmid'),
-                    cast(SourceRevision.source_metadata['pmid'], JSONB).as_string().in_(batch_pmids)
+                    SourceRevision.source_metadata['pmid'].astext.in_(batch_pmids)
                 )
                 result = await db.execute(stmt)
 
@@ -778,7 +778,7 @@ async def smart_discovery(
                 for row in result:
                     pmid_value = row[0]
                     if pmid_value:
-                        batch_existing_pmids.add(pmid_value.strip('"'))
+                        batch_existing_pmids.add(pmid_value)
 
                 # Calculate quality scores and convert to results
                 batch_high_quality = 0
