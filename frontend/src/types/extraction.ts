@@ -119,6 +119,7 @@ export interface DocumentExtractionPreview {
   entity_count: number;
   relation_count: number;
   link_suggestions: EntityLinkMatch[];
+  extracted_text?: string;  // Full extracted text from document (optional)
 }
 
 // =============================================================================

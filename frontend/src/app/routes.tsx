@@ -29,7 +29,7 @@ import { SynthesisView } from "../views/SynthesisView";
 import { DisagreementsView } from "../views/DisagreementsView";
 import { EvidenceView } from "../views/EvidenceView";
 import { PubMedImportView } from "../views/PubMedImportView";
-import { InferencesView } from "../views/InferencesView";
+import InferencesView from "../views/InferencesView";
 
 export const router = createBrowserRouter([
   {

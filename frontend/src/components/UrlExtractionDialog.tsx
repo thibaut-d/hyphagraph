@@ -17,7 +17,7 @@ import {
   Typography,
   CircularProgress,
 } from "@mui/material";
-import { Link as LinkIcon } from "@mui/icons-material";
+import { Link as LinkIcon, CheckCircle as CheckCircleIcon } from "@mui/icons-material";
 
 interface UrlExtractionDialogProps {
   open: boolean;
@@ -145,15 +145,36 @@ export function UrlExtractionDialog({
             </Alert>
           )}
 
-          <Alert severity="info">
+          <Alert
+            severity={isPubMedUrl(url) ? "success" : url && validateUrl(url) ? "warning" : "info"}
+            icon={isPubMedUrl(url) ? <CheckCircleIcon /> : undefined}
+          >
             <Typography variant="body2" fontWeight="bold">
-              Supported URLs:
+              {isPubMedUrl(url)
+                ? "PubMed Article Detected"
+                : url && validateUrl(url)
+                ? "Web Page Detected"
+                : "Supported URLs:"}
             </Typography>
             <Typography variant="body2" component="div">
-              • <strong>PubMed articles</strong> - Full support with metadata
-              (PMID, DOI, authors, journal)
-              <br />• <strong>General web pages</strong> - Limited support (many
-              sites block automated access)
+              {isPubMedUrl(url) ? (
+                <>
+                  Full support with metadata extraction (PMID, DOI, authors, journal).
+                  This will use the official NCBI E-utilities API.
+                </>
+              ) : url && validateUrl(url) ? (
+                <>
+                  Limited support for web pages. Many sites block automated access or require
+                  JavaScript rendering. PubMed URLs are recommended for best results.
+                </>
+              ) : (
+                <>
+                  • <strong>PubMed articles</strong> - Full support with metadata
+                  (PMID, DOI, authors, journal)
+                  <br />• <strong>General web pages</strong> - Limited support (many
+                  sites block automated access)
+                </>
+              )}
             </Typography>
           </Alert>
         </Box>

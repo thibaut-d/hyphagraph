@@ -15,6 +15,9 @@ import {
   Alert,
   Divider,
   CircularProgress,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from "@mui/material";
 import {
   CheckCircle as CheckCircleIcon,
@@ -22,6 +25,8 @@ import {
   AddCircle as AddCircleIcon,
   RemoveCircle as RemoveCircleIcon,
   Save as SaveIcon,
+  ExpandMore as ExpandMoreIcon,
+  Article as ArticleIcon,
 } from "@mui/icons-material";
 import type {
   DocumentExtractionPreview,
@@ -184,6 +189,36 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
 
         <Divider />
 
+        {/* Extracted Text (Optional) */}
+        {preview.extracted_text && (
+          <Accordion>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <ArticleIcon />
+                <Typography variant="h6">
+                  Extracted Text ({preview.extracted_text.length.toLocaleString()} characters)
+                </Typography>
+              </Box>
+            </AccordionSummary>
+            <AccordionDetails>
+              <Box
+                sx={{
+                  maxHeight: 400,
+                  overflowY: "auto",
+                  p: 2,
+                  bgcolor: "grey.50",
+                  borderRadius: 1,
+                  whiteSpace: "pre-wrap",
+                  fontFamily: "monospace",
+                  fontSize: "0.875rem",
+                }}
+              >
+                {preview.extracted_text}
+              </Box>
+            </AccordionDetails>
+          </Accordion>
+        )}
+
         {/* Entity Linking Suggestions */}
         <Box>
           <Typography variant="h6" gutterBottom>
@@ -214,6 +249,13 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
         {error && (
           <Alert severity="error" onClose={() => setError(null)}>
             {error}
+          </Alert>
+        )}
+
+        {/* Help message when all entities are skipped */}
+        {stats.toCreate === 0 && stats.toLink === 0 && !saving && (
+          <Alert severity="info">
+            No entities selected. Please select at least one entity to create or link before saving.
           </Alert>
         )}
 

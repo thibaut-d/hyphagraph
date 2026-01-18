@@ -21,6 +21,7 @@ import {
   Button,
   Alert,
   CircularProgress,
+  Chip,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -54,6 +55,7 @@ export function SourceDetailView() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [extractionPreview, setExtractionPreview] = useState<DocumentExtractionPreview | null>(null);
   const [saveResult, setSaveResult] = useState<SaveExtractionResult | null>(null);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
 
   // URL extraction state
   const [urlDialogOpen, setUrlDialogOpen] = useState(false);
@@ -114,12 +116,14 @@ export function SourceDetailView() {
     setUploading(true);
     setUploadError(null);
     setSaveResult(null);
+    setUploadedFileName(file.name);
 
     try {
       const preview = await uploadAndExtract(id, file);
       setExtractionPreview(preview);
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : "Failed to upload and extract");
+      setUploadedFileName(null);
     } finally {
       setUploading(false);
       // Clear file input
@@ -141,6 +145,7 @@ export function SourceDetailView() {
   const handleCancelExtraction = () => {
     setExtractionPreview(null);
     setUploadError(null);
+    setUploadedFileName(null);
   };
 
   const handleUrlExtraction = async (url: string) => {
@@ -229,7 +234,7 @@ export function SourceDetailView() {
           Upload a PDF or TXT document to extract entities and relations using AI.
         </Typography>
 
-        <Box sx={{ display: "flex", gap: 2 }}>
+        <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
           <input
             accept=".pdf,.txt"
             style={{ display: "none" }}
@@ -256,6 +261,15 @@ export function SourceDetailView() {
           >
             Extract from URL
           </Button>
+
+          {uploadedFileName && (
+            <Chip
+              label={`Uploaded: ${uploadedFileName}`}
+              onDelete={() => setUploadedFileName(null)}
+              color="primary"
+              variant="outlined"
+            />
+          )}
         </Box>
 
         {uploadError && (
@@ -319,12 +333,19 @@ export function SourceDetailView() {
               <ListItemText
                 primary={`${r.kind} (${r.direction})`}
                 secondary={
-                  <Link
-                    component={RouterLink}
-                    to={`/entities/${r.roles[0]?.entity_id}`}
-                  >
-                    {t("sources.view_entity", "View entity")}
-                  </Link>
+                  <>
+                    {r.roles.map((role, idx) => (
+                      <Box key={role.entity_id} component="span">
+                        {idx > 0 && " • "}
+                        <Link
+                          component={RouterLink}
+                          to={`/entities/${role.entity_id}`}
+                        >
+                          {role.role_type}
+                        </Link>
+                      </Box>
+                    ))}
+                  </>
                 }
               />
             </ListItem>
