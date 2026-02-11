@@ -126,7 +126,7 @@ HyphaGraph is structured around a clear separation of concerns:
 > The database stores *statements*, not *beliefs*.
 
 The full logical schema is defined in  
-`DATABASE_SCHEMA.md`.
+`docs/architecture/DATABASE_SCHEMA.md`.
 
 ---
 

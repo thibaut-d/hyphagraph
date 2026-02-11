@@ -564,7 +564,7 @@ We use a **custom JWT-based authentication system** instead of third-party frame
 - FastAPI Users is in maintenance mode (no active development)
 - Authentication is security-critical and must be fully transparent
 - We prefer explicit, auditable code over framework magic
-- See `AUTHENTICATION.md` for complete implementation details
+- See `ARCHITECTURE.md` Section 6 for authentication architecture
 
 ```
 User
