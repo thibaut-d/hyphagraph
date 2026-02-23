@@ -7,7 +7,7 @@
 
 ## Test Results Summary
 
-**Overall**: 295 out of 334 tests passing (88.3%)
+**Overall**: 310 out of 349 tests passing (88.8%)
 
 ### ✅ Tests Updated with Scientific Data (All Passing)
 
@@ -21,8 +21,9 @@
 | Entity Terms | 13/13 ✓ | No changes needed |
 | Inference Engine | 24/24 ✓ | Core algorithms unchanged |
 | Hashing | 10/10 ✓ | No changes needed |
+| **Document Extraction** | **15/15 ✓** | **Smart discovery, PubMed integration, URL extraction** |
 
-**Total passing with scientific data**: 295 tests
+**Total passing with scientific data**: 310 tests
 
 ---
 
@@ -147,5 +148,13 @@ All 39 test failures are pre-existing issues unrelated to our changes:
 - 1 failure from filter options endpoint issue
 
 The transformation from generic test data ("aspirin", "ibuprofen") to scientifically accurate fibromyalgia entities (Pregabalin, Duloxetine, Chronic Widespread Pain, etc.) has been completed successfully with zero regressions.
+
+**Update (2026-02-23)**: Added comprehensive test coverage for smart discovery feature with 15 new tests, all passing:
+- ✅ Smart discovery with single and multiple entities
+- ✅ Quality filtering and relevance scoring
+- ✅ Already-imported source detection
+- ✅ PubMed bulk search and import
+- ✅ URL extraction from PubMed articles
+- ✅ Helper function unit tests
 
 **Mission accomplished!** 🎉

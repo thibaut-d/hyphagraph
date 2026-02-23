@@ -8,6 +8,35 @@ Test data transformed to scientifically accurate fibromyalgia/chronic pain entit
 
 ## Completed (2026-02-23)
 
+### Smart Discovery Test Coverage (NEW)
+
+Created comprehensive test suite for document extraction and smart discovery features:
+
+- **Created test file** (`backend/tests/test_document_extraction.py`):
+  - 15 tests covering all smart discovery endpoints
+  - Mock PubMed API integration
+  - Mock LLM extraction service
+  - Uses scientific fibromyalgia entities as test data
+
+- **Test coverage**:
+  - Smart discovery with single/multiple entities (6 tests)
+  - PubMed bulk search and import (6 tests)
+  - URL extraction from PubMed articles (1 test)
+  - Helper function unit tests (2 tests)
+
+- **Features tested**:
+  - ✅ Entity-based source discovery
+  - ✅ Quality filtering (trust_level thresholds)
+  - ✅ Relevance scoring
+  - ✅ Already-imported source detection
+  - ✅ PubMed API query construction
+  - ✅ Bulk article import workflow
+  - ✅ URL extraction and content fetching
+
+**Result**: All 15 tests passing (100% coverage of smart discovery feature)
+
+---
+
 ### Scientific Test Data Implementation
 
 Replaced generic test data with scientifically accurate medical entities related to fibromyalgia and chronic widespread pain:
