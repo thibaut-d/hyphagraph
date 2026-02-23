@@ -12,6 +12,7 @@ from app.services.entity_service import EntityService
 from app.services.source_service import SourceService
 from app.services.relation_service import RelationService
 from app.schemas.entity import EntityWrite
+from fixtures.scientific_data import ScientificEntities, ScientificSources
 from app.schemas.source import SourceWrite
 from app.schemas.relation import RelationWrite, RoleRevisionWrite as RoleWrite
 
@@ -26,7 +27,7 @@ class TestExplanationService:
         entity_service = EntityService(db_session)
         explanation_service = ExplanationService(db_session)
 
-        entity = await entity_service.create(EntityWrite(slug="orphan", kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.LOW_DOSE_NALTREXONE["slug"], kind="drug"))
 
         # Act & Assert
         with pytest.raises(ValueError, match="Role type .* not found"):
@@ -40,7 +41,7 @@ class TestExplanationService:
         relation_service = RelationService(db_session)
         explanation_service = ExplanationService(db_session)
 
-        entity = await entity_service.create(EntityWrite(slug="aspirin", kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.PREGABALIN["slug"], kind="drug"))
         source = await source_service.create(
             SourceWrite(
                 kind="study",
@@ -100,7 +101,7 @@ class TestExplanationService:
         relation_service = RelationService(db_session)
         explanation_service = ExplanationService(db_session)
 
-        entity = await entity_service.create(EntityWrite(slug="drug", kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"], kind="drug"))
         source = await source_service.create(
             SourceWrite(kind="study", title="Test", url="https://example.com/test")
         )
@@ -144,7 +145,7 @@ class TestNaturalLanguageSummary:
         relation_service = RelationService(db_session)
         explanation_service = ExplanationService(db_session)
 
-        entity = await entity_service.create(EntityWrite(slug="drug", kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"], kind="drug"))
         source = await source_service.create(
             SourceWrite(kind="study", title="Test", url="https://example.com/test")
         )
@@ -174,7 +175,7 @@ class TestNaturalLanguageSummary:
         relation_service = RelationService(db_session)
         explanation_service = ExplanationService(db_session)
 
-        entity = await entity_service.create(EntityWrite(slug="drug", kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"], kind="drug"))
         source = await source_service.create(
             SourceWrite(kind="study", title="Test", url="https://example.com/test")
         )
@@ -204,7 +205,7 @@ class TestNaturalLanguageSummary:
         relation_service = RelationService(db_session)
         explanation_service = ExplanationService(db_session)
 
-        entity = await entity_service.create(EntityWrite(slug="drug", kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"], kind="drug"))
 
         # Create 3 sources
         for i in range(3):
@@ -235,7 +236,7 @@ class TestNaturalLanguageSummary:
         relation_service = RelationService(db_session)
         explanation_service = ExplanationService(db_session)
 
-        entity = await entity_service.create(EntityWrite(slug="drug", kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"], kind="drug"))
         source = await source_service.create(
             SourceWrite(kind="study", title="Test", url="https://example.com/test")
         )
@@ -272,7 +273,7 @@ class TestConfidenceBreakdown:
         relation_service = RelationService(db_session)
         explanation_service = ExplanationService(db_session)
 
-        entity = await entity_service.create(EntityWrite(slug="drug", kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"], kind="drug"))
         source = await source_service.create(
             SourceWrite(kind="study", title="Test", url="https://example.com/test")
         )
@@ -304,7 +305,7 @@ class TestConfidenceBreakdown:
         relation_service = RelationService(db_session)
         explanation_service = ExplanationService(db_session)
 
-        entity = await entity_service.create(EntityWrite(slug="drug", kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"], kind="drug"))
         source = await source_service.create(
             SourceWrite(kind="study", title="Test", url="https://example.com/test")
         )
@@ -336,7 +337,7 @@ class TestConfidenceBreakdown:
         relation_service = RelationService(db_session)
         explanation_service = ExplanationService(db_session)
 
-        entity = await entity_service.create(EntityWrite(slug="drug", kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"], kind="drug"))
         source = await source_service.create(
             SourceWrite(
                 kind="study", title="Test", url="https://example.com/test", trust_level=0.9
@@ -376,7 +377,7 @@ class TestContradictionDetection:
         relation_service = RelationService(db_session)
         explanation_service = ExplanationService(db_session)
 
-        entity = await entity_service.create(EntityWrite(slug="drug", kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"], kind="drug"))
         source = await source_service.create(
             SourceWrite(kind="study", title="Test", url="https://example.com/test")
         )
@@ -407,7 +408,7 @@ class TestContradictionDetection:
         relation_service = RelationService(db_session)
         explanation_service = ExplanationService(db_session)
 
-        entity = await entity_service.create(EntityWrite(slug="drug", kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"], kind="drug"))
 
         # Create supporting source
         source1 = await source_service.create(
@@ -460,7 +461,7 @@ class TestContradictionDetection:
         relation_service = RelationService(db_session)
         explanation_service = ExplanationService(db_session)
 
-        entity = await entity_service.create(EntityWrite(slug="drug", kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"], kind="drug"))
 
         # Create supporting source
         source1 = await source_service.create(
@@ -509,7 +510,7 @@ class TestSourceChain:
         relation_service = RelationService(db_session)
         explanation_service = ExplanationService(db_session)
 
-        entity = await entity_service.create(EntityWrite(slug="drug", kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"], kind="drug"))
         source = await source_service.create(
             SourceWrite(
                 kind="study",
@@ -547,7 +548,7 @@ class TestSourceChain:
         relation_service = RelationService(db_session)
         explanation_service = ExplanationService(db_session)
 
-        entity = await entity_service.create(EntityWrite(slug="drug", kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"], kind="drug"))
 
         # Create 3 sources with equal confidence
         for i in range(3):
@@ -580,7 +581,7 @@ class TestSourceChain:
         relation_service = RelationService(db_session)
         explanation_service = ExplanationService(db_session)
 
-        entity = await entity_service.create(EntityWrite(slug="drug", kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"], kind="drug"))
 
         # Create sources with different confidences
         source1 = await source_service.create(
@@ -624,7 +625,7 @@ class TestSourceChain:
         relation_service = RelationService(db_session)
         explanation_service = ExplanationService(db_session)
 
-        entity = await entity_service.create(EntityWrite(slug="drug", kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"], kind="drug"))
         source = await source_service.create(
             SourceWrite(
                 kind="study",
@@ -684,7 +685,7 @@ class TestErrorHandling:
         relation_service = RelationService(db_session)
         explanation_service = ExplanationService(db_session)
 
-        entity = await entity_service.create(EntityWrite(slug="drug", kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"], kind="drug"))
         source = await source_service.create(
             SourceWrite(kind="study", title="Test", url="https://example.com/test")
         )
@@ -712,7 +713,7 @@ class TestErrorHandling:
         relation_service = RelationService(db_session)
         explanation_service = ExplanationService(db_session)
 
-        entity = await entity_service.create(EntityWrite(slug="drug", kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"], kind="drug"))
         source = await source_service.create(
             SourceWrite(kind="study", title="Test", url="https://example.com/test")
         )
