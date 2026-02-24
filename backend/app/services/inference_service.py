@@ -128,124 +128,78 @@ class InferenceService:
 
     def _compute_role_inferences(self, relations, entity_slug_map: dict = None, current_entity_id: UUID = None) -> list:
         """
-        Compute inference scores for each (relation_type, semantic_role, other_entity) combination.
+        Compute inference scores for each role type of the current entity.
 
-        This calculates per-entity scores grouped by relation type and semantic role.
-        For example: "treats" relations where duloxetine is the "agent" gets separate scores
-        for each target entity (chronic_pain, anxiety, etc.).
+        This aggregates all relations where the current entity plays a specific role,
+        computing overall scores for each role type.
 
         Args:
             relations: List of Relation models with current revisions
-            entity_slug_map: Dict mapping entity_id to slug
+            entity_slug_map: Dict mapping entity_id to slug (unused, kept for compatibility)
             current_entity_id: The entity we're computing inferences for
 
         Returns:
-            List of RoleInference objects with per-entity scores
+            List of RoleInference objects with aggregated scores per role type
         """
-        from app.schemas.inference import RoleInference, EntityRoleInference
+        from app.schemas.inference import RoleInference
 
-        if entity_slug_map is None:
-            entity_slug_map = {}
-
-        # Group relations by (relation_type, semantic_role, other_entity_id)
-        # Structure: {(relation_type, semantic_role, entity_id): [relations]}
-        grouped_relations = defaultdict(list)
+        # Group relations by the role type of the CURRENT entity
+        # Structure: {role_type: [relation_data]}
+        grouped_by_role = defaultdict(list)
 
         for rel in relations:
             if not rel.revisions:
                 continue
 
             current_rev = next((r for r in rel.revisions if r.is_current), None)
-            if not current_rev or not current_rev.kind or not current_rev.roles:
+            if not current_rev or not current_rev.roles:
                 continue
 
-            relation_type = current_rev.kind
-
-            # Process each role in this relation
+            # Find role(s) for the current entity in this relation
             for role in current_rev.roles:
-                # Skip if this is the current entity (we want to know about OTHER entities)
                 if current_entity_id and role.entity_id == current_entity_id:
-                    continue
+                    role_type = role.role_type
 
-                semantic_role = role.role_type
-                entity_id = role.entity_id
+                    # Get relation weight (confidence)
+                    relation_weight = current_rev.confidence if current_rev.confidence is not None else 1.0
 
-                # Group by (relation_type, semantic_role, entity_id)
-                key = (relation_type, semantic_role, entity_id)
-                grouped_relations[key].append({
-                    "relation": rel,
-                    "revision": current_rev,
-                    "role": role
-                })
+                    # Determine contribution based on direction
+                    if current_rev.direction == "positive" or current_rev.direction == "supports":
+                        contribution = 1.0
+                    elif current_rev.direction == "negative" or current_rev.direction == "contradicts":
+                        contribution = -1.0
+                    else:
+                        # Neutral/unknown direction - use role weight if available
+                        contribution = role.weight if role.weight is not None else 1.0
 
-        # Now compute scores for each group
-        # Re-group by (relation_type, semantic_role) to create RoleInference objects
-        role_inference_groups = defaultdict(list)
+                    grouped_by_role[role_type].append({
+                        "weight": relation_weight,
+                        "contribution": contribution
+                    })
 
-        for (relation_type, semantic_role, entity_id), rel_data_list in grouped_relations.items():
-            # Get entity slug
-            entity_slug = entity_slug_map.get(entity_id)
-            if not entity_slug:
-                continue  # Skip if we can't resolve the entity
-
-            # Prepare relations data for aggregation
+        # Compute aggregated scores for each role type
+        inferences = []
+        for role_type, rel_data_list in grouped_by_role.items():
+            # Prepare data for aggregation formulas
             relations_data = []
             for rel_data in rel_data_list:
-                current_rev = rel_data["revision"]
-
-                # Get relation weight (use confidence from revision if available, default 1.0)
-                relation_weight = current_rev.confidence if current_rev.confidence is not None else 1.0
-
-                # Determine contribution based on direction
-                contribution = 1.0
-                if current_rev.direction == "contradicts":
-                    contribution = -1.0
-                elif current_rev.direction is None:
-                    contribution = 1.0  # Neutral/unknown = positive
-
                 relations_data.append({
-                    "weight": relation_weight,
-                    "roles": {semantic_role: contribution}
+                    "weight": rel_data["weight"],
+                    "roles": {role_type: rel_data["contribution"]}
                 })
 
-            # Compute aggregated score for this specific entity+role combination
-            if relations_data:
-                result = self.aggregate_evidence(relations_data, role=semantic_role)
-                coverage = float(len(rel_data_list))
-                confidence = self.compute_confidence(coverage)
-                disagreement = self.compute_disagreement(relations_data, role=semantic_role)
-
-                entity_inference = EntityRoleInference(
-                    entity_slug=entity_slug,
-                    semantic_role=semantic_role,
-                    score=result["score"],
-                    coverage=coverage,
-                    confidence=confidence,
-                    disagreement=disagreement,
-                    source_count=len(rel_data_list)
-                )
-
-                # Group by (relation_type, semantic_role)
-                role_key = (relation_type, semantic_role)
-                role_inference_groups[role_key].append(entity_inference)
-
-        # Create RoleInference objects with entity_inferences
-        inferences = []
-        for (relation_type, semantic_role), entity_inferences in role_inference_groups.items():
-            # Calculate aggregated metrics
-            total_entities = len(entity_inferences)
-            scores = [ei.score for ei in entity_inferences if ei.score is not None]
-            avg_score = sum(scores) / len(scores) if scores else None
-            confidences = [ei.confidence for ei in entity_inferences]
-            avg_confidence = sum(confidences) / len(confidences) if confidences else 0.0
+            # Compute aggregated metrics
+            result = self.aggregate_evidence(relations_data, role=role_type)
+            coverage = float(len(rel_data_list))
+            confidence = self.compute_confidence(coverage)
+            disagreement = self.compute_disagreement(relations_data, role=role_type)
 
             inferences.append(RoleInference(
-                relation_type=relation_type,
-                semantic_role=semantic_role,
-                entity_inferences=entity_inferences,
-                total_entities=total_entities,
-                avg_score=avg_score,
-                avg_confidence=avg_confidence
+                role_type=role_type,
+                score=result["score"],
+                coverage=coverage,
+                confidence=confidence,
+                disagreement=disagreement
             ))
 
         return inferences

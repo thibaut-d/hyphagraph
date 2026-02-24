@@ -16,14 +16,12 @@ class EntityRoleInference(Schema):
 
 
 class RoleInference(Schema):
-    """Computed inference grouped by relation type and semantic role."""
-    relation_type: str  # Type of relation (treats, biomarker_for, etc.)
-    semantic_role: str  # Semantic role being analyzed (agent, target, etc.)
-    entity_inferences: list[EntityRoleInference] = []  # Per-entity scores
-    # Aggregated metrics (for overview)
-    total_entities: int = 0
-    avg_score: Optional[float] = None
-    avg_confidence: float = 0.0
+    """Computed inference for a specific semantic role."""
+    role_type: str  # Semantic role (agent, target, drug, condition, etc.)
+    score: Optional[float] = None  # Aggregated score in [-1, 1]
+    coverage: float = 0.0  # Information coverage (number of relations)
+    confidence: float = 0.0  # Confidence in [0, 1)
+    disagreement: float = 0.0  # Contradiction measure in [0, 1]
 
 
 class InferenceRead(Schema):
