@@ -126,11 +126,9 @@ test.describe('Source CRUD Operations', () => {
   test('should validate required fields', async ({ page }) => {
     await page.goto('/sources/new');
 
-    // Try to submit without filling required fields
-    await page.getByRole('button', { name: /create|submit/i }).click();
-
-    // Should stay on create page due to HTML5 validation (required attribute prevents submission)
-    await expect(page).toHaveURL(/\/sources\/new/, { timeout: 2000 });
+    // Submit button should be disabled when required fields are empty
+    const submitButton = page.getByRole('button', { name: /create|submit/i });
+    await expect(submitButton).toBeDisabled();
 
     // Verify we're still on the create form
     await expect(page.getByRole('heading', { name: 'Create Source' })).toBeVisible();

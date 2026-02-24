@@ -8,10 +8,10 @@
 
 | Area | Status | Details |
 |------|--------|---------|
-| **Backend tests** | 349/349 | All passing |
-| **Frontend tests** | 420/420 | All passing |
-| **E2E tests** | ~63/72 | 44 passing (fixes in progress, see below) |
-| **Technical debt** | Minimal | E2E test fixes needed |
+| **Backend tests** | ✅ 349/349 | All passing |
+| **Frontend tests** | ✅ 420/420 | All passing |
+| **E2E tests** | ✅ **72/72** | **🎉 All passing!** |
+| **Technical debt** | ✅ Minimal | All test issues resolved |
 
 ### Completed Phases
 
@@ -19,30 +19,34 @@
 
 **Phase 2 — Enhanced Usability**: Filter drawers, UX-critical views (PropertyDetail, Evidence, Synthesis, Disagreements), unified search, i18n (EN/FR).
 
-**Phase 3 (partial)**: Entity terms & UI categories, E2E tests, async bcrypt, responsive design, admin panel.
+**Phase 3**: Entity terms & UI categories, **complete E2E test coverage**, async bcrypt, responsive design, admin panel.
 
-### E2E Test Status (2026-02-24)
+### E2E Test Status (2026-02-24) - ✅ COMPLETE
 
-**Current**: 44/72 passing (61%), 27 failing, 1 flaky
+**Final Status**: **72/72 passing (100%)** - All tests fixed and passing!
 
-**Recent Fixes Applied**:
-- ✅ Fixed source form summary fields visibility (fixes ~20 tests)
-- ✅ Updated frontend RoleInference schema to match backend (fixes ~9 tests)
-- 🔄 Awaiting rebuild and re-test to verify fixes
+**Fixes Applied Across Two Sessions**:
 
-**Passing Areas** (44 tests):
-- Auth flows (15/15): Login, logout, registration, password reset
-- Entity CRUD (9/9): Create, read, update, delete, search, filters
-- Explanation traces (5/7): Most explanation features working
-- Inference viewing (4/6): Navigation, filtering, detail view
-- PubMed import (8/9): Bulk search, selection, import
+**Session 1**:
+- ✅ Fixed source form summary fields visibility (6 tests)
+- ✅ Updated frontend RoleInference schema to match backend (11 tests)
 
-**Failing Areas** (27 tests - expecting ~90% to pass after fixes):
-- Source CRUD (6 tests) - **Fix applied**: summary fields now visible
-- Relation CRUD (5 tests) - **Fix applied**: schema compatibility fixed
-- Document upload (5 tests) - **Fix applied**: depends on source form fix
-- URL extraction (7 tests) - **Fix applied**: depends on source form fix
-- Partial failures (4 tests) - **Fix applied**: schema compatibility fixed
+**Session 2**:
+- ✅ Fixed test selectors for UI text changes (10 tests)
+- ✅ Fixed validation test logic (1 test)
+
+**All Test Categories Passing** (72 tests):
+- ✅ Auth flows (15/15): Login, logout, registration, password reset
+- ✅ Entity CRUD (9/9): Create, read, update, delete, search, filters
+- ✅ Explanation traces (7/7): All explanation features working
+- ✅ Inference viewing (6/6): Navigation, filtering, detail view, scores
+- ✅ Relation CRUD (5/5): Create, edit, delete, validation
+- ✅ Source CRUD (6/6): Create, view, edit, delete, search, validation
+- ✅ Document upload (5/5): Upload flow, extraction, components, error handling
+- ✅ URL extraction (7/7): Dialog, validation, PubMed/web detection, workflow
+- ✅ PubMed import (9/9): Search, selection, import, metadata display
+
+See `E2E_TEST_FIXES_SUMMARY.md` and `E2E_TEST_ANALYSIS.md` for detailed technical analysis.
 
 ---
 

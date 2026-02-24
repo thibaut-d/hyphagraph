@@ -32,7 +32,7 @@ test.describe('URL-based Document Extraction', () => {
     await page.goto(`/sources/${sourceId}`);
 
     // Should show "Extract from URL" button
-    const extractUrlButton = page.getByRole('button', { name: /extract.*from.*url/i });
+    const extractUrlButton = page.getByRole('button', { name: /custom.*url/i });
     await expect(extractUrlButton).toBeVisible();
   });
 
@@ -40,7 +40,7 @@ test.describe('URL-based Document Extraction', () => {
     await page.goto(`/sources/${sourceId}`);
 
     // Click extract from URL button
-    const extractUrlButton = page.getByRole('button', { name: /extract.*from.*url/i });
+    const extractUrlButton = page.getByRole('button', { name: /custom.*url/i });
     await extractUrlButton.click();
 
     // Should show dialog with heading "Extract from URL"
@@ -57,7 +57,7 @@ test.describe('URL-based Document Extraction', () => {
     await page.goto(`/sources/${sourceId}`);
 
     // Click extract from URL button
-    const extractUrlButton = page.getByRole('button', { name: /extract.*from.*url/i });
+    const extractUrlButton = page.getByRole('button', { name: /custom.*url/i });
     await extractUrlButton.click();
 
     // Enter invalid URL
@@ -76,11 +76,17 @@ test.describe('URL-based Document Extraction', () => {
     await page.goto(`/sources/${sourceId}`);
 
     // Click extract from URL button
-    const extractUrlButton = page.getByRole('button', { name: /extract.*from.*url/i });
+    const extractUrlButton = page.getByRole('button', { name: /custom.*url/i });
     await extractUrlButton.click();
 
+    // Dialog may pre-fill with source URL, so clear it first
+    const urlInput = page.getByLabel(/^url$/i);
+    await urlInput.clear();
+
     // Extract button should be disabled when URL is empty
-    const submitButton = page.getByRole('button', { name: /extract/i }).last();
+    // Use dialog locator to ensure we're checking the button in the dialog, not elsewhere on the page
+    const dialog = page.getByRole('dialog');
+    const submitButton = dialog.getByRole('button', { name: /^extract$/i });
     await expect(submitButton).toBeDisabled();
   });
 
@@ -88,7 +94,7 @@ test.describe('URL-based Document Extraction', () => {
     await page.goto(`/sources/${sourceId}`);
 
     // Click extract from URL button
-    const extractUrlButton = page.getByRole('button', { name: /extract.*from.*url/i });
+    const extractUrlButton = page.getByRole('button', { name: /custom.*url/i });
     await extractUrlButton.click();
 
     // Should show dialog
@@ -109,7 +115,7 @@ test.describe('URL-based Document Extraction', () => {
     await page.goto(`/sources/${sourceId}`);
 
     // Click extract from URL button
-    const extractUrlButton = page.getByRole('button', { name: /extract.*from.*url/i });
+    const extractUrlButton = page.getByRole('button', { name: /custom.*url/i });
     await extractUrlButton.click();
 
     // Enter a PubMed URL
@@ -117,14 +123,14 @@ test.describe('URL-based Document Extraction', () => {
     await urlInput.fill('https://pubmed.ncbi.nlm.nih.gov/12345678/');
 
     // Should show helper text indicating it's a PubMed article
-    await expect(page.getByText(/pubmed.*article.*ncbi.*api/i)).toBeVisible();
+    await expect(page.getByText(/pubmed.*article.*ncbi.*api/i).first()).toBeVisible();
   });
 
   test('should detect regular web URLs', async ({ page }) => {
     await page.goto(`/sources/${sourceId}`);
 
     // Click extract from URL button
-    const extractUrlButton = page.getByRole('button', { name: /extract.*from.*url/i });
+    const extractUrlButton = page.getByRole('button', { name: /custom.*url/i });
     await extractUrlButton.click();
 
     // Enter a regular web URL
@@ -140,7 +146,7 @@ test.describe('URL-based Document Extraction', () => {
     await page.goto(`/sources/${sourceId}`);
 
     // Click extract from URL button
-    const extractUrlButton = page.getByRole('button', { name: /extract.*from.*url/i });
+    const extractUrlButton = page.getByRole('button', { name: /custom.*url/i });
     await extractUrlButton.click();
 
     // Should show supported URL types
