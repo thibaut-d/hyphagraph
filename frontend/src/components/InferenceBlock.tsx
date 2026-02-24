@@ -193,7 +193,7 @@ function RoleInferenceCard({
   entityId: string;
   currentEntitySlug?: string;
 }) {
-  const { relation_type, semantic_role, entity_inferences, total_entities, avg_score } = roleInference;
+  const { role_type, score, coverage, confidence, disagreement } = roleInference;
 
   return (
     <Card variant="outlined">
@@ -201,16 +201,18 @@ function RoleInferenceCard({
         <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={2}>
           <Box sx={{ flex: 1 }}>
             <Typography variant="h6">
-              {relation_type} ({semantic_role}s)
+              {role_type} role
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              {total_entities} {total_entities === 1 ? 'entity' : 'entities'} found
-              {avg_score !== null && ` • Avg score: ${avg_score.toFixed(2)}`}
+              Coverage: {coverage.toFixed(0)} relations
+              {score !== null && ` • Score: ${score.toFixed(2)}`}
+              {` • Confidence: ${(confidence * 100).toFixed(0)}%`}
+              {disagreement > 0 && ` • Disagreement: ${(disagreement * 100).toFixed(0)}%`}
             </Typography>
           </Box>
           <Button
             component={RouterLink}
-            to={`/explain/${entityId}/${relation_type}`}
+            to={`/explain/${entityId}/${role_type}`}
             size="small"
             startIcon={<HelpOutlineIcon />}
             variant="outlined"
@@ -219,14 +221,11 @@ function RoleInferenceCard({
           </Button>
         </Stack>
 
-        <Stack spacing={1}>
-          {entity_inferences.map((entityInf) => (
-            <EntityInferenceItem
-              key={entityInf.entity_slug}
-              entityInference={entityInf}
-            />
-          ))}
-        </Stack>
+        {score !== null && (
+          <Box sx={{ mt: 2 }}>
+            <ScoreBar score={score} />
+          </Box>
+        )}
       </CardContent>
     </Card>
   );
@@ -248,7 +247,7 @@ export function InferenceBlock({ inference, currentEntitySlug }: { inference: In
           <Stack spacing={2}>
             {inference.role_inferences.map((roleInf) => (
               <RoleInferenceCard
-                key={`${roleInf.relation_type}-${roleInf.semantic_role}`}
+                key={roleInf.role_type}
                 roleInference={roleInf}
                 entityId={inference.entity_id}
                 currentEntitySlug={currentEntitySlug}
