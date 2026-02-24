@@ -1,6 +1,6 @@
 # HyphaGraph TODO
 
-**Last Updated**: 2026-02-11
+**Last Updated**: 2026-02-24
 
 ---
 
@@ -8,10 +8,10 @@
 
 | Area | Status | Details |
 |------|--------|---------|
-| **Backend tests** | 253/253 | All passing |
+| **Backend tests** | 349/349 | All passing |
 | **Frontend tests** | 420/420 | All passing |
-| **E2E tests** | 49/49 | All passing (Playwright) |
-| **Technical debt** | Zero | All known issues resolved |
+| **E2E tests** | ~63/72 | 44 passing (fixes in progress, see below) |
+| **Technical debt** | Minimal | E2E test fixes needed |
 
 ### Completed Phases
 
@@ -20,6 +20,29 @@
 **Phase 2 — Enhanced Usability**: Filter drawers, UX-critical views (PropertyDetail, Evidence, Synthesis, Disagreements), unified search, i18n (EN/FR).
 
 **Phase 3 (partial)**: Entity terms & UI categories, E2E tests, async bcrypt, responsive design, admin panel.
+
+### E2E Test Status (2026-02-24)
+
+**Current**: 44/72 passing (61%), 27 failing, 1 flaky
+
+**Recent Fixes Applied**:
+- ✅ Fixed source form summary fields visibility (fixes ~20 tests)
+- ✅ Updated frontend RoleInference schema to match backend (fixes ~9 tests)
+- 🔄 Awaiting rebuild and re-test to verify fixes
+
+**Passing Areas** (44 tests):
+- Auth flows (15/15): Login, logout, registration, password reset
+- Entity CRUD (9/9): Create, read, update, delete, search, filters
+- Explanation traces (5/7): Most explanation features working
+- Inference viewing (4/6): Navigation, filtering, detail view
+- PubMed import (8/9): Bulk search, selection, import
+
+**Failing Areas** (27 tests - expecting ~90% to pass after fixes):
+- Source CRUD (6 tests) - **Fix applied**: summary fields now visible
+- Relation CRUD (5 tests) - **Fix applied**: schema compatibility fixed
+- Document upload (5 tests) - **Fix applied**: depends on source form fix
+- URL extraction (7 tests) - **Fix applied**: depends on source form fix
+- Partial failures (4 tests) - **Fix applied**: schema compatibility fixed
 
 ---
 
