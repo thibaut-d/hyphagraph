@@ -390,4 +390,5 @@ class EntityService:
             consensus_levels=["strong", "moderate", "weak", "disputed"],
             evidence_quality_range=evidence_quality_range,
             recency_options=["recent", "older", "historical"],
+            year_range=None,  # TODO: Implement year range from related sources
         )

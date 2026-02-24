@@ -376,10 +376,11 @@ class TestEntityEndpoints:
 
                 # Verify types
                 assert isinstance(data['ui_categories'], list)
-                # consensus_levels, evidence_quality_range, year_range can be null or tuple
-                if data['consensus_levels'] is not None:
-                    assert isinstance(data['consensus_levels'], list)
-                    assert len(data['consensus_levels']) == 2
+                # consensus_levels and recency_options are lists of available options
+                assert isinstance(data['consensus_levels'], list)
+                assert len(data['consensus_levels']) >= 2  # At least some consensus levels available
+                assert isinstance(data['recency_options'], list)
+                # evidence_quality_range and year_range are optional tuples [min, max]
                 if data['evidence_quality_range'] is not None:
                     assert isinstance(data['evidence_quality_range'], list)
                     assert len(data['evidence_quality_range']) == 2

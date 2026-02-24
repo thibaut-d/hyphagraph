@@ -231,6 +231,12 @@ class EntityFilterOptions(BaseModel):
         json_schema_extra={"example": ["recent", "older", "historical"]}
     )
 
+    year_range: Optional[Tuple[int, int]] = Field(
+        None,
+        description="Minimum and maximum years from related sources [min, max]",
+        json_schema_extra={"example": [1995, 2024]}
+    )
+
 
 class SourceFilterOptions(BaseModel):
     """
