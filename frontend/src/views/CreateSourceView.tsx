@@ -494,39 +494,35 @@ export function CreateSourceView() {
                   </Collapse>
                 </Box>
 
-                {/* Summary (Collapsible) */}
-                {(summaryEn || summaryFr || autofilled) && (
-                  <>
-                    <TextField
-                      label={t("create_source.summary_en", "Summary (English)")}
-                      value={summaryEn}
-                      onChange={(e) => setSummaryEn(e.target.value)}
-                      disabled={loading}
-                      fullWidth
-                      multiline
-                      rows={3}
-                      placeholder="Brief description or abstract..."
-                      sx={{
-                        "& .MuiInputBase-root": autofilled && summaryEn
-                          ? {
-                              bgcolor: "success.50",
-                            }
-                          : {},
-                      }}
-                    />
+                {/* Summary Fields */}
+                <TextField
+                  label={t("create_source.summary_en", "Summary (English)")}
+                  value={summaryEn}
+                  onChange={(e) => setSummaryEn(e.target.value)}
+                  disabled={loading}
+                  fullWidth
+                  multiline
+                  rows={3}
+                  placeholder="Brief description or abstract..."
+                  sx={{
+                    "& .MuiInputBase-root": autofilled && summaryEn
+                      ? {
+                          bgcolor: "success.50",
+                        }
+                      : {},
+                  }}
+                />
 
-                    <TextField
-                      label={t("create_source.summary_fr", "Summary (French)")}
-                      value={summaryFr}
-                      onChange={(e) => setSummaryFr(e.target.value)}
-                      disabled={loading}
-                      fullWidth
-                      multiline
-                      rows={3}
-                      placeholder="Résumé ou abstract..."
-                    />
-                  </>
-                )}
+                <TextField
+                  label={t("create_source.summary_fr", "Summary (French)")}
+                  value={summaryFr}
+                  onChange={(e) => setSummaryFr(e.target.value)}
+                  disabled={loading}
+                  fullWidth
+                  multiline
+                  rows={3}
+                  placeholder="Résumé ou abstract..."
+                />
               </Stack>
             </Paper>
 
