@@ -67,7 +67,12 @@ describe('CreateRelationView', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (listEntities as any).mockResolvedValue(mockEntities);
-    (listSources as any).mockResolvedValue(mockSources);
+    (listSources as any).mockResolvedValue({
+      items: mockSources,
+      total: mockSources.length,
+      limit: 50,
+      offset: 0,
+    });
   });
 
   describe('Loading state', () => {
@@ -76,7 +81,12 @@ describe('CreateRelationView', () => {
         () => new Promise((resolve) => setTimeout(() => resolve(mockEntities), 100))
       );
       (listSources as any).mockImplementation(
-        () => new Promise((resolve) => setTimeout(() => resolve(mockSources), 100))
+        () => new Promise((resolve) => setTimeout(() => resolve({
+          items: mockSources,
+          total: mockSources.length,
+          limit: 50,
+          offset: 0,
+        }), 100))
       );
 
       render(

@@ -220,7 +220,10 @@ describe('EntitiesView', () => {
     });
   });
 
-  it('fetches filter options on mount', async () => {
+  it('fetches filter options on mount when cache is empty', async () => {
+    // Clear localStorage to ensure cache miss
+    localStorage.clear();
+
     render(
       <BrowserRouter>
         <EntitiesView />
