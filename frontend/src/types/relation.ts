@@ -11,5 +11,5 @@ export interface RelationRead {
   direction: string;
   confidence: number;
   roles: RoleRead[];
-  notes?: string;
+  notes?: string | Record<string, string>;
 }

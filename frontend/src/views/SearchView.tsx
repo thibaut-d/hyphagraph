@@ -119,7 +119,7 @@ export function SearchView() {
     } else if (result.type === "source") {
       return `/sources/${result.id}`;
     } else if (result.type === "relation") {
-      return `/relations/${result.id}`;
+      return `/sources/${result.source_id}`;
     }
     return "#";
   };

@@ -37,6 +37,7 @@ import type {
 import { saveExtraction } from "../api/extraction";
 import { EntityLinkingSuggestions } from "./EntityLinkingSuggestions";
 import { ExtractedRelationsList } from "./ExtractedRelationsList";
+import { getRelationKey } from "../utils/extractionRelation";
 
 interface ExtractionPreviewProps {
   preview: DocumentExtractionPreview;
@@ -76,7 +77,7 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
   });
 
   const [selectedRelations, setSelectedRelations] = useState<Set<string>>(
-    new Set(preview.relations.map((r) => `${r.subject_slug}-${r.relation_type}-${r.object_slug}`))
+    new Set(preview.relations.map(getRelationKey))
   );
 
   const [saving, setSaving] = useState(false);
@@ -100,11 +101,10 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
       });
 
       const relationsToCreate = preview.relations.filter((r) =>
-        selectedRelations.has(`${r.subject_slug}-${r.relation_type}-${r.object_slug}`)
+        selectedRelations.has(getRelationKey(r))
       );
 
       const request: SaveExtractionRequest = {
-        source_id: preview.source_id,
         entities_to_create: entitiesToCreate,
         entity_links: entityLinks,
         relations_to_create: relationsToCreate,
@@ -163,7 +163,7 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
           <Typography variant="body2" color="text.secondary">
             {allHighConfidence ? (
               <>
-                <strong>✓ High-confidence extraction detected.</strong> All entities have exact or synonym matches.
+                <strong>High-confidence extraction detected.</strong> All entities have exact or synonym matches.
                 You can quick-save or review details below.
               </>
             ) : (
@@ -280,10 +280,10 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
             <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
               <Box>
                 <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                  ✓ All entities validated with high confidence
+                  All entities validated with high confidence
                 </Typography>
                 <Typography variant="caption">
-                  {stats.toCreate} new entities • {stats.toLink} linked entities • {stats.relationsSelected} relations
+                  {stats.toCreate} new entities - {stats.toLink} linked entities - {stats.relationsSelected} relations
                 </Typography>
               </Box>
               <Button
@@ -295,7 +295,7 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
                 disabled={saving || !hasDecisions}
                 sx={{ minWidth: 180, fontWeight: 600 }}
               >
-                {saving ? "Saving..." : "Quick Save ✓"}
+                {saving ? "Saving..." : "Quick Save"}
               </Button>
             </Box>
           </Alert>
@@ -332,3 +332,4 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
     </Paper>
   );
 };
+

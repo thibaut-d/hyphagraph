@@ -328,9 +328,6 @@ def validate_batch_extraction(data: dict) -> BatchExtractionResponse:
                 elif relation_type == "measures":
                     subject_role = "measured_by"
                     object_role = "target"
-                elif relation_type == "compared_to":
-                    subject_role = "study_group"
-                    object_role = "control_group"
 
                 # Create roles array
                 relation["roles"] = [

@@ -203,11 +203,11 @@ async def extract_entities(
     - metabolized_by: Metabolic pathway
     - biomarker_for: Diagnostic/prognostic marker
     - affects_population: Population-specific effect
+    - measures: Assessment/tool relation (e.g., VAS measures pain)
 
     Each relation includes:
-    - Subject and object entity slugs
     - Relation type
-    - Contextual roles (dosage, route, duration, effect_size, population)
+    - Semantic roles array (agent, target, dosage, population, etc.)
     - Confidence level
     - Source text span
     - Optional notes

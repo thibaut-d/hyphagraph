@@ -54,7 +54,7 @@ export function EditRelationView() {
     Promise.all([getRelation(id), listEntities()])
       .then(([relationRes, entitiesRes]) => {
         setRelation(relationRes);
-        setEntities(entitiesRes);
+        setEntities(entitiesRes.items || []);
 
         // Populate form with existing data
         setKind(relationRes.kind || "");

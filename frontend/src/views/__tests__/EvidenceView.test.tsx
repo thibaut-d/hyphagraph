@@ -10,10 +10,10 @@ import { EvidenceView } from "../EvidenceView";
 import * as entitiesApi from "../../api/entities";
 import * as inferencesApi from "../../api/inferences";
 import * as sourcesApi from "../../api/sources";
-import { EntityRead } from "../../api/entities";
-import { RelationRead } from "../../types/relation";
-import { SourceRead } from "../../api/sources";
-import { InferenceRead } from "../../types/inference";
+import type { EntityRead } from "../../types/entity";
+import type { RelationRead } from "../../types/relation";
+import type { SourceRead } from "../../types/source";
+import type { InferenceRead } from "../../types/inference";
 
 // Mock i18next
 vi.mock("react-i18next", () => ({
@@ -135,7 +135,7 @@ describe("EvidenceView", () => {
       render(
         <MemoryRouter initialEntries={["/entities/entity-1/evidence"]}>
           <Routes>
-            <Route path="/entities/:entityId/evidence" element={<EvidenceView />} />
+            <Route path="/entities/:id/evidence" element={<EvidenceView />} />
           </Routes>
         </MemoryRouter>
       );
@@ -154,7 +154,7 @@ describe("EvidenceView", () => {
       render(
         <MemoryRouter initialEntries={["/entities/entity-1/evidence"]}>
           <Routes>
-            <Route path="/entities/:entityId/evidence" element={<EvidenceView />} />
+            <Route path="/entities/:id/evidence" element={<EvidenceView />} />
           </Routes>
         </MemoryRouter>
       );
@@ -175,7 +175,7 @@ describe("EvidenceView", () => {
       render(
         <MemoryRouter initialEntries={["/entities/undefined/evidence"]}>
           <Routes>
-            <Route path="/entities/:entityId/evidence" element={<EvidenceView />} />
+            <Route path="/entities/:id/evidence" element={<EvidenceView />} />
           </Routes>
         </MemoryRouter>
       );
@@ -203,7 +203,7 @@ describe("EvidenceView", () => {
       render(
         <MemoryRouter initialEntries={["/entities/entity-1/evidence"]}>
           <Routes>
-            <Route path="/entities/:entityId/evidence" element={<EvidenceView />} />
+            <Route path="/entities/:id/evidence" element={<EvidenceView />} />
           </Routes>
         </MemoryRouter>
       );
@@ -227,7 +227,7 @@ describe("EvidenceView", () => {
       render(
         <MemoryRouter initialEntries={["/entities/entity-1/evidence"]}>
           <Routes>
-            <Route path="/entities/:entityId/evidence" element={<EvidenceView />} />
+            <Route path="/entities/:id/evidence" element={<EvidenceView />} />
           </Routes>
         </MemoryRouter>
       );
@@ -245,7 +245,7 @@ describe("EvidenceView", () => {
       render(
         <MemoryRouter initialEntries={["/entities/entity-1/evidence"]}>
           <Routes>
-            <Route path="/entities/:entityId/evidence" element={<EvidenceView />} />
+            <Route path="/entities/:id/evidence" element={<EvidenceView />} />
           </Routes>
         </MemoryRouter>
       );
@@ -261,7 +261,7 @@ describe("EvidenceView", () => {
       render(
         <MemoryRouter initialEntries={["/entities/entity-1/evidence"]}>
           <Routes>
-            <Route path="/entities/:entityId/evidence" element={<EvidenceView />} />
+            <Route path="/entities/:id/evidence" element={<EvidenceView />} />
           </Routes>
         </MemoryRouter>
       );
@@ -282,7 +282,7 @@ describe("EvidenceView", () => {
       render(
         <MemoryRouter initialEntries={["/entities/entity-1/evidence"]}>
           <Routes>
-            <Route path="/entities/:entityId/evidence" element={<EvidenceView />} />
+            <Route path="/entities/:id/evidence" element={<EvidenceView />} />
           </Routes>
         </MemoryRouter>
       );
@@ -298,7 +298,7 @@ describe("EvidenceView", () => {
       render(
         <MemoryRouter initialEntries={["/entities/entity-1/evidence"]}>
           <Routes>
-            <Route path="/entities/:entityId/evidence" element={<EvidenceView />} />
+            <Route path="/entities/:id/evidence" element={<EvidenceView />} />
           </Routes>
         </MemoryRouter>
       );
@@ -320,7 +320,7 @@ describe("EvidenceView", () => {
       render(
         <MemoryRouter initialEntries={["/entities/entity-1/evidence"]}>
           <Routes>
-            <Route path="/entities/:entityId/evidence" element={<EvidenceView />} />
+            <Route path="/entities/:id/evidence" element={<EvidenceView />} />
           </Routes>
         </MemoryRouter>
       );
@@ -347,7 +347,7 @@ describe("EvidenceView", () => {
       render(
         <MemoryRouter initialEntries={["/entities/entity-1/evidence"]}>
           <Routes>
-            <Route path="/entities/:entityId/evidence" element={<EvidenceView />} />
+            <Route path="/entities/:id/evidence" element={<EvidenceView />} />
           </Routes>
         </MemoryRouter>
       );
@@ -363,7 +363,7 @@ describe("EvidenceView", () => {
       render(
         <MemoryRouter initialEntries={["/entities/entity-1/evidence"]}>
           <Routes>
-            <Route path="/entities/:entityId/evidence" element={<EvidenceView />} />
+            <Route path="/entities/:id/evidence" element={<EvidenceView />} />
           </Routes>
         </MemoryRouter>
       );
@@ -386,7 +386,7 @@ describe("EvidenceView", () => {
       render(
         <MemoryRouter initialEntries={["/entities/entity-1/evidence"]}>
           <Routes>
-            <Route path="/entities/:entityId/evidence" element={<EvidenceView />} />
+            <Route path="/entities/:id/evidence" element={<EvidenceView />} />
           </Routes>
         </MemoryRouter>
       );
@@ -408,7 +408,7 @@ describe("EvidenceView", () => {
       render(
         <MemoryRouter initialEntries={["/entities/entity-1/evidence"]}>
           <Routes>
-            <Route path="/entities/:entityId/evidence" element={<EvidenceView />} />
+            <Route path="/entities/:id/evidence" element={<EvidenceView />} />
           </Routes>
         </MemoryRouter>
       );
@@ -444,7 +444,7 @@ describe("EvidenceView", () => {
         <MemoryRouter initialEntries={["/entities/entity-1/properties/agent/evidence"]}>
           <Routes>
             <Route
-              path="/entities/:entityId/properties/:roleType/evidence"
+              path="/entities/:id/properties/:roleType/evidence"
               element={<EvidenceView />}
             />
           </Routes>
@@ -463,7 +463,7 @@ describe("EvidenceView", () => {
         <MemoryRouter initialEntries={["/entities/entity-1/properties/patient/evidence"]}>
           <Routes>
             <Route
-              path="/entities/:entityId/properties/:roleType/evidence"
+              path="/entities/:id/properties/:roleType/evidence"
               element={<EvidenceView />}
             />
           </Routes>
@@ -487,7 +487,7 @@ describe("EvidenceView", () => {
       render(
         <MemoryRouter initialEntries={["/entities/entity-1/evidence"]}>
           <Routes>
-            <Route path="/entities/:entityId/evidence" element={<EvidenceView />} />
+            <Route path="/entities/:id/evidence" element={<EvidenceView />} />
           </Routes>
         </MemoryRouter>
       );
@@ -508,7 +508,7 @@ describe("EvidenceView", () => {
         >
           <Routes>
             <Route
-              path="/entities/:entityId/properties/:roleType/evidence"
+              path="/entities/:id/properties/:roleType/evidence"
               element={<EvidenceView />}
             />
           </Routes>
@@ -537,7 +537,7 @@ describe("EvidenceView", () => {
       render(
         <MemoryRouter initialEntries={["/entities/entity-1/evidence"]}>
           <Routes>
-            <Route path="/entities/:entityId/evidence" element={<EvidenceView />} />
+            <Route path="/entities/:id/evidence" element={<EvidenceView />} />
           </Routes>
         </MemoryRouter>
       );
@@ -558,7 +558,7 @@ describe("EvidenceView", () => {
       render(
         <MemoryRouter initialEntries={["/entities/entity-1/evidence"]}>
           <Routes>
-            <Route path="/entities/:entityId/evidence" element={<EvidenceView />} />
+            <Route path="/entities/:id/evidence" element={<EvidenceView />} />
           </Routes>
         </MemoryRouter>
       );
@@ -585,7 +585,7 @@ describe("EvidenceView", () => {
       render(
         <MemoryRouter initialEntries={["/entities/entity-1/evidence"]}>
           <Routes>
-            <Route path="/entities/:entityId/evidence" element={<EvidenceView />} />
+            <Route path="/entities/:id/evidence" element={<EvidenceView />} />
           </Routes>
         </MemoryRouter>
       );
@@ -596,3 +596,4 @@ describe("EvidenceView", () => {
     });
   });
 });
+

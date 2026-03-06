@@ -47,13 +47,19 @@ export type RelationType =
   | "metabolized_by"
   | "biomarker_for"
   | "affects_population"
+  | "measures"
   | "other";
 
+export interface ExtractedRole {
+  entity_slug: string;
+  role_type: string;
+}
+
 export interface ExtractedRelation {
-  subject_slug: string;
+  subject_slug?: string | null;
   relation_type: RelationType;
-  object_slug: string;
-  roles: Record<string, string>;
+  object_slug?: string | null;
+  roles: ExtractedRole[] | Record<string, string>;
   confidence: ConfidenceLevel;
   text_span: string;
   notes?: string | null;
@@ -127,7 +133,6 @@ export interface DocumentExtractionPreview {
 // =============================================================================
 
 export interface SaveExtractionRequest {
-  source_id: string;
   entities_to_create: ExtractedEntity[];
   entity_links: Record<string, string>;  // extracted_slug -> existing_entity_id
   relations_to_create: ExtractedRelation[];

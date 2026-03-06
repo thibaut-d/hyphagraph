@@ -11,7 +11,21 @@ import type {
   SaveExtractionResult,
 } from "../types/extraction";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_BASE_URL = (import.meta.env.VITE_API_URL ?? "/api").replace(/\/$/, "");
+
+function getAuthHeader(): HeadersInit {
+  const token = localStorage.getItem("auth_token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+async function getErrorMessage(response: Response, fallback: string): Promise<string> {
+  try {
+    const error = await response.json();
+    return error.detail || fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 /**
  * Upload a document (PDF or TXT) to a source.
@@ -29,20 +43,14 @@ export async function uploadDocument(
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await fetch(
-    `${API_BASE}/api/sources/${sourceId}/upload-document`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-      body: formData,
-    }
-  );
+  const response = await fetch(`${API_BASE_URL}/sources/${sourceId}/upload-document`, {
+    method: "POST",
+    headers: getAuthHeader(),
+    body: formData,
+  });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || "Failed to upload document");
+    throw new Error(await getErrorMessage(response, "Failed to upload document"));
   }
 
   return response.json();
@@ -93,20 +101,14 @@ export async function uploadAndExtract(
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await fetch(
-    `${API_BASE}/api/sources/${sourceId}/upload-and-extract`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-      body: formData,
-    }
-  );
+  const response = await fetch(`${API_BASE_URL}/sources/${sourceId}/upload-and-extract`, {
+    method: "POST",
+    headers: getAuthHeader(),
+    body: formData,
+  });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || "Failed to upload and extract");
+    throw new Error(await getErrorMessage(response, "Failed to upload and extract"));
   }
 
   return response.json();

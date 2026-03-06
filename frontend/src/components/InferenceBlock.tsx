@@ -106,7 +106,7 @@ function RelationDisplay({ relation, kind }: { relation: RelationRead; kind: str
         {subject?.entity_slug && (
           <Link
             component={RouterLink}
-            to={`/entities/${subject.entity_slug}`}
+            to={`/entities/${subject.entity_id}`}
             sx={{ fontWeight: 'bold', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
           >
             {subject.entity_slug}
@@ -125,7 +125,7 @@ function RelationDisplay({ relation, kind }: { relation: RelationRead; kind: str
         {object?.entity_slug && (
           <Link
             component={RouterLink}
-            to={`/entities/${object.entity_slug}`}
+            to={`/entities/${object.entity_id}`}
             sx={{ fontWeight: 'bold', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
           >
             {object.entity_slug}
