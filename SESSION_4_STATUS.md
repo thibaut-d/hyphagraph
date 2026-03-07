@@ -169,14 +169,14 @@ ExtractionReviewService (NEW - Session 4b)
 ### ✅ Complete (Ready to Use)
 - Database schema and migration
 - Review service (all operations)
-- REST API endpoints
+- REST API endpoints (8 endpoints)
 - Validation integration
-- Documentation
+- **Document extraction pipeline integration** ← NEW!
+- Comprehensive documentation
 
 ### ⏳ Optional (Can Add Anytime)
-- Document extraction pipeline integration
 - Entity/relation API review metadata (JOIN)
-- Unit tests for review service
+- Unit tests for remaining 3 tests
 - API integration tests
 
 ### 🔮 Future (Requires Frontend Work)

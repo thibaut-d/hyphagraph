@@ -89,34 +89,49 @@ status = "auto_verified" if is_auto_commit_eligible else "pending"
 
 ## Integration Status
 
-### 1. Extraction Service ⏳ READY (not yet integrated)
+### 1. Extraction Service ✅ INTEGRATED
 
 **File**: `app.services.extraction_service.py`
 
-**Available**: `extract_batch_with_validation_results()` method returns validation metadata
-**Integration**: Call `ExtractionReviewService.stage_extraction()` with auto_materialize=True
-**Status**: Can be integrated anytime, no breaking changes
+**Status**: Fully integrated into document extraction pipeline
+**Method**: `extract_batch_with_validation_results()` returns validation metadata
 
-### 2. Document Extraction API ⏳ READY (not yet integrated)
+### 2. Document Extraction API ✅ INTEGRATED
 
 **File**: `app.api.document_extraction.py`
 
-**Recommended Enhancement**:
+**Integrated Endpoints** (all 3):
+- `POST /sources/{id}/extract-from-document` - Document extraction with review
+- `POST /sources/{id}/upload-and-extract` - Upload + extract with review
+- `POST /sources/{id}/extract-from-url` - URL fetch + extract with review
+
+**Implementation**:
 ```python
-# After extraction:
-review_service = ExtractionReviewService(db, auto_commit_enabled=True)
-staged_entities = []
-for entity, validation_result in zip(entities, entity_results):
-    staged, entity_id = await review_service.stage_extraction(
-        ExtractionType.ENTITY, entity, source_id, validation_result
-    )
-    staged_entities.append(staged)
+# All endpoints now use validation + review:
+extraction_service = ExtractionService(db=db, enable_validation=True)
+entities, relations, claims, e_results, r_results, c_results = \
+    await extraction_service.extract_batch_with_validation_results(text)
+
+review_service = ExtractionReviewService(
+    db=db,
+    auto_commit_enabled=True,
+    auto_commit_threshold=0.9,
+    require_no_flags_for_auto_commit=True
+)
+
+staged_list = await review_service.stage_batch(
+    entities=list(zip(entities, e_results)),
+    relations=list(zip(relations, r_results)),
+    claims=list(zip(claims, c_results)),
+    source_id=source_id
+)
 
 # Return with review metadata
 return DocumentExtractionPreview(
-    entities=entities,
-    entity_review_statuses=[s.status for s in staged_entities],
-    needs_review_count=sum(1 for s in staged_entities if s.status == "pending")
+    ...,
+    needs_review_count=sum(1 for s in staged_list if s.status == "pending"),
+    auto_verified_count=sum(1 for s in staged_list if s.status == "auto_verified"),
+    avg_validation_score=avg_score
 )
 ```
 

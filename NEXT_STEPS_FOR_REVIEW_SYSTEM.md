@@ -203,13 +203,15 @@ return DocumentExtractionPreview(
 )
 ```
 
-**Why it's optional**:
-- Manual review workflow works well
-- No user demand yet
-- Requires UX design decisions
-- Can be added without breaking changes
+**Status**: ✅ **COMPLETE** - Integrated 2026-03-07
 
-**Effort**: Low (1-2 hours)
+All document extraction endpoints now automatically:
+- Validate extractions against source text
+- Auto-verify high-confidence items (score >= 0.9, no flags)
+- Flag uncertain items for review
+- Return review metadata in response
+
+**No user action required** - works automatically!
 
 ### 2. Frontend UI Components (Future Session)
 
@@ -349,16 +351,15 @@ class ExtractionReviewService:
 ## Priority Recommendations
 
 ### High Priority (Do Next)
-**None** - System is production-ready as-is
+**None** - System is fully integrated and production-ready
 
 ### Medium Priority (Nice to Have)
 1. **Fix test infrastructure issues** (30 min) - Get to 16/16 tests
 2. **Add configuration environment variables** (30 min) - Easier deployment
+3. **Enhanced API responses** (1-2 hours) - Include review metadata in entity/relation GET
 
 ### Low Priority (Future Sessions)
-1. **Pipeline integration** (1-2 hours) - Auto-stage extractions
-2. **Enhanced API responses** (1-2 hours) - Include review metadata
-3. **Frontend UI** (4-8 hours) - ReviewQueue component
+1. **Frontend UI** (4-8 hours) - ReviewQueue component with batch operations
 
 ---
 
