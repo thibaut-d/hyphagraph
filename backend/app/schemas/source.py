@@ -130,6 +130,10 @@ class DocumentExtractionPreview(Schema):
     entity_count: int
     relation_count: int
     link_suggestions: List[EntityLinkMatch]
+    # Review system metadata (optional)
+    needs_review_count: Optional[int] = None
+    auto_verified_count: Optional[int] = None
+    avg_validation_score: Optional[float] = None
 
 
 class SaveExtractionRequest(Schema):

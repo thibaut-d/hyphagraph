@@ -186,14 +186,46 @@ async def extract_from_document(
             detail="Source has no uploaded document. Upload a document first."
         )
 
-    # Extract entities and relations
-    extraction_service = ExtractionService(db=db)
-    entities, relations, _ = await extraction_service.extract_batch(
-        text=revision.document_text,
-        min_confidence="medium"
-    )
+    # Extract entities and relations with validation
+    extraction_service = ExtractionService(db=db, enable_validation=True)
+    entities, relations, claims, e_results, r_results, c_results = \
+        await extraction_service.extract_batch_with_validation_results(
+            text=revision.document_text,
+            min_confidence="medium"
+        )
 
     logger.info(f"Extracted {len(entities)} entities and {len(relations)} relations from document")
+
+    # Stage extractions for review (auto-commit high-confidence items)
+    from app.services.extraction_review_service import ExtractionReviewService
+    from app.models.staged_extraction import ExtractionType
+
+    review_service = ExtractionReviewService(
+        db=db,
+        auto_commit_enabled=True,
+        auto_commit_threshold=0.9,
+        require_no_flags_for_auto_commit=True
+    )
+
+    staged_list = await review_service.stage_batch(
+        entities=list(zip(entities, e_results)),
+        relations=list(zip(relations, r_results)),
+        claims=list(zip(claims, c_results)),
+        source_id=source_id,
+        llm_model="gpt-4",  # TODO: get from config
+        llm_provider="openai"
+    )
+
+    # Calculate review metadata
+    needs_review_count = sum(1 for s in staged_list if s.status == "pending")
+    auto_verified_count = sum(1 for s in staged_list if s.status == "auto_verified")
+    validation_scores = [s.validation_score for s in staged_list]
+    avg_validation_score = sum(validation_scores) / len(validation_scores) if validation_scores else None
+
+    logger.info(
+        f"Review staging complete: {auto_verified_count} auto-verified, "
+        f"{needs_review_count} need review (avg score: {avg_validation_score:.2f if avg_validation_score else 0})"
+    )
 
     # Find entity matches in existing graph
     linking_service = EntityLinkingService(db)
@@ -217,7 +249,10 @@ async def extract_from_document(
         relations=relations,
         entity_count=len(entities),
         relation_count=len(relations),
-        link_suggestions=link_suggestions
+        link_suggestions=link_suggestions,
+        needs_review_count=needs_review_count,
+        auto_verified_count=auto_verified_count,
+        avg_validation_score=avg_validation_score
     )
 
 
@@ -398,14 +433,45 @@ async def upload_and_extract(
 
         logger.info("Document content stored in source")
 
-        # Step 3: Extract entities and relations from text
-        extraction_service = ExtractionService(db=db)
-        entities, relations, _ = await extraction_service.extract_batch(
-            text=extraction_result.text,
-            min_confidence="medium"
-        )
+        # Step 3: Extract entities and relations from text with validation
+        extraction_service = ExtractionService(db=db, enable_validation=True)
+        entities, relations, claims, e_results, r_results, c_results = \
+            await extraction_service.extract_batch_with_validation_results(
+                text=extraction_result.text,
+                min_confidence="medium"
+            )
 
         logger.info(f"Extracted {len(entities)} entities and {len(relations)} relations")
+
+        # Step 3.5: Stage extractions for review
+        from app.services.extraction_review_service import ExtractionReviewService
+
+        review_service = ExtractionReviewService(
+            db=db,
+            auto_commit_enabled=True,
+            auto_commit_threshold=0.9,
+            require_no_flags_for_auto_commit=True
+        )
+
+        staged_list = await review_service.stage_batch(
+            entities=list(zip(entities, e_results)),
+            relations=list(zip(relations, r_results)),
+            claims=list(zip(claims, c_results)),
+            source_id=source_id,
+            llm_model="gpt-4",
+            llm_provider="openai"
+        )
+
+        # Calculate review metadata
+        needs_review_count = sum(1 for s in staged_list if s.status == "pending")
+        auto_verified_count = sum(1 for s in staged_list if s.status == "auto_verified")
+        validation_scores = [s.validation_score for s in staged_list]
+        avg_validation_score = sum(validation_scores) / len(validation_scores) if validation_scores else None
+
+        logger.info(
+            f"Review staging complete: {auto_verified_count} auto-verified, "
+            f"{needs_review_count} need review"
+        )
 
         # Step 4: Find entity matches in existing graph
         linking_service = EntityLinkingService(db)
@@ -435,7 +501,10 @@ async def upload_and_extract(
             relations=relations,
             entity_count=len(entities),
             relation_count=len(relations),
-            link_suggestions=link_suggestions
+            link_suggestions=link_suggestions,
+            needs_review_count=needs_review_count,
+            auto_verified_count=auto_verified_count,
+            avg_validation_score=avg_validation_score
         )
 
     except HTTPException:
@@ -569,14 +638,45 @@ async def extract_from_url(
 
         logger.info("Document content stored in source")
 
-        # Step 3: Extract entities and relations from text
-        extraction_service = ExtractionService(db=db)
-        entities, relations, _ = await extraction_service.extract_batch(
-            text=document_text,
-            min_confidence="medium"
-        )
+        # Step 3: Extract entities and relations from text with validation
+        extraction_service = ExtractionService(db=db, enable_validation=True)
+        entities, relations, claims, e_results, r_results, c_results = \
+            await extraction_service.extract_batch_with_validation_results(
+                text=document_text,
+                min_confidence="medium"
+            )
 
         logger.info(f"Extracted {len(entities)} entities and {len(relations)} relations")
+
+        # Step 3.5: Stage extractions for review
+        from app.services.extraction_review_service import ExtractionReviewService
+
+        review_service = ExtractionReviewService(
+            db=db,
+            auto_commit_enabled=True,
+            auto_commit_threshold=0.9,
+            require_no_flags_for_auto_commit=True
+        )
+
+        staged_list = await review_service.stage_batch(
+            entities=list(zip(entities, e_results)),
+            relations=list(zip(relations, r_results)),
+            claims=list(zip(claims, c_results)),
+            source_id=source_id,
+            llm_model="gpt-4",
+            llm_provider="openai"
+        )
+
+        # Calculate review metadata
+        needs_review_count = sum(1 for s in staged_list if s.status == "pending")
+        auto_verified_count = sum(1 for s in staged_list if s.status == "auto_verified")
+        validation_scores = [s.validation_score for s in staged_list]
+        avg_validation_score = sum(validation_scores) / len(validation_scores) if validation_scores else None
+
+        logger.info(
+            f"Review staging complete: {auto_verified_count} auto-verified, "
+            f"{needs_review_count} need review"
+        )
 
         # Step 4: Find entity matches in existing graph
         linking_service = EntityLinkingService(db)
@@ -606,7 +706,10 @@ async def extract_from_url(
             relations=relations,
             entity_count=len(entities),
             relation_count=len(relations),
-            link_suggestions=link_suggestions
+            link_suggestions=link_suggestions,
+            needs_review_count=needs_review_count,
+            auto_verified_count=auto_verified_count,
+            avg_validation_score=avg_validation_score
         )
 
     except HTTPException:
