@@ -151,13 +151,25 @@ GET /api/entities/{id}
 }
 ```
 
-### 4. Frontend 🔮 FUTURE
+### 4. Frontend ✅ COMPLETE
 
-**Components Needed**:
-- ReviewQueue view - List extractions with status="pending"
-- Entity/Relation badges - Show ✅ verified or ⚠️ needs review
-- ReviewStats dashboard - Overview of review queue
-- Filters - "Show: All | Verified | Needs Review"
+**Status**: ✅ **IMPLEMENTED** (2026-03-07)
+
+**Components Implemented**:
+- ✅ ReviewQueueView - Full-featured review queue at `/review-queue`
+  - Statistics dashboard (pending, auto-verified, avg score, flagged)
+  - List of pending extractions with validation details
+  - Individual approve/reject buttons
+  - Batch selection and review operations
+  - Filters (min validation score, only flagged)
+  - Pagination with load more
+  - Links to materialized entities
+- ✅ API client - `frontend/src/api/extractionReview.ts`
+- ✅ Navigation integration - Menu item with authentication guard
+- ✅ Translations - English & French support
+
+**Future Enhancements**:
+- Entity/Relation status badges - Show ✅ verified or ⚠️ needs review inline on cards
 
 ## Configuration
 
@@ -301,7 +313,6 @@ Tests needed:
 
 ## Current Limitations
 
-- ⏳ **Not yet integrated** into document extraction pipeline (can be added anytime)
-- 🔮 **Frontend UI pending** - Review queue and badges not yet built
-- 📊 **No filtering in API** - Entity/relation APIs don't yet join review metadata
+- 📊 **No filtering in API** - Entity/relation APIs don't yet join review metadata (optional enhancement)
 - ⚠️ **Claims not materialized** - Only entities and relations supported
+- 🎨 **No inline status badges** - Entity/relation cards don't show review status yet (optional enhancement)
