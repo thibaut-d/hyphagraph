@@ -474,12 +474,14 @@ class ExtractionReviewService:
         await self.db.flush()
 
         # Create EntityRevision with extracted data
+        # Convert summary string to i18n dict format
+        summary_dict = {"en": entity_data.summary} if entity_data.summary else None
+
         revision = EntityRevision(
             entity_id=entity.id,
             slug=entity_data.slug,
-            summary=entity_data.summary or "",
-            category=entity_data.category,
-            is_deleted=False,
+            summary=summary_dict,
+            is_current=True,
         )
         self.db.add(revision)
         await self.db.flush()
