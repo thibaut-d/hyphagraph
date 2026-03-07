@@ -649,7 +649,7 @@ class ExtractionReviewService:
         total_pending = status_map.get(ExtractionStatus.PENDING, 0)
         total_approved = status_map.get(ExtractionStatus.APPROVED, 0)
         total_rejected = status_map.get(ExtractionStatus.REJECTED, 0)
-        total_materialized = status_map.get(ExtractionStatus.MATERIALIZED, 0)
+        total_auto_verified = status_map.get(ExtractionStatus.AUTO_VERIFIED, 0)
 
         # Count pending by type
         type_counts = await self.db.execute(
@@ -686,7 +686,7 @@ class ExtractionReviewService:
             total_pending=total_pending,
             total_approved=total_approved,
             total_rejected=total_rejected,
-            total_materialized=total_materialized,
+            total_auto_verified=total_auto_verified,
             pending_entities=pending_entities,
             pending_relations=pending_relations,
             pending_claims=pending_claims,

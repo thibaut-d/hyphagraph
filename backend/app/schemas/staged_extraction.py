@@ -123,7 +123,7 @@ class ReviewStats(BaseModel):
     total_pending: int
     total_approved: int
     total_rejected: int
-    total_materialized: int
+    total_auto_verified: int
 
     # Breakdown by type
     pending_entities: int

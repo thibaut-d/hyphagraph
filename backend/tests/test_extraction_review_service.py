@@ -318,14 +318,25 @@ async def test_approve_extraction_updates_status(
     assert staged.status == ExtractionStatus.PENDING
 
     # Approve
-    updated = await review_service.approve_extraction(
+    result = await review_service.approve_extraction(
         extraction_id=staged.id,
         reviewer_id=sample_user.id,
         notes="Verified against source document",
+        auto_materialize=False,  # Don't materialize again, already done
     )
 
+    # Check result
+    assert result.success is True
+    assert result.extraction_id == staged.id
+
+    # Verify status was updated in database
+    from sqlalchemy import select
+    db_result = await review_service.db.execute(
+        select(StagedExtraction).where(StagedExtraction.id == staged.id)
+    )
+    updated = db_result.scalar_one()
     assert updated.status == ExtractionStatus.APPROVED
-    assert updated.reviewed_by_id == sample_user.id
+    assert updated.reviewed_by == sample_user.id
     assert updated.review_notes == "Verified against source document"
     assert updated.reviewed_at is not None
 
@@ -349,18 +360,26 @@ async def test_reject_extraction_updates_status(
     assert staged.status == ExtractionStatus.PENDING
 
     # Reject
-    updated = await review_service.reject_extraction(
+    success = await review_service.reject_extraction(
         extraction_id=staged.id,
         reviewer_id=sample_user.id,
         notes="Text span not found in source",
     )
 
+    # Check result
+    assert success is True
+
+    # Verify status was updated in database
+    from sqlalchemy import select
+    db_result = await review_service.db.execute(
+        select(StagedExtraction).where(StagedExtraction.id == staged.id)
+    )
+    updated = db_result.scalar_one()
     assert updated.status == ExtractionStatus.REJECTED
-    assert updated.reviewed_by_id == sample_user.id
+    assert updated.reviewed_by == sample_user.id
     assert updated.review_notes == "Text span not found in source"
 
     # Entity should still exist (visibility strategy)
-    from sqlalchemy import select
     result = await review_service.db.execute(select(Entity).where(Entity.id == entity_id))
     entity = result.scalar_one_or_none()
     assert entity is not None
@@ -383,9 +402,15 @@ async def test_cannot_review_auto_verified_extraction(
 
     assert staged.status == ExtractionStatus.AUTO_VERIFIED
 
-    # Attempting to review should raise error
-    with pytest.raises(ValueError, match="already in final state"):
-        await review_service.approve_extraction(staged.id, sample_user.id)
+    # Attempting to review should fail
+    result = await review_service.approve_extraction(
+        extraction_id=staged.id,
+        reviewer_id=sample_user.id,
+        auto_materialize=False,
+    )
+
+    assert result.success is False
+    assert "already" in result.error.lower()
 
 
 # === Test Batch Operations ===
@@ -397,17 +422,19 @@ async def test_stage_batch_entities(
     high_confidence_validation, uncertain_validation
 ):
     """Batch staging should handle multiple entities with different confidence levels."""
-    entities = [high_confidence_entity, uncertain_entity]
-    validation_results = [high_confidence_validation, uncertain_validation]
+    # stage_batch takes tuples of (extraction, validation_result)
+    entities = [
+        (high_confidence_entity, high_confidence_validation),
+        (uncertain_entity, uncertain_validation),
+    ]
 
     staged_list = await review_service.stage_batch(
-        extraction_type=ExtractionType.ENTITY,
-        extractions=entities,
+        entities=entities,
+        relations=[],
+        claims=[],
         source_id=sample_source.id,
-        validation_results=validation_results,
         llm_model="claude-sonnet-4-5",
         llm_provider="anthropic",
-        auto_materialize=True,
     )
 
     assert len(staged_list) == 2
@@ -456,7 +483,7 @@ async def test_batch_review_approve_multiple(
         notes="Batch approval",
     )
 
-    assert results["approved"] == 3
+    assert results["succeeded"] == 3
     assert results["failed"] == 0
 
     # Verify all are approved
@@ -505,7 +532,7 @@ async def test_batch_review_mixed_results(
     )
 
     # Should have 1 success, 1 failure
-    assert results["approved"] == 1
+    assert results["succeeded"] == 1
     assert results["failed"] == 1
 
 
@@ -544,21 +571,30 @@ async def test_list_extractions_filter_by_status(
         auto_materialize=True,
     )
 
-    # Approve one
-    await review_service.approve_extraction(staged2.id, uuid4())
+    # Approve one (need a real user ID for FK constraint)
+    await review_service.approve_extraction(
+        extraction_id=staged2.id,
+        reviewer_id=sample_source.revisions[0].created_by_user_id,  # Use existing user
+        auto_materialize=False,
+    )
 
     # Filter for pending
-    pending = await review_service.list_extractions(
-        status=ExtractionStatus.PENDING,
-        limit=10,
+    from app.schemas.staged_extraction import StagedExtractionFilters
+    pending, count = await review_service.list_extractions(
+        filters=StagedExtractionFilters(
+            status="pending",
+            page_size=10,
+        )
     )
     assert len(pending) == 1
     assert pending[0].id == staged1.id
 
     # Filter for approved
-    approved = await review_service.list_extractions(
-        status=ExtractionStatus.APPROVED,
-        limit=10,
+    approved, count = await review_service.list_extractions(
+        filters=StagedExtractionFilters(
+            status="approved",
+            page_size=10,
+        )
     )
     assert len(approved) == 1
     assert approved[0].id == staged2.id
@@ -592,18 +628,23 @@ async def test_list_extractions_filter_by_score(
     )
 
     # Filter for high scores
-    high_scores = await review_service.list_extractions(
-        min_validation_score=0.9,
-        limit=10,
+    from app.schemas.staged_extraction import StagedExtractionFilters
+    high_scores, count = await review_service.list_extractions(
+        filters=StagedExtractionFilters(
+            min_validation_score=0.9,
+            page_size=10,
+        )
     )
     assert len(high_scores) == 1
     assert high_scores[0].validation_score >= 0.9
 
     # Filter for medium scores
-    medium_scores = await review_service.list_extractions(
-        min_validation_score=0.7,
-        max_validation_score=0.8,
-        limit=10,
+    medium_scores, count = await review_service.list_extractions(
+        filters=StagedExtractionFilters(
+            min_validation_score=0.7,
+            max_validation_score=0.8,
+            page_size=10,
+        )
     )
     assert len(medium_scores) == 1
     assert 0.7 <= medium_scores[0].validation_score <= 0.8
@@ -650,21 +691,16 @@ async def test_list_extractions_filter_by_flags(
         auto_materialize=True,
     )
 
-    # Filter for fuzzy matches
-    fuzzy = await review_service.list_extractions(
-        has_validation_flag="fuzzy_match",
-        limit=10,
+    # Filter for extractions with any flags
+    from app.schemas.staged_extraction import StagedExtractionFilters
+    with_flags, count = await review_service.list_extractions(
+        filters=StagedExtractionFilters(
+            has_flags=True,
+            page_size=10,
+        )
     )
-    assert len(fuzzy) == 1
-    assert "fuzzy_match" in fuzzy[0].validation_flags
-
-    # Filter for hallucinations
-    hallucinations = await review_service.list_extractions(
-        has_validation_flag="possible_hallucination",
-        limit=10,
-    )
-    assert len(hallucinations) == 1
-    assert "possible_hallucination" in hallucinations[0].validation_flags
+    assert len(with_flags) == 2  # Both have flags
+    assert all(len(e.validation_flags) > 0 for e in with_flags)
 
 
 # === Test Statistics ===
@@ -708,13 +744,18 @@ async def test_get_stats_calculates_correctly(
 
     stats = await review_service.get_stats()
 
-    assert stats["total"] == 3
-    assert stats["by_status"]["auto_verified"] == 1
-    assert stats["by_status"]["pending"] == 2
-    assert stats["by_status"]["approved"] == 0
-    assert stats["by_status"]["rejected"] == 0
-    assert 0.8 <= stats["avg_validation_score"] <= 0.9  # Mix of 1.0 and 0.75
-    assert stats["total_with_flags"] == 2  # 2 pending with fuzzy_match flag
+    # Check status counts
+    assert stats.total_auto_verified == 1
+    assert stats.total_pending == 2
+    assert stats.total_approved == 0
+    assert stats.total_rejected == 0
+
+    # Check type breakdown (all pending are entities)
+    assert stats.pending_entities == 2
+
+    # Check quality metrics
+    assert 0.7 <= stats.avg_validation_score <= 0.8  # Average of 2 pending with score 0.75
+    assert stats.flagged_count == 2  # 2 pending with fuzzy_match flag
 
 
 @pytest.mark.asyncio
@@ -743,11 +784,15 @@ async def test_get_stats_after_reviews(
         staged_list.append(staged)
 
     # Approve one, reject one
-    await review_service.approve_extraction(staged_list[0].id, sample_user.id)
+    await review_service.approve_extraction(
+        extraction_id=staged_list[0].id,
+        reviewer_id=sample_user.id,
+        auto_materialize=False,
+    )
     await review_service.reject_extraction(staged_list[1].id, sample_user.id)
 
     stats = await review_service.get_stats()
 
-    assert stats["by_status"]["pending"] == 0
-    assert stats["by_status"]["approved"] == 1
-    assert stats["by_status"]["rejected"] == 1
+    assert stats.total_pending == 0
+    assert stats.total_approved == 1
+    assert stats.total_rejected == 1
