@@ -2,7 +2,7 @@
 Knowledge extraction service using LLM.
 
 Provides high-level functions for extracting entities, relations, and claims
-from text using the LLM integration.
+from text using the LLM integration with built-in hallucination validation.
 """
 import logging
 from typing import Any
@@ -24,6 +24,10 @@ from app.llm.schemas import (
     validate_claim_extraction,
     validate_batch_extraction,
 )
+from app.services.extraction_validation_service import (
+    ExtractionValidationService,
+    ValidationLevel,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +42,14 @@ class ExtractionService:
     Uses DYNAMIC prompts generated from database relation types.
     """
 
-    def __init__(self, temperature: float = 0.2, max_tokens: int = 3000, db=None):
+    def __init__(
+        self,
+        temperature: float = 0.2,
+        max_tokens: int = 3000,
+        db=None,
+        enable_validation: bool = True,
+        validation_level: ValidationLevel = "moderate"
+    ):
         """
         Initialize extraction service.
 
@@ -46,6 +57,8 @@ class ExtractionService:
             temperature: LLM temperature for extraction (lower = more deterministic)
             max_tokens: Maximum tokens for LLM response
             db: Optional database session for dynamic prompt generation
+            enable_validation: Whether to validate extractions against source text
+            validation_level: Strictness of validation ("strict", "moderate", "lenient")
         """
         self.llm = get_llm_provider()
         self.temperature = temperature
@@ -53,6 +66,13 @@ class ExtractionService:
         self.system_prompt = MEDICAL_KNOWLEDGE_SYSTEM_PROMPT
         self.db = db
         self._relation_types_cache = None  # Cache relation types for this service instance
+
+        # Hallucination validation
+        self.enable_validation = enable_validation
+        self.validation_service = ExtractionValidationService(
+            validation_level=validation_level,
+            auto_reject_invalid=(validation_level == "strict")
+        ) if enable_validation else None
 
     async def _get_relation_types_prompt(self) -> str:
         """
@@ -307,11 +327,45 @@ class ExtractionService:
                 max_tokens=min(self.max_tokens * 2, 4000),  # Double tokens for batch
             )
 
-            # Validate response
+            # Validate response schema
             validated = validate_batch_extraction(response_data)
 
-            # Filter entities by confidence
+            # Validate extractions against source text (hallucination prevention)
             entities = validated.entities
+            relations = validated.relations
+            claims = validated.claims
+
+            if self.enable_validation and self.validation_service:
+                logger.info("Validating extractions against source text...")
+
+                # Validate entities
+                entities, entity_results = await self.validation_service.validate_entities(
+                    entities, text
+                )
+
+                # Validate relations
+                relations, relation_results = await self.validation_service.validate_relations(
+                    relations, text
+                )
+
+                # Validate claims
+                claims, claim_results = await self.validation_service.validate_claims(
+                    claims, text
+                )
+
+                # Log validation summary
+                flagged_entities = sum(1 for r in entity_results if r.flags)
+                flagged_relations = sum(1 for r in relation_results if r.flags)
+                flagged_claims = sum(1 for r in claim_results if r.flags)
+
+                if flagged_entities + flagged_relations + flagged_claims > 0:
+                    logger.warning(
+                        f"Validation flagged items: {flagged_entities} entities, "
+                        f"{flagged_relations} relations, {flagged_claims} claims"
+                    )
+
+            # Filter entities by confidence
+            entities = entities
             if min_confidence:
                 confidence_order = {"high": 3, "medium": 2, "low": 1}
                 min_level = confidence_order.get(min_confidence, 1)
@@ -321,7 +375,6 @@ class ExtractionService:
                 ]
 
             # Filter relations by confidence
-            relations = validated.relations
             if min_confidence:
                 confidence_order = {"high": 3, "medium": 2, "low": 1}
                 min_level = confidence_order.get(min_confidence, 1)
@@ -331,7 +384,6 @@ class ExtractionService:
                 ]
 
             # Filter claims by evidence strength
-            claims = validated.claims
             if min_evidence_strength:
                 evidence_order = {"strong": 4, "moderate": 3, "weak": 2, "anecdotal": 1}
                 min_level = evidence_order.get(min_evidence_strength, 1)
