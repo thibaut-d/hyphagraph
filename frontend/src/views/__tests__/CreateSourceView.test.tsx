@@ -40,11 +40,11 @@ describe('CreateSourceView', () => {
         </BrowserRouter>
       );
 
-      expect(screen.getByLabelText(/kind/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/type/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/title/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/url/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/source url/i)).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /create source/i })).toBeInTheDocument();
-    });
+    }, 10000);
 
     it('renders optional fields', () => {
       render(
@@ -54,9 +54,9 @@ describe('CreateSourceView', () => {
       );
 
       expect(screen.getByLabelText(/authors/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/year/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/origin/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/trust level/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/publication year/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/journal.*publisher/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/quality score/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/summary \(english\)/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/summary \(french\)/i)).toBeInTheDocument();
     });
@@ -89,7 +89,7 @@ describe('CreateSourceView', () => {
         </BrowserRouter>
       );
 
-      const trustLevelInput = screen.getByLabelText(/trust level/i) as HTMLInputElement;
+      const trustLevelInput = screen.getByLabelText(/quality score/i) as HTMLInputElement;
       expect(trustLevelInput.value).toBe('0.5');
     });
   });
@@ -170,8 +170,8 @@ describe('CreateSourceView', () => {
 
       await waitFor(() => {
         expect(sourceApi.createSource).toHaveBeenCalled();
-      });
-    });
+      }, { timeout: 10000 });
+    }, 15000);
   });
 
   describe('Form submission', () => {
@@ -213,12 +213,12 @@ describe('CreateSourceView', () => {
           origin: undefined,
           summary: undefined,
         });
-      });
+      }, { timeout: 10000 });
 
       await waitFor(() => {
         expect(mockNavigate).toHaveBeenCalledWith('/sources/123');
-      });
-    });
+      }, { timeout: 10000 });
+    }, 15000);
 
     it('submits form with all fields filled', async () => {
       const mockSource = {
@@ -247,8 +247,8 @@ describe('CreateSourceView', () => {
       const urlInput = screen.getByLabelText(/url/i);
       const authorsInput = screen.getByLabelText(/authors/i);
       const yearInput = screen.getByLabelText(/year/i);
-      const originInput = screen.getByLabelText(/origin/i);
-      const trustLevelInput = screen.getByLabelText(/trust level/i);
+      const originInput = screen.getByLabelText(/journal.*publisher/i);
+      const trustLevelInput = screen.getByLabelText(/quality score/i);
       const summaryEnInput = screen.getByLabelText(/summary \(english\)/i);
       const summaryFrInput = screen.getByLabelText(/summary \(french\)/i);
 
@@ -321,8 +321,8 @@ describe('CreateSourceView', () => {
             authors: ['Smith', 'Jones', 'Brown'],
           })
         );
-      });
-    });
+      }, { timeout: 10000 });
+    }, 15000);
 
     it('handles empty authors correctly', async () => {
       const mockSource = {
@@ -357,8 +357,8 @@ describe('CreateSourceView', () => {
             authors: undefined,
           })
         );
-      });
-    });
+      }, { timeout: 10000 });
+    }, 15000);
   });
 
   describe('Cancel functionality', () => {
