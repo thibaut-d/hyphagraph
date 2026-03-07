@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_, func, and_, distinct
+from sqlalchemy import select, or_, func, and_, distinct, case
 from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException, status
 from typing import Optional, Tuple
@@ -240,13 +240,60 @@ class EntityService:
                         ).where(or_(*recency_filter_conditions))
 
             # Filter by consensus level
-            # Note: This is expensive as it requires computing consensus for each entity
-            # For MVP, we skip this filter or implement it post-query
-            # TODO: Implement consensus level filter with proper indexing
+            # Consensus is based on disagreement ratio: contradicts_count / total_count
+            # Levels: strong (<10%), moderate (10-30%), weak (30-50%), disputed (>50%)
             if filters.consensus_level:
-                # This would require computing disagreement ratio per entity
-                # For now, we'll implement this as a post-filter in a future iteration
-                pass
+                # Subquery to compute disagreement ratio per entity
+                consensus_subquery = (
+                    select(
+                        RelationRoleRevision.entity_id,
+                        func.count().label('total_relations'),
+                        func.sum(
+                            case(
+                                (RelationRevision.direction == "contradicts", 1),
+                                else_=0
+                            )
+                        ).label('contradicts_count')
+                    )
+                    .select_from(RelationRoleRevision)
+                    .join(RelationRevision, RelationRoleRevision.relation_revision_id == RelationRevision.id)
+                    .where(RelationRevision.is_current == True)
+                    .group_by(RelationRoleRevision.entity_id)
+                    .subquery()
+                )
+
+                # Build consensus level conditions
+                # disagreement_ratio = contradicts_count / total_relations
+                consensus_conditions = []
+                for level in filters.consensus_level:
+                    if level == "strong":
+                        # <10% disagreement
+                        consensus_conditions.append(
+                            consensus_subquery.c.contradicts_count < (consensus_subquery.c.total_relations * 0.10)
+                        )
+                    elif level == "moderate":
+                        # 10-30% disagreement
+                        consensus_conditions.append(and_(
+                            consensus_subquery.c.contradicts_count >= (consensus_subquery.c.total_relations * 0.10),
+                            consensus_subquery.c.contradicts_count < (consensus_subquery.c.total_relations * 0.30)
+                        ))
+                    elif level == "weak":
+                        # 30-50% disagreement
+                        consensus_conditions.append(and_(
+                            consensus_subquery.c.contradicts_count >= (consensus_subquery.c.total_relations * 0.30),
+                            consensus_subquery.c.contradicts_count < (consensus_subquery.c.total_relations * 0.50)
+                        ))
+                    elif level == "disputed":
+                        # >50% disagreement
+                        consensus_conditions.append(
+                            consensus_subquery.c.contradicts_count >= (consensus_subquery.c.total_relations * 0.50)
+                        )
+
+                if consensus_conditions:
+                    base_query = base_query.join(
+                        consensus_subquery,
+                        Entity.id == consensus_subquery.c.entity_id
+                    ).where(or_(*consensus_conditions))
 
         # Count total results before pagination
         count_query = select(func.count()).select_from(
@@ -266,17 +313,6 @@ class EntityService:
 
         # Convert to EntityRead objects
         items = [entity_to_read(entity, revision) for entity, revision in results]
-
-        # Post-filter by consensus level if needed (expensive but accurate)
-        if filters and filters.consensus_level:
-            derived_service = DerivedPropertiesService(self.db)
-            filtered_items = []
-            for item in items:
-                consensus = await derived_service.get_entity_consensus_level(UUID(item.id))
-                if consensus in filters.consensus_level:
-                    filtered_items.append(item)
-            items = filtered_items
-            total = len(items)  # Update total after filtering
 
         return items, total
 

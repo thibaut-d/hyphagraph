@@ -2,11 +2,44 @@
 
 **Last updated**: 2026-03-07
 
-Fixed skipped Evidence View tests (`it.skip` → `it` for 2 tests).
+Implemented consensus level filtering with SQL-based subquery approach.
 
 ---
 
 ## Completed (Latest)
+
+### Consensus Level Filtering Implementation (2026-03-07)
+
+Implemented consensus level filtering for entities based on disagreement ratio.
+
+**Changes**:
+1. Added SQL subquery in `entity_service.py` to compute disagreement ratio per entity
+2. Filters entities by consensus levels: `strong`, `moderate`, `weak`, `disputed`
+3. Consensus based on `contradicts` direction count vs total relations
+4. Uses efficient join-based filtering (not post-query filtering)
+
+**Consensus thresholds**:
+- Strong: <10% disagreement
+- Moderate: 10-30% disagreement
+- Weak: 30-50% disagreement
+- Disputed: >50% disagreement
+
+**Files modified**:
+- `backend/app/services/entity_service.py` - Added consensus subquery filter, removed old TODO
+- `backend/tests/test_entity_filters.py` - New comprehensive test suite (5 tests, all passing)
+
+**Test results**: 5/5 passing
+- test_filter_by_strong_consensus
+- test_filter_by_moderate_consensus
+- test_filter_by_disputed_consensus
+- test_filter_by_multiple_consensus_levels
+- test_no_consensus_filter_returns_all
+
+---
+
+## Completed (Previous)
+
+### EvidenceView Test Fixes (2026-03-07)
 
 ### EvidenceView Test Fixes (2026-03-07)
 
