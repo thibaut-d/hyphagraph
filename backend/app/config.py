@@ -58,6 +58,7 @@ class Settings(BaseSettings):
     # Flags
     STRICT_VALIDATION: bool = True
     SQL_DEBUG: bool = False
+    TESTING: bool = False  # Enable test-only endpoints (e.g., /api/test/reset-database)
 
     model_config = ConfigDict(
         env_file=".env",  # Development configuration (not tracked by git) - overridden by environment variables

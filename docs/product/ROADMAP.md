@@ -1,6 +1,6 @@
 # HyphaGraph TODO
 
-**Last Updated**: 2026-02-24
+**Last Updated**: 2026-03-07
 
 ---
 
@@ -8,8 +8,8 @@
 
 | Area | Status | Details |
 |------|--------|---------|
-| **Backend tests** | ✅ 349/349 | All passing |
-| **Frontend tests** | ✅ 420/420 | All passing |
+| **Backend tests** | ✅ 356/356 | All passing |
+| **Frontend tests** | ✅ 421/421 | All passing |
 | **E2E tests** | ✅ **72/72** | **🎉 All passing!** |
 | **Technical debt** | ✅ Minimal | All test issues resolved |
 
@@ -19,13 +19,13 @@
 
 **Phase 2 — Enhanced Usability**: Filter drawers, UX-critical views (PropertyDetail, Evidence, Synthesis, Disagreements), unified search, i18n (EN/FR).
 
-**Phase 3**: Entity terms & UI categories, **complete E2E test coverage**, async bcrypt, responsive design, admin panel.
+**Phase 3**: Entity terms & UI categories, **complete E2E test coverage**, async bcrypt, responsive design, admin panel, consensus level filtering, year range filtering, E2E database reset infrastructure.
 
-### E2E Test Status (2026-02-24) - ✅ COMPLETE
+### E2E Test Status (2026-03-07) - ✅ COMPLETE
 
 **Final Status**: **72/72 passing (100%)** - All tests fixed and passing!
 
-**Fixes Applied Across Two Sessions**:
+**Fixes Applied Across Three Sessions**:
 
 **Session 1**:
 - ✅ Fixed source form summary fields visibility (6 tests)
@@ -34,6 +34,12 @@
 **Session 2**:
 - ✅ Fixed test selectors for UI text changes (10 tests)
 - ✅ Fixed validation test logic (1 test)
+
+**Session 3** (2026-03-07):
+- ✅ Fixed 2 skipped EvidenceView tests (timing/mocking issues)
+- ✅ Implemented consensus level filtering with SQL subquery
+- ✅ Implemented year range calculation for entity filters
+- ✅ Created E2E database reset infrastructure (test-only API endpoint)
 
 **All Test Categories Passing** (72 tests):
 - ✅ Auth flows (15/15): Login, logout, registration, password reset

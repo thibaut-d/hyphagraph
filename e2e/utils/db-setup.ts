@@ -12,15 +12,30 @@ const API_URL = process.env.API_URL || 'http://localhost:8000';
 /**
  * Reset the database to a clean state
  * This should be called before each test suite
+ *
+ * Uses the backend's test-only /api/test/reset-database endpoint
+ * which truncates all tables (only available when TESTING=True)
  */
 export async function resetDatabase(): Promise<void> {
-  // TODO: Implement database reset logic
-  // Options:
-  // 1. Call a test-only endpoint that truncates all tables
-  // 2. Use direct PostgreSQL connection to drop/recreate tables
-  // 3. Use Docker Compose to recreate the database container
+  try {
+    const response = await fetch(`${API_URL}/api/test/reset-database`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
 
-  console.log('Database reset - to be implemented');
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to reset database: ${response.status} - ${error}`);
+    }
+
+    const result = await response.json();
+    console.log(`Database reset: ${result.tables_truncated} tables truncated`);
+  } catch (error) {
+    console.error('Database reset failed:', error);
+    throw error;
+  }
 }
 
 /**
@@ -102,11 +117,18 @@ export async function deleteTestUser(userId: string, accessToken: string): Promi
 /**
  * Clean up all test data created during a test
  * This should be called after each test
+ *
+ * For E2E tests, we rely on resetDatabase() between test suites
+ * rather than cleaning up individual resources. This ensures:
+ * - Complete isolation between test suites
+ * - No leftover data from failed tests
+ * - Simpler test logic (no tracking of created resources)
+ *
+ * Individual tests can clean up specific resources if needed,
+ * but it's not required for test correctness.
  */
 export async function cleanupTestData(): Promise<void> {
-  // TODO: Implement cleanup logic
-  // Could track created resources and delete them
-  // Or rely on database reset between test suites
-
-  console.log('Test data cleanup - to be implemented');
+  // No-op: We reset the entire database between test suites
+  // Individual tests can implement their own cleanup if needed
+  console.log('Test data cleanup: relying on database reset between suites');
 }

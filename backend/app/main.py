@@ -82,6 +82,11 @@ app.include_router(relation_types.router, prefix="/api/relation-types", tags=["r
 app.include_router(export.router, prefix="/api/export", tags=["export"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 
+# --- Test Helpers (only in testing mode) ---
+if settings.TESTING:
+    from app.api import test_helpers
+    app.include_router(test_helpers.router, prefix="/api")
+
 # --- Healthcheck ---
 @app.get("/health", tags=["health"])
 def health():
