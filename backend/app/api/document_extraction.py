@@ -680,6 +680,29 @@ async def smart_discovery(
             detail="max_results must be between 1 and 100"
         )
 
+    if request.min_quality < 0.0 or request.min_quality > 1.0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="min_quality must be between 0.0 and 1.0"
+        )
+
+    if not request.databases or len(request.databases) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="At least one database must be selected"
+        )
+
+    supported_databases = {"pubmed"}
+    invalid_databases = [db_name for db_name in request.databases if db_name not in supported_databases]
+    if invalid_databases:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Unsupported database(s): {', '.join(invalid_databases)}. "
+                f"Supported databases: {', '.join(sorted(supported_databases))}"
+            )
+        )
+
     logger.info(
         f"Smart discovery requested by user {user_email}, "
         f"entities: {request.entity_slugs}, max_results: {request.max_results}, "
@@ -692,25 +715,22 @@ async def smart_discovery(
         from app.models.entity_revision import EntityRevision
         from sqlalchemy import select
 
-        entity_names = []
+        entity_query_clauses: list[str] = []
+        entity_relevance_terms: list[str] = []
         for slug in request.entity_slugs:
             stmt = select(EntityRevision.slug).join(Entity).where(
                 EntityRevision.slug == slug,
                 EntityRevision.is_current == True
             )
             result = await db.execute(stmt)
-            entity_revision = result.scalar_one_or_none()
+            entity_slug = result.scalar_one_or_none() or slug
 
-            if entity_revision:
-                # Convert slug to readable name (replace hyphens with spaces, capitalize)
-                readable_name = slug.replace("-", " ").title()
-                entity_names.append(readable_name)
-            else:
-                # Entity not found, use slug as-is
-                entity_names.append(slug.replace("-", " ").title())
+            # Build robust query terms without title-casing biomedical identifiers.
+            entity_query_clauses.append(_build_entity_query_clause(entity_slug))
+            entity_relevance_terms.append(entity_slug.replace("_", "-").replace("-", " "))
 
         # Step 2: Construct query (combine entities with AND)
-        query = " AND ".join(entity_names)
+        query = " AND ".join(entity_query_clauses)
 
         logger.info(f"Constructed query: {query}")
 
@@ -750,7 +770,7 @@ async def smart_discovery(
                         # Calculate relevance (how many entities mentioned in title/abstract)
                         relevance = _calculate_relevance(
                             article.title + " " + (article.abstract or ""),
-                            entity_names
+                            entity_relevance_terms
                         )
 
                         all_results.append(SmartDiscoveryResult(
@@ -778,22 +798,27 @@ async def smart_discovery(
                 from app.models.source_revision import SourceRevision
                 from sqlalchemy import select
 
-                pmids_to_check = [r.pmid for r in pubmed_results]
+                pmids_to_check = {str(r.pmid) for r in pubmed_results if r.pmid}
 
                 # Query for existing PMIDs in source_metadata
                 stmt = select(SourceRevision.source_metadata).where(
-                    SourceRevision.is_current == True
+                    SourceRevision.is_current == True,
+                    SourceRevision.source_metadata.is_not(None),
                 )
                 result = await db.execute(stmt)
 
                 for row in result:
                     metadata = row[0]
                     if metadata and "pmid" in metadata:
-                        existing_pmids.add(metadata["pmid"])
+                        existing_pmid = str(metadata["pmid"])
+                        if existing_pmid in pmids_to_check:
+                            existing_pmids.add(existing_pmid)
+                            if len(existing_pmids) == len(pmids_to_check):
+                                break
 
                 # Mark already imported
                 for r in all_results:
-                    if r.pmid in existing_pmids:
+                    if r.pmid and str(r.pmid) in existing_pmids:
                         r.already_imported = True
 
         # Step 5: Sort by quality (descending), then relevance
@@ -839,6 +864,30 @@ def _calculate_relevance(text: str, entity_names: list[str]) -> float:
     text_lower = text.lower()
     mentions = sum(1 for name in entity_names if name.lower() in text_lower)
     return mentions / len(entity_names) if entity_names else 0.0
+
+
+def _build_entity_query_clause(entity_slug: str) -> str:
+    """
+    Build a PubMed query clause from an entity slug.
+
+    Keeps biomedical tokens stable (no title-casing), and queries both:
+    - hyphenated form: "tnf-alpha"
+    - spaced form: "tnf alpha"
+    """
+    canonical = entity_slug.strip().replace("_", "-")
+    if not canonical:
+        return ""
+
+    variants: list[str] = []
+    for variant in (canonical, canonical.replace("-", " ")):
+        cleaned = variant.strip()
+        if cleaned and cleaned not in variants:
+            variants.append(cleaned)
+
+    query_terms = [f"\"{variant}\"" if " " in variant else variant for variant in variants]
+    if len(query_terms) == 1:
+        return query_terms[0]
+    return f"({' OR '.join(query_terms)})"
 
 
 @router.post(

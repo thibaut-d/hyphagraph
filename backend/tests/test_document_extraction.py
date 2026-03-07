@@ -152,7 +152,7 @@ class TestSmartDiscovery:
 
         # Assert
         assert response.entity_slugs == ["pregabalin"]
-        assert "Pregabalin" in response.query_used
+        assert "pregabalin" in response.query_used.lower()
         assert response.total_found == 1
         assert len(response.results) == 1
         assert response.results[0].pmid == "17333346"
@@ -192,7 +192,10 @@ class TestSmartDiscovery:
 
         # Assert
         assert response.entity_slugs == ["duloxetine", "fibromyalgia"]
-        assert "Duloxetine AND Fibromyalgia" in response.query_used
+        query_used = response.query_used.lower()
+        assert "duloxetine" in query_used
+        assert "fibromyalgia" in query_used
+        assert " and " in query_used
         assert response.total_found == 1
         assert response.results[0].pmid == "18059454"
 

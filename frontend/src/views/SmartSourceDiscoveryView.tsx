@@ -50,6 +50,9 @@ import { smartDiscovery, bulkImportFromDiscovery, SmartDiscoveryResult } from ".
 import { listEntities } from "../api/entities";
 import { EntityRead } from "../types/entity";
 
+const ENTITY_PAGE_SIZE = 100;
+const ENTITY_MAX_PAGES = 50;
+
 export function SmartSourceDiscoveryView() {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -82,31 +85,82 @@ export function SmartSourceDiscoveryView() {
 
   // Load entities on mount
   useEffect(() => {
-    setLoadingEntities(true);
-    listEntities({ limit: 100, offset: 0 })
-      .then((response) => {
-        setAvailableEntities(response.items);
+    let isMounted = true;
 
-        // Pre-select entities from URL params (if navigated from EntityDetailView)
+    const loadEntities = async () => {
+      setLoadingEntities(true);
+
+      try {
+        // Load all pages so discovery remains usable on large graphs (>100 entities).
+        const allEntities: EntityRead[] = [];
+        let offset = 0;
+        let total = 0;
+        let pages = 0;
+        let hasMore = true;
+
+        while (hasMore && pages < ENTITY_MAX_PAGES) {
+          const response = await listEntities({ limit: ENTITY_PAGE_SIZE, offset });
+          allEntities.push(...response.items);
+          total = response.total;
+          offset += response.items.length;
+          pages += 1;
+          hasMore = response.items.length > 0 && allEntities.length < total;
+        }
+
+        const dedupedEntities = Array.from(
+          new Map(allEntities.map((entity) => [entity.id, entity])).values()
+        );
+
+        // Pre-select entity from URL param even if not in first page.
         const entitySlugParam = searchParams.get("entity");
+        let preselectedEntity: EntityRead | undefined;
         if (entitySlugParam) {
-          const entity = response.items.find((e) => e.slug === entitySlugParam);
-          if (entity) {
-            setSelectedEntities([entity]);
+          preselectedEntity = dedupedEntities.find((entity) => entity.slug === entitySlugParam);
+
+          if (!preselectedEntity) {
+            const searchResponse = await listEntities({
+              search: entitySlugParam,
+              limit: ENTITY_PAGE_SIZE,
+              offset: 0,
+            });
+            preselectedEntity = searchResponse.items.find((entity) => entity.slug === entitySlugParam);
+            if (preselectedEntity && !dedupedEntities.some((entity) => entity.id === preselectedEntity!.id)) {
+              dedupedEntities.push(preselectedEntity);
+            }
           }
         }
-      })
-      .catch((error) => {
+
+        if (!isMounted) {
+          return;
+        }
+
+        setAvailableEntities(dedupedEntities);
+        if (preselectedEntity) {
+          setSelectedEntities([preselectedEntity]);
+        }
+      } catch (error) {
         console.error("Failed to load entities:", error);
-      })
-      .finally(() => {
-        setLoadingEntities(false);
-      });
+      } finally {
+        if (isMounted) {
+          setLoadingEntities(false);
+        }
+      }
+    };
+
+    loadEntities();
+
+    return () => {
+      isMounted = false;
+    };
   }, [searchParams]);
 
   const handleSearch = async () => {
     if (selectedEntities.length === 0) {
       setSearchError("Please select at least one entity");
+      return;
+    }
+    if (selectedDatabases.length === 0) {
+      setSearchError("Please select at least one database");
       return;
     }
 
@@ -299,8 +353,13 @@ export function SmartSourceDiscoveryView() {
                     checked={selectedDatabases.includes("pubmed")}
                     onChange={(e) => {
                       if (e.target.checked) {
-                        setSelectedDatabases([...selectedDatabases, "pubmed"]);
+                        if (!selectedDatabases.includes("pubmed")) {
+                          setSelectedDatabases([...selectedDatabases, "pubmed"]);
+                        }
                       } else {
+                        if (selectedDatabases.length === 1) {
+                          return;
+                        }
                         setSelectedDatabases(selectedDatabases.filter((d) => d !== "pubmed"));
                       }
                     }}
@@ -374,7 +433,7 @@ export function SmartSourceDiscoveryView() {
             fullWidth
             startIcon={searching ? <CircularProgress size={20} /> : <SearchIcon />}
             onClick={handleSearch}
-            disabled={searching || selectedEntities.length === 0}
+            disabled={searching || selectedEntities.length === 0 || selectedDatabases.length === 0}
             sx={{ py: 2, fontSize: "1.1rem", fontWeight: 600 }}
           >
             {searching
