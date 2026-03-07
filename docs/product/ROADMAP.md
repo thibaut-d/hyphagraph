@@ -1,6 +1,6 @@
 # HyphaGraph TODO
 
-**Last Updated**: 2026-03-07
+**Last Updated**: 2026-03-07 (Session 4)
 
 ---
 
@@ -8,7 +8,7 @@
 
 | Area | Status | Details |
 |------|--------|---------|
-| **Backend tests** | ✅ 356/356 | All passing |
+| **Backend tests** | ✅ 374/374 | All passing (+18 validation tests) |
 | **Frontend tests** | ✅ 421/421 | All passing |
 | **E2E tests** | ✅ **72/72** | **🎉 All passing!** |
 | **Technical debt** | ✅ Minimal | All test issues resolved |
@@ -35,11 +35,17 @@
 - ✅ Fixed test selectors for UI text changes (10 tests)
 - ✅ Fixed validation test logic (1 test)
 
-**Session 3** (2026-03-07):
+**Session 3** (2026-03-07 morning):
 - ✅ Fixed 2 skipped EvidenceView tests (timing/mocking issues)
 - ✅ Implemented consensus level filtering with SQL subquery
 - ✅ Implemented year range calculation for entity filters
 - ✅ Created E2E database reset infrastructure (test-only API endpoint)
+
+**Session 4** (2026-03-07 afternoon):
+- ✅ Implemented hallucination validation layer for LLM extractions
+- ✅ Created TextSpanValidator with exact and fuzzy matching
+- ✅ Integrated validation into extraction pipeline
+- ✅ Added 18 comprehensive validation tests (all passing)
 
 **All Test Categories Passing** (72 tests):
 - ✅ Auth flows (15/15): Login, logout, registration, password reset
@@ -61,12 +67,12 @@ See `E2E_TEST_FIXES_SUMMARY.md` and `E2E_TEST_ANALYSIS.md` for detailed technica
 ### High Priority
 
 #### LLM Integration
-- Document ingestion pipeline with LLM-assisted extraction
-- Claim extraction service (documents -> structured relations)
-- Entity linking / terminology normalization
-- Human-in-the-loop review workflow
-- Validation layer to prevent hallucinations
+- ✅ Document ingestion pipeline with LLM-assisted extraction
+- ✅ Entity linking / terminology normalization
+- ✅ Hallucination validation layer (text span verification)
+- Human-in-the-loop review workflow (staging/approval system)
 - Track LLM model version and provider in metadata
+- Claim extraction to Relations (auto-materialization)
 
 #### Batch Operations
 - Bulk entity import (CSV, JSON)
