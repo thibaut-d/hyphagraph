@@ -370,6 +370,41 @@ class DerivedPropertiesService:
 
         return None
 
+    async def get_entity_year_range(self) -> Optional[Tuple[int, int]]:
+        """
+        Get the range of source years for sources that have relations with entities.
+
+        This is more accurate than get_recency_range() for entity filtering,
+        as it only includes sources that are actually connected to entities.
+
+        Returns:
+            Tuple of (min_year, max_year) or None
+        """
+        query = (
+            select(
+                func.min(SourceRevision.year),
+                func.max(SourceRevision.year)
+            )
+            .select_from(SourceRevision)
+            .join(Source, SourceRevision.source_id == Source.id)
+            .join(Relation, Source.id == Relation.source_id)
+            .join(RelationRevision, Relation.id == RelationRevision.relation_id)
+            .where(
+                and_(
+                    SourceRevision.is_current == True,
+                    RelationRevision.is_current == True,
+                )
+            )
+        )
+
+        result = await self.db.execute(query)
+        row = result.first()
+
+        if row and row[0] is not None and row[1] is not None:
+            return (int(row[0]), int(row[1]))
+
+        return None
+
     async def get_all_domains(self) -> List[str]:
         """
         Get all unique domains inferred from sources.

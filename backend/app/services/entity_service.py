@@ -420,11 +420,14 @@ class EntityService:
         # Get evidence quality range
         evidence_quality_range = await derived_service.get_evidence_quality_range()
 
+        # Get year range from sources that have relations with entities
+        year_range = await derived_service.get_entity_year_range()
+
         return EntityFilterOptions(
             ui_categories=ui_categories,
             clinical_effects=clinical_effects,
             consensus_levels=["strong", "moderate", "weak", "disputed"],
             evidence_quality_range=evidence_quality_range,
             recency_options=["recent", "older", "historical"],
-            year_range=None,  # TODO: Implement year range from related sources
+            year_range=year_range,
         )

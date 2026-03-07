@@ -2,11 +2,44 @@
 
 **Last updated**: 2026-03-07
 
-Implemented consensus level filtering with SQL-based subquery approach.
+Implemented year_range calculation for entity filter options.
 
 ---
 
 ## Completed (Latest)
+
+### Year Range Calculation for Entity Filters (2026-03-07)
+
+Implemented year_range calculation for entity filter options, extracting min/max years from sources with relations.
+
+**Changes**:
+1. Added `get_entity_year_range()` method to `DerivedPropertiesService`
+2. Query joins sources → relations to only include connected sources
+3. Returns `(min_year, max_year)` tuple or `None` if no data
+4. Replaced TODO placeholder in `entity_service.py`
+
+**Implementation**:
+- Joins: `SourceRevision` → `Source` → `Relation` → `RelationRevision`
+- Filters by `is_current == True` for both revisions
+- Excludes orphaned sources (no relations)
+- Handles null years gracefully
+
+**Files modified**:
+- `backend/app/services/derived_properties_service.py` - New `get_entity_year_range()` method
+- `backend/app/services/entity_service.py` - Use year_range instead of `None`
+- `backend/tests/test_year_range.py` - Comprehensive test suite (4 tests, all passing)
+
+**Test results**: 4/4 passing
+- test_year_range_with_relations
+- test_year_range_empty_database
+- test_year_range_ignores_sources_without_relations
+- test_year_range_with_null_years
+
+---
+
+## Completed (Previous)
+
+### Consensus Level Filtering Implementation (2026-03-07)
 
 ### Consensus Level Filtering Implementation (2026-03-07)
 
