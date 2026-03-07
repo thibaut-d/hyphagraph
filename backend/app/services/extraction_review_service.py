@@ -173,7 +173,7 @@ class ExtractionReviewService:
 
         # Stage entities
         for entity, validation_result in entities:
-            staged = await self.stage_extraction(
+            staged, entity_id = await self.stage_extraction(
                 extraction_type=ExtractionType.ENTITY,
                 extraction_data=entity,
                 source_id=source_id,
@@ -185,7 +185,7 @@ class ExtractionReviewService:
 
         # Stage relations
         for relation, validation_result in relations:
-            staged = await self.stage_extraction(
+            staged, relation_id = await self.stage_extraction(
                 extraction_type=ExtractionType.RELATION,
                 extraction_data=relation,
                 source_id=source_id,
@@ -591,9 +591,10 @@ class ExtractionReviewService:
             conditions.append(StagedExtraction.validation_score <= filters.max_validation_score)
         if filters.has_flags is not None:
             if filters.has_flags:
-                conditions.append(func.jsonb_array_length(StagedExtraction.validation_flags) > 0)
+                # Use json_array_length for SQLite compatibility (works in both SQLite and PostgreSQL)
+                conditions.append(func.json_array_length(StagedExtraction.validation_flags) > 0)
             else:
-                conditions.append(func.jsonb_array_length(StagedExtraction.validation_flags) == 0)
+                conditions.append(func.json_array_length(StagedExtraction.validation_flags) == 0)
         if filters.auto_commit_eligible is not None:
             conditions.append(StagedExtraction.auto_commit_eligible == filters.auto_commit_eligible)
 
@@ -672,7 +673,7 @@ class ExtractionReviewService:
                 func.avg(StagedExtraction.validation_score),
                 func.count(StagedExtraction.id).filter(StagedExtraction.validation_score >= 0.9),
                 func.count(StagedExtraction.id).filter(
-                    func.jsonb_array_length(StagedExtraction.validation_flags) > 0
+                    func.json_array_length(StagedExtraction.validation_flags) > 0
                 )
             )
             .where(StagedExtraction.status == ExtractionStatus.PENDING)
