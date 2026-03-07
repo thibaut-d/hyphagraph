@@ -35,6 +35,7 @@ import HomeIcon from "@mui/icons-material/Home";
 import CategoryIcon from "@mui/icons-material/Category";
 import LibraryBooksIcon from "@mui/icons-material/LibraryBooks";
 import SearchIcon from "@mui/icons-material/Search";
+import RateReviewIcon from "@mui/icons-material/RateReview";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -51,6 +52,7 @@ const menuItems = [
   { key: "menu.entities", path: "/entities", icon: CategoryIcon },
   { key: "menu.sources", path: "/sources", icon: LibraryBooksIcon },
   { key: "menu.search", path: "/search", icon: SearchIcon },
+  { key: "menu.review_queue", path: "/review-queue", icon: RateReviewIcon, requiresAuth: true },
 ];
 
 export function Layout() {
@@ -136,19 +138,37 @@ export function Layout() {
             gap: 2,
             flexGrow: 1
           }}>
-            {menuItems.map((item) => {
-              const isActive =
-                location.pathname === item.path ||
-                (item.path !== "/" && location.pathname.startsWith(item.path));
+            {menuItems
+              .filter(item => !item.requiresAuth || user)
+              .map((item) => {
+                const isActive =
+                  location.pathname === item.path ||
+                  (item.path !== "/" && location.pathname.startsWith(item.path));
 
-              // Special case for Entities menu with dropdown
-              if (item.path === "/entities" && categories.length > 0) {
+                // Special case for Entities menu with dropdown
+                if (item.path === "/entities" && categories.length > 0) {
+                  return (
+                    <Button
+                      key={item.path}
+                      color="inherit"
+                      endIcon={<ArrowDropDownIcon />}
+                      onClick={(e) => setEntitiesMenuAnchor(e.currentTarget)}
+                      sx={{
+                        fontWeight: isActive ? "bold" : "normal",
+                        textDecoration: isActive ? "underline" : "none",
+                      }}
+                    >
+                      {t(item.key)}
+                    </Button>
+                  );
+                }
+
                 return (
                   <Button
                     key={item.path}
+                    component={RouterLink}
+                    to={item.path}
                     color="inherit"
-                    endIcon={<ArrowDropDownIcon />}
-                    onClick={(e) => setEntitiesMenuAnchor(e.currentTarget)}
                     sx={{
                       fontWeight: isActive ? "bold" : "normal",
                       textDecoration: isActive ? "underline" : "none",
@@ -157,23 +177,7 @@ export function Layout() {
                     {t(item.key)}
                   </Button>
                 );
-              }
-
-              return (
-                <Button
-                  key={item.path}
-                  component={RouterLink}
-                  to={item.path}
-                  color="inherit"
-                  sx={{
-                    fontWeight: isActive ? "bold" : "normal",
-                    textDecoration: isActive ? "underline" : "none",
-                  }}
-                >
-                  {t(item.key)}
-                </Button>
-              );
-            })}
+              })}
 
             {/* Desktop: Global Search */}
             <Box sx={{ ml: "auto" }}>
@@ -296,14 +300,16 @@ export function Layout() {
 
         {/* Navigation Links */}
         <List>
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive =
-              location.pathname === item.path ||
-              (item.path !== "/" && location.pathname.startsWith(item.path));
+          {menuItems
+            .filter(item => !item.requiresAuth || user)
+            .map((item) => {
+              const Icon = item.icon;
+              const isActive =
+                location.pathname === item.path ||
+                (item.path !== "/" && location.pathname.startsWith(item.path));
 
-            // Special case for Entities menu with expandable categories
-            if (item.path === "/entities" && categories.length > 0) {
+              // Special case for Entities menu with expandable categories
+              if (item.path === "/entities" && categories.length > 0) {
               return (
                 <Box key={item.path}>
                   <ListItem disablePadding>
