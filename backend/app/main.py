@@ -6,7 +6,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
-from app.api import sources, entities, relations, inferences, explain, search, extraction, document_extraction, relation_types, export, admin
+from app.api import sources, entities, relations, inferences, explain, search, extraction, document_extraction, relation_types, export, admin, extraction_review
 from app.database import AsyncSessionLocal
 from app.startup import run_startup_tasks
 from app.utils.rate_limit import limiter
@@ -28,6 +28,7 @@ from app.models.computed_relation import ComputedRelation
 from app.models.refresh_token import RefreshToken
 from app.models.audit_log import AuditLog
 from app.models.relation_type import RelationType
+from app.models.staged_extraction import StagedExtraction
 
 
 @asynccontextmanager
@@ -81,6 +82,7 @@ app.include_router(document_extraction.router, prefix="/api")
 app.include_router(relation_types.router, prefix="/api/relation-types", tags=["relation-types"])
 app.include_router(export.router, prefix="/api/export", tags=["export"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
+app.include_router(extraction_review.router, prefix="/api")
 
 # --- Test Helpers (only in testing mode) ---
 if settings.TESTING:

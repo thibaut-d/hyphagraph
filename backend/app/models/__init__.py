@@ -28,6 +28,9 @@ from app.models.attribute import Attribute
 from app.models.computed_relation import ComputedRelation
 from app.models.inference_cache import InferenceCache
 
+# LLM extraction review
+from app.models.staged_extraction import StagedExtraction, ExtractionStatus, ExtractionType
+
 __all__ = [
     "Base",
     "User",
@@ -45,4 +48,7 @@ __all__ = [
     "Attribute",
     "ComputedRelation",
     "InferenceCache",
+    "StagedExtraction",
+    "ExtractionStatus",
+    "ExtractionType",
 ]

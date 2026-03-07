@@ -26,3 +26,10 @@ class Entity(Base, UUIDMixin):
         cascade="all, delete-orphan",
         order_by="EntityRevision.created_at.desc()",
     )
+
+    source_extraction = relationship(
+        "StagedExtraction",
+        foreign_keys="StagedExtraction.materialized_entity_id",
+        back_populates="materialized_entity",
+        uselist=False,
+    )
