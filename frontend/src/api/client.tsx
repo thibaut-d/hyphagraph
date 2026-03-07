@@ -13,6 +13,26 @@ function onTokenRefreshed(token: string) {
   refreshSubscribers = [];
 }
 
+function toHeaderRecord(headers?: HeadersInit): Record<string, string> {
+  if (!headers) {
+    return {};
+  }
+
+  if (headers instanceof Headers) {
+    const record: Record<string, string> = {};
+    headers.forEach((value, key) => {
+      record[key] = value;
+    });
+    return record;
+  }
+
+  if (Array.isArray(headers)) {
+    return Object.fromEntries(headers);
+  }
+
+  return { ...headers };
+}
+
 async function refreshToken(): Promise<string | null> {
   const refreshToken = localStorage.getItem("refresh_token");
   if (!refreshToken) {
@@ -54,9 +74,9 @@ export async function apiFetch<T>(
 ): Promise<T> {
   const token = localStorage.getItem("auth_token");
 
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    ...(options.headers ?? {}),
+    ...toHeaderRecord(options.headers),
   };
 
   if (token) {
@@ -190,7 +210,7 @@ export async function apiFetch<T>(
 
   // Handle 204 No Content responses (e.g., password reset requests)
   if (res.status === 204) {
-    return;
+    return undefined as T;
   }
 
   return res.json();

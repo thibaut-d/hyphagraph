@@ -54,8 +54,8 @@ export function GlobalSearch() {
   }, [debouncedQuery]);
 
   const handleSelect = useCallback(
-    (_event: any, value: SearchSuggestion | null) => {
-      if (value) {
+    (_event: React.SyntheticEvent, value: string | SearchSuggestion | null) => {
+      if (value && typeof value !== "string") {
         // Navigate to detail page based on type
         if (value.type === "entity") {
           navigate(`/entities/${value.id}`);

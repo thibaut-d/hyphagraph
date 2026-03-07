@@ -135,7 +135,7 @@ export function DisagreementsView() {
     );
   }
 
-  const entityLabel = resolveLabel(entity.label, entity.label_i18n, i18n.language);
+  const entityLabel = resolveLabel(entity.label || entity.slug, entity.summary, i18n.language);
 
   // Group relations by role type and direction
   const disagreementGroups: DisagreementGroup[] = [];
@@ -227,7 +227,7 @@ export function DisagreementsView() {
         <>
           {/* Summary */}
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <Card>
                 <CardContent>
                   <Typography color="text.secondary" gutterBottom variant="body2">
@@ -240,7 +240,7 @@ export function DisagreementsView() {
               </Card>
             </Grid>
 
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <Card>
                 <CardContent>
                   <Typography color="text.secondary" gutterBottom variant="body2">
@@ -295,7 +295,7 @@ export function DisagreementsView() {
                   <AccordionDetails>
                     <Grid container spacing={2}>
                       {/* Supporting Evidence */}
-                      <Grid item xs={12} md={6}>
+                      <Grid size={{ xs: 12, md: 6 }}>
                         <Card sx={{ borderColor: "success.main", borderWidth: 1, borderStyle: "solid" }}>
                           <CardContent>
                             <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
@@ -320,7 +320,7 @@ export function DisagreementsView() {
                                       <TableRow key={idx}>
                                         <TableCell>{relation.kind || group.roleType}</TableCell>
                                         <TableCell>
-                                          {relation.confidence !== undefined
+                                          {relation.confidence != null
                                             ? `${Math.round(relation.confidence * 100)}%`
                                             : "-"}
                                         </TableCell>
@@ -348,7 +348,7 @@ export function DisagreementsView() {
                       </Grid>
 
                       {/* Contradicting Evidence */}
-                      <Grid item xs={12} md={6}>
+                      <Grid size={{ xs: 12, md: 6 }}>
                         <Card sx={{ borderColor: "error.main", borderWidth: 1, borderStyle: "solid" }}>
                           <CardContent>
                             <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
@@ -372,7 +372,7 @@ export function DisagreementsView() {
                                     <TableRow key={idx}>
                                       <TableCell>{relation.kind || group.roleType}</TableCell>
                                       <TableCell>
-                                        {relation.confidence !== undefined
+                                        {relation.confidence != null
                                           ? `${Math.round(relation.confidence * 100)}%`
                                           : "-"}
                                       </TableCell>

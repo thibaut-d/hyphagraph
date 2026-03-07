@@ -341,7 +341,7 @@ export function CreateSourceView() {
 
                 {/* Kind & Year */}
                 <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
                     <TextField
                       select
                       label={t("create_source.kind", "Type")}
@@ -366,7 +366,7 @@ export function CreateSourceView() {
                     </TextField>
                   </Grid>
 
-                  <Grid item xs={12} sm={6}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
                     <TextField
                       label={t("create_source.year", "Publication Year")}
                       value={year}

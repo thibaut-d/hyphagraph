@@ -44,6 +44,7 @@ import { ProfileMenu } from "./ProfileMenu";
 import { GlobalSearch } from "./GlobalSearch";
 import { useAuthContext } from "../auth/AuthContext";
 import { getEntityFilterOptions } from "../api/entities";
+import type { UICategoryOption } from "../api/entities";
 
 const menuItems = [
   { key: "menu.home", path: "/", icon: HomeIcon },
@@ -65,7 +66,7 @@ export function Layout() {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
   // Entities dropdown state
-  const [categories, setCategories] = useState<Array<{ id: string; label: { en: string; fr: string } }>>([]);
+  const [categories, setCategories] = useState<UICategoryOption[]>([]);
   const [entitiesMenuAnchor, setEntitiesMenuAnchor] = useState<null | HTMLElement>(null);
   const [mobileEntitiesExpanded, setMobileEntitiesExpanded] = useState(false);
 
@@ -205,7 +206,7 @@ export function Layout() {
             </MenuItem>
             <Divider />
             {categories.map((category) => {
-              const label = category.label[i18n.language as 'en' | 'fr'] || category.label.en;
+              const label = category.label[i18n.language] || category.label.en || category.id;
               return (
                 <MenuItem
                   key={category.id}

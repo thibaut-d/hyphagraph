@@ -1,6 +1,6 @@
 # Current Work
 
-**Last updated**: 2026-03-06
+**Last updated**: 2026-03-07
 
 Frontend/backend contract alignment and runtime fix pass completed.
 
@@ -40,3 +40,51 @@ Frontend/backend contract alignment and runtime fix pass completed.
 
 1. Decide if we want a dedicated cleanup pass for project-wide TypeScript errors (`npx tsc --noEmit` baseline currently red).
 2. Run a broader frontend regression suite once the TS baseline is addressed.
+
+---
+
+## Completed (New)
+
+### Global TypeScript Remediation (`npx tsc --noEmit`)
+
+Baseline captured on 2026-03-06:
+- Command: `npx tsc --noEmit`
+- Result: `103` errors
+- Log: `TS_NOEMIT_BASELINE_2026-03-06.log`
+
+Main error clusters:
+1. MUI v7 migration typing issues (`TS2769`): `Grid item` API usage, responsive props mismatch.
+2. Frontend type contract drift (`TS2339`, `TS2353`, `TS2345`): `EntityRead` / `SourceRead` / `RelationRead` shape mismatches across views and tests.
+3. Test typing debt (`TS2322`, `TS2741`, `TS2304`): outdated fixtures, missing required fields, test globals typing.
+4. API client typing issues (`TS2339`, `TS7053`, `TS2322`): `import.meta.env`, headers typing, generic return safety.
+
+Executed plan (dedicated):
+1. Foundation pass:
+   - fix `ImportMeta.env` typing and API client core typings
+   - standardize imports to `src/types/*` in views/tests
+2. MUI migration pass:
+   - update `Grid` usages to MUI v7-compatible API
+   - remove invalid component props flagged by `TS2769`
+3. Domain contract pass:
+   - align view + API usage with canonical `EntityRead` / `SourceRead` / `RelationRead` types
+   - remove stale fields and fix optional/null handling
+4. Test debt pass:
+   - update test fixtures/mocks to current interfaces
+   - fix missing required fields (`InferenceRead.role_inferences`, etc.)
+   - fix test runtime globals typing issues
+5. Final convergence:
+   - run `npx tsc --noEmit`
+   - run targeted vitest suites for modified areas
+   - update this file with final error count and closure notes
+
+Final status (2026-03-07):
+1. `npx tsc --noEmit` -> PASS (`0` errors).
+2. Progress logs:
+   - after lot 1: `99` errors (`TS_NOEMIT_AFTER_LOT1_2026-03-07.log`)
+   - after lot 2: `75` errors (`TS_NOEMIT_AFTER_LOT2_2026-03-07.log`)
+   - after lot 3: `46` errors (`TS_NOEMIT_AFTER_LOT3_2026-03-07.log`)
+   - after lot 4: `15` errors (`TS_NOEMIT_AFTER_LOT4_2026-03-07.log`)
+   - final: `0` errors (`TS_NOEMIT_FINAL_2026-03-07.log`)
+3. Targeted vitest regression:
+   - Command: `npm run -s test -- --run src/views/__tests__/SynthesisView.test.tsx src/views/__tests__/DisagreementsView.test.tsx src/views/__tests__/EvidenceView.test.tsx src/views/__tests__/ExplanationView.test.tsx src/components/filters/__tests__/FilterDrawerComponents.test.tsx src/components/__tests__/EvidenceTrace.test.tsx`
+   - Result: PASS (`146 passed`, `2 skipped`).

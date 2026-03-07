@@ -66,7 +66,7 @@ describe("DisagreementsView", () => {
     id: "entity-123",
     slug: "paracetamol",
     kind: "medication",
-    label: { en: "Paracetamol" },
+    label: "Paracetamol",
     label_i18n: {},
     summary: { en: "Common pain reliever" },
     created_at: "2025-01-01T00:00:00Z",
@@ -81,6 +81,7 @@ describe("DisagreementsView", () => {
     confidence: 0.85,
     scope: null,
     created_at: "2025-01-01T00:00:00Z",
+    roles: [],
     ...overrides,
   });
 

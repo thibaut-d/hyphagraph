@@ -59,7 +59,7 @@ interface EnrichedRelation extends RelationRead {
 }
 
 function resolveRelationNotes(
-  notes: string | Record<string, string> | undefined,
+  notes: string | Record<string, string> | null | undefined,
   language: string,
 ): string | null {
   if (!notes) {
@@ -174,13 +174,13 @@ export function EvidenceView() {
 
     switch (sortField) {
       case "kind":
-        comparison = a.kind.localeCompare(b.kind);
+        comparison = (a.kind || "").localeCompare(b.kind || "");
         break;
       case "direction":
         comparison = (a.direction || "").localeCompare(b.direction || "");
         break;
       case "confidence":
-        comparison = a.confidence - b.confidence;
+        comparison = (a.confidence ?? 0) - (b.confidence ?? 0);
         break;
       case "source":
         comparison = (a.source?.title || "").localeCompare(b.source?.title || "");
@@ -372,26 +372,31 @@ export function EvidenceView() {
                   {/* Claim/Kind */}
                   <TableCell>
                     <Typography variant="body2" fontWeight={500}>
-                      {relation.kind}
+                      {relation.kind || "-"}
                     </Typography>
                   </TableCell>
 
                   {/* Direction */}
-                  <TableCell>{getDirectionChip(relation.direction)}</TableCell>
+                  <TableCell>{getDirectionChip(relation.direction || "")}</TableCell>
 
                   {/* Confidence */}
                   <TableCell>
+                    {(() => {
+                      const confidence = relation.confidence ?? 0;
+                      return (
                     <Chip
-                      label={`${Math.round(relation.confidence * 100)}%`}
+                      label={`${Math.round(confidence * 100)}%`}
                       size="small"
                       color={
-                        relation.confidence > 0.7
+                        confidence > 0.7
                           ? "success"
-                          : relation.confidence > 0.4
+                          : confidence > 0.4
                           ? "warning"
                           : "error"
                       }
                     />
+                      );
+                    })()}
                   </TableCell>
 
                   {/* Roles */}

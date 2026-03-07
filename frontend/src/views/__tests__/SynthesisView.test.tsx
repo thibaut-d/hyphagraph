@@ -66,7 +66,7 @@ describe("SynthesisView", () => {
     id: "entity-123",
     slug: "paracetamol",
     kind: "medication",
-    label: { en: "Paracetamol" },
+    label: "Paracetamol",
     label_i18n: {},
     summary: { en: "Common pain reliever" },
     created_at: "2025-01-01T00:00:00Z",
@@ -76,13 +76,11 @@ describe("SynthesisView", () => {
     id: "rel-1",
     kind: "treats",
     source_id: "source-1",
-    target_id: "entity-123",
     direction: "positive",
     confidence: 0.85,
     scope: null,
     created_at: "2025-01-01T00:00:00Z",
-    created_by_user_id: "user-1",
-    roles: {},
+    roles: [],
     ...overrides,
   });
 

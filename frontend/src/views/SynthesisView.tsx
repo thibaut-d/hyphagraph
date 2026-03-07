@@ -123,7 +123,7 @@ export function SynthesisView() {
     );
   }
 
-  const entityLabel = resolveLabel(entity.label, entity.label_i18n, i18n.language);
+  const entityLabel = resolveLabel(entity.label || entity.slug, entity.summary, i18n.language);
 
   // Calculate synthesis statistics
   const relationsByKind = inference?.relations_by_kind || {};
@@ -211,7 +211,7 @@ export function SynthesisView() {
         <>
           {/* Statistics Overview */}
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Card>
                 <CardContent>
                   <Typography color="text.secondary" gutterBottom variant="body2">
@@ -224,7 +224,7 @@ export function SynthesisView() {
               </Card>
             </Grid>
 
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Card>
                 <CardContent>
                   <Typography color="text.secondary" gutterBottom variant="body2">
@@ -237,7 +237,7 @@ export function SynthesisView() {
               </Card>
             </Grid>
 
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Card>
                 <CardContent>
                   <Typography color="text.secondary" gutterBottom variant="body2">
@@ -255,7 +255,7 @@ export function SynthesisView() {
               </Card>
             </Grid>
 
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Card>
                 <CardContent>
                   <Typography color="text.secondary" gutterBottom variant="body2">

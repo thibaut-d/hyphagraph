@@ -11,6 +11,10 @@ import { getMe, logout as logoutApi } from "../api/auth";
 type User = {
   id: string;
   email: string;
+  is_active?: boolean;
+  is_superuser?: boolean;
+  is_verified?: boolean;
+  created_at?: string;
 };
 
 type AuthContextValue = {

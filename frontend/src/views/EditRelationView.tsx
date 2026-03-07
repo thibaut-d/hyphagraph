@@ -54,7 +54,12 @@ export function EditRelationView() {
     Promise.all([getRelation(id), listEntities()])
       .then(([relationRes, entitiesRes]) => {
         setRelation(relationRes);
-        setEntities(entitiesRes.items || []);
+        setEntities(
+          (entitiesRes.items || []).map((entity) => ({
+            id: entity.id,
+            label: entity.label || entity.slug,
+          }))
+        );
 
         // Populate form with existing data
         setKind(relationRes.kind || "");
@@ -64,8 +69,8 @@ export function EditRelationView() {
           relationRes.roles?.map((r) => ({
             entity_id: r.entity_id,
             role_type: r.role_type,
-            weight: r.weight,
-            coverage: r.coverage,
+            weight: r.weight ?? undefined,
+            coverage: r.coverage ?? undefined,
           })) || []
         );
       })

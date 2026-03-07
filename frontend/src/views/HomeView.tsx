@@ -184,7 +184,7 @@ export function HomeView() {
 
           <Grid container spacing={3} mb={4}>
             {/* Entities */}
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <StatCard
                 title={t("home.entities", "Entities")}
                 count={stats.entities}
@@ -198,7 +198,7 @@ export function HomeView() {
             </Grid>
 
             {/* Sources */}
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <StatCard
                 title={t("home.sources", "Sources")}
                 count={stats.sources}
@@ -212,7 +212,7 @@ export function HomeView() {
             </Grid>
 
             {/* Relations */}
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Card variant="outlined" sx={{ height: "100%" }}>
                 <CardContent>
                   <Stack direction="row" spacing={2} alignItems="center" mb={2}>
@@ -255,7 +255,7 @@ export function HomeView() {
             </Grid>
 
             {/* Inferences */}
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Card variant="outlined" sx={{ height: "100%" }}>
                 <CardContent>
                   <Stack direction="row" spacing={2} alignItems="center" mb={2}>

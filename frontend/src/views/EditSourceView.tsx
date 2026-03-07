@@ -167,7 +167,7 @@ export function EditSourceView() {
         <form onSubmit={handleSubmit}>
           <Stack spacing={3}>
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
                   select
                   label={t("create_source.kind", "Kind")}
@@ -185,7 +185,7 @@ export function EditSourceView() {
                 </TextField>
               </Grid>
 
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
                   label={t("create_source.year", "Year")}
                   value={year}
@@ -234,7 +234,7 @@ export function EditSourceView() {
             />
 
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
                   label={t("create_source.origin", "Origin")}
                   value={origin}
@@ -248,7 +248,7 @@ export function EditSourceView() {
                 />
               </Grid>
 
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
                   label={t("create_source.trust_level", "Trust Level")}
                   value={trustLevel}

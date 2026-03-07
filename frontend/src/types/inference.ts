@@ -21,5 +21,5 @@ export interface RoleInference {
 export interface InferenceRead {
   entity_id: string;
   relations_by_kind: Record<string, RelationRead[]>;
-  role_inferences: RoleInference[];
+  role_inferences?: RoleInference[];
 }

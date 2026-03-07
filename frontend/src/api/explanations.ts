@@ -15,16 +15,16 @@ export interface SourceContribution {
   source_authors?: string[];
   source_year?: number;
   source_kind: string;
-  source_trust?: number;
+  source_trust?: number | null;
   source_url: string;
 
   relation_id: string;
   relation_kind: string;
   relation_direction: string;
   relation_confidence: number;
-  relation_scope?: Record<string, any>;
+  relation_scope?: Record<string, any> | null;
 
-  role_weight?: number;
+  role_weight?: number | null;
   contribution_percentage: number;
 }
 
@@ -54,7 +54,7 @@ export interface ExplanationRead {
   confidence_factors: ConfidenceFactor[];
   contradictions?: ContradictionDetail;
   source_chain: SourceContribution[];
-  scope_filter?: Record<string, any>;
+  scope_filter?: Record<string, any> | null;
 }
 
 

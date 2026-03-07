@@ -210,7 +210,7 @@ export function SourceDetailView() {
 
   const hasUrl = !!source.url;
   const hasRelations = relations.length > 0;
-  const isHighQuality = source.trust_level && source.trust_level >= 0.75;
+  const isHighQuality = source.trust_level != null && source.trust_level >= 0.75;
 
   return (
     <Stack spacing={3}>
@@ -223,7 +223,7 @@ export function SourceDetailView() {
             <Box sx={{ display: "flex", gap: 1, alignItems: "center", flexWrap: "wrap" }}>
               <Chip label={source.kind} size="small" />
               {source.year && <Chip label={source.year} size="small" variant="outlined" />}
-              {source.trust_level !== undefined && (
+              {source.trust_level != null && (
                 <Chip
                   label={`Quality: ${Math.round(source.trust_level * 100)}%`}
                   size="small"
@@ -585,7 +585,7 @@ export function SourceDetailView() {
         onClose={() => setUrlDialogOpen(false)}
         onSubmit={handleUrlExtraction}
         loading={urlExtracting}
-        defaultUrl={source.url}
+        defaultUrl={source.url || undefined}
       />
     </Stack>
   );

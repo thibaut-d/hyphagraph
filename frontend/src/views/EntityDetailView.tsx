@@ -249,7 +249,7 @@ export function EntityDetailView() {
         // Filter by year range
         if (filters.yearRange) {
           const [minYear, maxYear] = filters.yearRange;
-          if (source.year < minYear || source.year > maxYear) {
+          if (source.year == null || source.year < minYear || source.year > maxYear) {
             totalFilteredOut++;
             return false;
           }
@@ -257,7 +257,7 @@ export function EntityDetailView() {
 
         // Filter by minimum trust level
         if (filters.minTrustLevel !== undefined && filters.minTrustLevel > 0) {
-          if (source.trust_level < filters.minTrustLevel) {
+          if (source.trust_level == null || source.trust_level < filters.minTrustLevel) {
             totalFilteredOut++;
             return false;
           }
@@ -363,7 +363,7 @@ export function EntityDetailView() {
                 color="secondary"
                 startIcon={<SearchIcon />}
                 size="small"
-                fullWidth={{ xs: true, sm: false }}
+                sx={{ width: { xs: "100%", sm: "auto" } }}
               >
                 {t("entity.discover_sources", "Discover Sources")}
               </Button>
@@ -373,7 +373,7 @@ export function EntityDetailView() {
                 color="primary"
                 startIcon={<EditIcon />}
                 size="small"
-                fullWidth={{ xs: true, sm: false }}
+                sx={{ width: { xs: "100%", sm: "auto" } }}
               >
                 {t("common.edit", "Edit")}
               </Button>
@@ -382,7 +382,7 @@ export function EntityDetailView() {
                 color="error"
                 startIcon={<DeleteIcon />}
                 size="small"
-                fullWidth={{ xs: true, sm: false }}
+                sx={{ width: { xs: "100%", sm: "auto" } }}
               >
                 {t("common.delete", "Delete")}
               </Button>
@@ -392,7 +392,7 @@ export function EntityDetailView() {
                 variant="outlined"
                 startIcon={<AddIcon />}
                 size="small"
-                fullWidth={{ xs: true, sm: false }}
+                sx={{ width: { xs: "100%", sm: "auto" } }}
               >
                 {t("relation.create", "Create relation")}
               </Button>

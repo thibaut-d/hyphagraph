@@ -111,7 +111,7 @@ function EntityInferenceCard({ item }: { item: EntityWithInferences }) {
           )}
 
           {error && (
-            <Alert severity="warning" size="small">
+            <Alert severity="warning">
               {error}
             </Alert>
           )}
@@ -218,7 +218,7 @@ export default function InferencesView() {
             const updated = [...prev];
             updated[itemIndex] = {
               entity,
-              roleInferences: inference.role_inferences,
+              roleInferences: inference.role_inferences || [],
               isLoading: false,
               error: null,
             };
@@ -256,8 +256,9 @@ export default function InferencesView() {
   };
 
   // Infinite scroll support
-  const { loadMoreRef } = useInfiniteScroll({
+  const loadMoreRef = useInfiniteScroll({
     hasMore: hasMore && !isLoadingPage,
+    isLoading: isLoadingPage,
     onLoadMore: handleLoadMore,
   });
 
@@ -273,7 +274,11 @@ export default function InferencesView() {
           </Typography>
           <Typography variant="body2" color="text.secondary">
             {total > 0
-              ? t('inferences.showing', { count: items.length, total }, `Showing ${items.length} of ${total} entities with inferences`)
+              ? t('inferences.showing', {
+                  defaultValue: `Showing ${items.length} of ${total} entities with inferences`,
+                  count: items.length,
+                  total,
+                })
               : t('inferences.loading', 'Loading entities...')}
           </Typography>
         </Box>
