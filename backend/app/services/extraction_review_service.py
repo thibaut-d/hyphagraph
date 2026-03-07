@@ -78,9 +78,14 @@ class ExtractionReviewService:
         validation_result: ValidationResult,
         llm_model: str | None = None,
         llm_provider: str | None = None,
-    ) -> StagedExtraction:
+        auto_materialize: bool = True,
+    ) -> tuple[StagedExtraction, UUID | None]:
         """
-        Stage an extraction for review.
+        Create extraction metadata and optionally materialize.
+
+        NEW WORKFLOW: Materializes immediately by default, sets status based on validation.
+        - High confidence → status="auto_verified", materialized
+        - Uncertain → status="pending", materialized but flagged for review
 
         Args:
             extraction_type: Type of extraction
@@ -89,16 +94,19 @@ class ExtractionReviewService:
             validation_result: Validation metadata
             llm_model: LLM model used
             llm_provider: LLM provider
+            auto_materialize: Whether to materialize immediately (default True)
 
         Returns:
-            Created StagedExtraction record
+            Tuple of (StagedExtraction record, materialized_id)
         """
-        # Determine if eligible for auto-commit
-        is_auto_commit_eligible = self._is_auto_commit_eligible(validation_result)
+        # Determine status based on validation
+        is_high_confidence = self._is_auto_commit_eligible(validation_result)
+        initial_status = ExtractionStatus.AUTO_VERIFIED if is_high_confidence else ExtractionStatus.PENDING
 
+        # Create staged extraction record
         staged = StagedExtraction(
             extraction_type=extraction_type,
-            status=ExtractionStatus.PENDING,
+            status=initial_status,
             source_id=source_id,
             extraction_data=extraction_data.model_dump(),
             validation_score=validation_result.validation_score,
@@ -107,21 +115,36 @@ class ExtractionReviewService:
             matched_span=validation_result.matched_span,
             llm_model=llm_model,
             llm_provider=llm_provider,
-            auto_commit_eligible=is_auto_commit_eligible,
+            auto_commit_eligible=is_high_confidence,
             auto_commit_threshold=self.auto_commit_threshold if self.auto_commit_enabled else None,
         )
 
         self.db.add(staged)
+        await self.db.flush()  # Get ID without committing
+
+        # Materialize immediately if requested
+        materialized_id = None
+        if auto_materialize:
+            if extraction_type == ExtractionType.ENTITY:
+                entity_id = await self._materialize_entity(staged)
+                staged.materialized_entity_id = entity_id
+                materialized_id = entity_id
+            elif extraction_type == ExtractionType.RELATION:
+                relation_id = await self._materialize_relation(staged)
+                staged.materialized_relation_id = relation_id
+                materialized_id = relation_id
+            # Claims not yet supported for materialization
+
         await self.db.commit()
         await self.db.refresh(staged)
 
         logger.info(
-            f"Staged {extraction_type} extraction (ID: {staged.id}, "
-            f"score: {validation_result.validation_score:.2f}, "
-            f"auto-commit eligible: {is_auto_commit_eligible})"
+            f"Created {extraction_type} extraction (ID: {staged.id}, "
+            f"status: {staged.status}, score: {validation_result.validation_score:.2f}, "
+            f"materialized: {materialized_id is not None})"
         )
 
-        return staged
+        return staged, materialized_id
 
     async def stage_batch(
         self,

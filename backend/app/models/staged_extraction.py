@@ -1,15 +1,17 @@
 """
-Database model for staged LLM extractions pending human review.
+Database model for LLM extraction review metadata.
 
-Staged extractions are created when:
-1. Validation confidence is below auto-commit threshold
-2. User explicitly requests review-before-commit
-3. Extraction has validation flags that require attention
+ALL extractions are materialized immediately and create a staged_extraction record.
+The record tracks validation quality and review status.
 
 Workflow:
-- Extract → Validate → Route (auto-commit vs staging)
-- Staged extractions can be: approved, rejected, or edited
-- Approval materializes the extraction into the knowledge graph
+- Extract → Validate → Materialize (always) → Create review metadata
+- High confidence (score >= 0.9, no flags) → status="auto_verified"
+- Uncertain (score < 0.9 or flags) → status="pending" (needs review)
+- Human review changes status to "approved" or "rejected"
+- Items remain visible in graph regardless of status
+
+This provides async quality control without blocking knowledge extraction.
 """
 from sqlalchemy import Column, String, Text, Float, Boolean, ForeignKey, Integer, Enum as SQLEnum, JSON
 from sqlalchemy.dialects.postgresql import UUID
@@ -23,10 +25,10 @@ from app.models.base import Base, UUIDMixin, TimestampMixin
 
 class ExtractionStatus(str, enum.Enum):
     """Status of a staged extraction."""
-    PENDING = "pending"  # Awaiting review
-    APPROVED = "approved"  # Approved for materialization
-    REJECTED = "rejected"  # Rejected, won't be materialized
-    MATERIALIZED = "materialized"  # Already committed to knowledge graph
+    AUTO_VERIFIED = "auto_verified"  # High confidence, auto-approved and materialized
+    PENDING = "pending"  # Materialized but awaiting human review
+    APPROVED = "approved"  # Human reviewed and approved
+    REJECTED = "rejected"  # Human reviewed and rejected (but still materialized)
 
 
 class ExtractionType(str, enum.Enum):
@@ -38,10 +40,11 @@ class ExtractionType(str, enum.Enum):
 
 class StagedExtraction(Base, UUIDMixin, TimestampMixin):
     """
-    Staged extraction pending human review.
+    Review metadata for LLM extractions.
 
-    Stores LLM extractions with validation metadata, allowing human
-    verification before committing to the knowledge graph.
+    ALL extractions create both an Entity/Relation AND a StagedExtraction record.
+    This record tracks validation quality and human review status.
+    Extractions are visible immediately; review is async quality control.
     """
     __tablename__ = "staged_extractions"
 
