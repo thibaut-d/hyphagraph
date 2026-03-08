@@ -16,6 +16,12 @@ function tryAcquireRefreshLock(): boolean {
 
   if (existing) {
     const lockTime = parseInt(existing, 10);
+    // Validate parseInt succeeded before arithmetic operations
+    if (isNaN(lockTime)) {
+      // Invalid lock value, steal it
+      localStorage.setItem(REFRESH_LOCK_KEY, now.toString());
+      return true;
+    }
     // If lock is stale (> 10s old), steal it
     if (now - lockTime > REFRESH_LOCK_TIMEOUT) {
       localStorage.setItem(REFRESH_LOCK_KEY, now.toString());
@@ -44,6 +50,11 @@ function isRefreshInProgress(): boolean {
   if (!existing) return false;
 
   const lockTime = parseInt(existing, 10);
+  // Validate parseInt succeeded before arithmetic operations
+  if (isNaN(lockTime)) {
+    // Invalid lock value, consider it not in progress
+    return false;
+  }
   const now = Date.now();
 
   // Consider stale if > 10s old

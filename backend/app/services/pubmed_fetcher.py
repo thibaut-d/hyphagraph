@@ -236,7 +236,7 @@ class PubMedFetcher:
 
             # Extract title
             title_elem = article_elem.find('.//ArticleTitle')
-            title = title_elem.text if title_elem is not None else "Untitled"
+            title = title_elem.text if title_elem is not None and title_elem.text else "Untitled"
 
             # Extract abstract (may have multiple parts)
             abstract_parts = []
@@ -247,10 +247,12 @@ class PubMedFetcher:
                     label = text_elem.get('Label')
                     text = text_elem.text or ""
 
-                    if label:
-                        abstract_parts.append(f"{label}: {text}")
-                    else:
-                        abstract_parts.append(text)
+                    # Only add non-empty text
+                    if text:
+                        if label:
+                            abstract_parts.append(f"{label}: {text}")
+                        else:
+                            abstract_parts.append(text)
 
             abstract = "\n\n".join(abstract_parts) if abstract_parts else None
 
@@ -262,29 +264,29 @@ class PubMedFetcher:
                     last_name = author.find('LastName')
                     fore_name = author.find('ForeName')
 
-                    if last_name is not None:
-                        if fore_name is not None:
+                    if last_name is not None and last_name.text:
+                        if fore_name is not None and fore_name.text:
                             authors.append(f"{fore_name.text} {last_name.text}")
                         else:
                             authors.append(last_name.text)
 
             # Extract journal
             journal_elem = article_elem.find('.//Journal/Title')
-            journal = journal_elem.text if journal_elem is not None else None
+            journal = journal_elem.text if journal_elem is not None and journal_elem.text else None
 
             # Extract year
             year = None
             year_elem = article_elem.find('.//PubDate/Year')
-            if year_elem is not None:
+            if year_elem is not None and year_elem.text:
                 try:
                     year = int(year_elem.text)
-                except ValueError:
+                except (ValueError, TypeError):
                     pass
 
             # Extract DOI
             doi = None
             for article_id in article_elem.findall('.//ArticleId'):
-                if article_id.get('IdType') == 'doi':
+                if article_id.get('IdType') == 'doi' and article_id.text:
                     doi = article_id.text
                     break
 
@@ -404,11 +406,12 @@ class PubMedFetcher:
                 # Extract PMIDs
                 pmids = []
                 for id_elem in root.findall('.//Id'):
-                    pmids.append(id_elem.text)
+                    if id_elem.text:
+                        pmids.append(id_elem.text)
 
                 # Get total count
                 count_elem = root.find('.//Count')
-                total_count = int(count_elem.text) if count_elem is not None else 0
+                total_count = int(count_elem.text) if count_elem is not None and count_elem.text else 0
 
                 logger.info(
                     f"PubMed search found {total_count} results, "
@@ -494,7 +497,7 @@ class PubMedFetcher:
                 if i < total:
                     await asyncio.sleep(rate_limit_delay)
 
-            except HTTPException as e:
+            except AppException as e:
                 logger.warning(f"Failed to fetch PMID {pmid}: {e.detail}")
                 # Continue with next article
                 continue

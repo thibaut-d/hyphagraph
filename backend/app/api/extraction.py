@@ -19,7 +19,7 @@ from app.llm.client import is_llm_available
 from app.dependencies.auth import get_current_user
 from app.models.user import User
 from app.database import get_db
-from app.utils.errors import LLMServiceUnavailableException, ValidationException, ErrorCode
+from app.utils.errors import LLMServiceUnavailableException, ValidationException, ErrorCode, AppException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
@@ -186,11 +186,17 @@ async def extract_entities(
             text_length=len(request.text)
         )
 
+    except AppException:
+        # Re-raise AppExceptions to preserve error details
+        raise
     except Exception as e:
         logger.error(f"Entity extraction failed: {e}")
-        raise HTTPException(
+        from app.utils.errors import AppException, ErrorCode
+        raise AppException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Entity extraction failed: {str(e)}"
+            error_code=ErrorCode.EXTRACTION_FAILED,
+            message="Entity extraction failed",
+            details=str(e)
         )
 
 
@@ -245,11 +251,17 @@ async def extract_relations(
             text_length=len(request.text)
         )
 
+    except AppException:
+        # Re-raise AppExceptions to preserve error details
+        raise
     except Exception as e:
         logger.error(f"Relation extraction failed: {e}")
-        raise HTTPException(
+        from app.utils.errors import AppException, ErrorCode
+        raise AppException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Relation extraction failed: {str(e)}"
+            error_code=ErrorCode.EXTRACTION_FAILED,
+            message="Relation extraction failed",
+            details=str(e)
         )
 
 
@@ -304,11 +316,17 @@ async def extract_claims(
             text_length=len(request.text)
         )
 
+    except AppException:
+        # Re-raise AppExceptions to preserve error details
+        raise
     except Exception as e:
         logger.error(f"Claim extraction failed: {e}")
-        raise HTTPException(
+        from app.utils.errors import AppException, ErrorCode
+        raise AppException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Claim extraction failed: {str(e)}"
+            error_code=ErrorCode.EXTRACTION_FAILED,
+            message="Claim extraction failed",
+            details=str(e)
         )
 
 
@@ -359,11 +377,17 @@ async def extract_batch(
             text_length=len(request.text)
         )
 
+    except AppException:
+        # Re-raise AppExceptions to preserve error details
+        raise
     except Exception as e:
         logger.error(f"Batch extraction failed: {e}")
-        raise HTTPException(
+        from app.utils.errors import AppException, ErrorCode
+        raise AppException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Batch extraction failed: {str(e)}"
+            error_code=ErrorCode.EXTRACTION_FAILED,
+            message="Batch extraction failed",
+            details=str(e)
         )
 
 

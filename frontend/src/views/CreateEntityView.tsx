@@ -26,7 +26,9 @@ export function CreateEntityView() {
   const [summaryEn, setSummaryEn] = useState("");
   const [summaryFr, setSummaryFr] = useState("");
   const [uiCategoryId, setUiCategoryId] = useState<string | null>(null);
-  const [filterOptions, setFilterOptions] = useState<EntityFilterOptions | null>(null);  const [loading, setLoading] = useState(false);
+  const [filterOptions, setFilterOptions] = useState<EntityFilterOptions | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   // Fetch UI category options
   useEffect(() => {
@@ -35,13 +37,17 @@ export function CreateEntityView() {
 
   // Extract category options with current language labels
   const categoryOptions = useMemo(() => {
-    if (!filterOptions) return [];
+    // Validate filterOptions and ui_categories exist before accessing
+    if (!filterOptions?.ui_categories) return [];
 
     const currentLanguage = i18n.language || 'en';
 
     return filterOptions.ui_categories.map(cat => ({
       id: cat.id,
-      label: cat.label[currentLanguage] || cat.label.en || cat.id
+      // Safe access to nested label properties with fallbacks
+      label: (cat.label?.[currentLanguage as keyof typeof cat.label] as string | undefined) ||
+             cat.label?.en ||
+             cat.id
     }));
   }, [filterOptions, i18n.language]);
 

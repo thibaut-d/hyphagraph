@@ -109,7 +109,8 @@ class DerivedPropertiesService:
 
         # Calculate disagreement: contradictory relations vs total
         contradicts_count = direction_counts.get("contradicts", 0)
-        disagreement_ratio = contradicts_count / total
+        # Guard against division by zero (should not happen since we check total == 0 above)
+        disagreement_ratio = contradicts_count / total if total > 0 else 0.0
 
         if disagreement_ratio < 0.10:
             return "strong"

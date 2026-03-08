@@ -97,8 +97,20 @@ class DocumentService:
             HTTPException: If PDF extraction fails
         """
         try:
-            # Read file content
+            # Read file content with size check
             content = await file.read()
+
+            # Validate file size after reading (in case size wasn't in headers)
+            max_size = self.MAX_FILE_SIZE_MB * 1024 * 1024
+            if len(content) > max_size:
+                raise AppException(
+                    status_code=413,
+                    error_code=ErrorCode.DOCUMENT_TOO_LARGE,
+                    message="File too large",
+                    details=f"File size {len(content) / 1024 / 1024:.1f}MB exceeds maximum of {self.MAX_FILE_SIZE_MB}MB",
+                    context={"size_mb": len(content) / 1024 / 1024, "max_mb": self.MAX_FILE_SIZE_MB, "filename": file.filename}
+                )
+
             pdf_file = io.BytesIO(content)
 
             # Extract text from all pages
@@ -149,6 +161,18 @@ class DocumentService:
         """
         try:
             content = await file.read()
+
+            # Validate file size after reading (in case size wasn't in headers)
+            max_size = self.MAX_FILE_SIZE_MB * 1024 * 1024
+            if len(content) > max_size:
+                raise AppException(
+                    status_code=413,
+                    error_code=ErrorCode.DOCUMENT_TOO_LARGE,
+                    message="File too large",
+                    details=f"File size {len(content) / 1024 / 1024:.1f}MB exceeds maximum of {self.MAX_FILE_SIZE_MB}MB",
+                    context={"size_mb": len(content) / 1024 / 1024, "max_mb": self.MAX_FILE_SIZE_MB, "filename": file.filename}
+                )
+
 
             # Try UTF-8 first, fall back to Latin-1 if that fails
             try:

@@ -46,6 +46,8 @@ const DEFAULT_DURATIONS: Record<NotificationSeverity, number> = {
   error: 10000,
 };
 
+const MAX_QUEUE_SIZE = 10;
+
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   const [queue, setQueue] = useState<Notification[]>([]);
@@ -85,7 +87,14 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         duration: options?.duration ?? DEFAULT_DURATIONS[severity],
       };
 
-      setQueue((prev) => [...prev, notification]);
+      setQueue((prev) => {
+        // Implement queue size limit - drop oldest notifications when limit exceeded
+        const updatedQueue = [...prev, notification];
+        if (updatedQueue.length > MAX_QUEUE_SIZE) {
+          return updatedQueue.slice(updatedQueue.length - MAX_QUEUE_SIZE);
+        }
+        return updatedQueue;
+      });
     },
     [],
   );
@@ -122,7 +131,14 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           parsedError, // Store for potential detailed display
         };
 
-        setQueue((prev) => [...prev, notification]);
+        setQueue((prev) => {
+          // Implement queue size limit - drop oldest notifications when limit exceeded
+          const updatedQueue = [...prev, notification];
+          if (updatedQueue.length > MAX_QUEUE_SIZE) {
+            return updatedQueue.slice(updatedQueue.length - MAX_QUEUE_SIZE);
+          }
+          return updatedQueue;
+        });
       } else {
         // String message - use existing logic
         addNotification(messageOrError, "error", options);

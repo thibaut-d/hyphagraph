@@ -31,7 +31,9 @@ export function EditEntityView() {
   const [summaryEn, setSummaryEn] = useState("");
   const [summaryFr, setSummaryFr] = useState("");
   const [uiCategoryId, setUiCategoryId] = useState<string | null>(null);
-  const [filterOptions, setFilterOptions] = useState<EntityFilterOptions | null>(null);  const [loading, setLoading] = useState(true);
+  const [filterOptions, setFilterOptions] = useState<EntityFilterOptions | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   // Fetch UI category options
@@ -63,7 +65,7 @@ export function EditEntityView() {
         setUiCategoryId(data.ui_category_id || null);
       })
       .catch((err) => {
-        showError(err));
+        showError(err);
       })
       .finally(() => setLoading(false));
   }, [id, t]);

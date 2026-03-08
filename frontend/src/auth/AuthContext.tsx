@@ -105,8 +105,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(userData as User);
         setLoading(false);
       })
-      .catch(() => {
-        logout();
+      .catch((error) => {
+        // Improve error differentiation - only logout on authentication errors
+        // Network errors and other issues should not trigger logout
+        const errorMessage = error?.message || String(error);
+        const isAuthError =
+          errorMessage.includes("Session expired") ||
+          errorMessage.includes("Authentication failed") ||
+          errorMessage.includes("Unauthorized") ||
+          errorMessage.includes("401");
+
+        if (isAuthError) {
+          // Only logout for authentication-related errors
+          logout();
+        } else {
+          // For network errors or other issues, just clear loading state
+          // but keep the user logged in (they might be offline temporarily)
+          console.warn("Failed to fetch user data, but keeping session:", error);
+        }
         setLoading(false);
       });
   }, [token, logout]); // Now includes logout in dependencies
