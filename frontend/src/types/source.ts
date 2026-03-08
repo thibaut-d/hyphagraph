@@ -8,7 +8,6 @@ export interface SourceRead {
   origin?: string | null;
   url?: string | null;
   trust_level?: number | null;
-  trust?: number | null;
   summary?: Record<string, string> | null;
   source_metadata?: Record<string, string | number | boolean | null> | null;
 }

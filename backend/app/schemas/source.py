@@ -139,7 +139,8 @@ class DocumentExtractionPreview(Schema):
 class SaveExtractionRequest(Schema):
     """Request to save user-approved extracted data."""
     entities_to_create: List[ExtractedEntity]  # User-approved entities
-    entity_links: dict[str, UUID]  # extracted_slug -> existing_entity_id
+    # UUID strings (not UUID objects) - converted to UUID in service layer
+    entity_links: dict[str, str]  # extracted_slug -> existing_entity_id
     relations_to_create: List[ExtractedRelation]
     # Note: source_id is in URL path, not needed in body
 

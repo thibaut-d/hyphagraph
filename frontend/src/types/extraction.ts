@@ -59,7 +59,7 @@ export interface ExtractedRelation {
   subject_slug?: string | null;
   relation_type: RelationType;
   object_slug?: string | null;
-  roles: ExtractedRole[] | Record<string, string>;
+  roles: ExtractedRole[];
   confidence: ConfidenceLevel;
   text_span: string;
   notes?: string | null;
