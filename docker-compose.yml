@@ -1,7 +1,6 @@
 services:
   caddy:
     image: caddy:2
-    container_name: hyphagraph-caddy
     ports:
       - "80:80"
     volumes:
@@ -11,7 +10,6 @@ services:
       - web
   db:
     image: postgres:16
-    container_name: hyphagraph-db
     env_file:
       - .env
     volumes:
@@ -26,7 +24,6 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: hyphagraph-api
     command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
       - ./backend:/app
@@ -40,7 +37,6 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: hyphagraph-web
     volumes:
       - ./frontend:/app
       - /app/node_modules  # Preserve container's node_modules (prevents host override)
@@ -51,4 +47,3 @@ services:
 
 volumes:
   postgres_data:
-    name: hyphagraph_postgres_data

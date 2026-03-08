@@ -4,6 +4,8 @@
 
 COMPOSE = docker compose
 PROJECT = hyphagraph
+COMPOSE_DEV = docker compose -p hyphagraph-dev -f docker-compose.yml -f docker-compose.server-dev.yml
+COMPOSE_PROD = docker compose -p hyphagraph-prod -f docker-compose.yml -f docker-compose.prod.yml
 
 .DEFAULT_GOAL := help
 
@@ -15,9 +17,27 @@ PROJECT = hyphagraph
 up: ## Start the full dev stack (Caddy, API, DB, Frontend)
 	$(COMPOSE) up -d
 
+.PHONY: up-dev-server
+up-dev-server: ## Start remote dev stack (requires .env.dev)
+	@test -f .env.dev || (echo "Missing .env.dev (copy from .env.dev.template)" && exit 1)
+	$(COMPOSE_DEV) up -d --build
+
+.PHONY: up-prod
+up-prod: ## Start production stack (requires .env.prod)
+	@test -f .env.prod || (echo "Missing .env.prod (copy from .env.prod.template)" && exit 1)
+	$(COMPOSE_PROD) up -d --build
+
 .PHONY: down
 down: ## Stop the stack
 	$(COMPOSE) down
+
+.PHONY: down-dev-server
+down-dev-server: ## Stop remote dev stack
+	$(COMPOSE_DEV) down
+
+.PHONY: down-prod
+down-prod: ## Stop production stack
+	$(COMPOSE_PROD) down
 
 .PHONY: restart
 restart: ## Restart the stack
@@ -43,6 +63,14 @@ ps: ## Show running containers
 .PHONY: logs
 logs: ## Follow logs (all services)
 	$(COMPOSE) logs -f
+
+.PHONY: logs-dev-server
+logs-dev-server: ## Follow logs for remote dev stack
+	$(COMPOSE_DEV) logs -f
+
+.PHONY: logs-prod
+logs-prod: ## Follow logs for production stack
+	$(COMPOSE_PROD) logs -f
 
 .PHONY: logs-api
 logs-api: ## Follow API logs
@@ -96,6 +124,14 @@ api-shell: ## Open a shell inside the API container
 .PHONY: api-tests
 api-tests: ## Run backend tests
 	$(COMPOSE) exec api pytest
+
+.PHONY: migrate-dev-server
+migrate-dev-server: ## Apply Alembic migrations on remote dev stack
+	$(COMPOSE_DEV) exec api alembic upgrade head
+
+.PHONY: migrate-prod
+migrate-prod: ## Apply Alembic migrations on production stack
+	$(COMPOSE_PROD) exec api alembic upgrade head
 
 ## -------------------------
 ## Domain-level scripts

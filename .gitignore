@@ -1,6 +1,7 @@
 # ── Project ──────────────────────────────────────────
 .env
 .env.*
+!.env.*.template
 .temp/
 backups/
 
