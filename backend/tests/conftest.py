@@ -140,6 +140,30 @@ async def db_session() -> AsyncSession:
 
 
 @pytest_asyncio.fixture
+async def test_user(db_session: AsyncSession):
+    """
+    Create a test user for authentication tests.
+
+    Returns:
+        User: Test user with active status
+    """
+    from uuid import uuid4
+    from app.utils.auth import hash_password
+
+    user = User(
+        id=uuid4(),
+        email="test@example.com",
+        hashed_password=await hash_password("testpassword123"),
+        is_active=True,
+        is_superuser=False
+    )
+    db_session.add(user)
+    await db_session.commit()
+
+    yield user
+
+
+@pytest_asyncio.fixture
 async def system_source(db_session: AsyncSession):
     """
     Create a system source for computed inferences.

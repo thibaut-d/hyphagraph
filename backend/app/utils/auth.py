@@ -146,6 +146,23 @@ def generate_refresh_token() -> str:
     return secrets.token_urlsafe(32)
 
 
+def hash_token_for_lookup(token: str) -> str:
+    """
+    Create a deterministic SHA256 hash of a token for fast database lookup.
+
+    This is NOT for security - it's for indexing. The bcrypt hash is used
+    for actual verification.
+
+    Args:
+        token: Plain refresh token string
+
+    Returns:
+        SHA256 hex digest (64 characters)
+    """
+    import hashlib
+    return hashlib.sha256(token.encode('utf-8')).hexdigest()
+
+
 async def hash_refresh_token(token: str) -> str:
     """
     Hash a refresh token for secure storage in the database (async, runs in thread pool).

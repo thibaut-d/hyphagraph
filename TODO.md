@@ -1,12 +1,52 @@
 # Current Work
 
-**Last updated**: 2026-03-07
+**Last updated**: 2026-03-08
 
-Implemented year_range calculation for entity filter options.
+Fixed critical bugs in AuthContext and refresh token system.
 
 ---
 
 ## Completed (Latest)
+
+### Critical Bug Fixes (2026-03-08)
+
+Fixed three critical bugs identified through codebase search:
+
+1. **AuthContext useEffect Missing Dependency**
+   - Added `logout` to useEffect dependency array
+   - Wrapped `logout` in `useCallback` to stabilize reference
+   - Prevents stale closure bugs and React warnings
+
+2. **Refresh Token O(n) Bcrypt Performance**
+   - Added `token_lookup_hash` column (SHA256) for O(1) database lookups
+   - Changed queries to filter by lookup hash first, then verify with bcrypt
+   - Prevents performance degradation as token count grows
+   - Migration: `003_add_token_lookup_hash.py`
+
+3. **Polling Interval Memory Leak**
+   - Removed `token` and `refreshToken` from useEffect dependency array
+   - Used refs to track current values without triggering new intervals
+   - Prevents multiple intervals accumulating on token changes
+
+**Files modified**:
+- `frontend/src/auth/AuthContext.tsx` - Fixed dependencies and memory leak
+- `backend/app/models/refresh_token.py` - Added `token_lookup_hash` column
+- `backend/app/utils/auth.py` - Added `hash_token_for_lookup()` function
+- `backend/app/services/user_service.py` - Updated to use lookup hash
+- `backend/alembic/versions/003_add_token_lookup_hash.py` - Database migration
+- `backend/tests/conftest.py` - Added `test_user` fixture
+- `backend/tests/test_refresh_token_performance.py` - New comprehensive test suite
+
+**Test results**:
+- Frontend build: PASS (no runtime errors)
+- Backend tests: 7/7 passing (new performance tests)
+- Migration: Applied successfully
+
+**Security**: Two-layer security maintained - SHA256 for fast lookup, bcrypt for verification (prevents collision attacks)
+
+---
+
+## Completed (Previous)
 
 ### Year Range Calculation for Entity Filters (2026-03-07)
 

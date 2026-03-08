@@ -14,7 +14,8 @@ from app.utils.auth import (
     create_access_token,
     generate_refresh_token,
     hash_refresh_token,
-    verify_refresh_token
+    verify_refresh_token,
+    hash_token_for_lookup
 )
 from app.utils.email import (
     generate_verification_token,
@@ -378,6 +379,7 @@ class UserService:
         # Generate refresh token
         refresh_token = generate_refresh_token()
         token_hash = await hash_refresh_token(refresh_token)
+        token_lookup_hash = hash_token_for_lookup(refresh_token)
 
         # Calculate expiration
         expires_at = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
@@ -386,6 +388,7 @@ class UserService:
             # Store refresh token in database
             db_refresh_token = RefreshToken(
                 user_id=user_id,
+                token_lookup_hash=token_lookup_hash,
                 token_hash=token_hash,
                 expires_at=expires_at,
                 is_revoked=False,
@@ -414,22 +417,20 @@ class UserService:
         """
         from sqlalchemy import select
 
-        # Query all active, non-expired refresh tokens
+        # Calculate lookup hash for O(1) database query
+        lookup_hash = hash_token_for_lookup(refresh_token)
+
+        # Query for the specific token using indexed lookup hash
         stmt = select(RefreshToken).where(
+            RefreshToken.token_lookup_hash == lookup_hash,
             RefreshToken.is_revoked == False,
             RefreshToken.expires_at > datetime.now(timezone.utc)
         )
         result = await self.db.execute(stmt)
-        all_tokens = result.scalars().all()
+        matched_token = result.scalar_one_or_none()
 
-        # Find matching token by verifying hash
-        matched_token = None
-        for token in all_tokens:
-            if await verify_refresh_token(refresh_token, token.token_hash):
-                matched_token = token
-                break
-
-        if not matched_token:
+        # Verify with bcrypt for security (prevents collision attacks on SHA256)
+        if not matched_token or not await verify_refresh_token(refresh_token, matched_token.token_hash):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid or expired refresh token",
@@ -463,22 +464,20 @@ class UserService:
         """
         from sqlalchemy import select
 
-        # Find active refresh tokens for this user
+        # Calculate lookup hash for O(1) database query
+        lookup_hash = hash_token_for_lookup(refresh_token)
+
+        # Query for the specific token using indexed lookup hash
         stmt = select(RefreshToken).where(
+            RefreshToken.token_lookup_hash == lookup_hash,
             RefreshToken.user_id == user_id,
             RefreshToken.is_revoked == False
         )
         result = await self.db.execute(stmt)
-        all_tokens = result.scalars().all()
+        matched_token = result.scalar_one_or_none()
 
-        # Find matching token by verifying hash
-        matched_token = None
-        for token in all_tokens:
-            if await verify_refresh_token(refresh_token, token.token_hash):
-                matched_token = token
-                break
-
-        if not matched_token:
+        # Verify with bcrypt for security (prevents collision attacks on SHA256)
+        if not matched_token or not await verify_refresh_token(refresh_token, matched_token.token_hash):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Refresh token not found"

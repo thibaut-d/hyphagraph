@@ -4,6 +4,8 @@ import {
   useEffect,
   useState,
   ReactNode,
+  useCallback,
+  useRef,
 } from "react";
 
 import { getMe, logout as logoutApi } from "../api/auth";
@@ -38,16 +40,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(!!localStorage.getItem("auth_token"));
 
+  // Use refs to track current token values without causing re-renders
+  const tokenRef = useRef(token);
+  const refreshTokenRef = useRef(refreshToken);
+
+  // Update refs when state changes
+  useEffect(() => {
+    tokenRef.current = token;
+  }, [token]);
+
+  useEffect(() => {
+    refreshTokenRef.current = refreshToken;
+  }, [refreshToken]);
+
   // Listen for storage changes (token refresh from API client)
+  // Dependencies removed to prevent memory leak from multiple intervals
   useEffect(() => {
     const handleStorageChange = () => {
       const newToken = localStorage.getItem("auth_token");
       const newRefreshToken = localStorage.getItem("refresh_token");
 
-      if (newToken !== token) {
+      if (newToken !== tokenRef.current) {
         setToken(newToken);
       }
-      if (newRefreshToken !== refreshToken) {
+      if (newRefreshToken !== refreshTokenRef.current) {
         setRefreshToken(newRefreshToken);
       }
     };
@@ -56,7 +72,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const interval = setInterval(handleStorageChange, 1000);
 
     return () => clearInterval(interval);
-  }, [token, refreshToken]);
+  }, []); // Empty dependency array - only create interval once
+
+  // Stabilize logout with useCallback to prevent unnecessary re-renders
+  const logout = useCallback(() => {
+    const currentRefreshToken = localStorage.getItem("refresh_token");
+
+    // Call logout API to revoke refresh token
+    if (currentRefreshToken) {
+      logoutApi(currentRefreshToken).catch(() => {
+        // Ignore errors during logout
+      });
+    }
+
+    localStorage.removeItem("auth_token");
+    localStorage.removeItem("refresh_token");
+    setToken(null);
+    setRefreshToken(null);
+    setUser(null);
+  }, []); // No dependencies needed - uses localStorage directly
 
   useEffect(() => {
     if (!token) {
@@ -75,30 +109,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout();
         setLoading(false);
       });
-  }, [token]);
+  }, [token, logout]); // Now includes logout in dependencies
 
   const login = (newToken: string, newRefreshToken: string) => {
     localStorage.setItem("auth_token", newToken);
     localStorage.setItem("refresh_token", newRefreshToken);
     setToken(newToken);
     setRefreshToken(newRefreshToken);
-  };
-
-  const logout = () => {
-    const currentRefreshToken = localStorage.getItem("refresh_token");
-
-    // Call logout API to revoke refresh token
-    if (currentRefreshToken) {
-      logoutApi(currentRefreshToken).catch(() => {
-        // Ignore errors during logout
-      });
-    }
-
-    localStorage.removeItem("auth_token");
-    localStorage.removeItem("refresh_token");
-    setToken(null);
-    setRefreshToken(null);
-    setUser(null);
   };
 
   return (
