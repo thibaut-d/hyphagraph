@@ -1,16 +1,8 @@
-import { useEffect, useState, useCallback } from "react";
-import {
-  listPendingExtractions,
-  getReviewStats,
-  reviewExtraction,
-  batchReview,
-  type StagedExtractionRead,
-  type ReviewStats,
-  type StagedExtractionFilters,
-} from "../api/extractionReview";
+import { useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
-import { useTranslation } from "react-i18next";
-import { useNotification } from "../notifications/NotificationContext";
+import { useReviewQueue } from "../hooks/useReviewQueue";
+import { useSelection } from "../hooks/useSelection";
+import { useReviewDialog } from "../hooks/useReviewDialog";
 
 import {
   Typography,
@@ -21,20 +13,17 @@ import {
   Box,
   Button,
   Stack,
-  Alert,
   CircularProgress,
   Chip,
   Card,
   CardContent,
   Grid,
-  IconButton,
   Checkbox,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   TextField,
-  Divider,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
@@ -47,129 +36,66 @@ import DeselectIcon from "@mui/icons-material/Deselect";
 const PAGE_SIZE = 20;
 
 export function ReviewQueueView() {
-  const { t } = useTranslation();
-  const { showError } = useNotification();
-  const [extractions, setExtractions] = useState<StagedExtractionRead[]>([]);
-  const [stats, setStats] = useState<ReviewStats | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
-  const [reviewNotes, setReviewNotes] = useState("");
-  const [reviewDecision, setReviewDecision] = useState<"approve" | "reject">("approve");
 
-  // Filters
+  // Filters state (kept in component for TextField binding)
   const [minScore, setMinScore] = useState<number | undefined>(undefined);
   const [onlyFlagged, setOnlyFlagged] = useState(false);
 
-  const loadExtractions = useCallback(async (reset: boolean = false) => {
-    setIsLoading(true);
+  // Custom hooks
+  const {
+    extractions,
+    stats,
+    isLoading,
+    hasMore,
+    loadMore,
+    refresh
+  } = useReviewQueue({ pageSize: PAGE_SIZE, minScore, onlyFlagged });
 
-    try {
-      const filters: StagedExtractionFilters = {
-        page: reset ? 1 : page,
-        page_size: PAGE_SIZE,
-        min_validation_score: minScore,
-        has_flags: onlyFlagged || undefined,
-      };
+  const {
+    selectedIds,
+    toggleSelection,
+    selectAll,
+    clearSelection,
+    selectedCount
+  } = useSelection();
 
-      const response = await listPendingExtractions(filters);
+  const {
+    isOpen: reviewDialogOpen,
+    notes: reviewNotes,
+    decision: reviewDecision,
+    setNotes: setReviewNotes,
+    setDecision: setReviewDecision,
+    openDialog: openReviewDialog,
+    closeDialog: closeReviewDialog,
+    submitReview,
+    submitBatchReview,
+  } = useReviewDialog();
 
-      if (reset) {
-        setExtractions(response.extractions);
-        setPage(1);
-      } else {
-        setExtractions(prev => [...prev, ...response.extractions]);
-      }
-
-      setHasMore(response.has_more);
-    } catch (err) {
-      showError(err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [page, minScore, onlyFlagged, showError]);
-
-  const loadStats = useCallback(async () => {
-    try {
-      const statsData = await getReviewStats();
-      setStats(statsData);
-    } catch (err) {
-      console.error("Failed to load stats:", err);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadExtractions(true);
-    loadStats();
-  }, [minScore, onlyFlagged]);
-
+  // Handlers
   const handleRefresh = () => {
-    setSelectedIds(new Set());
-    loadExtractions(true);
-    loadStats();
-  };
-
-  const handleLoadMore = () => {
-    setPage(prev => prev + 1);
-    loadExtractions(false);
-  };
-
-  const handleToggleSelect = (id: string) => {
-    setSelectedIds(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
-      return newSet;
-    });
+    clearSelection();
+    refresh();
   };
 
   const handleSelectAll = () => {
-    setSelectedIds(new Set(extractions.map(e => e.id)));
+    selectAll(extractions.map(e => e.id));
   };
 
-  const handleDeselectAll = () => {
-    setSelectedIds(new Set());
-  };
-
-  const handleSingleReview = async (extractionId: string, decision: "approve" | "reject", notes?: string) => {
-    try {
-      await reviewExtraction(extractionId, { decision, notes });
-      handleRefresh();
-    } catch (err) {
-      showError(err);
-    }
+  const handleSingleReview = async (extractionId: string, decision: "approve" | "reject") => {
+    setReviewDecision(decision);
+    await submitReview(extractionId, handleRefresh);
   };
 
   const handleBatchReview = async () => {
-    if (selectedIds.size === 0) return;
-
-    try {
-      const result = await batchReview({
-        extraction_ids: Array.from(selectedIds),
-        decision: reviewDecision,
-        notes: reviewNotes || undefined,
-      });
-
-      setReviewDialogOpen(false);
-      setReviewNotes("");
-      handleRefresh();
-
-      if (result.failed > 0) {
-        showError(new Error(`Batch review completed: ${result.succeeded} succeeded, ${result.failed} failed`));
-      }
-    } catch (err) {
-      showError(err);
-    }
+    await submitBatchReview(selectedIds, () => {
+      clearSelection();
+      refresh();
+    });
   };
 
   const openBatchReviewDialog = (decision: "approve" | "reject") => {
     setReviewDecision(decision);
-    setReviewDialogOpen(true);
+    openReviewDialog(decision);
   };
 
   const getStatusColor = (status: string) => {
@@ -281,11 +207,11 @@ export function ReviewQueueView() {
         </Paper>
 
         {/* Batch Actions */}
-        {selectedIds.size > 0 && (
+        {selectedCount > 0 && (
           <Paper sx={{ p: 2, bgcolor: "action.selected" }}>
             <Stack direction="row" spacing={2} alignItems="center">
               <Typography>
-                {selectedIds.size} selected
+                {selectedCount} selected
               </Typography>
               <Button
                 variant="contained"
@@ -305,7 +231,7 @@ export function ReviewQueueView() {
               </Button>
               <Button
                 startIcon={<DeselectIcon />}
-                onClick={handleDeselectAll}
+                onClick={clearSelection}
               >
                 Deselect All
               </Button>
@@ -347,7 +273,7 @@ export function ReviewQueueView() {
                 <ListItem>
                   <Checkbox
                     checked={selectedIds.has(extraction.id)}
-                    onChange={() => handleToggleSelect(extraction.id)}
+                    onChange={() => toggleSelection(extraction.id)}
                   />
                   <ListItemText
                     primary={
@@ -446,7 +372,7 @@ export function ReviewQueueView() {
         {/* Load More */}
         {hasMore && !isLoading && extractions.length > 0 && (
           <Box sx={{ display: "flex", justifyContent: "center" }}>
-            <Button onClick={handleLoadMore} variant="outlined">
+            <Button onClick={loadMore} variant="outlined">
               Load More
             </Button>
           </Box>
@@ -454,9 +380,9 @@ export function ReviewQueueView() {
       </Stack>
 
       {/* Batch Review Dialog */}
-      <Dialog open={reviewDialogOpen} onClose={() => setReviewDialogOpen(false)}>
+      <Dialog open={reviewDialogOpen} onClose={closeReviewDialog}>
         <DialogTitle>
-          {reviewDecision === "approve" ? "Approve" : "Reject"} {selectedIds.size} Extractions
+          {reviewDecision === "approve" ? "Approve" : "Reject"} {selectedCount} Extractions
         </DialogTitle>
         <DialogContent>
           <TextField
@@ -470,7 +396,7 @@ export function ReviewQueueView() {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setReviewDialogOpen(false)}>Cancel</Button>
+          <Button onClick={closeReviewDialog}>Cancel</Button>
           <Button
             onClick={handleBatchReview}
             variant="contained"

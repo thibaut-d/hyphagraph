@@ -68,7 +68,7 @@ export function EditSourceView() {
         setSummaryFr(data.summary?.fr || "");
       })
       .catch((err) => {
-        showError(err));
+        showError(err);
       })
       .finally(() => setLoading(false));
   }, [id, t]);
