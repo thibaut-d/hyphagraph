@@ -1,6 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from fastapi import HTTPException, status
 from uuid import UUID
 from datetime import datetime, timedelta, timezone
 
@@ -23,6 +22,12 @@ from app.utils.email import (
     send_password_reset_email,
 )
 from app.config import settings
+from app.utils.errors import (
+    AppException,
+    ErrorCode,
+    ValidationException,
+    UnauthorizedException,
+)
 
 
 class UserService:
@@ -50,14 +55,16 @@ class UserService:
             Created user information (without password)
 
         Raises:
-            HTTPException 400: If email already registered
+            ValidationException: If email already registered
         """
         # Check if email already exists
         existing_user = await self.repo.get_by_email(payload.email)
         if existing_user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered"
+            raise ValidationException(
+                message="Email already registered",
+                field="email",
+                details=f"An account with email '{payload.email}' already exists",
+                context={"email": payload.email}
             )
 
         # Hash password
@@ -100,13 +107,16 @@ class UserService:
             User information
 
         Raises:
-            HTTPException 404: If user not found
+            AppException: If user not found
         """
         user = await self.repo.get_by_id(user_id)
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
+            raise AppException(
+                status_code=404,
+                error_code=ErrorCode.USER_NOT_FOUND,
+                message="User not found",
+                details=f"User with ID '{user_id}' does not exist",
+                context={"user_id": str(user_id)}
             )
 
         return UserRead(
@@ -163,14 +173,17 @@ class UserService:
             Updated user information
 
         Raises:
-            HTTPException 404: If user not found
-            HTTPException 400: If email already in use
+            AppException: If user not found
+            ValidationException: If email already in use
         """
         user = await self.repo.get_by_id(user_id)
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
+            raise AppException(
+                status_code=404,
+                error_code=ErrorCode.USER_NOT_FOUND,
+                message="User not found",
+                details=f"User with ID '{user_id}' does not exist",
+                context={"user_id": str(user_id)}
             )
 
         try:
@@ -179,9 +192,11 @@ class UserService:
                 # Check if email is already in use by another user
                 existing = await self.repo.get_by_email(payload.email)
                 if existing and existing.id != user_id:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="Email already in use"
+                    raise ValidationException(
+                        message="Email already in use",
+                        field="email",
+                        details=f"Another user is already using email '{payload.email}'",
+                        context={"email": payload.email}
                     )
                 user.email = payload.email
 
@@ -224,13 +239,16 @@ class UserService:
             user_id: User UUID
 
         Raises:
-            HTTPException 404: If user not found
+            AppException: If user not found
         """
         user = await self.repo.get_by_id(user_id)
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
+            raise AppException(
+                status_code=404,
+                error_code=ErrorCode.USER_NOT_FOUND,
+                message="User not found",
+                details=f"User with ID '{user_id}' does not exist",
+                context={"user_id": str(user_id)}
             )
 
         try:
@@ -264,13 +282,16 @@ class UserService:
             user_id: User UUID
 
         Raises:
-            HTTPException 404: If user not found
+            AppException: If user not found
         """
         user = await self.repo.get_by_id(user_id)
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
+            raise AppException(
+                status_code=404,
+                error_code=ErrorCode.USER_NOT_FOUND,
+                message="User not found",
+                details=f"User with ID '{user_id}' does not exist",
+                context={"user_id": str(user_id)}
             )
 
         try:
@@ -296,16 +317,15 @@ class UserService:
             Authenticated user
 
         Raises:
-            HTTPException 401: If credentials invalid
+            UnauthorizedException: If credentials invalid
         """
         user = await self.repo.get_by_email(email)
 
         # Verify user exists and password is correct
         if not user or not await verify_password(password, user.hashed_password):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Incorrect email or password",
-                headers={"WWW-Authenticate": "Bearer"},
+            raise UnauthorizedException(
+                message="Incorrect email or password",
+                details="Invalid credentials provided"
             )
 
         # Reactivate user if they were deactivated
@@ -336,21 +356,24 @@ class UserService:
             new_password: New password to set
 
         Raises:
-            HTTPException 404: If user not found
-            HTTPException 401: If current password incorrect
+            AppException: If user not found
+            UnauthorizedException: If current password incorrect
         """
         user = await self.repo.get_by_id(user_id)
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
+            raise AppException(
+                status_code=404,
+                error_code=ErrorCode.USER_NOT_FOUND,
+                message="User not found",
+                details=f"User with ID '{user_id}' does not exist",
+                context={"user_id": str(user_id)}
             )
 
         # Verify current password
         if not await verify_password(current_password, user.hashed_password):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Current password is incorrect"
+            raise UnauthorizedException(
+                message="Current password is incorrect",
+                details="The provided current password does not match"
             )
 
         try:
@@ -413,7 +436,7 @@ class UserService:
             New access token
 
         Raises:
-            HTTPException 401: If refresh token invalid or expired
+            UnauthorizedException: If refresh token invalid or expired
         """
         from sqlalchemy import select
 
@@ -431,19 +454,18 @@ class UserService:
 
         # Verify with bcrypt for security (prevents collision attacks on SHA256)
         if not matched_token or not await verify_refresh_token(refresh_token, matched_token.token_hash):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid or expired refresh token",
-                headers={"WWW-Authenticate": "Bearer"},
+            raise UnauthorizedException(
+                message="Invalid or expired refresh token",
+                details="The provided refresh token is invalid, expired, or has been revoked"
             )
 
         # Get user associated with the token
         user = await self.repo.get_by_id(matched_token.user_id)
 
         if not user or not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not found or inactive"
+            raise UnauthorizedException(
+                message="User not found or inactive",
+                details="The user associated with this token does not exist or is inactive"
             )
 
         # Create new access token
@@ -460,7 +482,7 @@ class UserService:
             refresh_token: Plain refresh token to revoke
 
         Raises:
-            HTTPException 404: If refresh token not found
+            AppException: If refresh token not found
         """
         from sqlalchemy import select
 
@@ -478,9 +500,12 @@ class UserService:
 
         # Verify with bcrypt for security (prevents collision attacks on SHA256)
         if not matched_token or not await verify_refresh_token(refresh_token, matched_token.token_hash):
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Refresh token not found"
+            raise AppException(
+                status_code=404,
+                error_code=ErrorCode.NOT_FOUND,
+                message="Refresh token not found",
+                details="The specified refresh token could not be found or is already revoked",
+                context={"user_id": str(user_id)}
             )
 
         try:
@@ -504,13 +529,16 @@ class UserService:
             Verification token
 
         Raises:
-            HTTPException 404: If user not found
+            AppException: If user not found
         """
         user = await self.repo.get_by_id(user_id)
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
+            raise AppException(
+                status_code=404,
+                error_code=ErrorCode.USER_NOT_FOUND,
+                message="User not found",
+                details=f"User with ID '{user_id}' does not exist",
+                context={"user_id": str(user_id)}
             )
 
         try:
@@ -543,7 +571,7 @@ class UserService:
             Verified user information
 
         Raises:
-            HTTPException 400: If token invalid or expired
+            ValidationException: If token invalid or expired
         """
         # Find user by verification token
         stmt = select(User).where(User.verification_token == token)
@@ -551,17 +579,17 @@ class UserService:
         user = result.scalar_one_or_none()
 
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid verification token"
+            raise ValidationException(
+                message="Invalid verification token",
+                details="The provided verification token does not exist"
             )
 
         # Check if token expired
         if user.verification_token_expires_at is None or \
            user.verification_token_expires_at < datetime.now(timezone.utc):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Verification token has expired"
+            raise ValidationException(
+                message="Verification token has expired",
+                details="Please request a new verification email"
             )
 
         try:
@@ -633,7 +661,7 @@ class UserService:
             Updated user information
 
         Raises:
-            HTTPException 400: If token invalid or expired
+            ValidationException: If token invalid or expired
         """
         # Find user by reset token
         stmt = select(User).where(User.reset_token == token)
@@ -641,17 +669,17 @@ class UserService:
         user = result.scalar_one_or_none()
 
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid or expired reset token"
+            raise ValidationException(
+                message="Invalid or expired reset token",
+                details="The provided reset token does not exist or has already been used"
             )
 
         # Check if token expired
         if user.reset_token_expires_at is None or \
            user.reset_token_expires_at < datetime.now(timezone.utc):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Reset token has expired"
+            raise ValidationException(
+                message="Reset token has expired",
+                details="Please request a new password reset"
             )
 
         try:

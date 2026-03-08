@@ -47,7 +47,7 @@ async def hash_password(password: str) -> str:
     password_bytes = password.encode('utf-8')[:72]
 
     # Run blocking bcrypt in thread pool
-    def _hash():
+    def _hash() -> str:
         salt = bcrypt.gensalt(rounds=settings.BCRYPT_ROUNDS)
         hashed = bcrypt.hashpw(password_bytes, salt)
         return hashed.decode('utf-8')
@@ -186,7 +186,7 @@ async def hash_refresh_token(token: str) -> str:
     token_bytes = token.encode('utf-8')[:72]
 
     # Run blocking bcrypt in thread pool
-    def _hash():
+    def _hash() -> str:
         salt = bcrypt.gensalt(rounds=settings.BCRYPT_ROUNDS)
         hashed = bcrypt.hashpw(token_bytes, salt)
         return hashed.decode('utf-8')

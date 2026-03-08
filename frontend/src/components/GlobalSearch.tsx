@@ -13,6 +13,7 @@ import {
 import SearchIcon from "@mui/icons-material/Search";
 import { getSuggestions, SearchSuggestion } from "../api/search";
 import { useDebounce } from "../hooks/useDebounce";
+import { useNotification } from "../notifications/NotificationContext";
 
 /**
  * GlobalSearch component for the main navigation header.

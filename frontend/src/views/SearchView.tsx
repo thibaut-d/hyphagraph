@@ -21,11 +21,13 @@ import {
 } from "@mui/material";
 
 import { search, SearchResult, SearchResultType } from "../api/search";
+import { useNotification } from "../notifications/NotificationContext";
 
 const RESULTS_PER_PAGE = 20;
 
 export function SearchView() {
   const { t } = useTranslation();
+  const { showError } = useNotification();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const initialQuery = searchParams.get("q") || "";
@@ -37,7 +39,6 @@ export function SearchView() {
   const [sourceCount, setSourceCount] = useState(0);
   const [relationCount, setRelationCount] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [typeFilter, setTypeFilter] = useState<SearchResultType[]>([]);
 
@@ -54,8 +55,6 @@ export function SearchView() {
       }
 
       setLoading(true);
-      setError(null);
-
       try {
         const response = await search({
           query: searchQuery.trim(),
@@ -71,7 +70,7 @@ export function SearchView() {
         setRelationCount(response.relation_count);
       } catch (err) {
         console.error("Search failed:", err);
-        setError("Failed to perform search. Please try again.");
+        showError(new Error("Failed to perform search. Please try again."));
         setResults([]);
         setTotal(0);
       } finally {
@@ -196,9 +195,7 @@ export function SearchView() {
         )}
 
         {/* Error State */}
-        {error && (
-          <Alert severity="error">{error}</Alert>
-        )}
+        
 
         {/* Results */}
         {!loading && query && (

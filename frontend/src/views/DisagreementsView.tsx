@@ -18,6 +18,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useNotification } from "../notifications/NotificationContext";
 import {
   Typography,
   Paper,
@@ -79,23 +80,22 @@ interface DisagreementGroup {
 export function DisagreementsView() {
   const { id } = useParams<{ id: string }>();
   const { t, i18n } = useTranslation();
+  const { showError } = useNotification();
   const navigate = useNavigate();
 
   const [entity, setEntity] = useState<EntityRead | null>(null);
   const [inference, setInference] = useState<InferenceRead | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // Fetch entity and inferences
   useEffect(() => {
     if (!id) {
-      setError("Missing entity ID");
+      showError(new Error("Missing entity ID"));
       setLoading(false);
       return;
     }
 
     setLoading(true);
-    setError(null);
 
     Promise.all([
       getEntity(id),
@@ -106,13 +106,12 @@ export function DisagreementsView() {
         setInference(inferenceData);
       })
       .catch((err) => {
-        console.error("Failed to load disagreements:", err);
-        setError(err.message || "Failed to load disagreements");
+        showError(err);
       })
       .finally(() => {
         setLoading(false);
       });
-  }, [id]);
+  }, [id, showError]);
 
   // Loading state
   if (loading) {

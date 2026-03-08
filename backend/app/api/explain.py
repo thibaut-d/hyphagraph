@@ -5,7 +5,7 @@ Provides detailed explanations of computed inferences,
 allowing users to trace inference scores back to source documents.
 """
 
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 from typing import Optional
@@ -14,6 +14,7 @@ import json
 from app.database import get_db
 from app.schemas.explanation import ExplanationRead
 from app.services.explanation_service import ExplanationService
+from app.utils.errors import AppException, ErrorCode, ValidationException
 
 
 router = APIRouter()
@@ -66,24 +67,35 @@ async def explain_inference(
         try:
             scope_filter = json.loads(scope)
             if not isinstance(scope_filter, dict):
-                raise HTTPException(
-                    status_code=400,
-                    detail="Scope must be a JSON object"
+                raise ValidationException(
+                    message="Invalid scope parameter",
+                    field="scope",
+                    details="Scope must be a JSON object"
                 )
         except json.JSONDecodeError as e:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid JSON in scope parameter: {str(e)}"
+            raise ValidationException(
+                message="Invalid JSON in scope parameter",
+                field="scope",
+                details=str(e)
             )
 
     try:
         return await service.explain_inference(entity_id, role_type, scope_filter)
     except ValueError as e:
         # Role type not found
-        raise HTTPException(status_code=404, detail=str(e))
+        raise AppException(
+            status_code=404,
+            error_code=ErrorCode.NOT_FOUND,
+            message="Role type not found",
+            details=str(e),
+            context={"entity_id": str(entity_id), "role_type": role_type}
+        )
     except Exception as e:
         # Unexpected error
-        raise HTTPException(
+        raise AppException(
             status_code=500,
-            detail=f"Failed to generate explanation: {str(e)}"
+            error_code=ErrorCode.INTERNAL_SERVER_ERROR,
+            message="Failed to generate explanation",
+            details=str(e),
+            context={"entity_id": str(entity_id), "role_type": role_type}
         )

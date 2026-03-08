@@ -8,7 +8,12 @@ import logging
 from dataclasses import dataclass
 import httpx
 from bs4 import BeautifulSoup
-from fastapi import HTTPException, status
+
+from app.utils.errors import (
+    AppException,
+    ErrorCode,
+    ValidationException,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -86,10 +91,12 @@ class UrlFetcher:
                 content_type = response.headers.get("content-type", "").lower()
 
                 if "html" not in content_type:
-                    raise HTTPException(
-                        status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-                        detail=f"Unsupported content type: {content_type}. "
-                               "Only HTML pages are supported."
+                    raise AppException(
+                        status_code=415,
+                        error_code=ErrorCode.DOCUMENT_UNSUPPORTED_FORMAT,
+                        message="Unsupported content type",
+                        details=f"Content type '{content_type}' is not supported. Only HTML pages are supported.",
+                        context={"content_type": content_type, "url": url}
                     )
 
                 # Check response size
@@ -97,10 +104,12 @@ class UrlFetcher:
                 max_size = self.MAX_RESPONSE_SIZE_MB * 1024 * 1024
 
                 if content_length > max_size:
-                    raise HTTPException(
-                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                        detail=f"Response too large: {content_length / 1024 / 1024:.1f}MB. "
-                               f"Maximum size: {self.MAX_RESPONSE_SIZE_MB}MB"
+                    raise AppException(
+                        status_code=413,
+                        error_code=ErrorCode.DOCUMENT_TOO_LARGE,
+                        message="Response too large",
+                        details=f"Response size {content_length / 1024 / 1024:.1f}MB exceeds maximum of {self.MAX_RESPONSE_SIZE_MB}MB",
+                        context={"size_mb": content_length / 1024 / 1024, "max_mb": self.MAX_RESPONSE_SIZE_MB, "url": url}
                     )
 
                 # Parse HTML
@@ -133,29 +142,41 @@ class UrlFetcher:
 
         except httpx.HTTPStatusError as e:
             logger.error(f"HTTP error fetching {url}: {e.response.status_code}")
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Failed to fetch URL (HTTP {e.response.status_code}): {url}"
+            raise AppException(
+                status_code=502,
+                error_code=ErrorCode.DOCUMENT_FETCH_FAILED,
+                message="Failed to fetch URL",
+                details=f"HTTP {e.response.status_code} error",
+                context={"url": url, "http_status": e.response.status_code}
             )
         except httpx.TimeoutException:
             logger.error(f"Timeout fetching {url}")
-            raise HTTPException(
-                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-                detail=f"Request timeout after {self.TIMEOUT_SECONDS}s: {url}"
+            raise AppException(
+                status_code=504,
+                error_code=ErrorCode.DOCUMENT_FETCH_FAILED,
+                message="URL fetch timeout",
+                details=f"Request timeout after {self.TIMEOUT_SECONDS}s",
+                context={"url": url, "timeout_seconds": self.TIMEOUT_SECONDS}
             )
         except httpx.RequestError as e:
             logger.error(f"Request error fetching {url}: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Failed to fetch URL: {str(e)}"
+            raise AppException(
+                status_code=502,
+                error_code=ErrorCode.DOCUMENT_FETCH_FAILED,
+                message="Failed to fetch URL",
+                details=str(e),
+                context={"url": url}
             )
-        except HTTPException:
+        except AppException:
             raise
         except Exception as e:
             logger.error(f"Unexpected error fetching {url}: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to process URL: {str(e)}"
+            raise AppException(
+                status_code=500,
+                error_code=ErrorCode.INTERNAL_SERVER_ERROR,
+                message="Failed to process URL",
+                details=str(e),
+                context={"url": url}
             )
 
     def _extract_text_from_html(self, html: str, url: str) -> tuple[str, str | None]:

@@ -46,6 +46,7 @@ import { GlobalSearch } from "./GlobalSearch";
 import { useAuthContext } from "../auth/AuthContext";
 import { getEntityFilterOptions } from "../api/entities";
 import type { UICategoryOption } from "../api/entities";
+import { useNotification } from "../notifications/NotificationContext";
 
 const menuItems = [
   { key: "menu.home", path: "/", icon: HomeIcon },
@@ -59,6 +60,7 @@ export function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { showError } = useNotification();
   const { user } = useAuthContext();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));

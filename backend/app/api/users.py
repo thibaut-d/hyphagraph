@@ -13,6 +13,7 @@ from app.models.user import User
 from app.schemas.auth import UserRead, UserUpdate
 from app.services.user_service import UserService
 from app.dependencies.auth import get_current_active_superuser
+from app.utils.errors import ValidationException
 
 
 router = APIRouter(prefix="/users", tags=["User Management"])
@@ -63,7 +64,7 @@ async def get_user(
         User information
 
     Raises:
-        HTTPException 404: If user not found
+        AppException: If user not found
     """
     return await user_service.get(user_id)
 
@@ -93,8 +94,8 @@ async def update_user(
         Updated user information
 
     Raises:
-        HTTPException 404: If user not found
-        HTTPException 400: If email already in use
+        AppException: If user not found
+        ValidationException: If email already in use
     """
     return await user_service.update(user_id, payload)
 
@@ -122,15 +123,14 @@ async def delete_user(
         No content (204)
 
     Raises:
-        HTTPException 404: If user not found
-        HTTPException 400: If trying to delete self
+        AppException: If user not found
+        ValidationException: If trying to delete self
     """
     # Prevent admin from deleting themselves
     if user_id == current_superuser.id:
-        from fastapi import HTTPException
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete your own account"
+        raise ValidationException(
+            message="Cannot delete your own account",
+            details="Administrators cannot delete their own accounts for security reasons"
         )
 
     await user_service.delete(user_id)

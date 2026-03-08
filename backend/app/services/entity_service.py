@@ -1,7 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, func, and_, distinct, case
 from sqlalchemy.exc import IntegrityError
-from fastapi import HTTPException, status
 from typing import Optional, Tuple
 from uuid import UUID
 from datetime import datetime
@@ -22,6 +21,7 @@ from app.mappers.entity_mapper import (
 )
 from app.utils.revision_helpers import get_current_revision, create_new_revision
 from app.services.derived_properties_service import DerivedPropertiesService
+from app.utils.errors import EntityNotFoundException, ValidationException, ErrorCode
 
 
 class EntityService:
@@ -29,7 +29,7 @@ class EntityService:
         self.db = db
         self.repo = EntityRepository(db)
 
-    async def create(self, payload: EntityWrite, user_id=None) -> EntityRead:
+    async def create(self, payload: EntityWrite, user_id: UUID | None = None) -> EntityRead:
         """
         Create a new entity with its first revision.
 
@@ -69,9 +69,11 @@ class EntityService:
             error_msg = str(e.orig).lower()
             if ('ix_entity_revisions_slug_current_unique' in error_msg or
                 'unique constraint failed: entity_revisions.slug' in error_msg):
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail=f"An entity with slug '{payload.slug}' already exists"
+                raise ValidationException(
+                    message="Entity slug already exists",
+                    field="slug",
+                    details=f"An entity with slug '{payload.slug}' already exists",
+                    context={"slug": payload.slug}
                 )
             # Re-raise other integrity errors
             raise
@@ -79,13 +81,12 @@ class EntityService:
             await self.db.rollback()
             raise
 
-    async def get(self, entity_id) -> EntityRead:
+    async def get(self, entity_id: UUID) -> EntityRead:
         """Get entity with its current revision."""
         entity = await self.repo.get_by_id(entity_id)
         if not entity:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Entity not found",
+            raise EntityNotFoundException(
+                entity_id=str(entity_id)
             )
 
         # Get current revision
@@ -316,7 +317,7 @@ class EntityService:
 
         return items, total
 
-    async def update(self, entity_id: str, payload: EntityWrite, user_id=None) -> EntityRead:
+    async def update(self, entity_id: str, payload: EntityWrite, user_id: UUID | None = None) -> EntityRead:
         """
         Update an entity by creating a new revision.
 
@@ -327,9 +328,8 @@ class EntityService:
             # Verify entity exists
             entity = await self.repo.get_by_id(entity_id)
             if not entity:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Entity not found",
+                raise EntityNotFoundException(
+                    entity_id=str(entity_id)
                 )
 
             # Create new revision with updated data
@@ -349,7 +349,7 @@ class EntityService:
             await self.db.commit()
             return entity_to_read(entity, revision)
 
-        except HTTPException:
+        except (EntityNotFoundException, ValidationException):
             raise
         except Exception:
             await self.db.rollback()
@@ -365,16 +365,15 @@ class EntityService:
         try:
             entity = await self.repo.get_by_id(entity_id)
             if not entity:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Entity not found",
+                raise EntityNotFoundException(
+                    entity_id=str(entity_id)
                 )
 
             # Delete the entity (cascade should handle revisions)
             await self.repo.delete(entity)
             await self.db.commit()
 
-        except HTTPException:
+        except EntityNotFoundException:
             raise
         except Exception:
             await self.db.rollback()

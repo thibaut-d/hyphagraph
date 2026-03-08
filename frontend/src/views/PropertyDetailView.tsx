@@ -35,27 +35,25 @@ import { getExplanation, ExplanationRead } from "../api/explanations";
 import { getEntity } from "../api/entities";
 import type { EntityRead } from "../types/entity";
 import { EvidenceTrace } from "../components/EvidenceTrace";
+import { useNotification } from "../notifications/NotificationContext";
 
 export function PropertyDetailView() {
   const { id, roleType } = useParams<{ id: string; roleType: string }>();
   const { t } = useTranslation();
+  const { showError } = useNotification();
   const navigate = useNavigate();
 
   const [entity, setEntity] = useState<EntityRead | null>(null);
   const [explanation, setExplanation] = useState<ExplanationRead | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   useEffect(() => {
     if (!id || !roleType) {
-      setError("Missing entity ID or role type");
+      showError(new Error("Missing entity ID or role type"));
       setLoading(false);
       return;
     }
 
     setLoading(true);
-    setError(null);
-
     Promise.all([getEntity(id), getExplanation(id, roleType)])
       .then(([entityData, explanationData]) => {
         setEntity(entityData);
@@ -63,7 +61,7 @@ export function PropertyDetailView() {
       })
       .catch((err) => {
         console.error("Failed to load property details:", err);
-        setError(err.message || "Failed to load property details");
+        showError(err);
       })
       .finally(() => {
         setLoading(false);

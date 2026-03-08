@@ -32,34 +32,32 @@ import InfoIcon from "@mui/icons-material/Info";
 
 import { getExplanation, ExplanationRead } from "../api/explanations";
 import { EvidenceTrace } from "../components/EvidenceTrace";
+import { useNotification } from "../notifications/NotificationContext";
 
 
 export function ExplanationView() {
   const { entityId, roleType } = useParams<{ entityId: string; roleType: string }>();
   const { t } = useTranslation();
+  const { showError } = useNotification();
   const navigate = useNavigate();
 
   const [explanation, setExplanation] = useState<ExplanationRead | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   useEffect(() => {
     if (!entityId || !roleType) {
-      setError("Missing entity ID or role type");
+      showError(new Error("Missing entity ID or role type"));
       setLoading(false);
       return;
     }
 
     setLoading(true);
-    setError(null);
-
     getExplanation(entityId, roleType)
       .then((data) => {
         setExplanation(data);
       })
       .catch((err) => {
         console.error("Failed to load explanation:", err);
-        setError(err.message || "Failed to load explanation");
+        showError(err);
       })
       .finally(() => {
         setLoading(false);

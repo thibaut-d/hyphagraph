@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, UploadFile, File, HTTPException, status
+from fastapi import APIRouter, Depends, Query, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 from typing import Optional, List
@@ -14,6 +14,7 @@ from app.services.pubmed_fetcher import PubMedFetcher
 from app.services.url_fetcher import UrlFetcher
 from app.dependencies.auth import get_current_user
 from app.utils.source_quality import infer_trust_level_from_pubmed_metadata, website_trust_level
+from app.utils.errors import AppException, ErrorCode
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -124,13 +125,16 @@ async def extract_metadata_from_url(
                 source_metadata={"fetched_url": fetch_result.url}
             )
 
-    except HTTPException:
+    except AppException:
         raise
     except Exception as e:
         logger.error(f"Metadata extraction failed: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to extract metadata from URL: {str(e)}"
+        raise AppException(
+            status_code=500,
+            error_code=ErrorCode.INTERNAL_SERVER_ERROR,
+            message="Failed to extract metadata from URL",
+            details=str(e),
+            context={"url": request.url}
         )
 
 

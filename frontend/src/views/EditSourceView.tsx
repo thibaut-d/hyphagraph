@@ -19,6 +19,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { getSource, updateSource, SourceWrite } from "../api/sources";
 import { SourceRead } from "../types/source";
 import { invalidateSourceFilterCache } from "../utils/cacheUtils";
+import { useNotification } from "../notifications/NotificationContext";
 
 const SOURCE_KINDS = [
   "article",
@@ -34,6 +35,7 @@ const SOURCE_KINDS = [
 export function EditSourceView() {
   const { id } = useParams<{ id: string }>();
   const { t } = useTranslation();
+  const { showError } = useNotification();
   const navigate = useNavigate();
 
   const [source, setSource] = useState<SourceRead | null>(null);
@@ -46,7 +48,6 @@ export function EditSourceView() {
   const [trustLevel, setTrustLevel] = useState("0.5");
   const [summaryEn, setSummaryEn] = useState("");
   const [summaryFr, setSummaryFr] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -67,15 +68,13 @@ export function EditSourceView() {
         setSummaryFr(data.summary?.fr || "");
       })
       .catch((err) => {
-        setError(err.message || t("common.error", "An error occurred"));
+        showError(err));
       })
       .finally(() => setLoading(false));
   }, [id, t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-
     if (!title.trim()) {
       setError(t("create_source.title_required", "Title is required"));
       return;
@@ -119,7 +118,7 @@ export function EditSourceView() {
       // Navigate back to the source detail page
       navigate(`/sources/${id}`);
     } catch (e: any) {
-      setError(e.message || t("edit_source.error", "Failed to update source"));
+      showError(e);
       setSaving(false);
     }
   };

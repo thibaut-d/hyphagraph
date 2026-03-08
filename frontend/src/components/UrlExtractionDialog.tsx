@@ -18,6 +18,7 @@ import {
   CircularProgress,
 } from "@mui/material";
 import { Link as LinkIcon, CheckCircle as CheckCircleIcon } from "@mui/icons-material";
+import { useNotification } from "../notifications/NotificationContext";
 
 interface UrlExtractionDialogProps {
   open: boolean;
@@ -52,8 +53,6 @@ export function UrlExtractionDialog({
       setUrl(defaultUrl);
     }
   }, [open, defaultUrl]);
-  const [error, setError] = useState<string | null>(null);
-
   const isPubMedUrl = (urlString: string): boolean => {
     try {
       const urlObj = new URL(urlString);
@@ -76,15 +75,13 @@ export function UrlExtractionDialog({
   };
 
   const handleSubmit = async () => {
-    setError(null);
-
     if (!url.trim()) {
-      setError("Please enter a URL");
+      showError(new Error("Please enter a URL"));
       return;
     }
 
     if (!validateUrl(url)) {
-      setError("Please enter a valid URL (e.g., https://pubmed.ncbi.nlm.nih.gov/...)");
+      showError(new Error("Please enter a valid URL (e.g., https://pubmed.ncbi.nlm.nih.gov/...)"));
       return;
     }
 
@@ -98,9 +95,7 @@ export function UrlExtractionDialog({
 
   const handleClose = () => {
     if (!loading) {
-      setUrl("");
-      setError(null);
-      onClose();
+      setUrl("");      onClose();
     }
   };
 
@@ -133,9 +128,7 @@ export function UrlExtractionDialog({
             placeholder="https://pubmed.ncbi.nlm.nih.gov/12345678/"
             value={url}
             onChange={(e) => {
-              setUrl(e.target.value);
-              setError(null);
-            }}
+              setUrl(e.target.value);            }}
             disabled={loading}
             error={Boolean(error)}
             helperText={error || urlType}

@@ -27,6 +27,7 @@ import SearchIcon from "@mui/icons-material/Search";
 
 import { createSource, SourceWrite, extractMetadataFromUrl } from "../api/sources";
 import { invalidateSourceFilterCache } from "../utils/cacheUtils";
+import { useNotification } from "../notifications/NotificationContext";
 
 const SOURCE_KINDS = [
   "article",
@@ -86,6 +87,7 @@ function _getQualityBadge(value: number): {
 
 export function CreateSourceView() {
   const { t } = useTranslation();
+  const { showError } = useNotification();
   const navigate = useNavigate();
 
   // Form state
@@ -105,7 +107,6 @@ export function CreateSourceView() {
   const [extractError, setExtractError] = useState<string | null>(null);
   const [autofilled, setAutofilled] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleExtractMetadata = async () => {
@@ -149,8 +150,6 @@ export function CreateSourceView() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-
     if (!title.trim()) {
       setError(t("create_source.title_required", "Title is required"));
       return;
@@ -193,7 +192,7 @@ export function CreateSourceView() {
       // Navigate to the created source
       navigate(`/sources/${created.id}`);
     } catch (e: any) {
-      setError(e.message || t("create_source.error", "Failed to create source"));
+      showError(e);
       setLoading(false);
     }
   };

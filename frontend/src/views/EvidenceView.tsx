@@ -17,6 +17,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useNotification } from "../notifications/NotificationContext";
 import {
   Typography,
   Paper,
@@ -87,12 +88,12 @@ function resolveRelationNotes(
 export function EvidenceView() {
   const { id, roleType } = useParams<{ id: string; roleType?: string }>();
   const { t, i18n } = useTranslation();
+  const { showError } = useNotification();
   const navigate = useNavigate();
 
   const [entity, setEntity] = useState<EntityRead | null>(null);
   const [relations, setRelations] = useState<EnrichedRelation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const [sortField, setSortField] = useState<SortField>("confidence");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
@@ -100,13 +101,12 @@ export function EvidenceView() {
   // Fetch entity and relations
   useEffect(() => {
     if (!id) {
-      setError("Missing entity ID");
+      showError(new Error("Missing entity ID"));
       setLoading(false);
       return;
     }
 
     setLoading(true);
-    setError(null);
 
     Promise.all([
       getEntity(id),
@@ -150,13 +150,12 @@ export function EvidenceView() {
         setRelations(enrichedRelations);
       })
       .catch((err) => {
-        console.error("Failed to load evidence:", err);
-        setError(err.message || "Failed to load evidence");
+        showError(err);
       })
       .finally(() => {
         setLoading(false);
       });
-  }, [id, roleType]);
+  }, [id, roleType, showError]);
 
   // Handle sorting
   const handleSort = (field: SortField) => {
@@ -203,10 +202,10 @@ export function EvidenceView() {
   }
 
   // Error state
-  if (error || !entity) {
+  if (!entity && !loading) {
     return (
       <Alert severity="error">
-        {error || t("common.error", "An error occurred")}
+        {t("common.error", "An error occurred")}
       </Alert>
     );
   }

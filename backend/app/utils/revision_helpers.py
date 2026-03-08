@@ -9,7 +9,7 @@ Provides common patterns for:
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
-from typing import TypeVar, Type, Generic
+from typing import TypeVar, Type, Generic, Any
 
 # Generic type for revision models
 TRevision = TypeVar('TRevision')
@@ -59,7 +59,7 @@ async def create_new_revision(
     revision_class: Type[TRevision],
     parent_id_field: str,
     parent_id: UUID,
-    revision_data: dict,
+    revision_data: dict[str, Any],
     set_as_current: bool = True,
 ) -> TRevision:
     """

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link as RouterLink, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useNotification } from "../notifications/NotificationContext";
 
 import {
   Paper,
@@ -43,6 +44,7 @@ import { UrlExtractionDialog } from "../components/UrlExtractionDialog";
 export function SourceDetailView() {
   const { id } = useParams<{ id: string }>();
   const { t } = useTranslation();
+  const { showError } = useNotification();
   const navigate = useNavigate();
 
   const [source, setSource] = useState<SourceRead | null>(null);
@@ -56,7 +58,6 @@ export function SourceDetailView() {
   // Extraction workflow state
   const [autoExtracting, setAutoExtracting] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
   const [extractionPreview, setExtractionPreview] = useState<DocumentExtractionPreview | null>(null);
   const [saveResult, setSaveResult] = useState<SaveExtractionResult | null>(null);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
@@ -121,7 +122,6 @@ export function SourceDetailView() {
     if (!id || !source) return;
 
     setAutoExtracting(true);
-    setUploadError(null);
     setSaveResult(null);
 
     try {
@@ -131,11 +131,11 @@ export function SourceDetailView() {
         setExtractionPreview(preview);
       } else {
         // No URL available - prompt for upload
-        setUploadError("No URL available. Please upload a document or provide a URL.");
+        showError(new Error("No URL available. Please upload a document or provide a URL."));
         setAutoExtracting(false);
       }
     } catch (error) {
-      setUploadError(error instanceof Error ? error.message : "Failed to auto-extract knowledge");
+      showError(error);
       setAutoExtracting(false);
     } finally {
       setAutoExtracting(false);
@@ -147,7 +147,6 @@ export function SourceDetailView() {
     if (!file || !id) return;
 
     setUploading(true);
-    setUploadError(null);
     setSaveResult(null);
     setUploadedFileName(file.name);
 
@@ -155,7 +154,7 @@ export function SourceDetailView() {
       const preview = await uploadAndExtract(id, file);
       setExtractionPreview(preview);
     } catch (error) {
-      setUploadError(error instanceof Error ? error.message : "Failed to upload and extract");
+      showError(error);
       setUploadedFileName(null);
     } finally {
       setUploading(false);
@@ -185,7 +184,6 @@ export function SourceDetailView() {
     if (!id) return;
 
     setUrlExtracting(true);
-    setUploadError(null);
     setSaveResult(null);
 
     try {
@@ -193,7 +191,7 @@ export function SourceDetailView() {
       setExtractionPreview(preview);
       setUrlDialogOpen(false);
     } catch (error) {
-      setUploadError(error instanceof Error ? error.message : "Failed to extract from URL");
+      showError(error);
       throw error; // Re-throw to let dialog handle error display
     } finally {
       setUrlExtracting(false);
@@ -312,12 +310,6 @@ export function SourceDetailView() {
               })}
               {" "}
               {t("sources.can_reextract", "You can extract again to add more knowledge.")}
-            </Alert>
-          )}
-
-          {uploadError && (
-            <Alert severity="error" onClose={() => setUploadError(null)}>
-              {uploadError}
             </Alert>
           )}
 

@@ -1,9 +1,10 @@
+from typing import Any
 from app.models.source import Source
 from app.models.source_revision import SourceRevision
 from app.schemas.source import SourceWrite, SourceRead, SourceRevisionRead
 
 
-def source_revision_from_write(payload: SourceWrite) -> dict:
+def source_revision_from_write(payload: SourceWrite) -> dict[str, Any]:
     """
     Convert SourceWrite payload to SourceRevision data dict.
 

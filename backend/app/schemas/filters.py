@@ -182,7 +182,7 @@ class UICategoryOption(BaseModel):
     UI category option with i18n labels.
     """
     id: str = Field(..., description="UI category ID")
-    label: dict = Field(..., description="i18n labels (language code -> label)", json_schema_extra={"example": {"en": "Drug", "fr": "Médicament"}})
+    label: dict[str, str] = Field(..., description="i18n labels (language code -> label)", json_schema_extra={"example": {"en": "Drug", "fr": "Médicament"}})
 
 
 class ClinicalEffectOption(BaseModel):
@@ -190,7 +190,7 @@ class ClinicalEffectOption(BaseModel):
     Clinical effect option with relation type info.
     """
     type_id: str = Field(..., description="Relation type ID")
-    label: dict = Field(..., description="i18n labels", json_schema_extra={"example": {"en": "Treats", "fr": "Traite"}})
+    label: dict[str, str] = Field(..., description="i18n labels", json_schema_extra={"example": {"en": "Treats", "fr": "Traite"}})
 
 
 class EntityFilterOptions(BaseModel):

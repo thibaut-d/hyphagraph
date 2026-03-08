@@ -19,6 +19,7 @@ import {
 import TranslateIcon from "@mui/icons-material/Translate";
 
 import { listEntityTerms, EntityTermRead } from "../api/entityTerms";
+import { useNotification } from "../notifications/NotificationContext";
 
 interface EntityTermsDisplayProps {
   entityId: string;
@@ -30,16 +31,13 @@ export function EntityTermsDisplay({
   compact = false,
 }: EntityTermsDisplayProps) {
   const { t } = useTranslation();
+  const { showError } = useNotification();
 
   const [terms, setTerms] = useState<EntityTermRead[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   useEffect(() => {
     const loadTerms = async () => {
-      setLoading(true);
-      setError(null);
-      try {
+      setLoading(true);      try {
         const data = await listEntityTerms(entityId);
         setTerms(data);
       } catch (err) {

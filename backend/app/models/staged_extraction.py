@@ -14,13 +14,20 @@ Workflow:
 This provides async quality control without blocking knowledge extraction.
 """
 from sqlalchemy import Column, String, Text, Float, Boolean, ForeignKey, Integer, Enum as SQLEnum, JSON
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from uuid import uuid4
+from uuid import UUID as PyUUID, uuid4
+from typing import Any, TYPE_CHECKING
 import datetime
 import enum
 
 from app.models.base import Base, UUIDMixin, TimestampMixin
+
+if TYPE_CHECKING:
+    from app.models.source import Source
+    from app.models.user import User
+    from app.models.entity import Entity
+    from app.models.relation import Relation
 
 
 class ExtractionStatus(str, enum.Enum):
@@ -63,15 +70,15 @@ class StagedExtraction(Base, UUIDMixin, TimestampMixin):
     )
 
     # Source tracking
-    source_id: Mapped[UUID] = mapped_column(
-        UUID(as_uuid=True),
+    source_id: Mapped[PyUUID] = mapped_column(
+        PGUUID(as_uuid=True),
         ForeignKey("sources.id", ondelete="CASCADE"),
         nullable=False,
         index=True
     )
 
     # LLM extraction data (serialized ExtractedEntity/Relation/Claim)
-    extraction_data: Mapped[dict] = mapped_column(
+    extraction_data: Mapped[dict[str, Any]] = mapped_column(
         JSON,
         nullable=False,
         comment="Original LLM extraction (ExtractedEntity/Relation/Claim schema)"
@@ -92,7 +99,7 @@ class StagedExtraction(Base, UUIDMixin, TimestampMixin):
         comment="Confidence multiplier from validation (0.0-1.0)"
     )
 
-    validation_flags: Mapped[list] = mapped_column(
+    validation_flags: Mapped[list[str]] = mapped_column(
         JSON,
         nullable=False,
         default=list,
@@ -119,8 +126,8 @@ class StagedExtraction(Base, UUIDMixin, TimestampMixin):
     )
 
     # Review metadata
-    reviewed_by: Mapped[UUID | None] = mapped_column(
-        UUID(as_uuid=True),
+    reviewed_by: Mapped[PyUUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
         comment="User who reviewed this extraction"
@@ -138,15 +145,15 @@ class StagedExtraction(Base, UUIDMixin, TimestampMixin):
     )
 
     # Materialization tracking
-    materialized_entity_id: Mapped[UUID | None] = mapped_column(
-        UUID(as_uuid=True),
+    materialized_entity_id: Mapped[PyUUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
         ForeignKey("entities.id", ondelete="SET NULL"),
         nullable=True,
         comment="Entity created from this extraction (if type=entity)"
     )
 
-    materialized_relation_id: Mapped[UUID | None] = mapped_column(
-        UUID(as_uuid=True),
+    materialized_relation_id: Mapped[PyUUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
         ForeignKey("relations.id", ondelete="SET NULL"),
         nullable=True,
         comment="Relation created from this extraction (if type=relation)"
@@ -168,13 +175,13 @@ class StagedExtraction(Base, UUIDMixin, TimestampMixin):
 
     # Relationships
     source: Mapped["Source"] = relationship("Source", back_populates="staged_extractions")
-    reviewer: Mapped["User"] = relationship("User", foreign_keys=[reviewed_by])
-    materialized_entity: Mapped["Entity"] = relationship(
+    reviewer: Mapped["User | None"] = relationship("User", foreign_keys=[reviewed_by])
+    materialized_entity: Mapped["Entity | None"] = relationship(
         "Entity",
         foreign_keys=[materialized_entity_id],
         back_populates="source_extraction"
     )
-    materialized_relation: Mapped["Relation"] = relationship(
+    materialized_relation: Mapped["Relation | None"] = relationship(
         "Relation",
         foreign_keys=[materialized_relation_id],
         back_populates="source_extraction"

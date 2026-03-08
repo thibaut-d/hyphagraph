@@ -1,9 +1,11 @@
+from typing import Any
+from uuid import UUID
 from app.models.entity import Entity
 from app.models.entity_revision import EntityRevision
 from app.schemas.entity import EntityWrite, EntityRead, EntityRevisionRead
 
 
-def entity_revision_from_write(payload: EntityWrite, entity_id=None) -> dict:
+def entity_revision_from_write(payload: EntityWrite, entity_id: UUID | None = None) -> dict[str, Any]:
     """
     Convert EntityWrite payload to EntityRevision data dict.
 

@@ -5,6 +5,7 @@ import { EntityRead } from "../types/entity";
 import { RoleInference } from "../types/inference";
 import { Link as RouterLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useNotification } from "../notifications/NotificationContext";
 
 import {
   Typography,
@@ -110,11 +111,7 @@ function EntityInferenceCard({ item }: { item: EntityWithInferences }) {
             </Box>
           )}
 
-          {error && (
-            <Alert severity="warning">
-              {error}
-            </Alert>
-          )}
+          
 
           {!isLoading && !error && roleInferences.length === 0 && (
             <Typography variant="body2" color="text.secondary" align="center">

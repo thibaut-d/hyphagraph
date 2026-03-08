@@ -1,7 +1,8 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import String, JSON, Boolean, ForeignKey, DateTime, Index, text
 from sqlalchemy.sql import func
-from uuid import UUID
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from uuid import UUID as PyUUID
 from app.models.base import Base, UUIDMixin
 
 
@@ -25,24 +26,27 @@ class EntityRevision(Base, UUIDMixin):
     )
 
     # Link to base entity
-    entity_id: Mapped[UUID] = mapped_column(
+    entity_id: Mapped[PyUUID] = mapped_column(
+        PGUUID(as_uuid=True),
         ForeignKey("entities.id", ondelete="CASCADE"),
         nullable=False,
     )
 
     # Optional UI category (for display purposes only, not semantic)
-    ui_category_id: Mapped[UUID | None] = mapped_column(
+    ui_category_id: Mapped[PyUUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
         ForeignKey("ui_categories.id", ondelete="SET NULL"),
         nullable=True,
     )
 
     # Core fields
     slug: Mapped[str] = mapped_column(String, nullable=False)
-    summary: Mapped[dict | None] = mapped_column(JSON)  # i18n: {"en": "...", "fr": "..."}
+    summary: Mapped[dict[str, str] | None] = mapped_column(JSON)  # i18n: {"en": "...", "fr": "..."}
 
     # Provenance tracking
     created_with_llm: Mapped[str | None] = mapped_column(String)  # e.g., "gpt-4", "claude-3"
-    created_by_user_id: Mapped[UUID | None] = mapped_column(
+    created_by_user_id: Mapped[PyUUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )

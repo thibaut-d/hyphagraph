@@ -7,6 +7,7 @@ Contains system prompts and extraction templates for:
 - Claim extraction
 - Entity linking
 """
+from typing import Any
 
 # =============================================================================
 # System Prompts
@@ -446,7 +447,7 @@ def format_entity_extraction_prompt(text: str) -> str:
     return ENTITY_EXTRACTION_PROMPT.format(text=text)
 
 
-def format_relation_extraction_prompt(text: str, entities: list[dict]) -> str:
+def format_relation_extraction_prompt(text: str, entities: list[dict[str, Any]]) -> str:
     """Format the relation extraction prompt with text and extracted entities."""
     entities_str = "\n".join([
         f"- {e['slug']}: {e.get('summary', 'No description')}"
@@ -467,7 +468,7 @@ def format_batch_extraction_prompt(text: str) -> str:
 
 def format_entity_linking_prompt(
     mentions: list[str],
-    existing_entities: list[dict]
+    existing_entities: list[dict[str, Any]]
 ) -> str:
     """Format the entity linking prompt with mentions and existing entities."""
     mentions_str = ", ".join(f'"{m}"' for m in mentions)

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { resetPassword } from "../api/auth";
+import { useNotification } from "../notifications/NotificationContext";
 
 export default function ResetPasswordView() {
   const [searchParams] = useSearchParams();
@@ -10,32 +11,29 @@ export default function ResetPasswordView() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     if (!token) {
-      setError("Invalid or missing reset token");
+      showError(new Error("Invalid or missing reset token"));
     }
   }, [token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-
     // Validation
     if (newPassword.length < 8) {
-      setError("Password must be at least 8 characters long");
+      showError(new Error("Password must be at least 8 characters long"));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setError("Passwords do not match");
+      showError(new Error("Passwords do not match"));
       return;
     }
 
     if (!token) {
-      setError("Invalid or missing reset token");
+      showError(new Error("Invalid or missing reset token"));
       return;
     }
 

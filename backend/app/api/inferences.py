@@ -7,6 +7,7 @@ import json
 from app.database import get_db
 from app.schemas.inference import InferenceRead
 from app.services.inference_service import InferenceService
+from app.utils.errors import ValidationException
 
 router = APIRouter()
 
@@ -50,10 +51,16 @@ async def infer_entity(
         try:
             scope_filter = json.loads(scope)
             if not isinstance(scope_filter, dict):
-                from fastapi import HTTPException
-                raise HTTPException(status_code=400, detail="Scope must be a JSON object")
+                raise ValidationException(
+                    message="Invalid scope parameter",
+                    field="scope",
+                    details="Scope must be a JSON object"
+                )
         except json.JSONDecodeError as e:
-            from fastapi import HTTPException
-            raise HTTPException(status_code=400, detail=f"Invalid JSON in scope parameter: {str(e)}")
+            raise ValidationException(
+                message="Invalid JSON in scope parameter",
+                field="scope",
+                details=str(e)
+            )
 
     return await service.infer_for_entity(entity_id, scope_filter=scope_filter)

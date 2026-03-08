@@ -1,6 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, and_, cast, String, func, distinct, case
-from fastapi import HTTPException, status
 from typing import Optional, Tuple
 from uuid import UUID
 
@@ -17,6 +16,7 @@ from app.mappers.source_mapper import (
 )
 from app.utils.revision_helpers import get_current_revision, create_new_revision
 from app.services.derived_properties_service import DerivedPropertiesService
+from app.utils.errors import SourceNotFoundException, ValidationException, ErrorCode
 
 
 class SourceService:
@@ -63,9 +63,8 @@ class SourceService:
         """Get source with its current revision."""
         source = await self.repo.get_by_id(source_id)
         if not source:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Source not found",
+            raise SourceNotFoundException(
+                source_id=str(source_id)
             )
 
         # Get current revision
@@ -254,9 +253,8 @@ class SourceService:
             # Verify source exists
             source = await self.repo.get_by_id(source_id)
             if not source:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Source not found",
+                raise SourceNotFoundException(
+                    source_id=str(source_id)
                 )
 
             # Create new revision with updated data
@@ -276,7 +274,7 @@ class SourceService:
             await self.db.commit()
             return source_to_read(source, revision)
 
-        except HTTPException:
+        except SourceNotFoundException:
             raise
         except Exception:
             await self.db.rollback()
@@ -292,16 +290,15 @@ class SourceService:
         try:
             source = await self.repo.get_by_id(source_id)
             if not source:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Source not found",
+                raise SourceNotFoundException(
+                    source_id=str(source_id)
                 )
 
             # Delete the source (cascade should handle revisions)
             await self.repo.delete(source)
             await self.db.commit()
 
-        except HTTPException:
+        except SourceNotFoundException:
             raise
         except Exception:
             await self.db.rollback()
@@ -373,9 +370,8 @@ class SourceService:
             # Get the source
             source = await self.repo.get_by_id(source_id)
             if not source:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Source not found"
+                raise SourceNotFoundException(
+                    source_id=str(source_id)
                 )
 
             # Get current revision
@@ -387,9 +383,9 @@ class SourceService:
             current_revision = result.scalar_one_or_none()
 
             if not current_revision:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="No current revision found for source"
+                raise SourceNotFoundException(
+                    source_id=str(source_id),
+                    details="No current revision found for source"
                 )
 
             # Update document fields
@@ -405,7 +401,7 @@ class SourceService:
 
             await self.db.commit()
 
-        except HTTPException:
+        except SourceNotFoundException:
             raise
         except Exception:
             await self.db.rollback()

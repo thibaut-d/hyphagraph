@@ -5,7 +5,7 @@ These schemas define the structure of search requests and responses
 for entities, sources, and relations.
 """
 
-from typing import Optional, List, Literal
+from typing import Optional, List, Literal, Any
 from pydantic import BaseModel, Field
 from uuid import UUID
 
@@ -107,7 +107,7 @@ class EntitySearchResult(SearchResultBase):
     type: Literal["entity"] = "entity"
     slug: str = Field(..., description="Entity slug")
     ui_category_id: Optional[UUID] = Field(None, description="UI category ID")
-    summary: Optional[dict] = Field(None, description="i18n summary")
+    summary: Optional[dict[str, str]] = Field(None, description="i18n summary")
 
 
 class SourceSearchResult(SearchResultBase):

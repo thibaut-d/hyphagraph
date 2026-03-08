@@ -44,10 +44,12 @@ import { InferenceBlock } from "../components/InferenceBlock";
 import { EntityTermsDisplay } from "../components/EntityTermsDisplay";
 import { FilterDrawer, EntityDetailFilters, EntityDetailFilterValues } from "../components/filters";
 import { useFilterDrawer } from "../hooks/useFilterDrawer";
+import { useNotification } from "../notifications/NotificationContext";
 
 export function EntityDetailView() {
   const { id } = useParams<{ id: string }>();
   const { t } = useTranslation();
+  const { showError } = useNotification();
   const navigate = useNavigate();
 
   const [entity, setEntity] = useState<EntityRead | null>(null);

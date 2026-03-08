@@ -15,18 +15,18 @@ import {
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 import { createEntity, EntityWrite, getEntityFilterOptions, EntityFilterOptions } from "../api/entities";
+import { useNotification } from "../notifications/NotificationContext";
 
 export function CreateEntityView() {
   const { t, i18n } = useTranslation();
+  const { showError } = useNotification();
   const navigate = useNavigate();
 
   const [slug, setSlug] = useState("");
   const [summaryEn, setSummaryEn] = useState("");
   const [summaryFr, setSummaryFr] = useState("");
   const [uiCategoryId, setUiCategoryId] = useState<string | null>(null);
-  const [filterOptions, setFilterOptions] = useState<EntityFilterOptions | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [filterOptions, setFilterOptions] = useState<EntityFilterOptions | null>(null);  const [loading, setLoading] = useState(false);
 
   // Fetch UI category options
   useEffect(() => {
@@ -47,8 +47,6 @@ export function CreateEntityView() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-
     if (!slug.trim()) {
       setError(t("create_entity.slug_required", "Slug is required"));
       return;
@@ -72,7 +70,7 @@ export function CreateEntityView() {
       // Navigate to the created entity
       navigate(`/entities/${created.id}`);
     } catch (e: any) {
-      setError(e.message || t("create_entity.error", "Failed to create entity"));
+      showError(e);
       setLoading(false);
     }
   };

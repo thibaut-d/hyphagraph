@@ -7,7 +7,7 @@ Provides:
 - Get statistics
 - Suggest new type (avoid duplicates)
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field
 
@@ -15,6 +15,7 @@ from app.database import get_db
 from app.services.relation_type_service import RelationTypeService
 from app.dependencies.auth import get_current_user
 from app.models.user import User
+from app.utils.errors import ForbiddenException, ValidationException
 
 
 router = APIRouter(tags=["relation-types"])
@@ -27,7 +28,7 @@ router = APIRouter(tags=["relation-types"])
 class RelationTypeRead(BaseModel):
     """Read schema for relation type."""
     type_id: str
-    label: dict
+    label: dict[str, str]
     description: str
     examples: str | None
     aliases: list[str] | None
@@ -39,7 +40,7 @@ class RelationTypeRead(BaseModel):
 class RelationTypeCreate(BaseModel):
     """Create schema for relation type."""
     type_id: str = Field(..., pattern=r"^[a-z][a-z0-9_]*$", min_length=2, max_length=50)
-    label: dict = Field(..., description="i18n labels: {'en': 'Label', 'fr': 'Libellé'}")
+    label: dict[str, str] = Field(..., description="i18n labels: {'en': 'Label', 'fr': 'Libellé'}")
     description: str = Field(..., min_length=10, max_length=500)
     examples: str | None = None
     aliases: list[str] | None = None
@@ -110,9 +111,9 @@ async def create_relation_type(
     Only superusers can create new relation types.
     """
     if not user.is_superuser:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only superusers can create relation types"
+        raise ForbiddenException(
+            message="Only superusers can create relation types",
+            details="You must be a superuser to create new relation types"
         )
 
     service = RelationTypeService(db)
@@ -142,9 +143,10 @@ async def create_relation_type(
         )
 
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+        raise ValidationException(
+            message="Invalid relation type data",
+            details=str(e),
+            context={"type_id": payload.type_id}
         )
 
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useNotification } from "../notifications/NotificationContext";
 
 import {
   Typography,
@@ -31,6 +32,7 @@ type EntityOption = {
 export function EditRelationView() {
   const { id } = useParams<{ id: string }>();
   const { t } = useTranslation();
+  const { showError } = useNotification();
   const navigate = useNavigate();
 
   const [relation, setRelation] = useState<RelationRead | null>(null);
@@ -43,7 +45,6 @@ export function EditRelationView() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   // Load relation and entities
   useEffect(() => {
@@ -75,10 +76,10 @@ export function EditRelationView() {
         );
       })
       .catch((err) => {
-        setError(err.message || t("common.error", "An error occurred"));
+        showError(err);
       })
       .finally(() => setLoading(false));
-  }, [id, t]);
+  }, [id, t, showError]);
 
   const addRole = () => {
     setRoles([...roles, { entity_id: "", role_type: "" }]);
@@ -96,7 +97,6 @@ export function EditRelationView() {
     if (!id || !relation) return;
 
     setSaving(true);
-    setError(null);
 
     try {
       await updateRelation(id, {
@@ -110,9 +110,7 @@ export function EditRelationView() {
       // Navigate back to source detail page (where relations are displayed)
       navigate(`/sources/${relation.source_id}`);
     } catch (e: any) {
-      setError(
-        e.message || t("edit_relation.error", "Failed to update relation")
-      );
+      showError(e);
       setSaving(false);
     }
   };

@@ -34,6 +34,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import DownloadIcon from "@mui/icons-material/Download";
 import { bulkSearchPubMed, bulkImportPubMed } from "../api/pubmed";
 import type { PubMedSearchResult } from "../types/pubmed";
+import { useNotification } from "../notifications/NotificationContext";
 
 export function PubMedImportView() {
   const navigate = useNavigate();

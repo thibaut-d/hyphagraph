@@ -10,6 +10,7 @@ import {
 } from "../api/extractionReview";
 import { Link as RouterLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useNotification } from "../notifications/NotificationContext";
 
 import {
   Typography,
@@ -47,10 +48,10 @@ const PAGE_SIZE = 20;
 
 export function ReviewQueueView() {
   const { t } = useTranslation();
+  const { showError } = useNotification();
   const [extractions, setExtractions] = useState<StagedExtractionRead[]>([]);
   const [stats, setStats] = useState<ReviewStats | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -64,7 +65,6 @@ export function ReviewQueueView() {
 
   const loadExtractions = useCallback(async (reset: boolean = false) => {
     setIsLoading(true);
-    setError(null);
 
     try {
       const filters: StagedExtractionFilters = {
@@ -85,11 +85,11 @@ export function ReviewQueueView() {
 
       setHasMore(response.has_more);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load pending extractions");
+      showError(err);
     } finally {
       setIsLoading(false);
     }
-  }, [page, minScore, onlyFlagged]);
+  }, [page, minScore, onlyFlagged, showError]);
 
   const loadStats = useCallback(async () => {
     try {
@@ -141,7 +141,7 @@ export function ReviewQueueView() {
       await reviewExtraction(extractionId, { decision, notes });
       handleRefresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : `Failed to ${decision} extraction`);
+      showError(err);
     }
   };
 
@@ -160,10 +160,10 @@ export function ReviewQueueView() {
       handleRefresh();
 
       if (result.failed > 0) {
-        setError(`Batch review completed: ${result.succeeded} succeeded, ${result.failed} failed`);
+        showError(new Error(`Batch review completed: ${result.succeeded} succeeded, ${result.failed} failed`));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to complete batch review");
+      showError(err);
     }
   };
 
@@ -324,13 +324,6 @@ export function ReviewQueueView() {
               Select All
             </Button>
           </Stack>
-        )}
-
-        {/* Error Alert */}
-        {error && (
-          <Alert severity="error" onClose={() => setError(null)}>
-            {error}
-          </Alert>
         )}
 
         {/* Extractions List */}

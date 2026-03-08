@@ -38,6 +38,7 @@ import { saveExtraction } from "../api/extraction";
 import { EntityLinkingSuggestions } from "./EntityLinkingSuggestions";
 import { ExtractedRelationsList } from "./ExtractedRelationsList";
 import { getRelationKey } from "../utils/extractionRelation";
+import { useNotification } from "../notifications/NotificationContext";
 
 interface ExtractionPreviewProps {
   preview: DocumentExtractionPreview;
@@ -81,12 +82,8 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
   );
 
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   const handleSave = async () => {
     setSaving(true);
-    setError(null);
-
     try {
       // Build save request from user decisions
       const entitiesToCreate = preview.entities.filter(

@@ -17,6 +17,7 @@ import DownloadIcon from "@mui/icons-material/Download";
 import DataObjectIcon from "@mui/icons-material/DataObject";
 import TableChartIcon from "@mui/icons-material/TableChart";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
+import { useNotification } from "../notifications/NotificationContext";
 
 interface ExportMenuProps {
   exportType: "entities" | "relations" | "full-graph";
@@ -54,7 +55,7 @@ export function ExportMenu({
       const token = localStorage.getItem("auth_token");
 
       if (!token) {
-        alert("Please login to export data");
+        showError(new Error("Please login to export data"));
         return;
       }
 
@@ -96,7 +97,7 @@ export function ExportMenu({
       }
     } catch (error) {
       console.error("Export failed:", error);
-      alert(`Export failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+      showError(new Error(`Export failed: ${error instanceof Error ? error.message : "Unknown error"}`));
     } finally {
       setExporting(false);
     }

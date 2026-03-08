@@ -46,6 +46,7 @@ import CancelIcon from "@mui/icons-material/Cancel";
 import TranslateIcon from "@mui/icons-material/Translate";
 
 import {
+import { useNotification } from "../notifications/NotificationContext";
   listEntityTerms,
   createEntityTerm,
   updateEntityTerm,
@@ -82,11 +83,10 @@ export function EntityTermsManager({
   readonly = false,
 }: EntityTermsManagerProps) {
   const { t } = useTranslation();
+  const { showError } = useNotification();
 
   const [terms, setTerms] = useState<EntityTermRead[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   // Form state
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -106,14 +106,12 @@ export function EntityTermsManager({
   }, [entityId]);
 
   const loadTerms = async () => {
-    setLoading(true);
-    setError(null);
-    try {
+    setLoading(true);    try {
       const data = await listEntityTerms(entityId);
       setTerms(data);
     } catch (err) {
       console.error("Failed to load terms:", err);
-      setError("Failed to load terms");
+      showError(new Error("Failed to load terms"));
     } finally {
       setLoading(false);
     }
@@ -151,12 +149,9 @@ export function EntityTermsManager({
 
   const handleSave = async () => {
     if (!formData.term.trim()) {
-      setError("Term cannot be empty");
+      showError(new Error("Term cannot be empty"));
       return;
-    }
-
-    setError(null);
-    setLoading(true);
+    }    setLoading(true);
 
     try {
       const payload: EntityTermWrite = {
@@ -176,9 +171,9 @@ export function EntityTermsManager({
     } catch (err: any) {
       console.error("Failed to save term:", err);
       if (err.message && err.message.includes("already exists")) {
-        setError("This term already exists for this language");
+        showError(new Error("This term already exists for this language"));
       } else {
-        setError("Failed to save term");
+        showError(new Error("Failed to save term"));
       }
     } finally {
       setLoading(false);
@@ -194,8 +189,6 @@ export function EntityTermsManager({
     if (!termToDelete) return;
 
     setLoading(true);
-    setError(null);
-
     try {
       await deleteEntityTerm(entityId, termToDelete.id);
       await loadTerms();
@@ -203,7 +196,7 @@ export function EntityTermsManager({
       setTermToDelete(null);
     } catch (err) {
       console.error("Failed to delete term:", err);
-      setError("Failed to delete term");
+      showError(new Error("Failed to delete term"));
     } finally {
       setLoading(false);
     }

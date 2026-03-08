@@ -4,13 +4,14 @@ API endpoints for document-based knowledge extraction workflow.
 Provides end-to-end document upload → extraction → linking → storage pipeline.
 """
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
 from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.models.user import User
+from app.utils.errors import AppException, ErrorCode, SourceNotFoundException, ValidationException, LLMServiceUnavailableException
 from app.schemas.source import (
     DocumentExtractionPreview,
     SaveExtractionRequest,
@@ -121,10 +122,7 @@ class SmartDiscoveryResponse(BaseModel):
 def require_llm():
     """Require LLM to be available for these endpoints."""
     if not is_llm_available():
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="LLM service not available. Please configure OPENAI_API_KEY."
-        )
+        raise LLMServiceUnavailableException()
 
 
 # =============================================================================
@@ -176,15 +174,13 @@ async def extract_from_document(
     revision = result.scalar_one_or_none()
 
     if not revision:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Source not found"
-        )
+        raise SourceNotFoundException(source_id=str(source_id))
 
     if not revision.document_text:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Source has no uploaded document. Upload a document first."
+        raise ValidationException(
+            message="Source has no uploaded document",
+            details="Upload a document to this source before extracting knowledge",
+            context={"source_id": str(source_id)}
         )
 
     # Extract entities and relations with validation
@@ -306,10 +302,7 @@ async def save_extraction(
         source = result.scalar_one_or_none()
 
         if not source:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Source not found"
-            )
+            raise SourceNotFoundException(source_id=str(source_id))
 
         # Create new entities
         bulk_service = BulkCreationService(db)
@@ -356,13 +349,16 @@ async def save_extraction(
             warnings=warnings
         )
 
-    except HTTPException:
+    except (AppException, SourceNotFoundException, ValidationException):
         raise
     except Exception as e:
         logger.error(f"Save extraction failed: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to save extraction: {str(e)}"
+        raise AppException(
+            status_code=500,
+            error_code=ErrorCode.INTERNAL_SERVER_ERROR,
+            message="Failed to save extraction",
+            details=str(e),
+            context={"source_id": str(source_id)}
         )
 
 
@@ -508,13 +504,16 @@ async def upload_and_extract(
             avg_validation_score=avg_validation_score
         )
 
-    except HTTPException:
+    except (AppException, SourceNotFoundException, ValidationException):
         raise
     except Exception as e:
         logger.error(f"Upload and extract failed: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to upload and extract: {str(e)}"
+        raise AppException(
+            status_code=500,
+            error_code=ErrorCode.INTERNAL_SERVER_ERROR,
+            message="Failed to upload and extract",
+            details=str(e),
+            context={"source_id": str(source_id)}
         )
 
 
@@ -713,15 +712,18 @@ async def extract_from_url(
             avg_validation_score=avg_validation_score
         )
 
-    except HTTPException:
+    except (AppException, SourceNotFoundException, ValidationException):
         raise
     except Exception as e:
         logger.error(f"URL extraction failed: {e}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to extract from URL: {str(e)}"
+        raise AppException(
+            status_code=500,
+            error_code=ErrorCode.INTERNAL_SERVER_ERROR,
+            message="Failed to extract from URL",
+            details=str(e),
+            context={"source_id": str(source_id), "url": request.url}
         )
 
 
@@ -767,44 +769,46 @@ async def smart_discovery(
     user_email = current_user.email if current_user else "system"
 
     if not request.entity_slugs or len(request.entity_slugs) == 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="At least one entity slug must be provided"
+        raise ValidationException(
+            message="At least one entity slug must be provided",
+            field="entity_slugs"
         )
 
     if len(request.entity_slugs) > 10:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Maximum 10 entities can be searched at once"
+        raise ValidationException(
+            message="Maximum 10 entities can be searched at once",
+            field="entity_slugs",
+            context={"provided_count": len(request.entity_slugs), "max_count": 10}
         )
 
     if request.max_results < 1 or request.max_results > 100:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="max_results must be between 1 and 100"
+        raise ValidationException(
+            message="max_results must be between 1 and 100",
+            field="max_results",
+            context={"provided_value": request.max_results, "min_value": 1, "max_value": 100}
         )
 
     if request.min_quality < 0.0 or request.min_quality > 1.0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="min_quality must be between 0.0 and 1.0"
+        raise ValidationException(
+            message="min_quality must be between 0.0 and 1.0",
+            field="min_quality",
+            context={"provided_value": request.min_quality, "min_value": 0.0, "max_value": 1.0}
         )
 
     if not request.databases or len(request.databases) == 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="At least one database must be selected"
+        raise ValidationException(
+            message="At least one database must be selected",
+            field="databases"
         )
 
     supported_databases = {"pubmed"}
     invalid_databases = [db_name for db_name in request.databases if db_name not in supported_databases]
     if invalid_databases:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                f"Unsupported database(s): {', '.join(invalid_databases)}. "
-                f"Supported databases: {', '.join(sorted(supported_databases))}"
-            )
+        raise ValidationException(
+            message="Unsupported databases",
+            field="databases",
+            details=f"Unsupported database(s): {', '.join(invalid_databases)}. Supported databases: {', '.join(sorted(supported_databases))}",
+            context={"invalid_databases": invalid_databases, "supported_databases": list(sorted(supported_databases))}
         )
 
     logger.info(
@@ -947,15 +951,18 @@ async def smart_discovery(
             databases_searched=databases_searched
         )
 
-    except HTTPException:
+    except (AppException, ValidationException):
         raise
     except Exception as e:
         logger.error(f"Smart discovery failed: {e}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to perform smart discovery: {str(e)}"
+        raise AppException(
+            status_code=500,
+            error_code=ErrorCode.INTERNAL_SERVER_ERROR,
+            message="Failed to perform smart discovery",
+            details=str(e),
+            context={"entity_slugs": request.entity_slugs}
         )
 
 
@@ -1037,21 +1044,24 @@ async def bulk_search_pubmed(
         pubmed_fetcher = PubMedFetcher()
         query = pubmed_fetcher.extract_query_from_search_url(request.search_url)
         if not query:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Could not extract search query from URL: {request.search_url}"
+            raise ValidationException(
+                message="Could not extract search query from URL",
+                field="search_url",
+                details=f"Failed to parse query from URL: {request.search_url}",
+                context={"search_url": request.search_url}
             )
     else:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Either 'query' or 'search_url' must be provided"
+        raise ValidationException(
+            message="Either 'query' or 'search_url' must be provided",
+            details="Provide either a direct search query or a PubMed search URL"
         )
 
     # Validate max_results
     if request.max_results < 1 or request.max_results > 100:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="max_results must be between 1 and 100"
+        raise ValidationException(
+            message="max_results must be between 1 and 100",
+            field="max_results",
+            context={"provided_value": request.max_results, "min_value": 1, "max_value": 100}
         )
 
     logger.info(
@@ -1106,15 +1116,18 @@ async def bulk_search_pubmed(
             retrieved_count=len(results)
         )
 
-    except HTTPException:
+    except (AppException, ValidationException):
         raise
     except Exception as e:
         logger.error(f"PubMed bulk search failed: {e}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to search PubMed: {str(e)}"
+        raise AppException(
+            status_code=500,
+            error_code=ErrorCode.INTERNAL_SERVER_ERROR,
+            message="Failed to search PubMed",
+            details=str(e),
+            context={"query": query if 'query' in locals() else None}
         )
 
 
@@ -1147,15 +1160,16 @@ async def bulk_import_pubmed(
     user_id = current_user.id if current_user else None
 
     if not request.pmids:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No PMIDs provided for import"
+        raise ValidationException(
+            message="No PMIDs provided for import",
+            field="pmids"
         )
 
     if len(request.pmids) > 100:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Maximum 100 articles can be imported at once"
+        raise ValidationException(
+            message="Maximum 100 articles can be imported at once",
+            field="pmids",
+            context={"provided_count": len(request.pmids), "max_count": 100}
         )
 
     logger.info(
@@ -1243,13 +1257,16 @@ async def bulk_import_pubmed(
             source_ids=source_ids
         )
 
-    except HTTPException:
+    except (AppException, ValidationException):
         raise
     except Exception as e:
         logger.error(f"PubMed bulk import failed: {e}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to import PubMed articles: {str(e)}"
+        raise AppException(
+            status_code=500,
+            error_code=ErrorCode.INTERNAL_SERVER_ERROR,
+            message="Failed to import PubMed articles",
+            details=str(e),
+            context={"pmid_count": len(request.pmids)}
         )

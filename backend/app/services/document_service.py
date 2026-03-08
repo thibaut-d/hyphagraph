@@ -6,9 +6,15 @@ and error handling for file uploads.
 """
 import logging
 from dataclasses import dataclass
-from fastapi import UploadFile, HTTPException, status
+from fastapi import UploadFile
 from pypdf import PdfReader
 import io
+
+from app.utils.errors import (
+    AppException,
+    ErrorCode,
+    ValidationException,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -59,18 +65,22 @@ class DocumentService:
         # Check content type
         if file.content_type not in self.SUPPORTED_FORMATS:
             supported = ", ".join(self.SUPPORTED_FORMATS.keys())
-            raise HTTPException(
-                status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-                detail=f"Unsupported file type: {file.content_type}. "
-                       f"Supported types: {supported}"
+            raise AppException(
+                status_code=415,
+                error_code=ErrorCode.DOCUMENT_UNSUPPORTED_FORMAT,
+                message="Unsupported file type",
+                details=f"File type '{file.content_type}' is not supported. Supported types: {supported}",
+                context={"file_type": file.content_type, "filename": file.filename}
             )
 
         # Check file size (if available in headers)
         if file.size and file.size > max_size:
-            raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                detail=f"File too large: {file.size / 1024 / 1024:.1f}MB. "
-                       f"Maximum size: {max_size_mb or self.MAX_FILE_SIZE_MB}MB"
+            raise AppException(
+                status_code=413,
+                error_code=ErrorCode.DOCUMENT_TOO_LARGE,
+                message="File too large",
+                details=f"File size {file.size / 1024 / 1024:.1f}MB exceeds maximum of {max_size_mb or self.MAX_FILE_SIZE_MB}MB",
+                context={"size_mb": file.size / 1024 / 1024, "max_mb": max_size_mb or self.MAX_FILE_SIZE_MB, "filename": file.filename}
             )
 
     async def extract_text_from_pdf(self, file: UploadFile) -> str:
@@ -104,21 +114,24 @@ class DocumentService:
             full_text = "\n\n".join(text_parts)
 
             if not full_text.strip():
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail="PDF contains no extractable text. "
-                           "It may be a scanned image or encrypted."
+                raise ValidationException(
+                    message="PDF contains no extractable text",
+                    details="The PDF may be a scanned image without OCR or encrypted",
+                    context={"filename": file.filename}
                 )
 
             return full_text
 
-        except HTTPException:
+        except (ValidationException, AppException):
             raise
         except Exception as e:
             logger.error(f"PDF text extraction failed: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to extract text from PDF: {str(e)}"
+            raise AppException(
+                status_code=500,
+                error_code=ErrorCode.DOCUMENT_PARSE_ERROR,
+                message="Failed to extract text from PDF",
+                details=str(e),
+                context={"filename": file.filename}
             )
 
     async def extract_text_from_txt(self, file: UploadFile) -> str:
@@ -145,20 +158,24 @@ class DocumentService:
                 text = content.decode("latin-1")
 
             if not text.strip():
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail="Text file is empty"
+                raise ValidationException(
+                    message="Text file is empty",
+                    details="The uploaded text file contains no content",
+                    context={"filename": file.filename}
                 )
 
             return text
 
-        except HTTPException:
+        except (ValidationException, AppException):
             raise
         except Exception as e:
             logger.error(f"Text file reading failed: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to read text file: {str(e)}"
+            raise AppException(
+                status_code=500,
+                error_code=ErrorCode.DOCUMENT_PARSE_ERROR,
+                message="Failed to read text file",
+                details=str(e),
+                context={"filename": file.filename}
             )
 
     async def extract_text_from_file(
@@ -186,9 +203,12 @@ class DocumentService:
         # Get format from content type
         file_format = self.SUPPORTED_FORMATS.get(file.content_type)
         if not file_format:
-            raise HTTPException(
-                status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-                detail=f"Unsupported file type: {file.content_type}"
+            raise AppException(
+                status_code=415,
+                error_code=ErrorCode.DOCUMENT_UNSUPPORTED_FORMAT,
+                message="Unsupported file type",
+                details=f"File type '{file.content_type}' is not supported",
+                context={"file_type": file.content_type, "filename": file.filename}
             )
 
         # Extract text based on format
@@ -197,9 +217,12 @@ class DocumentService:
         elif file_format == "txt":
             text = await self.extract_text_from_txt(file)
         else:
-            raise HTTPException(
-                status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-                detail=f"Unsupported format: {file_format}"
+            raise AppException(
+                status_code=415,
+                error_code=ErrorCode.DOCUMENT_UNSUPPORTED_FORMAT,
+                message="Unsupported format",
+                details=f"Format '{file_format}' is not supported",
+                context={"format": file_format, "filename": file.filename}
             )
 
         # Check for truncation

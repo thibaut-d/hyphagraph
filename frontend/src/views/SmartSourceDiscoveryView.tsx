@@ -15,6 +15,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useNotification } from "../notifications/NotificationContext";
 import {
   Paper,
   Typography,
@@ -56,6 +57,7 @@ const ENTITY_MAX_PAGES = 50;
 export function SmartSourceDiscoveryView() {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { showError } = useNotification();
   const [searchParams] = useSearchParams();
 
   // Entity selection state
@@ -70,7 +72,6 @@ export function SmartSourceDiscoveryView() {
 
   // Search state
   const [searching, setSearching] = useState(false);
-  const [searchError, setSearchError] = useState<string | null>(null);
 
   // Results state
   const [results, setResults] = useState<SmartDiscoveryResult[]>([]);
@@ -80,7 +81,6 @@ export function SmartSourceDiscoveryView() {
 
   // Import state
   const [importing, setImporting] = useState(false);
-  const [importError, setImportError] = useState<string | null>(null);
   const [importSuccess, setImportSuccess] = useState<{ created: number; failed: number } | null>(null);
 
   // Load entities on mount
@@ -156,16 +156,15 @@ export function SmartSourceDiscoveryView() {
 
   const handleSearch = async () => {
     if (selectedEntities.length === 0) {
-      setSearchError("Please select at least one entity");
+      showError(new Error("Please select at least one entity"));
       return;
     }
     if (selectedDatabases.length === 0) {
-      setSearchError("Please select at least one database");
+      showError(new Error("Please select at least one database"));
       return;
     }
 
     setSearching(true);
-    setSearchError(null);
     setResults([]);
     setSelectedPmids(new Set());
     setImportSuccess(null);
@@ -193,7 +192,7 @@ export function SmartSourceDiscoveryView() {
 
       setSelectedPmids(new Set(toSelect));
     } catch (error) {
-      setSearchError(error instanceof Error ? error.message : "Failed to search databases");
+      showError(error);
     } finally {
       setSearching(false);
     }
@@ -223,12 +222,11 @@ export function SmartSourceDiscoveryView() {
 
   const handleImport = async () => {
     if (selectedPmids.size === 0) {
-      setImportError("Please select at least one article to import");
+      showError(new Error("Please select at least one article to import"));
       return;
     }
 
     setImporting(true);
-    setImportError(null);
 
     try {
       const response = await bulkImportFromDiscovery(Array.from(selectedPmids));
@@ -243,7 +241,7 @@ export function SmartSourceDiscoveryView() {
         navigate("/sources");
       }, 2000);
     } catch (error) {
-      setImportError(error instanceof Error ? error.message : "Failed to import articles");
+      showError(error);
     } finally {
       setImporting(false);
     }
@@ -443,13 +441,6 @@ export function SmartSourceDiscoveryView() {
         </Stack>
       </Paper>
 
-      {/* Search Error */}
-      {searchError && (
-        <Alert severity="error" onClose={() => setSearchError(null)}>
-          {searchError}
-        </Alert>
-      )}
-
       {/* Results */}
       {results.length > 0 && (
         <>
@@ -491,12 +482,6 @@ export function SmartSourceDiscoveryView() {
               </Alert>
             )}
 
-            {/* Import Error */}
-            {importError && (
-              <Alert severity="error" sx={{ mt: 2 }} onClose={() => setImportError(null)}>
-                {importError}
-              </Alert>
-            )}
           </Paper>
 
           {/* Results Table */}

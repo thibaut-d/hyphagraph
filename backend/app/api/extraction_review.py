@@ -4,7 +4,7 @@ API endpoints for extraction review workflow.
 Provides human-in-the-loop review interface for staged LLM extractions.
 """
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
@@ -23,6 +23,7 @@ from app.schemas.staged_extraction import (
     StagedExtractionFilters,
 )
 from app.services.extraction_review_service import ExtractionReviewService
+from app.utils.errors import AppException, ErrorCode
 
 logger = logging.getLogger(__name__)
 
@@ -102,9 +103,12 @@ async def get_extraction(
     extraction = result.scalar_one_or_none()
 
     if not extraction:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Staged extraction not found"
+        raise AppException(
+            status_code=404,
+            error_code=ErrorCode.NOT_FOUND,
+            message="Staged extraction not found",
+            details=f"Staged extraction with ID '{extraction_id}' does not exist",
+            context={"extraction_id": str(extraction_id)}
         )
 
     return StagedExtractionRead.model_validate(extraction)
@@ -149,9 +153,12 @@ async def review_extraction(
                 extraction_type="entity",  # Will be overwritten by actual type
             )
         else:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Failed to reject extraction"
+            raise AppException(
+                status_code=400,
+                error_code=ErrorCode.VALIDATION_ERROR,
+                message="Failed to reject extraction",
+                details="The extraction could not be rejected",
+                context={"extraction_id": str(extraction_id)}
             )
 
 
@@ -262,9 +269,12 @@ async def delete_staged_extraction(
     extraction = result.scalar_one_or_none()
 
     if not extraction:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Staged extraction not found"
+        raise AppException(
+            status_code=404,
+            error_code=ErrorCode.NOT_FOUND,
+            message="Staged extraction not found",
+            details=f"Staged extraction with ID '{extraction_id}' does not exist",
+            context={"extraction_id": str(extraction_id)}
         )
 
     await db.delete(extraction)

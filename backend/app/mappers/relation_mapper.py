@@ -1,3 +1,4 @@
+from typing import Any
 from uuid import UUID
 from app.models.relation import Relation
 from app.models.relation_revision import RelationRevision
@@ -10,7 +11,7 @@ from app.schemas.relation import (
 )
 
 
-def relation_revision_from_write(payload: RelationWrite) -> dict:
+def relation_revision_from_write(payload: RelationWrite) -> dict[str, Any]:
     """
     Convert RelationWrite payload to RelationRevision data dict.
 
