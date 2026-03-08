@@ -19,7 +19,7 @@ from app.schemas.source import (
     EntityLinkMatch
 )
 from app.services.source_service import SourceService
-from app.services.extraction_service import ExtractionService
+from app.services.batch_extraction_orchestrator import BatchExtractionOrchestrator
 from app.services.entity_linking_service import EntityLinkingService
 from app.services.bulk_creation_service import BulkCreationService
 from app.services.document_service import DocumentService
@@ -184,9 +184,9 @@ async def extract_from_document(
         )
 
     # Extract entities and relations with validation
-    extraction_service = ExtractionService(db=db, enable_validation=True)
+    orchestrator = BatchExtractionOrchestrator(db=db, enable_validation=True, validation_level="moderate")
     entities, relations, claims, e_results, r_results, c_results = \
-        await extraction_service.extract_batch_with_validation_results(
+        await orchestrator.extract_batch_with_validation_results(
             text=revision.document_text,
             min_confidence="medium"
         )
@@ -431,9 +431,9 @@ async def upload_and_extract(
         logger.info("Document content stored in source")
 
         # Step 3: Extract entities and relations from text with validation
-        extraction_service = ExtractionService(db=db, enable_validation=True)
+        orchestrator = BatchExtractionOrchestrator(db=db, enable_validation=True, validation_level="moderate")
         entities, relations, claims, e_results, r_results, c_results = \
-            await extraction_service.extract_batch_with_validation_results(
+            await orchestrator.extract_batch_with_validation_results(
                 text=extraction_result.text,
                 min_confidence="medium"
             )
@@ -639,9 +639,9 @@ async def extract_from_url(
         logger.info("Document content stored in source")
 
         # Step 3: Extract entities and relations from text with validation
-        extraction_service = ExtractionService(db=db, enable_validation=True)
+        orchestrator = BatchExtractionOrchestrator(db=db, enable_validation=True, validation_level="moderate")
         entities, relations, claims, e_results, r_results, c_results = \
-            await extraction_service.extract_batch_with_validation_results(
+            await orchestrator.extract_batch_with_validation_results(
                 text=document_text,
                 min_confidence="medium"
             )
