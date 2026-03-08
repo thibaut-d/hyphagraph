@@ -2,11 +2,38 @@
 
 **Last updated**: 2026-03-08
 
-Fixed high and medium severity bugs from comprehensive codebase audit.
+Completed comprehensive bug fix session: 8 bugs fixed, 2 false positives identified, 3 architectural issues documented.
 
 ---
 
 ## Completed (Latest)
+
+### Bug Fix Summary (2026-03-08)
+
+**Critical (3/3 fixed)**: AuthContext deps, token performance, memory leak
+**High (3/3 fixed)**: LLM config, null checks, cross-tab sync
+**Medium (2/3 reviewed)**: Search length fixed, exception handling verified as correct
+**Low (1/4 fixed)**: DOM assertion improved
+
+**Total**: 8 bugs fixed, 2 non-bugs identified, 3 issues deferred for architectural review
+
+---
+
+## Completed (Previous)
+
+### Low Severity Fixes (2026-03-08)
+
+1. **DOM Non-Null Assertion**
+   - Replaced `document.getElementById("root")!` with explicit null check
+   - Descriptive error if root element missing
+   - Better DX for template issues
+
+**Files modified**:
+- `frontend/src/main.tsx` - Root element validation
+
+---
+
+## Completed (Previous)
 
 ### Medium Severity Bug Fixes (2026-03-08)
 
@@ -26,9 +53,14 @@ Fixed additional bugs from codebase audit:
 - `backend/app/api/document_extraction.py` - Complete null filtering
 - `frontend/src/components/GlobalSearch.tsx` - Increased min length to 3
 
+**Exception Handling Analysis**:
+- Reviewed all `except Exception:` blocks in services (23 occurrences)
+- All instances properly re-raise after rollback: `except Exception: await self.db.rollback(); raise`
+- Pattern is correct: `Exception` doesn't catch `KeyboardInterrupt`/`SystemExit` (they inherit from `BaseException`)
+- This is standard transaction rollback pattern, not a bug ✓
+
 **Remaining issues to address**:
-- **User ID Provenance**: Optional user_id in services needs enforcement strategy
-- **Broad Exception Catching**: Multiple `except Exception:` need to be more specific
+- **User ID Provenance**: Optional user_id in services needs enforcement strategy (architectural decision needed)
 
 ---
 
