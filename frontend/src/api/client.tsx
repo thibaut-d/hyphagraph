@@ -1,16 +1,51 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "/api";
 
-// Flag to prevent concurrent token refresh requests
-let isRefreshing = false;
-let refreshSubscribers: Array<(token: string) => void> = [];
+// Cross-tab synchronized flag using localStorage
+const REFRESH_LOCK_KEY = "token_refresh_in_progress";
+const REFRESH_LOCK_TIMEOUT = 10000; // 10 seconds max lock duration
 
-function subscribeTokenRefresh(callback: (token: string) => void) {
-  refreshSubscribers.push(callback);
+/**
+ * Try to acquire cross-tab refresh lock using localStorage.
+ * Returns true if lock acquired, false if another tab is refreshing.
+ */
+function tryAcquireRefreshLock(): boolean {
+  const now = Date.now();
+  const existing = localStorage.getItem(REFRESH_LOCK_KEY);
+
+  if (existing) {
+    const lockTime = parseInt(existing, 10);
+    // If lock is stale (> 10s old), steal it
+    if (now - lockTime > REFRESH_LOCK_TIMEOUT) {
+      localStorage.setItem(REFRESH_LOCK_KEY, now.toString());
+      return true;
+    }
+    return false; // Another tab is refreshing
+  }
+
+  // No lock exists, acquire it
+  localStorage.setItem(REFRESH_LOCK_KEY, now.toString());
+  return true;
 }
 
-function onTokenRefreshed(token: string) {
-  refreshSubscribers.forEach((callback) => callback(token));
-  refreshSubscribers = [];
+/**
+ * Release the cross-tab refresh lock.
+ */
+function releaseRefreshLock(): void {
+  localStorage.removeItem(REFRESH_LOCK_KEY);
+}
+
+/**
+ * Check if a refresh is in progress (in any tab).
+ */
+function isRefreshInProgress(): boolean {
+  const existing = localStorage.getItem(REFRESH_LOCK_KEY);
+  if (!existing) return false;
+
+  const lockTime = parseInt(existing, 10);
+  const now = Date.now();
+
+  // Consider stale if > 10s old
+  return (now - lockTime) <= REFRESH_LOCK_TIMEOUT;
 }
 
 function toHeaderRecord(headers?: HeadersInit): Record<string, string> {
@@ -107,58 +142,74 @@ export async function apiFetch<T>(
       throw new Error("API error");
     }
 
-    // Handle concurrent requests with single refresh
-    if (isRefreshing) {
-      // Wait for the ongoing refresh to complete
+    // Try to acquire refresh lock (cross-tab synchronized)
+    if (!tryAcquireRefreshLock()) {
+      // Another tab is refreshing, wait for it to complete
       return new Promise((resolve, reject) => {
-        subscribeTokenRefresh((newToken: string) => {
-          // Retry original request with new token
-          const newHeaders = {
-            ...headers,
-            Authorization: `Bearer ${newToken}`,
-          };
+        const checkRefresh = setInterval(() => {
+          if (!isRefreshInProgress()) {
+            clearInterval(checkRefresh);
 
-          fetch(`${API_BASE_URL}${path}`, {
-            ...options,
-            headers: newHeaders,
-          })
-            .then(async (retryRes) => {
-              if (!retryRes.ok) {
-                let error: any;
-                try {
-                  error = await retryRes.json();
-                } catch {
+            // Refresh completed in another tab, retry with new token
+            const newToken = localStorage.getItem("auth_token");
+            if (!newToken) {
+              reject(new Error("Session expired. Please login again."));
+              return;
+            }
+
+            const newHeaders = {
+              ...headers,
+              Authorization: `Bearer ${newToken}`,
+            };
+
+            fetch(`${API_BASE_URL}${path}`, {
+              ...options,
+              headers: newHeaders,
+            })
+              .then(async (retryRes) => {
+                if (!retryRes.ok) {
+                  let error: any;
+                  try {
+                    error = await retryRes.json();
+                  } catch {
+                    throw new Error("API error");
+                  }
+                  const detail = error.detail;
+                  if (typeof detail === 'string') {
+                    throw new Error(detail);
+                  } else if (typeof detail === 'object' && detail !== null) {
+                    throw new Error(JSON.stringify(detail));
+                  }
                   throw new Error("API error");
                 }
-                const detail = error.detail;
-                if (typeof detail === 'string') {
-                  throw new Error(detail);
-                } else if (typeof detail === 'object' && detail !== null) {
-                  throw new Error(JSON.stringify(detail));
-                }
-                throw new Error("API error");
-              }
-              return retryRes.json();
-            })
-            .then(resolve)
-            .catch(reject);
-        });
+                return retryRes.json();
+              })
+              .then(resolve)
+              .catch(reject);
+          }
+        }, 100); // Check every 100ms
+
+        // Timeout after 15 seconds
+        setTimeout(() => {
+          clearInterval(checkRefresh);
+          reject(new Error("Token refresh timeout"));
+        }, 15000);
       });
     }
 
-    // Attempt to refresh the token
-    isRefreshing = true;
-    const newToken = await refreshToken();
-    isRefreshing = false;
+    // We acquired the lock, perform the refresh
+    let newToken: string | null = null;
+    try {
+      newToken = await refreshToken();
+    } finally {
+      releaseRefreshLock();
+    }
 
     if (!newToken) {
       // Refresh failed, redirect to login
       window.location.href = "/account";
       throw new Error("Session expired. Please login again.");
     }
-
-    // Notify all waiting requests
-    onTokenRefreshed(newToken);
 
     // Retry the original request with new token
     const newHeaders = {

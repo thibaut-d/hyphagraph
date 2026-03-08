@@ -26,6 +26,7 @@ from app.services.pubmed_fetcher import PubMedFetcher
 from app.services.url_fetcher import UrlFetcher
 from app.llm.client import is_llm_available
 from app.utils.source_quality import infer_trust_level_from_pubmed_metadata
+from app.config import settings
 from pydantic import BaseModel, HttpUrl
 
 logger = logging.getLogger(__name__)
@@ -212,14 +213,14 @@ async def extract_from_document(
         relations=list(zip(relations, r_results)),
         claims=list(zip(claims, c_results)),
         source_id=source_id,
-        llm_model="gpt-4",  # TODO: get from config
+        llm_model=settings.OPENAI_MODEL,  # TODO: get from config
         llm_provider="openai"
     )
 
     # Calculate review metadata
     needs_review_count = sum(1 for s in staged_list if s.status == "pending")
     auto_verified_count = sum(1 for s in staged_list if s.status == "auto_verified")
-    validation_scores = [s.validation_score for s in staged_list]
+    validation_scores = [s.validation_score for s in staged_list if s.validation_score is not None]
     avg_validation_score = sum(validation_scores) / len(validation_scores) if validation_scores else None
 
     logger.info(
@@ -458,7 +459,7 @@ async def upload_and_extract(
             relations=list(zip(relations, r_results)),
             claims=list(zip(claims, c_results)),
             source_id=source_id,
-            llm_model="gpt-4",
+            llm_model=settings.OPENAI_MODEL,
             llm_provider="openai"
         )
 
@@ -663,7 +664,7 @@ async def extract_from_url(
             relations=list(zip(relations, r_results)),
             claims=list(zip(claims, c_results)),
             source_id=source_id,
-            llm_model="gpt-4",
+            llm_model=settings.OPENAI_MODEL,
             llm_provider="openai"
         )
 

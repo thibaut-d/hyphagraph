@@ -2,11 +2,43 @@
 
 **Last updated**: 2026-03-08
 
-Fixed critical bugs in AuthContext and refresh token system.
+Fixed high severity bugs in LLM configuration, validation handling, and cross-tab synchronization.
 
 ---
 
 ## Completed (Latest)
+
+### High Severity Bug Fixes (2026-03-08)
+
+Fixed three high severity bugs identified through codebase search:
+
+1. **Hardcoded LLM Model**
+   - Replaced hardcoded `"gpt-4"` with `settings.OPENAI_MODEL`
+   - All three occurrences in `document_extraction.py` now use config
+   - Allows model changes via environment variables
+
+2. **Missing Null Check on Validation Scores**
+   - Added null filter to validation_scores list comprehension
+   - Prevents TypeError if any `validation_score` is None
+   - Safe sum/average calculation
+
+3. **Cross-Tab Token Refresh Race Condition**
+   - Implemented localStorage-based cross-tab lock mechanism
+   - Prevents multiple tabs from refreshing simultaneously
+   - Lock includes timeout (10s) and stale lock detection
+   - One tab acquires lock, others wait and retry with new token
+
+**Files modified**:
+- `backend/app/api/document_extraction.py` - Use config for model, filter null scores
+- `frontend/src/api/client.tsx` - Cross-tab synchronized refresh lock
+
+**Test results**:
+- Frontend build: PASS
+- Backend config: Verified (`OPENAI_MODEL: gpt-4o-mini`)
+
+---
+
+## Completed (Previous)
 
 ### Critical Bug Fixes (2026-03-08)
 
