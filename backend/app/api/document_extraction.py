@@ -466,7 +466,7 @@ async def upload_and_extract(
         # Calculate review metadata
         needs_review_count = sum(1 for s in staged_list if s.status == "pending")
         auto_verified_count = sum(1 for s in staged_list if s.status == "auto_verified")
-        validation_scores = [s.validation_score for s in staged_list]
+        validation_scores = [s.validation_score for s in staged_list if s.validation_score is not None]
         avg_validation_score = sum(validation_scores) / len(validation_scores) if validation_scores else None
 
         logger.info(
@@ -671,7 +671,7 @@ async def extract_from_url(
         # Calculate review metadata
         needs_review_count = sum(1 for s in staged_list if s.status == "pending")
         auto_verified_count = sum(1 for s in staged_list if s.status == "auto_verified")
-        validation_scores = [s.validation_score for s in staged_list]
+        validation_scores = [s.validation_score for s in staged_list if s.validation_score is not None]
         avg_validation_score = sum(validation_scores) / len(validation_scores) if validation_scores else None
 
         logger.info(

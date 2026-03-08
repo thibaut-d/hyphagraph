@@ -32,7 +32,7 @@ export function GlobalSearch() {
 
   // Fetch suggestions when debounced query changes
   useEffect(() => {
-    if (!debouncedQuery || debouncedQuery.length < 2) {
+    if (!debouncedQuery || debouncedQuery.length < 3) {
       setSuggestions([]);
       return;
     }

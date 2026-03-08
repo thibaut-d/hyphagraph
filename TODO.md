@@ -2,11 +2,37 @@
 
 **Last updated**: 2026-03-08
 
-Fixed high severity bugs in LLM configuration, validation handling, and cross-tab synchronization.
+Fixed high and medium severity bugs from comprehensive codebase audit.
 
 ---
 
 ## Completed (Latest)
+
+### Medium Severity Bug Fixes (2026-03-08)
+
+Fixed additional bugs from codebase audit:
+
+1. **Remaining Null Check Instances**
+   - Fixed 2 more locations with missing null checks (lines 468, 673)
+   - All validation_scores list comprehensions now filter null values
+   - Complete coverage across all extraction endpoints
+
+2. **2-Character Search Minimum (DoS Risk)**
+   - Increased minimum search length from 2 to 3 characters
+   - Reduces potential for large result sets
+   - Mitigates DoS attack surface
+
+**Files modified**:
+- `backend/app/api/document_extraction.py` - Complete null filtering
+- `frontend/src/components/GlobalSearch.tsx` - Increased min length to 3
+
+**Remaining issues to address**:
+- **User ID Provenance**: Optional user_id in services needs enforcement strategy
+- **Broad Exception Catching**: Multiple `except Exception:` need to be more specific
+
+---
+
+## Completed (Previous)
 
 ### High Severity Bug Fixes (2026-03-08)
 
