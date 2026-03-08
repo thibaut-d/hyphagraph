@@ -1,26 +1,21 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_, func, and_, distinct, case
+from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 from typing import Optional, Tuple
 from uuid import UUID
-from datetime import datetime
 
 from app.schemas.entity import EntityWrite, EntityRead
 from app.schemas.filters import EntityFilters, EntityFilterOptions, UICategoryOption, ClinicalEffectOption
 from app.repositories.entity_repo import EntityRepository
 from app.models.entity import Entity
 from app.models.entity_revision import EntityRevision
-from app.models.relation import Relation
-from app.models.relation_revision import RelationRevision
-from app.models.relation_role_revision import RelationRoleRevision
-from app.models.source import Source
-from app.models.source_revision import SourceRevision
 from app.mappers.entity_mapper import (
     entity_revision_from_write,
     entity_to_read,
 )
 from app.utils.revision_helpers import get_current_revision, create_new_revision
 from app.services.derived_properties_service import DerivedPropertiesService
+from app.services.entity_query_builder import EntityQueryBuilder
 from app.utils.errors import EntityNotFoundException, ValidationException, ErrorCode
 
 
@@ -28,6 +23,7 @@ class EntityService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.repo = EntityRepository(db)
+        self.query_builder = EntityQueryBuilder(db)
 
     async def create(self, payload: EntityWrite, user_id: UUID | None = None) -> EntityRead:
         """
@@ -116,185 +112,8 @@ class EntityService:
         Returns:
             Tuple of (items, total_count)
         """
-        # Build base query for entities with their current revisions
-        base_query = (
-            select(Entity, EntityRevision)
-            .join(EntityRevision, Entity.id == EntityRevision.entity_id)
-            .where(EntityRevision.is_current == True)
-        )
-
-        # Apply basic filters if provided
-        if filters:
-            # Filter by UI category (OR logic)
-            if filters.ui_category_id:
-                # Convert string UUIDs to UUID objects
-                category_uuids = [UUID(cat_id) for cat_id in filters.ui_category_id]
-                base_query = base_query.where(EntityRevision.ui_category_id.in_(category_uuids))
-
-            # Search in slug (case-insensitive)
-            if filters.search:
-                search_term = f"%{filters.search.lower()}%"
-                base_query = base_query.where(EntityRevision.slug.ilike(search_term))
-
-            # === Advanced Filters (require aggregations) ===
-
-            # Filter by clinical effects (relation types)
-            if filters.clinical_effects:
-                # Entities that have relations of these types
-                clinical_effects_subquery = (
-                    select(distinct(RelationRoleRevision.entity_id))
-                    .join(RelationRevision, RelationRoleRevision.relation_revision_id == RelationRevision.id)
-                    .where(
-                        and_(
-                            RelationRevision.is_current == True,
-                            RelationRoleRevision.relation_type_id.in_(filters.clinical_effects)
-                        )
-                    )
-                )
-                base_query = base_query.where(Entity.id.in_(clinical_effects_subquery))
-
-            # Filter by evidence quality (average trust level)
-            if filters.evidence_quality_min is not None or filters.evidence_quality_max is not None:
-                # Subquery to compute average trust level per entity
-                avg_trust_subquery = (
-                    select(
-                        RelationRoleRevision.entity_id,
-                        func.avg(SourceRevision.trust_level).label('avg_trust')
-                    )
-                    .select_from(RelationRoleRevision)
-                    .join(RelationRevision, RelationRoleRevision.relation_revision_id == RelationRevision.id)
-                    .join(Relation, RelationRevision.relation_id == Relation.id)
-                    .join(Source, Relation.source_id == Source.id)
-                    .join(SourceRevision, and_(
-                        SourceRevision.source_id == Source.id,
-                        SourceRevision.is_current == True
-                    ))
-                    .where(RelationRevision.is_current == True)
-                    .group_by(RelationRoleRevision.entity_id)
-                    .subquery()
-                )
-
-                # Join with the average trust subquery
-                base_query = base_query.join(
-                    avg_trust_subquery,
-                    Entity.id == avg_trust_subquery.c.entity_id
-                )
-
-                if filters.evidence_quality_min is not None:
-                    base_query = base_query.where(avg_trust_subquery.c.avg_trust >= filters.evidence_quality_min)
-                if filters.evidence_quality_max is not None:
-                    base_query = base_query.where(avg_trust_subquery.c.avg_trust <= filters.evidence_quality_max)
-
-            # Filter by recency (most recent source year)
-            if filters.recency:
-                current_year = datetime.now().year
-
-                # Build recency conditions
-                recency_conditions = []
-                for recency_value in filters.recency:
-                    if recency_value == "recent":
-                        # Last 5 years
-                        recency_conditions.append(current_year - 5)
-                    elif recency_value == "older":
-                        # 5-10 years ago
-                        recency_conditions.append(current_year - 10)
-                    elif recency_value == "historical":
-                        # More than 10 years ago
-                        recency_conditions.append(0)  # All years
-
-                # Subquery to get max year per entity
-                if recency_conditions:
-                    max_year_subquery = (
-                        select(
-                            RelationRoleRevision.entity_id,
-                            func.max(SourceRevision.year).label('max_year')
-                        )
-                        .select_from(RelationRoleRevision)
-                        .join(RelationRevision, RelationRoleRevision.relation_revision_id == RelationRevision.id)
-                        .join(Relation, RelationRevision.relation_id == Relation.id)
-                        .join(Source, Relation.source_id == Source.id)
-                        .join(SourceRevision, and_(
-                            SourceRevision.source_id == Source.id,
-                            SourceRevision.is_current == True
-                        ))
-                        .where(RelationRevision.is_current == True)
-                        .group_by(RelationRoleRevision.entity_id)
-                        .subquery()
-                    )
-
-                    # Build OR conditions for recency
-                    recency_filter_conditions = []
-                    if "recent" in filters.recency:
-                        recency_filter_conditions.append(max_year_subquery.c.max_year >= current_year - 5)
-                    if "older" in filters.recency:
-                        recency_filter_conditions.append(and_(
-                            max_year_subquery.c.max_year >= current_year - 10,
-                            max_year_subquery.c.max_year < current_year - 5
-                        ))
-                    if "historical" in filters.recency:
-                        recency_filter_conditions.append(max_year_subquery.c.max_year < current_year - 10)
-
-                    if recency_filter_conditions:
-                        base_query = base_query.join(
-                            max_year_subquery,
-                            Entity.id == max_year_subquery.c.entity_id
-                        ).where(or_(*recency_filter_conditions))
-
-            # Filter by consensus level
-            # Consensus is based on disagreement ratio: contradicts_count / total_count
-            # Levels: strong (<10%), moderate (10-30%), weak (30-50%), disputed (>50%)
-            if filters.consensus_level:
-                # Subquery to compute disagreement ratio per entity
-                consensus_subquery = (
-                    select(
-                        RelationRoleRevision.entity_id,
-                        func.count().label('total_relations'),
-                        func.sum(
-                            case(
-                                (RelationRevision.direction == "contradicts", 1),
-                                else_=0
-                            )
-                        ).label('contradicts_count')
-                    )
-                    .select_from(RelationRoleRevision)
-                    .join(RelationRevision, RelationRoleRevision.relation_revision_id == RelationRevision.id)
-                    .where(RelationRevision.is_current == True)
-                    .group_by(RelationRoleRevision.entity_id)
-                    .subquery()
-                )
-
-                # Build consensus level conditions
-                # disagreement_ratio = contradicts_count / total_relations
-                consensus_conditions = []
-                for level in filters.consensus_level:
-                    if level == "strong":
-                        # <10% disagreement
-                        consensus_conditions.append(
-                            consensus_subquery.c.contradicts_count < (consensus_subquery.c.total_relations * 0.10)
-                        )
-                    elif level == "moderate":
-                        # 10-30% disagreement
-                        consensus_conditions.append(and_(
-                            consensus_subquery.c.contradicts_count >= (consensus_subquery.c.total_relations * 0.10),
-                            consensus_subquery.c.contradicts_count < (consensus_subquery.c.total_relations * 0.30)
-                        ))
-                    elif level == "weak":
-                        # 30-50% disagreement
-                        consensus_conditions.append(and_(
-                            consensus_subquery.c.contradicts_count >= (consensus_subquery.c.total_relations * 0.30),
-                            consensus_subquery.c.contradicts_count < (consensus_subquery.c.total_relations * 0.50)
-                        ))
-                    elif level == "disputed":
-                        # >50% disagreement
-                        consensus_conditions.append(
-                            consensus_subquery.c.contradicts_count >= (consensus_subquery.c.total_relations * 0.50)
-                        )
-
-                if consensus_conditions:
-                    base_query = base_query.join(
-                        consensus_subquery,
-                        Entity.id == consensus_subquery.c.entity_id
-                    ).where(or_(*consensus_conditions))
+        # Build the complete query using the query builder
+        base_query = self.query_builder.build_query(filters)
 
         # Count total results before pagination
         count_query = select(func.count()).select_from(
