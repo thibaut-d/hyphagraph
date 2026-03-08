@@ -10,6 +10,7 @@ from app.api import sources, entities, relations, inferences, explain, search, e
 from app.database import AsyncSessionLocal
 from app.startup import run_startup_tasks
 from app.utils.rate_limit import limiter
+from app.middleware.error_handler import register_error_handlers
 
 # Import all models to ensure SQLAlchemy discovers all tables and relationships
 # This prevents NoReferencedTableError during foreign key resolution
@@ -53,6 +54,9 @@ app = FastAPI(
     debug=settings.ENV == "development",
     lifespan=lifespan,
 )
+
+# --- Error Handling ---
+register_error_handlers(app)
 
 # --- Rate Limiting ---
 app.state.limiter = limiter

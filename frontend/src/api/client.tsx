@@ -1,3 +1,5 @@
+import { parseError, formatErrorForLogging } from "../utils/errorHandler";
+
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "/api";
 
 // Cross-tab synchronized flag using localStorage
@@ -103,6 +105,14 @@ async function refreshToken(): Promise<string | null> {
   }
 }
 
+/**
+ * Enhanced API fetch with unified error handling.
+ *
+ * All errors are parsed and formatted consistently using parseError().
+ * Errors are logged to console with full details for debugging.
+ *
+ * @throws {Error} Always throws with structured error information
+ */
 export async function apiFetch<T>(
   path: string,
   options: RequestInit = {},
@@ -118,28 +128,37 @@ export async function apiFetch<T>(
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers,
+    });
+  } catch (error) {
+    // Network error (e.g., no internet, CORS, DNS failure)
+    const parsedError = parseError(error, "Network request failed");
+    console.error(formatErrorForLogging(parsedError));
+    throw error; // Re-throw original error for compatibility
+  }
 
   // Handle 401 Unauthorized - attempt token refresh
   if (res.status === 401 && token) {
     // Don't retry for auth endpoints (login, register, refresh, logout)
     if (path.startsWith("/auth/")) {
-      let error: any;
+      let errorData: any;
       try {
-        error = await res.json();
+        errorData = await res.json();
       } catch {
-        throw new Error("API error");
+        const parsedError = parseError(res, "Authentication failed");
+        console.error(formatErrorForLogging(parsedError));
+        throw new Error(parsedError.userMessage);
       }
-      const detail = error.detail;
-      if (typeof detail === 'string') {
-        throw new Error(detail);
-      } else if (typeof detail === 'object' && detail !== null) {
-        throw new Error(JSON.stringify(detail));
-      }
-      throw new Error("API error");
+
+      // Parse backend error response
+      const backendError = errorData.error || errorData.detail || errorData;
+      const parsedError = parseError(backendError, "Authentication failed");
+      console.error(formatErrorForLogging(parsedError));
+      throw new Error(parsedError.userMessage);
     }
 
     // Try to acquire refresh lock (cross-tab synchronized)
@@ -168,19 +187,19 @@ export async function apiFetch<T>(
             })
               .then(async (retryRes) => {
                 if (!retryRes.ok) {
-                  let error: any;
+                  let errorData: any;
                   try {
-                    error = await retryRes.json();
+                    errorData = await retryRes.json();
                   } catch {
-                    throw new Error("API error");
+                    const parsedError = parseError(retryRes, "API request failed");
+                    console.error(formatErrorForLogging(parsedError));
+                    throw new Error(parsedError.userMessage);
                   }
-                  const detail = error.detail;
-                  if (typeof detail === 'string') {
-                    throw new Error(detail);
-                  } else if (typeof detail === 'object' && detail !== null) {
-                    throw new Error(JSON.stringify(detail));
-                  }
-                  throw new Error("API error");
+
+                  const backendError = errorData.error || errorData.detail || errorData;
+                  const parsedError = parseError(backendError, "API request failed");
+                  console.error(formatErrorForLogging(parsedError));
+                  throw new Error(parsedError.userMessage);
                 }
                 return retryRes.json();
               })
@@ -223,40 +242,40 @@ export async function apiFetch<T>(
     });
 
     if (!retryRes.ok) {
-      let error: any;
+      let errorData: any;
       try {
-        error = await retryRes.json();
+        errorData = await retryRes.json();
       } catch {
-        throw new Error("API error");
+        const parsedError = parseError(retryRes, "API request failed");
+        console.error(formatErrorForLogging(parsedError));
+        throw new Error(parsedError.userMessage);
       }
-      const detail = error.detail;
-      if (typeof detail === 'string') {
-        throw new Error(detail);
-      } else if (typeof detail === 'object' && detail !== null) {
-        throw new Error(JSON.stringify(detail));
-      }
-      throw new Error("API error");
+
+      const backendError = errorData.error || errorData.detail || errorData;
+      const parsedError = parseError(backendError, "API request failed");
+      console.error(formatErrorForLogging(parsedError));
+      throw new Error(parsedError.userMessage);
     }
 
     return retryRes.json();
   }
 
+  // Handle non-401 errors
   if (!res.ok) {
-    let error: any;
+    let errorData: any;
     try {
-      error = await res.json();
+      errorData = await res.json();
     } catch {
-      throw new Error("API error");
+      const parsedError = parseError(res, "API request failed");
+      console.error(formatErrorForLogging(parsedError));
+      throw new Error(parsedError.userMessage);
     }
-    // Handle error.detail which might be a string or object
-    const detail = error.detail;
-    if (typeof detail === 'string') {
-      throw new Error(detail);
-    } else if (typeof detail === 'object' && detail !== null) {
-      // For validation errors or structured errors, stringify it
-      throw new Error(JSON.stringify(detail));
-    }
-    throw new Error("API error");
+
+    // Backend sends errors in { error: { code, message, details, ... } } format
+    const backendError = errorData.error || errorData.detail || errorData;
+    const parsedError = parseError(backendError, "API request failed");
+    console.error(formatErrorForLogging(parsedError));
+    throw new Error(parsedError.userMessage);
   }
 
   // Handle 204 No Content responses (e.g., password reset requests)

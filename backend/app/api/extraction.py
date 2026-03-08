@@ -8,7 +8,7 @@ Provides endpoints for:
 - Batch extraction (all-in-one)
 """
 import logging
-from typing import Literal
+from typing import Literal, Any
 
 from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel, Field
@@ -19,6 +19,7 @@ from app.llm.client import is_llm_available
 from app.dependencies.auth import get_current_user
 from app.models.user import User
 from app.database import get_db
+from app.utils.errors import LLMServiceUnavailableException, ValidationException, ErrorCode
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
@@ -47,6 +48,15 @@ class TextExtractionRequest(BaseModel):
 class EntityExtractionRequest(TextExtractionRequest):
     """Request schema for entity extraction."""
     pass
+
+
+class ExtractionStatusResponse(BaseModel):
+    """Response schema for extraction service status."""
+    status: Literal["ready", "unavailable"]
+    available: bool
+    message: str
+    provider: str | None
+    model: str | None
 
 
 class EntityExtractionResponse(BaseModel):
@@ -116,12 +126,11 @@ async def get_extraction_service(db: AsyncSession = Depends(get_db)) -> Extracti
     This allows the service to load dynamic relation types from the database.
 
     Raises:
-        HTTPException: If LLM is not available
+        LLMServiceUnavailableException: If LLM is not available
     """
     if not is_llm_available():
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="LLM service not available. Please configure OPENAI_API_KEY."
+        raise LLMServiceUnavailableException(
+            details="LLM service is not configured. Please set OPENAI_API_KEY environment variable."
         )
     return ExtractionService(db=db)
 
@@ -361,18 +370,19 @@ async def extract_batch(
 @router.get(
     "/extract/status",
     summary="Check extraction service status",
-    description="Check if LLM-based extraction service is available and configured."
+    description="Check if LLM-based extraction service is available and configured.",
+    response_model=ExtractionStatusResponse
 )
-async def extraction_status() -> dict:
+async def extraction_status() -> ExtractionStatusResponse:
     """Check if extraction service is available."""
     from app.config import settings
 
     available = is_llm_available()
 
-    return {
-        "status": "ready" if available else "unavailable",
-        "available": available,
-        "message": "Extraction service is ready" if available else "LLM not configured",
-        "provider": "OpenAI" if available else None,
-        "model": settings.OPENAI_MODEL if available else None
-    }
+    return ExtractionStatusResponse(
+        status="ready" if available else "unavailable",
+        available=available,
+        message="Extraction service is ready" if available else "LLM not configured",
+        provider="OpenAI" if available else None,
+        model=settings.OPENAI_MODEL if available else None
+    )
