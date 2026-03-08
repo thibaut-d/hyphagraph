@@ -8,6 +8,7 @@ import logging
 from typing import Any
 
 from app.llm.client import get_llm_provider
+from app.utils.confidence_filter import filter_by_confidence
 from app.llm.prompts import (
     MEDICAL_KNOWLEDGE_SYSTEM_PROMPT,
     format_entity_extraction_prompt,
@@ -158,14 +159,7 @@ class ExtractionService:
             validated = validate_entity_extraction(response_data)
 
             # Filter by confidence if requested
-            entities = validated.entities
-            if min_confidence:
-                confidence_order = {"high": 3, "medium": 2, "low": 1}
-                min_level = confidence_order.get(min_confidence, 1)
-                entities = [
-                    e for e in entities
-                    if confidence_order.get(e.confidence, 0) >= min_level
-                ]
+            entities = filter_by_confidence(validated.entities, min_confidence)
 
             logger.info(f"Extracted {len(entities)} entities (filtered: {min_confidence})")
             return entities
@@ -224,14 +218,7 @@ class ExtractionService:
             validated = validate_relation_extraction(response_data)
 
             # Filter by confidence if requested
-            relations = validated.relations
-            if min_confidence:
-                confidence_order = {"high": 3, "medium": 2, "low": 1}
-                min_level = confidence_order.get(min_confidence, 1)
-                relations = [
-                    r for r in relations
-                    if confidence_order.get(r.confidence, 0) >= min_level
-                ]
+            relations = filter_by_confidence(validated.relations, min_confidence)
 
             logger.info(f"Extracted {len(relations)} relations (filtered: {min_confidence})")
             return relations
@@ -365,24 +352,9 @@ class ExtractionService:
                         f"{flagged_relations} relations, {flagged_claims} claims"
                     )
 
-            # Filter entities by confidence
-            entities = entities
-            if min_confidence:
-                confidence_order = {"high": 3, "medium": 2, "low": 1}
-                min_level = confidence_order.get(min_confidence, 1)
-                entities = [
-                    e for e in entities
-                    if confidence_order.get(e.confidence, 0) >= min_level
-                ]
-
-            # Filter relations by confidence
-            if min_confidence:
-                confidence_order = {"high": 3, "medium": 2, "low": 1}
-                min_level = confidence_order.get(min_confidence, 1)
-                relations = [
-                    r for r in relations
-                    if confidence_order.get(r.confidence, 0) >= min_level
-                ]
+            # Filter entities and relations by confidence
+            entities = filter_by_confidence(entities, min_confidence)
+            relations = filter_by_confidence(relations, min_confidence)
 
             # Filter claims by evidence strength
             if min_evidence_strength:

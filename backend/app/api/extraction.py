@@ -20,6 +20,7 @@ from app.dependencies.auth import get_current_user
 from app.models.user import User
 from app.database import get_db
 from app.utils.errors import LLMServiceUnavailableException, ValidationException, ErrorCode, AppException
+from app.api.error_handlers import handle_extraction_errors
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
@@ -166,6 +167,7 @@ async def get_extraction_service(db: AsyncSession = Depends(get_db)) -> Extracti
     Requires authentication.
     """
 )
+@handle_extraction_errors
 async def extract_entities(
     request: EntityExtractionRequest,
     current_user: User = Depends(get_current_user),
@@ -174,30 +176,16 @@ async def extract_entities(
     """Extract entities from text."""
     logger.info(f"Entity extraction requested by user {current_user.email}")
 
-    try:
-        entities = await service.extract_entities(
-            text=request.text,
-            min_confidence=request.min_confidence
-        )
+    entities = await service.extract_entities(
+        text=request.text,
+        min_confidence=request.min_confidence
+    )
 
-        return EntityExtractionResponse(
-            entities=entities,
-            count=len(entities),
-            text_length=len(request.text)
-        )
-
-    except AppException:
-        # Re-raise AppExceptions to preserve error details
-        raise
-    except Exception as e:
-        logger.error(f"Entity extraction failed: {e}")
-        from app.utils.errors import AppException, ErrorCode
-        raise AppException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            error_code=ErrorCode.EXTRACTION_FAILED,
-            message="Entity extraction failed",
-            details=str(e)
-        )
+    return EntityExtractionResponse(
+        entities=entities,
+        count=len(entities),
+        text_length=len(request.text)
+    )
 
 
 @router.post(
@@ -230,6 +218,7 @@ async def extract_entities(
     Requires authentication.
     """
 )
+@handle_extraction_errors
 async def extract_relations(
     request: RelationExtractionRequest,
     current_user: User = Depends(get_current_user),
@@ -238,31 +227,17 @@ async def extract_relations(
     """Extract relations from text given a list of entities."""
     logger.info(f"Relation extraction requested by user {current_user.email}")
 
-    try:
-        relations = await service.extract_relations(
-            text=request.text,
-            entities=request.entities,
-            min_confidence=request.min_confidence
-        )
+    relations = await service.extract_relations(
+        text=request.text,
+        entities=request.entities,
+        min_confidence=request.min_confidence
+    )
 
-        return RelationExtractionResponse(
-            relations=relations,
-            count=len(relations),
-            text_length=len(request.text)
-        )
-
-    except AppException:
-        # Re-raise AppExceptions to preserve error details
-        raise
-    except Exception as e:
-        logger.error(f"Relation extraction failed: {e}")
-        from app.utils.errors import AppException, ErrorCode
-        raise AppException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            error_code=ErrorCode.EXTRACTION_FAILED,
-            message="Relation extraction failed",
-            details=str(e)
-        )
+    return RelationExtractionResponse(
+        relations=relations,
+        count=len(relations),
+        text_length=len(request.text)
+    )
 
 
 @router.post(
@@ -296,6 +271,7 @@ async def extract_relations(
     Requires authentication.
     """
 )
+@handle_extraction_errors
 async def extract_claims(
     request: ClaimExtractionRequest,
     current_user: User = Depends(get_current_user),
@@ -304,30 +280,16 @@ async def extract_claims(
     """Extract factual claims from text."""
     logger.info(f"Claim extraction requested by user {current_user.email}")
 
-    try:
-        claims = await service.extract_claims(
-            text=request.text,
-            min_evidence_strength=request.min_evidence_strength
-        )
+    claims = await service.extract_claims(
+        text=request.text,
+        min_evidence_strength=request.min_evidence_strength
+    )
 
-        return ClaimExtractionResponse(
-            claims=claims,
-            count=len(claims),
-            text_length=len(request.text)
-        )
-
-    except AppException:
-        # Re-raise AppExceptions to preserve error details
-        raise
-    except Exception as e:
-        logger.error(f"Claim extraction failed: {e}")
-        from app.utils.errors import AppException, ErrorCode
-        raise AppException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            error_code=ErrorCode.EXTRACTION_FAILED,
-            message="Claim extraction failed",
-            details=str(e)
-        )
+    return ClaimExtractionResponse(
+        claims=claims,
+        count=len(claims),
+        text_length=len(request.text)
+    )
 
 
 @router.post(
@@ -352,6 +314,7 @@ async def extract_claims(
     Requires authentication.
     """
 )
+@handle_extraction_errors
 async def extract_batch(
     request: BatchExtractionRequest,
     current_user: User = Depends(get_current_user),
@@ -360,35 +323,21 @@ async def extract_batch(
     """Extract entities, relations, and claims in one batch."""
     logger.info(f"Batch extraction requested by user {current_user.email}")
 
-    try:
-        entities, relations, claims = await service.extract_batch(
-            text=request.text,
-            min_confidence=request.min_confidence,
-            min_evidence_strength=request.min_evidence_strength
-        )
+    entities, relations, claims = await service.extract_batch(
+        text=request.text,
+        min_confidence=request.min_confidence,
+        min_evidence_strength=request.min_evidence_strength
+    )
 
-        return BatchExtractionResponse(
-            entities=entities,
-            relations=relations,
-            claims=claims,
-            entity_count=len(entities),
-            relation_count=len(relations),
-            claim_count=len(claims),
-            text_length=len(request.text)
-        )
-
-    except AppException:
-        # Re-raise AppExceptions to preserve error details
-        raise
-    except Exception as e:
-        logger.error(f"Batch extraction failed: {e}")
-        from app.utils.errors import AppException, ErrorCode
-        raise AppException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            error_code=ErrorCode.EXTRACTION_FAILED,
-            message="Batch extraction failed",
-            details=str(e)
-        )
+    return BatchExtractionResponse(
+        entities=entities,
+        relations=relations,
+        claims=claims,
+        entity_count=len(entities),
+        relation_count=len(relations),
+        claim_count=len(claims),
+        text_length=len(request.text)
+    )
 
 
 @router.get(
