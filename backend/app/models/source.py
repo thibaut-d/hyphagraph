@@ -32,3 +32,9 @@ class Source(Base, UUIDMixin):
         back_populates="source",
         cascade="all, delete-orphan",
     )
+
+    staged_extractions = relationship(
+        "StagedExtraction",
+        back_populates="source",
+        cascade="all, delete-orphan",
+    )

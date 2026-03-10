@@ -19,8 +19,8 @@ class SourceWrite(Schema):
     origin: Optional[str] = None
     url: str
     trust_level: Optional[float] = None
-    summary: Optional[dict] = None  # i18n: {"en": "...", "fr": "..."}
-    source_metadata: Optional[dict] = None  # doi, pubmed_id, etc.
+    summary: Optional[dict[str, str]] = None  # i18n: {"en": "...", "fr": "..."}
+    source_metadata: Optional[dict[str, Any]] = None  # doi, pubmed_id, etc.
     created_with_llm: Optional[str] = None
 
     @field_validator('authors', 'summary', 'source_metadata', mode='before')
@@ -43,8 +43,8 @@ class SourceRevisionRead(Schema):
     origin: Optional[str] = None
     url: str
     trust_level: Optional[float] = None
-    summary: Optional[dict] = None
-    source_metadata: Optional[dict] = None
+    summary: Optional[dict[str, str]] = None
+    source_metadata: Optional[dict[str, Any]] = None
     created_with_llm: Optional[str] = None
     created_by_user_id: Optional[UUID] = None
     created_at: datetime
@@ -68,8 +68,8 @@ class SourceRead(Schema):
     origin: Optional[str] = None
     url: str
     trust_level: Optional[float] = None
-    summary: Optional[dict] = None
-    source_metadata: Optional[dict] = None
+    summary: Optional[dict[str, str]] = None
+    source_metadata: Optional[dict[str, Any]] = None
 
 
 class SourceWithHistory(SourceRead):
@@ -96,7 +96,7 @@ class SourceMetadataSuggestion(Schema):
     trust_level: Optional[float] = None  # Calculated quality score (0.0-1.0)
     summary_en: Optional[str] = None
     summary_fr: Optional[str] = None
-    source_metadata: Optional[dict] = None  # pmid, doi, etc.
+    source_metadata: Optional[dict[str, Any]] = None  # pmid, doi, etc.
 
 
 # =============================================================================
@@ -130,12 +130,17 @@ class DocumentExtractionPreview(Schema):
     entity_count: int
     relation_count: int
     link_suggestions: List[EntityLinkMatch]
+    # Review system metadata (optional)
+    needs_review_count: Optional[int] = None
+    auto_verified_count: Optional[int] = None
+    avg_validation_score: Optional[float] = None
 
 
 class SaveExtractionRequest(Schema):
     """Request to save user-approved extracted data."""
     entities_to_create: List[ExtractedEntity]  # User-approved entities
-    entity_links: dict[str, UUID]  # extracted_slug -> existing_entity_id
+    # UUID strings (not UUID objects) - converted to UUID in service layer
+    entity_links: dict[str, str]  # extracted_slug -> existing_entity_id
     relations_to_create: List[ExtractedRelation]
     # Note: source_id is in URL path, not needed in body
 

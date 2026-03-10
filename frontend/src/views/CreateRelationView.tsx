@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useNotification } from "../notifications/NotificationContext";
 
 import {
   Typography,
@@ -32,6 +33,7 @@ type SourceOption = {
 
 export function CreateRelationView() {
   const { t } = useTranslation();
+  const { showError } = useNotification();
   const [searchParams] = useSearchParams();
 
   const [entities, setEntities] = useState<EntityOption[]>([]);
@@ -45,15 +47,18 @@ export function CreateRelationView() {
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   // Load entities & sources
   useEffect(() => {
     setLoading(true);
 
     Promise.all([listEntities(), listSources()])
       .then(([entitiesRes, sourcesRes]) => {
-        setEntities(entitiesRes.items || []);
+        setEntities(
+          (entitiesRes.items || []).map((entity) => ({
+            id: entity.id,
+            label: entity.label || entity.slug,
+          }))
+        );
         setSources(sourcesRes.items || []);
       })
       .finally(() => setLoading(false));
@@ -83,8 +88,6 @@ export function CreateRelationView() {
 
   const submit = async () => {
     setSubmitting(true);
-    setError(null);
-
     try {
       await createRelation({
         source_id: sourceId,
@@ -101,7 +104,7 @@ export function CreateRelationView() {
       setConfidence(0.5);
       setRoles([]);
     } catch (e: any) {
-      setError(e.message ?? "Error");
+      showError(e);
     } finally {
       setSubmitting(false);
     }

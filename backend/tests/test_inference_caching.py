@@ -15,6 +15,7 @@ from app.services.source_service import SourceService
 from app.services.relation_service import RelationService
 from app.repositories.computed_relation_repo import ComputedRelationRepository
 from app.schemas.entity import EntityWrite
+from fixtures.scientific_data import ScientificEntities, ScientificSources
 from app.schemas.source import SourceWrite
 from app.schemas.relation import RelationWrite, RoleRevisionWrite as RoleWrite
 from app.config import settings
@@ -34,7 +35,7 @@ class TestInferenceCaching:
         inference_service = InferenceService(db_session)
         computed_repo = ComputedRelationRepository(db_session)
 
-        entity = await entity_service.create(EntityWrite(slug="aspirin", kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.PREGABALIN["slug"], kind="drug"))
         source = await source_service.create(SourceWrite(kind="study", title="Test", url="https://example.com/test"))
 
         await relation_service.create(
@@ -75,7 +76,7 @@ class TestInferenceCaching:
         inference_service = InferenceService(db_session)
         computed_repo = ComputedRelationRepository(db_session)
 
-        entity = await entity_service.create(EntityWrite(slug="drug", kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"], kind="drug"))
         source = await source_service.create(SourceWrite(kind="study", title="Test", url="https://example.com/test"))
 
         await relation_service.create(
@@ -110,7 +111,7 @@ class TestInferenceCaching:
         inference_service = InferenceService(db_session)
         computed_repo = ComputedRelationRepository(db_session)
 
-        entity = await entity_service.create(EntityWrite(slug="drug", kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"], kind="drug"))
         source = await source_service.create(SourceWrite(kind="study", title="Test", url="https://example.com/test"))
 
         # Create relations with different scopes
@@ -177,7 +178,7 @@ class TestInferenceCaching:
         relation_service = RelationService(db_session)
         inference_service = InferenceService(db_session)
 
-        entity = await entity_service.create(EntityWrite(slug="aspirin", kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.PREGABALIN["slug"], kind="drug"))
         source = await source_service.create(SourceWrite(kind="study", title="Test", url="https://example.com/test"))
 
         await relation_service.create(
@@ -224,7 +225,7 @@ class TestInferenceCaching:
         inference_service = InferenceService(db_session)
         computed_repo = ComputedRelationRepository(db_session)
 
-        entity = await entity_service.create(EntityWrite(slug="drug", kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"], kind="drug"))
         source = await source_service.create(SourceWrite(kind="study", title="Test", url="https://example.com/test"))
 
         # Create contradictory relations
@@ -279,7 +280,7 @@ class TestCacheInvalidation:
         inference_service = InferenceService(db_session)
         computed_repo = ComputedRelationRepository(db_session)
 
-        entity = await entity_service.create(EntityWrite(slug="drug", kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"], kind="drug"))
         source = await source_service.create(SourceWrite(kind="study", title="Test", url="https://example.com/test"))
 
         await relation_service.create(

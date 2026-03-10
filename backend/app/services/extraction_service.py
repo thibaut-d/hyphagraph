@@ -2,12 +2,13 @@
 Knowledge extraction service using LLM.
 
 Provides high-level functions for extracting entities, relations, and claims
-from text using the LLM integration.
+from text using the LLM integration with built-in hallucination validation.
 """
 import logging
 from typing import Any
 
 from app.llm.client import get_llm_provider
+from app.utils.confidence_filter import filter_by_confidence
 from app.llm.prompts import (
     MEDICAL_KNOWLEDGE_SYSTEM_PROMPT,
     format_entity_extraction_prompt,
@@ -24,21 +25,36 @@ from app.llm.schemas import (
     validate_claim_extraction,
     validate_batch_extraction,
 )
+from app.services.extraction_validation_service import (
+    ExtractionValidationService,
+    ValidationLevel,
+    ValidationResult,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class ExtractionService:
     """
-    Service for extracting knowledge from text using LLM.
+    Service for individual knowledge extraction from text using LLM.
 
-    Handles entity extraction, relation extraction, claim extraction,
-    and batch processing with validation and error handling.
+    Handles entity extraction, relation extraction, and claim extraction
+    with validation and error handling.
+
+    For batch extraction (entities + relations + claims in one call),
+    use BatchExtractionOrchestrator instead.
 
     Uses DYNAMIC prompts generated from database relation types.
     """
 
-    def __init__(self, temperature: float = 0.2, max_tokens: int = 3000, db=None):
+    def __init__(
+        self,
+        temperature: float = 0.2,
+        max_tokens: int = 3000,
+        db=None,
+        enable_validation: bool = True,
+        validation_level: ValidationLevel = "moderate"
+    ):
         """
         Initialize extraction service.
 
@@ -46,6 +62,8 @@ class ExtractionService:
             temperature: LLM temperature for extraction (lower = more deterministic)
             max_tokens: Maximum tokens for LLM response
             db: Optional database session for dynamic prompt generation
+            enable_validation: Whether to validate extractions against source text
+            validation_level: Strictness of validation ("strict", "moderate", "lenient")
         """
         self.llm = get_llm_provider()
         self.temperature = temperature
@@ -53,6 +71,13 @@ class ExtractionService:
         self.system_prompt = MEDICAL_KNOWLEDGE_SYSTEM_PROMPT
         self.db = db
         self._relation_types_cache = None  # Cache relation types for this service instance
+
+        # Hallucination validation
+        self.enable_validation = enable_validation
+        self.validation_service = ExtractionValidationService(
+            validation_level=validation_level,
+            auto_reject_invalid=(validation_level == "strict")
+        ) if enable_validation else None
 
     async def _get_relation_types_prompt(self) -> str:
         """
@@ -137,14 +162,7 @@ class ExtractionService:
             validated = validate_entity_extraction(response_data)
 
             # Filter by confidence if requested
-            entities = validated.entities
-            if min_confidence:
-                confidence_order = {"high": 3, "medium": 2, "low": 1}
-                min_level = confidence_order.get(min_confidence, 1)
-                entities = [
-                    e for e in entities
-                    if confidence_order.get(e.confidence, 0) >= min_level
-                ]
+            entities = filter_by_confidence(validated.entities, min_confidence)
 
             logger.info(f"Extracted {len(entities)} entities (filtered: {min_confidence})")
             return entities
@@ -203,14 +221,7 @@ class ExtractionService:
             validated = validate_relation_extraction(response_data)
 
             # Filter by confidence if requested
-            relations = validated.relations
-            if min_confidence:
-                confidence_order = {"high": 3, "medium": 2, "low": 1}
-                min_level = confidence_order.get(min_confidence, 1)
-                relations = [
-                    r for r in relations
-                    if confidence_order.get(r.confidence, 0) >= min_level
-                ]
+            relations = filter_by_confidence(validated.relations, min_confidence)
 
             logger.info(f"Extracted {len(relations)} relations (filtered: {min_confidence})")
             return relations
@@ -269,84 +280,4 @@ class ExtractionService:
 
         except Exception as e:
             logger.error(f"Claim extraction failed: {e}")
-            raise
-
-    async def extract_batch(
-        self,
-        text: str,
-        min_confidence: str | None = None,
-        min_evidence_strength: str | None = None
-    ) -> tuple[list[ExtractedEntity], list[ExtractedRelation], list[ExtractedClaim]]:
-        """
-        Extract entities, relations, and claims in one batch.
-
-        More efficient than calling each extraction separately.
-
-        Args:
-            text: Input text to extract from
-            min_confidence: Optional minimum confidence for entities/relations
-            min_evidence_strength: Optional minimum evidence strength for claims
-
-        Returns:
-            Tuple of (entities, relations, claims)
-
-        Raises:
-            Exception: If extraction fails or LLM is unavailable
-        """
-        logger.info(f"Batch extraction from text ({len(text)} chars)")
-
-        # Format prompt
-        prompt = format_batch_extraction_prompt(text)
-
-        # Call LLM with higher token limit for batch
-        try:
-            response_data = await self.llm.generate_json(
-                prompt=prompt,
-                system_prompt=self.system_prompt,
-                temperature=self.temperature,
-                max_tokens=min(self.max_tokens * 2, 4000),  # Double tokens for batch
-            )
-
-            # Validate response
-            validated = validate_batch_extraction(response_data)
-
-            # Filter entities by confidence
-            entities = validated.entities
-            if min_confidence:
-                confidence_order = {"high": 3, "medium": 2, "low": 1}
-                min_level = confidence_order.get(min_confidence, 1)
-                entities = [
-                    e for e in entities
-                    if confidence_order.get(e.confidence, 0) >= min_level
-                ]
-
-            # Filter relations by confidence
-            relations = validated.relations
-            if min_confidence:
-                confidence_order = {"high": 3, "medium": 2, "low": 1}
-                min_level = confidence_order.get(min_confidence, 1)
-                relations = [
-                    r for r in relations
-                    if confidence_order.get(r.confidence, 0) >= min_level
-                ]
-
-            # Filter claims by evidence strength
-            claims = validated.claims
-            if min_evidence_strength:
-                evidence_order = {"strong": 4, "moderate": 3, "weak": 2, "anecdotal": 1}
-                min_level = evidence_order.get(min_evidence_strength, 1)
-                claims = [
-                    c for c in claims
-                    if evidence_order.get(c.evidence_strength, 0) >= min_level
-                ]
-
-            logger.info(
-                f"Batch extraction complete: {len(entities)} entities, "
-                f"{len(relations)} relations, {len(claims)} claims"
-            )
-
-            return entities, relations, claims
-
-        except Exception as e:
-            logger.error(f"Batch extraction failed: {e}")
             raise

@@ -26,6 +26,12 @@ import type {
   RelationType,
   ConfidenceLevel,
 } from "../types/extraction";
+import {
+  getRelationDisplayRoles,
+  getRelationKey,
+  getRelationObject,
+  getRelationSubject,
+} from "../utils/extractionRelation";
 
 interface ExtractedRelationsListProps {
   relations: ExtractedRelation[];
@@ -51,6 +57,7 @@ const relationTypeLabels: Record<RelationType, string> = {
   metabolized_by: "Metabolized By",
   biomarker_for: "Biomarker For",
   affects_population: "Affects Population",
+  measures: "Measures",
   other: "Other",
 };
 
@@ -66,6 +73,7 @@ const relationTypeIcons: Record<RelationType, React.ReactElement> = {
   metabolized_by: <ScienceIcon fontSize="small" />,
   biomarker_for: <ScienceIcon fontSize="small" />,
   affects_population: <ScienceIcon fontSize="small" />,
+  measures: <ScienceIcon fontSize="small" />,
   other: <ScienceIcon fontSize="small" />,
 };
 
@@ -84,13 +92,16 @@ export const ExtractedRelationsList: React.FC<ExtractedRelationsListProps> = ({
 
   return (
     <Stack spacing={2}>
-      {relations.map((relation) => {
-        const relationKey = `${relation.subject_slug}-${relation.relation_type}-${relation.object_slug}`;
+      {relations.map((relation, index) => {
+        const relationKey = getRelationKey(relation);
         const isSelected = selectedRelations.has(relationKey);
+        const subject = getRelationSubject(relation);
+        const object = getRelationObject(relation);
+        const roles = getRelationDisplayRoles(relation);
 
         return (
           <Card
-            key={relationKey}
+            key={`${relationKey}-${index}`}
             variant="outlined"
             sx={{
               opacity: isSelected ? 1 : 0.6,
@@ -118,7 +129,7 @@ export const ExtractedRelationsList: React.FC<ExtractedRelationsListProps> = ({
                         flexWrap: "wrap",
                       }}
                     >
-                      <Chip label={relation.subject_slug} variant="outlined" />
+                      <Chip label={subject} variant="outlined" />
                       <Box
                         sx={{
                           display: "flex",
@@ -136,15 +147,15 @@ export const ExtractedRelationsList: React.FC<ExtractedRelationsListProps> = ({
                           {relationTypeLabels[relation.relation_type]}
                         </Typography>
                       </Box>
-                      <Chip label={relation.object_slug} variant="outlined" />
+                      <Chip label={object} variant="outlined" />
                     </Box>
 
                     {/* Additional roles */}
-                    {Object.keys(relation.roles).length > 0 && (
+                    {roles.length > 0 && (
                       <Box sx={{ mt: 1, display: "flex", gap: 1, flexWrap: "wrap" }}>
-                        {Object.entries(relation.roles).map(([role, value]) => (
+                        {roles.map(({ role, value }) => (
                           <Chip
-                            key={role}
+                            key={`${relationKey}-${role}-${value}`}
                             label={`${role}: ${value}`}
                             size="small"
                             variant="outlined"

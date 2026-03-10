@@ -4,7 +4,7 @@ Authentication endpoints for user registration, login, and profile.
 Implements custom JWT-based authentication (NOT FastAPI Users).
 Uses UserService for business logic (matches architectural pattern).
 """
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,6 +33,11 @@ from app.utils.audit import (
     log_password_change,
     log_account_deletion,
     log_token_refresh,
+)
+from app.utils.errors import (
+    AppException,
+    ErrorCode,
+    ValidationException,
 )
 
 
@@ -70,7 +75,7 @@ async def register(
         Created user information (without password)
 
     Raises:
-        HTTPException 400: If email already registered
+        ValidationException: If email already registered
         HTTPException 429: If rate limit exceeded
     """
     from app.utils.email import send_verification_email
@@ -97,14 +102,14 @@ async def register(
 
         return user
 
-    except HTTPException as e:
+    except AppException as e:
         # Log failed registration
         await log_registration(
             db=db,
             request=request,
             email=payload.email,
             success=False,
-            error_message=e.detail
+            error_message=str(e.error_detail.message)
         )
         raise
 
@@ -135,7 +140,7 @@ async def login(
         JWT access token and refresh token pair
 
     Raises:
-        HTTPException 401: If credentials are invalid
+        UnauthorizedException: If credentials are invalid
         HTTPException 429: If rate limit exceeded
     """
     try:
@@ -160,14 +165,14 @@ async def login(
             token_type="bearer"
         )
 
-    except HTTPException as e:
+    except AppException as e:
         # Log failed login
         await log_login_attempt(
             db=db,
             request=request,
             email=form_data.username,
             success=False,
-            error_message=e.detail
+            error_message=str(e.error_detail.message)
         )
         raise
 
@@ -221,7 +226,7 @@ async def refresh_access_token(
         New JWT access token
 
     Raises:
-        HTTPException 401: If refresh token is invalid, expired, or revoked
+        UnauthorizedException: If refresh token is invalid, expired, or revoked
         HTTPException 429: If rate limit exceeded
     """
     access_token = await user_service.refresh_access_token(payload.refresh_token)
@@ -249,7 +254,7 @@ async def logout(
         No content (204)
 
     Raises:
-        HTTPException 404: If refresh token not found
+        AppException: If refresh token not found
     """
     await user_service.revoke_refresh_token(current_user.id, payload.refresh_token)
     return None
@@ -282,7 +287,7 @@ async def change_password(
         No content (204)
 
     Raises:
-        HTTPException 401: If current password is incorrect
+        UnauthorizedException: If current password is incorrect
         HTTPException 429: If rate limit exceeded
     """
     try:
@@ -303,7 +308,7 @@ async def change_password(
 
         return None
 
-    except HTTPException as e:
+    except AppException as e:
         # Log failed password change
         await log_password_change(
             db=db,
@@ -311,7 +316,7 @@ async def change_password(
             user_id=current_user.id,
             user_email=current_user.email,
             success=False,
-            error_message=e.detail
+            error_message=str(e.error_detail.message)
         )
         raise
 
@@ -337,7 +342,7 @@ async def update_profile(
         Updated user information
 
     Raises:
-        HTTPException 400: If email already in use
+        ValidationException: If email already in use
     """
     return await user_service.update(current_user.id, payload)
 
@@ -439,7 +444,7 @@ async def verify_email(
         Verified user information
 
     Raises:
-        HTTPException 400: If token is invalid or expired
+        ValidationException: If token is invalid or expired
         HTTPException 429: If rate limit exceeded
     """
     return await user_service.verify_email(payload.token)
@@ -469,8 +474,8 @@ async def resend_verification_email(
         No content (204)
 
     Raises:
-        HTTPException 404: If user not found
-        HTTPException 400: If user already verified
+        AppException: If user not found
+        ValidationException: If user already verified
         HTTPException 429: If rate limit exceeded
     """
     from app.utils.email import send_verification_email
@@ -478,16 +483,19 @@ async def resend_verification_email(
     # Get user by email
     user = await user_service.get_by_email(payload.email)
     if not user:
-        raise HTTPException(
+        raise AppException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            error_code=ErrorCode.USER_NOT_FOUND,
+            message="User not found",
+            details=f"No user found with email '{payload.email}'",
+            context={"email": payload.email}
         )
 
     # Check if already verified
     if user.is_verified:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already verified"
+        raise ValidationException(
+            message="Email already verified",
+            details="This email address has already been verified"
         )
 
     # Create new verification token
@@ -563,7 +571,7 @@ async def reset_password(
         Updated user information
 
     Raises:
-        HTTPException 400: If token is invalid or expired
+        ValidationException: If token is invalid or expired
         HTTPException 429: If rate limit exceeded
     """
     return await user_service.reset_password(payload.token, payload.new_password)

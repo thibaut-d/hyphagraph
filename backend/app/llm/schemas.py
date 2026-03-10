@@ -7,7 +7,7 @@ Defines structured schemas for:
 - Claim extraction
 - Entity linking
 """
-from typing import Literal
+from typing import Literal, Any
 from pydantic import BaseModel, Field
 
 
@@ -271,7 +271,7 @@ class EntityLinkingResponse(BaseModel):
 # Helper Functions for Validation
 # =============================================================================
 
-def validate_entity_extraction(data: dict) -> EntityExtractionResponse:
+def validate_entity_extraction(data: dict[str, Any]) -> EntityExtractionResponse:
     """
     Validate and parse entity extraction response from LLM.
 
@@ -291,7 +291,7 @@ def validate_entity_extraction(data: dict) -> EntityExtractionResponse:
     return EntityExtractionResponse.model_validate(data)
 
 
-def validate_relation_extraction(data: dict) -> RelationExtractionResponse:
+def validate_relation_extraction(data: dict[str, Any]) -> RelationExtractionResponse:
     """Validate and parse relation extraction response from LLM."""
     if isinstance(data, list):
         data = {"relations": data}
@@ -299,7 +299,7 @@ def validate_relation_extraction(data: dict) -> RelationExtractionResponse:
     return RelationExtractionResponse.model_validate(data)
 
 
-def validate_claim_extraction(data: dict) -> ClaimExtractionResponse:
+def validate_claim_extraction(data: dict[str, Any]) -> ClaimExtractionResponse:
     """Validate and parse claim extraction response from LLM."""
     if isinstance(data, list):
         data = {"claims": data}
@@ -307,7 +307,7 @@ def validate_claim_extraction(data: dict) -> ClaimExtractionResponse:
     return ClaimExtractionResponse.model_validate(data)
 
 
-def validate_batch_extraction(data: dict) -> BatchExtractionResponse:
+def validate_batch_extraction(data: dict[str, Any]) -> BatchExtractionResponse:
     """Validate and parse batch extraction response from LLM."""
     # Convert old subject/object format to new roles format for backward compatibility
     if "relations" in data:
@@ -328,9 +328,6 @@ def validate_batch_extraction(data: dict) -> BatchExtractionResponse:
                 elif relation_type == "measures":
                     subject_role = "measured_by"
                     object_role = "target"
-                elif relation_type == "compared_to":
-                    subject_role = "study_group"
-                    object_role = "control_group"
 
                 # Create roles array
                 relation["roles"] = [
@@ -341,7 +338,7 @@ def validate_batch_extraction(data: dict) -> BatchExtractionResponse:
     return BatchExtractionResponse.model_validate(data)
 
 
-def validate_entity_linking(data: dict) -> EntityLinkingResponse:
+def validate_entity_linking(data: dict[str, Any]) -> EntityLinkingResponse:
     """Validate and parse entity linking response from LLM."""
     # Handle case where LLM returns links directly instead of {"links": {...}}
     if not isinstance(data, dict) or "links" not in data:

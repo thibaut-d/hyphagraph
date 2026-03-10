@@ -31,8 +31,16 @@ class RefreshToken(Base):
         index=True,
     )
 
-    # Token value (hashed for security)
-    token_hash: Mapped[str] = mapped_column(String, nullable=False, unique=True, index=True)
+    # Token lookup hash (SHA256 for fast lookup)
+    token_lookup_hash: Mapped[str] = mapped_column(
+        String(64),  # SHA256 hex digest is 64 chars
+        nullable=False,
+        unique=True,
+        index=True
+    )
+
+    # Token value (bcrypt hashed for security verification)
+    token_hash: Mapped[str] = mapped_column(String, nullable=False)
 
     # Expiration timestamp
     expires_at: Mapped[datetime] = mapped_column(

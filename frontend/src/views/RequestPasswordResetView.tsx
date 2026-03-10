@@ -1,23 +1,20 @@
 import React, { useState } from "react";
 import { requestPasswordReset } from "../api/auth";
 import { Link } from "react-router-dom";
+import { useNotification } from "../notifications/NotificationContext";
 
 export default function RequestPasswordResetView() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
+    e.preventDefault();    setLoading(true);
 
     try {
       await requestPasswordReset(email);
       setSubmitted(true);
     } catch (err: any) {
-      setError(err.message || "Failed to send reset email");
+      showError(err);
     } finally {
       setLoading(false);
     }

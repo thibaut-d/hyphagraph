@@ -6,6 +6,7 @@ Provides:
 - Prompt generation for LLM
 - Validation and suggestions
 """
+from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text
 import json as json_module
@@ -17,7 +18,7 @@ class SemanticRoleService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_all_active(self) -> list[dict]:
+    async def get_all_active(self) -> list[dict[str, Any]]:
         """Get all active semantic role types."""
         stmt = text("""
             SELECT role_type, label::text, description, category, examples
@@ -88,11 +89,11 @@ class SemanticRoleService:
     async def create_role_type(
         self,
         role_type: str,
-        label: dict,
+        label: dict[str, str],
         description: str,
-        category: str = None,
-        examples: str = None
-    ) -> dict:
+        category: str | None = None,
+        examples: str | None = None
+    ) -> dict[str, Any]:
         """
         Create a new semantic role type.
 

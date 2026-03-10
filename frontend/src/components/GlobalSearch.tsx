@@ -13,6 +13,7 @@ import {
 import SearchIcon from "@mui/icons-material/Search";
 import { getSuggestions, SearchSuggestion } from "../api/search";
 import { useDebounce } from "../hooks/useDebounce";
+import { useNotification } from "../notifications/NotificationContext";
 
 /**
  * GlobalSearch component for the main navigation header.
@@ -32,7 +33,7 @@ export function GlobalSearch() {
 
   // Fetch suggestions when debounced query changes
   useEffect(() => {
-    if (!debouncedQuery || debouncedQuery.length < 2) {
+    if (!debouncedQuery || debouncedQuery.length < 3) {
       setSuggestions([]);
       return;
     }
@@ -54,8 +55,8 @@ export function GlobalSearch() {
   }, [debouncedQuery]);
 
   const handleSelect = useCallback(
-    (_event: any, value: SearchSuggestion | null) => {
-      if (value) {
+    (_event: React.SyntheticEvent, value: string | SearchSuggestion | null) => {
+      if (value && typeof value !== "string") {
         // Navigate to detail page based on type
         if (value.type === "entity") {
           navigate(`/entities/${value.id}`);

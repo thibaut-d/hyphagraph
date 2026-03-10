@@ -35,3 +35,10 @@ class Relation(Base, UUIDMixin):
         cascade="all, delete-orphan",
         order_by="RelationRevision.created_at.desc()",
     )
+
+    source_extraction = relationship(
+        "StagedExtraction",
+        foreign_keys="StagedExtraction.materialized_relation_id",
+        back_populates="materialized_relation",
+        uselist=False,
+    )

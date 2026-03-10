@@ -11,12 +11,13 @@
  * - Show conditions and associated sources
  * - Allow filtering and sorting
  *
- * Navigation: PropertyDetailView → "View All Related Evidence" → This View
+ * Navigation: PropertyDetailView -> "View All Related Evidence" -> This View
  */
 
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useNotification } from "../notifications/NotificationContext";
 import {
   Typography,
   Paper,
@@ -44,17 +45,33 @@ import CancelIcon from "@mui/icons-material/Cancel";
 import HelpIcon from "@mui/icons-material/Help";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 
-import { getEntity, EntityRead } from "../api/entities";
+import { getEntity } from "../api/entities";
 import { getInferenceForEntity } from "../api/inferences";
-import { getSource, SourceRead } from "../api/sources";
-import { RelationRead } from "../types/relation";
-import { resolveLabel } from "../utils/i18nLabel";
+import { getSource } from "../api/sources";
+import type { EntityRead } from "../types/entity";
+import type { SourceRead } from "../types/source";
+import type { RelationRead } from "../types/relation";
 
 type SortField = "kind" | "direction" | "confidence" | "source";
 type SortOrder = "asc" | "desc";
 
 interface EnrichedRelation extends RelationRead {
   source?: SourceRead;
+}
+
+function resolveRelationNotes(
+  notes: string | Record<string, string> | null | undefined,
+  language: string,
+): string | null {
+  if (!notes) {
+    return null;
+  }
+
+  if (typeof notes === "string") {
+    return notes;
+  }
+
+  return notes[language] || notes.en || Object.values(notes)[0] || null;
 }
 
 /**
@@ -69,32 +86,31 @@ interface EnrichedRelation extends RelationRead {
  * - Optional filtering by roleType
  */
 export function EvidenceView() {
-  const { entityId, roleType } = useParams<{ entityId: string; roleType?: string }>();
+  const { id, roleType } = useParams<{ id: string; roleType?: string }>();
   const { t, i18n } = useTranslation();
+  const { showError } = useNotification();
   const navigate = useNavigate();
 
   const [entity, setEntity] = useState<EntityRead | null>(null);
   const [relations, setRelations] = useState<EnrichedRelation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const [sortField, setSortField] = useState<SortField>("confidence");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
 
   // Fetch entity and relations
   useEffect(() => {
-    if (!entityId) {
-      setError("Missing entity ID");
+    if (!id) {
+      showError(new Error("Missing entity ID"));
       setLoading(false);
       return;
     }
 
     setLoading(true);
-    setError(null);
 
     Promise.all([
-      getEntity(entityId),
-      getInferenceForEntity(entityId),
+      getEntity(id),
+      getInferenceForEntity(id),
     ])
       .then(async ([entityData, inferenceData]) => {
         setEntity(entityData);
@@ -113,7 +129,7 @@ export function EvidenceView() {
         const filteredRelations = roleType
           ? allRelations.filter((rel) =>
               rel.roles.some(
-                (role) => role.entity_id === entityId && role.role_type === roleType
+                (role) => role.entity_id === id && role.role_type === roleType
               )
             )
           : allRelations;
@@ -134,13 +150,12 @@ export function EvidenceView() {
         setRelations(enrichedRelations);
       })
       .catch((err) => {
-        console.error("Failed to load evidence:", err);
-        setError(err.message || "Failed to load evidence");
+        showError(err);
       })
       .finally(() => {
         setLoading(false);
       });
-  }, [entityId, roleType]);
+  }, [id, roleType, showError]);
 
   // Handle sorting
   const handleSort = (field: SortField) => {
@@ -158,13 +173,13 @@ export function EvidenceView() {
 
     switch (sortField) {
       case "kind":
-        comparison = a.kind.localeCompare(b.kind);
+        comparison = (a.kind || "").localeCompare(b.kind || "");
         break;
       case "direction":
         comparison = (a.direction || "").localeCompare(b.direction || "");
         break;
       case "confidence":
-        comparison = a.confidence - b.confidence;
+        comparison = (a.confidence ?? 0) - (b.confidence ?? 0);
         break;
       case "source":
         comparison = (a.source?.title || "").localeCompare(b.source?.title || "");
@@ -187,15 +202,15 @@ export function EvidenceView() {
   }
 
   // Error state
-  if (error || !entity) {
+  if (!entity && !loading) {
     return (
       <Alert severity="error">
-        {error || t("common.error", "An error occurred")}
+        {t("common.error", "An error occurred")}
       </Alert>
     );
   }
 
-  const entityLabel = resolveLabel(entity.label, entity.label_i18n, i18n.language);
+  const entityLabel = entity.label || entity.slug;
 
   // Direction chip helper
   const getDirectionChip = (direction: string) => {
@@ -238,13 +253,13 @@ export function EvidenceView() {
         <Link component={RouterLink} to="/entities" underline="hover">
           {t("menu.entities", "Entities")}
         </Link>
-        <Link component={RouterLink} to={`/entities/${entityId}`} underline="hover">
+        <Link component={RouterLink} to={`/entities/${id}`} underline="hover">
           {entityLabel}
         </Link>
         {roleType && (
           <Link
             component={RouterLink}
-            to={`/entities/${entityId}/properties/${roleType}`}
+            to={`/entities/${id}/properties/${roleType}`}
             underline="hover"
           >
             {roleType}
@@ -261,8 +276,8 @@ export function EvidenceView() {
           startIcon={<ArrowBackIcon />}
           onClick={() =>
             roleType
-              ? navigate(`/entities/${entityId}/properties/${roleType}`)
-              : navigate(`/entities/${entityId}`)
+              ? navigate(`/entities/${id}/properties/${roleType}`)
+              : navigate(`/entities/${id}`)
           }
           variant="outlined"
           size="small"
@@ -356,26 +371,31 @@ export function EvidenceView() {
                   {/* Claim/Kind */}
                   <TableCell>
                     <Typography variant="body2" fontWeight={500}>
-                      {relation.kind}
+                      {relation.kind || "-"}
                     </Typography>
                   </TableCell>
 
                   {/* Direction */}
-                  <TableCell>{getDirectionChip(relation.direction)}</TableCell>
+                  <TableCell>{getDirectionChip(relation.direction || "")}</TableCell>
 
                   {/* Confidence */}
                   <TableCell>
+                    {(() => {
+                      const confidence = relation.confidence ?? 0;
+                      return (
                     <Chip
-                      label={`${Math.round(relation.confidence * 100)}%`}
+                      label={`${Math.round(confidence * 100)}%`}
                       size="small"
                       color={
-                        relation.confidence > 0.7
+                        confidence > 0.7
                           ? "success"
-                          : relation.confidence > 0.4
+                          : confidence > 0.4
                           ? "warning"
                           : "error"
                       }
                     />
+                      );
+                    })()}
                   </TableCell>
 
                   {/* Roles */}
@@ -392,7 +412,7 @@ export function EvidenceView() {
                             variant="caption"
                             underline="hover"
                           >
-                            {role.entity_id === entityId ? entityLabel : role.entity_id}
+                            {role.entity_id === id ? entityLabel : role.entity_id}
                           </Link>
                         </Box>
                       ))}
@@ -433,8 +453,8 @@ export function EvidenceView() {
 
                   {/* Notes */}
                   <TableCell>
-                    {relation.notes ? (
-                      <Tooltip title={relation.notes} arrow>
+                    {resolveRelationNotes(relation.notes, i18n.language) ? (
+                      <Tooltip title={resolveRelationNotes(relation.notes, i18n.language)} arrow>
                         <IconButton size="small">
                           <HelpIcon fontSize="small" />
                         </IconButton>
@@ -474,10 +494,11 @@ export function EvidenceView() {
         <Typography variant="body2">
           {t(
             "evidence.audit_note",
-            "ℹ️ This view provides complete transparency into all evidence items. Every relation shown here contributes to the computed inferences you see elsewhere in the system."
+            "INFO: This view provides complete transparency into all evidence items. Every relation shown here contributes to the computed inferences you see elsewhere in the system."
           )}
         </Typography>
       </Alert>
     </Stack>
   );
 }
+

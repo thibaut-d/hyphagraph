@@ -3,7 +3,7 @@ Authentication dependencies for FastAPI endpoints.
 
 Provides get_current_user dependency for protected endpoints.
 """
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -12,6 +12,7 @@ from uuid import UUID
 from app.database import get_db
 from app.models.user import User
 from app.utils.auth import decode_access_token
+from app.utils.errors import UnauthorizedException, ForbiddenException
 
 
 # OAuth2 scheme for token extraction
@@ -40,25 +41,25 @@ async def get_current_user(
         Current authenticated user
 
     Raises:
-        HTTPException 401: If token is invalid or user not found
-        HTTPException 403: If user is inactive
+        UnauthorizedException: If token is invalid or user not found
+        ForbiddenException: If user is inactive
     """
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-
     # Decode token to get user_id
     user_id_str = decode_access_token(token)
     if user_id_str is None:
-        raise credentials_exception
+        raise UnauthorizedException(
+            message="Could not validate credentials",
+            details="Invalid or expired token"
+        )
 
     # Convert string to UUID
     try:
         user_id = UUID(user_id_str)
     except ValueError:
-        raise credentials_exception
+        raise UnauthorizedException(
+            message="Could not validate credentials",
+            details="Invalid user ID format in token"
+        )
 
     # Fetch user from database
     stmt = select(User).where(User.id == user_id)
@@ -66,13 +67,16 @@ async def get_current_user(
     user = result.scalar_one_or_none()
 
     if user is None:
-        raise credentials_exception
+        raise UnauthorizedException(
+            message="Could not validate credentials",
+            details="User not found"
+        )
 
     # Check if user is active
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Inactive user"
+        raise ForbiddenException(
+            message="Inactive user",
+            details="Your account has been deactivated"
         )
 
     return user
@@ -94,11 +98,11 @@ async def get_current_active_superuser(
         Current authenticated superuser
 
     Raises:
-        HTTPException 403: If user is not a superuser
+        ForbiddenException: If user is not a superuser
     """
     if not current_user.is_superuser:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Superuser privileges required"
+        raise ForbiddenException(
+            message="Superuser privileges required",
+            details="This action requires administrator privileges"
         )
     return current_user

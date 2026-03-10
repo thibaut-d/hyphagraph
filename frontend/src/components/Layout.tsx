@@ -35,6 +35,7 @@ import HomeIcon from "@mui/icons-material/Home";
 import CategoryIcon from "@mui/icons-material/Category";
 import LibraryBooksIcon from "@mui/icons-material/LibraryBooks";
 import SearchIcon from "@mui/icons-material/Search";
+import RateReviewIcon from "@mui/icons-material/RateReview";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -44,18 +45,22 @@ import { ProfileMenu } from "./ProfileMenu";
 import { GlobalSearch } from "./GlobalSearch";
 import { useAuthContext } from "../auth/AuthContext";
 import { getEntityFilterOptions } from "../api/entities";
+import type { UICategoryOption } from "../api/entities";
+import { useNotification } from "../notifications/NotificationContext";
 
 const menuItems = [
   { key: "menu.home", path: "/", icon: HomeIcon },
   { key: "menu.entities", path: "/entities", icon: CategoryIcon },
   { key: "menu.sources", path: "/sources", icon: LibraryBooksIcon },
   { key: "menu.search", path: "/search", icon: SearchIcon },
+  { key: "menu.review_queue", path: "/review-queue", icon: RateReviewIcon, requiresAuth: true },
 ];
 
 export function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { showError } = useNotification();
   const { user } = useAuthContext();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -65,7 +70,7 @@ export function Layout() {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
   // Entities dropdown state
-  const [categories, setCategories] = useState<Array<{ id: string; label: { en: string; fr: string } }>>([]);
+  const [categories, setCategories] = useState<UICategoryOption[]>([]);
   const [entitiesMenuAnchor, setEntitiesMenuAnchor] = useState<null | HTMLElement>(null);
   const [mobileEntitiesExpanded, setMobileEntitiesExpanded] = useState(false);
 
@@ -135,19 +140,37 @@ export function Layout() {
             gap: 2,
             flexGrow: 1
           }}>
-            {menuItems.map((item) => {
-              const isActive =
-                location.pathname === item.path ||
-                (item.path !== "/" && location.pathname.startsWith(item.path));
+            {menuItems
+              .filter(item => !item.requiresAuth || user)
+              .map((item) => {
+                const isActive =
+                  location.pathname === item.path ||
+                  (item.path !== "/" && location.pathname.startsWith(item.path));
 
-              // Special case for Entities menu with dropdown
-              if (item.path === "/entities" && categories.length > 0) {
+                // Special case for Entities menu with dropdown
+                if (item.path === "/entities" && categories.length > 0) {
+                  return (
+                    <Button
+                      key={item.path}
+                      color="inherit"
+                      endIcon={<ArrowDropDownIcon />}
+                      onClick={(e) => setEntitiesMenuAnchor(e.currentTarget)}
+                      sx={{
+                        fontWeight: isActive ? "bold" : "normal",
+                        textDecoration: isActive ? "underline" : "none",
+                      }}
+                    >
+                      {t(item.key)}
+                    </Button>
+                  );
+                }
+
                 return (
                   <Button
                     key={item.path}
+                    component={RouterLink}
+                    to={item.path}
                     color="inherit"
-                    endIcon={<ArrowDropDownIcon />}
-                    onClick={(e) => setEntitiesMenuAnchor(e.currentTarget)}
                     sx={{
                       fontWeight: isActive ? "bold" : "normal",
                       textDecoration: isActive ? "underline" : "none",
@@ -156,23 +179,7 @@ export function Layout() {
                     {t(item.key)}
                   </Button>
                 );
-              }
-
-              return (
-                <Button
-                  key={item.path}
-                  component={RouterLink}
-                  to={item.path}
-                  color="inherit"
-                  sx={{
-                    fontWeight: isActive ? "bold" : "normal",
-                    textDecoration: isActive ? "underline" : "none",
-                  }}
-                >
-                  {t(item.key)}
-                </Button>
-              );
-            })}
+              })}
 
             {/* Desktop: Global Search */}
             <Box sx={{ ml: "auto" }}>
@@ -205,7 +212,7 @@ export function Layout() {
             </MenuItem>
             <Divider />
             {categories.map((category) => {
-              const label = category.label[i18n.language as 'en' | 'fr'] || category.label.en;
+              const label = category.label[i18n.language] || category.label.en || category.id;
               return (
                 <MenuItem
                   key={category.id}
@@ -295,14 +302,16 @@ export function Layout() {
 
         {/* Navigation Links */}
         <List>
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive =
-              location.pathname === item.path ||
-              (item.path !== "/" && location.pathname.startsWith(item.path));
+          {menuItems
+            .filter(item => !item.requiresAuth || user)
+            .map((item) => {
+              const Icon = item.icon;
+              const isActive =
+                location.pathname === item.path ||
+                (item.path !== "/" && location.pathname.startsWith(item.path));
 
-            // Special case for Entities menu with expandable categories
-            if (item.path === "/entities" && categories.length > 0) {
+              // Special case for Entities menu with expandable categories
+              if (item.path === "/entities" && categories.length > 0) {
               return (
                 <Box key={item.path}>
                   <ListItem disablePadding>

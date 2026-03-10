@@ -42,6 +42,7 @@ import PeopleIcon from "@mui/icons-material/People";
 import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import EmailIcon from "@mui/icons-material/Email";
+import { useNotification } from "../notifications/NotificationContext";
 
 interface UserStats {
   total_users: number;
@@ -61,14 +62,13 @@ interface UserListItem {
 
 export function AdminView() {
   const { t } = useTranslation();
+  const { showError } = useNotification();
   const [stats, setStats] = useState<UserStats | null>(null);
   const [users, setUsers] = useState<UserListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserListItem | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
   // Edit form state
   const [editIsActive, setEditIsActive] = useState(false);
   const [editIsSuperuser, setEditIsSuperuser] = useState(false);
@@ -80,8 +80,6 @@ export function AdminView() {
 
   const loadData = async () => {
     setLoading(true);
-    setError(null);
-
     try {
       const token = localStorage.getItem("auth_token");
 
@@ -102,10 +100,10 @@ export function AdminView() {
       if (usersRes.ok) {
         setUsers(await usersRes.json());
       } else if (usersRes.status === 403) {
-        setError("Access denied. Superuser privileges required.");
+        showError(new Error("Access denied. Superuser privileges required."));
       }
     } catch (err) {
-      setError("Failed to load admin data");
+      showError(new Error("Failed to load admin data"));
     } finally {
       setLoading(false);
     }
@@ -143,10 +141,10 @@ export function AdminView() {
         loadData(); // Reload data
       } else {
         const error = await response.json();
-        alert(error.detail || "Failed to update user");
+        showError(new Error(error.detail || "Failed to update user"));
       }
     } catch (err) {
-      alert("Failed to update user");
+      showError(new Error("Failed to update user"));
     }
   };
 
@@ -171,10 +169,10 @@ export function AdminView() {
         loadData(); // Reload data
       } else {
         const error = await response.json();
-        alert(error.detail || "Failed to delete user");
+        showError(new Error(error.detail || "Failed to delete user"));
       }
     } catch (err) {
-      alert("Failed to delete user");
+      showError(new Error("Failed to delete user"));
     }
   };
 
@@ -199,7 +197,7 @@ export function AdminView() {
       {/* Statistics Cards */}
       {stats && (
         <Grid container spacing={2}>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <Card>
               <CardContent>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -215,7 +213,7 @@ export function AdminView() {
             </Card>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <Card>
               <CardContent>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -231,7 +229,7 @@ export function AdminView() {
             </Card>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <Card>
               <CardContent>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -247,7 +245,7 @@ export function AdminView() {
             </Card>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <Card>
               <CardContent>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>

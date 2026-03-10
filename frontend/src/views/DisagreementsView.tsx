@@ -18,6 +18,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useNotification } from "../notifications/NotificationContext";
 import {
   Typography,
   Paper,
@@ -79,23 +80,22 @@ interface DisagreementGroup {
 export function DisagreementsView() {
   const { id } = useParams<{ id: string }>();
   const { t, i18n } = useTranslation();
+  const { showError } = useNotification();
   const navigate = useNavigate();
 
   const [entity, setEntity] = useState<EntityRead | null>(null);
   const [inference, setInference] = useState<InferenceRead | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // Fetch entity and inferences
   useEffect(() => {
     if (!id) {
-      setError("Missing entity ID");
+      showError(new Error("Missing entity ID"));
       setLoading(false);
       return;
     }
 
     setLoading(true);
-    setError(null);
 
     Promise.all([
       getEntity(id),
@@ -106,13 +106,12 @@ export function DisagreementsView() {
         setInference(inferenceData);
       })
       .catch((err) => {
-        console.error("Failed to load disagreements:", err);
-        setError(err.message || "Failed to load disagreements");
+        showError(err);
       })
       .finally(() => {
         setLoading(false);
       });
-  }, [id]);
+  }, [id, showError]);
 
   // Loading state
   if (loading) {
@@ -135,7 +134,7 @@ export function DisagreementsView() {
     );
   }
 
-  const entityLabel = resolveLabel(entity.label, entity.label_i18n, i18n.language);
+  const entityLabel = resolveLabel(entity.label || entity.slug, entity.summary, i18n.language);
 
   // Group relations by role type and direction
   const disagreementGroups: DisagreementGroup[] = [];
@@ -227,7 +226,7 @@ export function DisagreementsView() {
         <>
           {/* Summary */}
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <Card>
                 <CardContent>
                   <Typography color="text.secondary" gutterBottom variant="body2">
@@ -240,7 +239,7 @@ export function DisagreementsView() {
               </Card>
             </Grid>
 
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <Card>
                 <CardContent>
                   <Typography color="text.secondary" gutterBottom variant="body2">
@@ -295,7 +294,7 @@ export function DisagreementsView() {
                   <AccordionDetails>
                     <Grid container spacing={2}>
                       {/* Supporting Evidence */}
-                      <Grid item xs={12} md={6}>
+                      <Grid size={{ xs: 12, md: 6 }}>
                         <Card sx={{ borderColor: "success.main", borderWidth: 1, borderStyle: "solid" }}>
                           <CardContent>
                             <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
@@ -320,7 +319,7 @@ export function DisagreementsView() {
                                       <TableRow key={idx}>
                                         <TableCell>{relation.kind || group.roleType}</TableCell>
                                         <TableCell>
-                                          {relation.confidence !== undefined
+                                          {relation.confidence != null
                                             ? `${Math.round(relation.confidence * 100)}%`
                                             : "-"}
                                         </TableCell>
@@ -348,7 +347,7 @@ export function DisagreementsView() {
                       </Grid>
 
                       {/* Contradicting Evidence */}
-                      <Grid item xs={12} md={6}>
+                      <Grid size={{ xs: 12, md: 6 }}>
                         <Card sx={{ borderColor: "error.main", borderWidth: 1, borderStyle: "solid" }}>
                           <CardContent>
                             <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
@@ -372,7 +371,7 @@ export function DisagreementsView() {
                                     <TableRow key={idx}>
                                       <TableCell>{relation.kind || group.roleType}</TableCell>
                                       <TableCell>
-                                        {relation.confidence !== undefined
+                                        {relation.confidence != null
                                           ? `${Math.round(relation.confidence * 100)}%`
                                           : "-"}
                                       </TableCell>

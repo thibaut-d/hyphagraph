@@ -1,5 +1,6 @@
 import { apiFetch } from "./client";
-import { EntityRead } from "../types/entity";
+import type { EntityRead } from "../types/entity";
+export type { EntityRead } from "../types/entity";
 
 export interface EntityWrite {
   slug: string;
@@ -37,8 +38,9 @@ export interface ClinicalEffectOption {
 export interface EntityFilterOptions {
   ui_categories: UICategoryOption[];
   clinical_effects?: ClinicalEffectOption[];
-  consensus_levels?: string[];
-  evidence_quality_range?: [number, number];
+  consensus_levels?: string[] | null;
+  evidence_quality_range?: [number, number] | null;
+  year_range?: [number, number] | null;
   recency_options?: string[];
 }
 

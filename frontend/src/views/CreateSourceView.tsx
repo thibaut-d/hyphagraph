@@ -27,6 +27,7 @@ import SearchIcon from "@mui/icons-material/Search";
 
 import { createSource, SourceWrite, extractMetadataFromUrl } from "../api/sources";
 import { invalidateSourceFilterCache } from "../utils/cacheUtils";
+import { useNotification } from "../notifications/NotificationContext";
 
 const SOURCE_KINDS = [
   "article",
@@ -86,6 +87,7 @@ function _getQualityBadge(value: number): {
 
 export function CreateSourceView() {
   const { t } = useTranslation();
+  const { showError } = useNotification();
   const navigate = useNavigate();
 
   // Form state
@@ -105,7 +107,6 @@ export function CreateSourceView() {
   const [extractError, setExtractError] = useState<string | null>(null);
   const [autofilled, setAutofilled] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleExtractMetadata = async () => {
@@ -149,8 +150,6 @@ export function CreateSourceView() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-
     if (!title.trim()) {
       setError(t("create_source.title_required", "Title is required"));
       return;
@@ -193,7 +192,7 @@ export function CreateSourceView() {
       // Navigate to the created source
       navigate(`/sources/${created.id}`);
     } catch (e: any) {
-      setError(e.message || t("create_source.error", "Failed to create source"));
+      showError(e);
       setLoading(false);
     }
   };
@@ -341,7 +340,7 @@ export function CreateSourceView() {
 
                 {/* Kind & Year */}
                 <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
                     <TextField
                       select
                       label={t("create_source.kind", "Type")}
@@ -366,7 +365,7 @@ export function CreateSourceView() {
                     </TextField>
                   </Grid>
 
-                  <Grid item xs={12} sm={6}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
                     <TextField
                       label={t("create_source.year", "Publication Year")}
                       value={year}
@@ -494,39 +493,35 @@ export function CreateSourceView() {
                   </Collapse>
                 </Box>
 
-                {/* Summary (Collapsible) */}
-                {(summaryEn || summaryFr || autofilled) && (
-                  <>
-                    <TextField
-                      label={t("create_source.summary_en", "Summary (English)")}
-                      value={summaryEn}
-                      onChange={(e) => setSummaryEn(e.target.value)}
-                      disabled={loading}
-                      fullWidth
-                      multiline
-                      rows={3}
-                      placeholder="Brief description or abstract..."
-                      sx={{
-                        "& .MuiInputBase-root": autofilled && summaryEn
-                          ? {
-                              bgcolor: "success.50",
-                            }
-                          : {},
-                      }}
-                    />
+                {/* Summary Fields */}
+                <TextField
+                  label={t("create_source.summary_en", "Summary (English)")}
+                  value={summaryEn}
+                  onChange={(e) => setSummaryEn(e.target.value)}
+                  disabled={loading}
+                  fullWidth
+                  multiline
+                  rows={3}
+                  placeholder="Brief description or abstract..."
+                  sx={{
+                    "& .MuiInputBase-root": autofilled && summaryEn
+                      ? {
+                          bgcolor: "success.50",
+                        }
+                      : {},
+                  }}
+                />
 
-                    <TextField
-                      label={t("create_source.summary_fr", "Summary (French)")}
-                      value={summaryFr}
-                      onChange={(e) => setSummaryFr(e.target.value)}
-                      disabled={loading}
-                      fullWidth
-                      multiline
-                      rows={3}
-                      placeholder="Résumé ou abstract..."
-                    />
-                  </>
-                )}
+                <TextField
+                  label={t("create_source.summary_fr", "Summary (French)")}
+                  value={summaryFr}
+                  onChange={(e) => setSummaryFr(e.target.value)}
+                  disabled={loading}
+                  fullWidth
+                  multiline
+                  rows={3}
+                  placeholder="Résumé ou abstract..."
+                />
               </Stack>
             </Paper>
 

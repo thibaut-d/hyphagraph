@@ -25,14 +25,15 @@ import {
 
 import { updateProfile, deactivateAccount, deleteAccount } from "../api/auth";
 import { useAuthContext } from "../auth/AuthContext";
+import { useNotification } from "../notifications/NotificationContext";
 
 export function SettingsView() {
   const { t } = useTranslation();
+  const { showError } = useNotification();
   const navigate = useNavigate();
   const { user, logout } = useAuthContext();
 
   const [email, setEmail] = useState(user?.email || "");
-  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -48,18 +49,17 @@ export function SettingsView() {
 
   const handleUpdateEmail = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
     setSuccess(null);
 
     // Check if email changed
     if (email === user.email) {
-      setError(t("settings.email_unchanged", "Email address unchanged"));
+      showError(new Error(t("settings.email_unchanged", "Email address unchanged")));
       return;
     }
 
     // Basic email validation
     if (!email.includes("@")) {
-      setError(t("settings.invalid_email", "Please enter a valid email address"));
+      showError(new Error(t("settings.invalid_email", "Please enter a valid email address")));
       return;
     }
 
@@ -74,7 +74,7 @@ export function SettingsView() {
         setSuccess(null);
       }, 5000);
     } catch (e: any) {
-      setError(e.message || t("settings.update_failed", "Failed to update email"));
+      showError(e);
     } finally {
       setLoading(false);
     }
@@ -90,7 +90,7 @@ export function SettingsView() {
       logout();
       navigate("/account");
     } catch (e: any) {
-      setError(e.message || t("settings.deactivate_failed", "Failed to deactivate account"));
+      showError(e);
       setDeactivateDialogOpen(false);
       setDeactivateLoading(false);
     }
@@ -106,7 +106,7 @@ export function SettingsView() {
       logout();
       navigate("/account");
     } catch (e: any) {
-      setError(e.message || t("settings.delete_failed", "Failed to delete account"));
+      showError(e);
       setDeleteDialogOpen(false);
       setDeleteLoading(false);
     }

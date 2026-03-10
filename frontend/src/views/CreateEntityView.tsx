@@ -15,9 +15,11 @@ import {
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 import { createEntity, EntityWrite, getEntityFilterOptions, EntityFilterOptions } from "../api/entities";
+import { useNotification } from "../notifications/NotificationContext";
 
 export function CreateEntityView() {
   const { t, i18n } = useTranslation();
+  const { showError } = useNotification();
   const navigate = useNavigate();
 
   const [slug, setSlug] = useState("");
@@ -35,20 +37,22 @@ export function CreateEntityView() {
 
   // Extract category options with current language labels
   const categoryOptions = useMemo(() => {
-    if (!filterOptions) return [];
+    // Validate filterOptions and ui_categories exist before accessing
+    if (!filterOptions?.ui_categories) return [];
 
     const currentLanguage = i18n.language || 'en';
 
     return filterOptions.ui_categories.map(cat => ({
       id: cat.id,
-      label: cat.label[currentLanguage] || cat.label.en || cat.id
+      // Safe access to nested label properties with fallbacks
+      label: (cat.label?.[currentLanguage as keyof typeof cat.label] as string | undefined) ||
+             cat.label?.en ||
+             cat.id
     }));
   }, [filterOptions, i18n.language]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-
     if (!slug.trim()) {
       setError(t("create_entity.slug_required", "Slug is required"));
       return;
@@ -72,7 +76,7 @@ export function CreateEntityView() {
       // Navigate to the created entity
       navigate(`/entities/${created.id}`);
     } catch (e: any) {
-      setError(e.message || t("create_entity.error", "Failed to create entity"));
+      showError(e);
       setLoading(false);
     }
   };

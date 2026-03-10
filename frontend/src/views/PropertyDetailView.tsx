@@ -1,17 +1,8 @@
 /**
  * PropertyDetailView
  *
- * Dedicated view for explaining a specific property or relation.
- * Shows how a conclusion is established with evidence traceability.
- *
- * Purpose (from UX.md):
- * - Explain HOW a conclusion is established
- * - Show consensus status
- * - Display score (if applicable)
- * - List known limitations
- * - Provide access to evidence
- *
- * Navigation: Entity Detail → Property/Inference → This View
+ * Dedicated view for a specific inferred property/role.
+ * Uses the current explanation API contract.
  */
 
 import { useEffect, useState } from "react";
@@ -41,59 +32,42 @@ import WarningIcon from "@mui/icons-material/Warning";
 import ErrorIcon from "@mui/icons-material/Error";
 
 import { getExplanation, ExplanationRead } from "../api/explanations";
-import { getEntity, EntityRead } from "../api/entities";
+import { getEntity } from "../api/entities";
+import type { EntityRead } from "../types/entity";
 import { EvidenceTrace } from "../components/EvidenceTrace";
-import { resolveLabel } from "../utils/i18nLabel";
+import { useNotification } from "../notifications/NotificationContext";
 
-/**
- * PropertyDetailView Component
- *
- * Displays detailed information about a specific property/inference:
- * - What is the conclusion?
- * - How strong is the consensus?
- * - What is the evidence quality?
- * - What are the limitations?
- * - Full evidence chain
- */
 export function PropertyDetailView() {
-  const { entityId, roleType } = useParams<{ entityId: string; roleType: string }>();
-  const { t, i18n } = useTranslation();
+  const { id, roleType } = useParams<{ id: string; roleType: string }>();
+  const { t } = useTranslation();
+  const { showError } = useNotification();
   const navigate = useNavigate();
 
   const [entity, setEntity] = useState<EntityRead | null>(null);
   const [explanation, setExplanation] = useState<ExplanationRead | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Fetch entity and explanation
   useEffect(() => {
-    if (!entityId || !roleType) {
-      setError("Missing entity ID or role type");
+    if (!id || !roleType) {
+      showError(new Error("Missing entity ID or role type"));
       setLoading(false);
       return;
     }
 
     setLoading(true);
-    setError(null);
-
-    Promise.all([
-      getEntity(entityId),
-      getExplanation(entityId, roleType)
-    ])
+    Promise.all([getEntity(id), getExplanation(id, roleType)])
       .then(([entityData, explanationData]) => {
         setEntity(entityData);
         setExplanation(explanationData);
       })
       .catch((err) => {
         console.error("Failed to load property details:", err);
-        setError(err.message || "Failed to load property details");
+        showError(err);
       })
       .finally(() => {
         setLoading(false);
       });
-  }, [entityId, roleType]);
+  }, [id, roleType]);
 
-  // Loading state
   if (loading) {
     return (
       <Stack alignItems="center" mt={4}>
@@ -105,29 +79,28 @@ export function PropertyDetailView() {
     );
   }
 
-  // Error state
-  if (error || !explanation || !entity) {
-    return (
-      <Alert severity="error">
-        {error || t("common.error", "An error occurred")}
-      </Alert>
-    );
+  if (error || !explanation || !entity || !id || !roleType) {
+    return <Alert severity="error">{error || t("common.error", "An error occurred")}</Alert>;
   }
 
-  const entityLabel = resolveLabel(entity.label, entity.label_i18n, i18n.language);
+  const entityLabel = entity.label || entity.slug;
 
-  // Determine consensus status based on confidence and contradictions
-  const hasContradictions = explanation.contradictions && explanation.contradictions.length > 0;
-  const isHighConfidence = (explanation.confidence || 0) > 0.7;
-  const isMediumConfidence = (explanation.confidence || 0) > 0.4;
+  const contradictionDetail = explanation.contradictions;
+  const hasContradictions =
+    Boolean(contradictionDetail) &&
+    ((contradictionDetail?.supporting_sources.length || 0) > 0 ||
+      (contradictionDetail?.contradicting_sources.length || 0) > 0);
+
+  const isHighConfidence = explanation.confidence > 0.7;
+  const isMediumConfidence = explanation.confidence > 0.4;
 
   const consensusStatus = hasContradictions
     ? "disputed"
     : isHighConfidence
-    ? "strong"
-    : isMediumConfidence
-    ? "moderate"
-    : "weak";
+      ? "strong"
+      : isMediumConfidence
+        ? "moderate"
+        : "weak";
 
   const consensusConfig = {
     strong: {
@@ -154,35 +127,62 @@ export function PropertyDetailView() {
 
   const consensus = consensusConfig[consensusStatus];
 
-  // Score display
-  const scoreColor = explanation.score
-    ? explanation.score > 0.3
-      ? "success"
-      : explanation.score < -0.3
-      ? "error"
-      : "warning"
-    : "default";
+  const scoreColor =
+    explanation.score === null
+      ? "default"
+      : explanation.score > 0.3
+        ? "success"
+        : explanation.score < -0.3
+          ? "error"
+          : "warning";
+
+  const limitations: string[] = [];
+
+  if (!isHighConfidence) {
+    limitations.push(
+      t(
+        "property.limitation.confidence_detail",
+        "Confidence is {{value}}%: interpret this conclusion with caution.",
+        { value: Math.round(explanation.confidence * 100) },
+      ),
+    );
+  }
+
+  if (hasContradictions) {
+    limitations.push(
+      t(
+        "property.limitation.contradictions_detail",
+        "Conflicting sources exist and increase uncertainty.",
+      ),
+    );
+  }
+
+  if (explanation.source_chain.length < 3) {
+    limitations.push(
+      t(
+        "property.limitation.sources_detail",
+        "Limited source diversity ({{count}} source(s)).",
+        { count: explanation.source_chain.length },
+      ),
+    );
+  }
 
   return (
     <Stack spacing={3}>
-      {/* Breadcrumbs */}
       <Breadcrumbs>
         <Link component={RouterLink} to="/entities" underline="hover">
           {t("menu.entities", "Entities")}
         </Link>
-        <Link component={RouterLink} to={`/entities/${entityId}`} underline="hover">
+        <Link component={RouterLink} to={`/entities/${id}`} underline="hover">
           {entityLabel}
         </Link>
-        <Typography color="text.primary">
-          {roleType}
-        </Typography>
+        <Typography color="text.primary">{roleType}</Typography>
       </Breadcrumbs>
 
-      {/* Back button */}
       <Box>
         <Button
           startIcon={<ArrowBackIcon />}
-          onClick={() => navigate(`/entities/${entityId}`)}
+          onClick={() => navigate(`/entities/${id}`)}
           variant="outlined"
           size="small"
         >
@@ -190,7 +190,6 @@ export function PropertyDetailView() {
         </Button>
       </Box>
 
-      {/* Property Header */}
       <Paper sx={{ p: 3 }}>
         <Stack spacing={2}>
           <Typography variant="h4" component="h1">
@@ -200,112 +199,67 @@ export function PropertyDetailView() {
             {t("property.subtitle", "For entity: {{entity}}", { entity: entityLabel })}
           </Typography>
 
-          {/* Consensus Status */}
-          <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+          <Box sx={{ display: "flex", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
+            <Chip icon={consensus.icon} label={consensus.label} color={consensus.color} size="medium" />
             <Chip
-              icon={consensus.icon}
-              label={consensus.label}
-              color={consensus.color}
-              size="medium"
+              label={t("property.confidence", "Confidence: {{value}}%", {
+                value: Math.round(explanation.confidence * 100),
+              })}
+              variant="outlined"
             />
-            {explanation.confidence !== undefined && (
-              <Chip
-                label={t("property.confidence", "Confidence: {{value}}%", {
-                  value: Math.round(explanation.confidence * 100),
-                })}
-                variant="outlined"
-              />
-            )}
+            <Chip
+              label={t("property.disagreement", "Disagreement: {{value}}%", {
+                value: Math.round(explanation.disagreement * 100),
+              })}
+              variant="outlined"
+              color={explanation.disagreement > 0.3 ? "warning" : "default"}
+            />
           </Box>
         </Stack>
       </Paper>
 
-      {/* Conclusion Summary */}
       <Card>
         <CardContent>
           <Typography variant="h6" gutterBottom>
             {t("property.conclusion", "Conclusion")}
           </Typography>
 
-          {explanation.score !== undefined && (
+          {explanation.score !== null && (
             <Box sx={{ mb: 2 }}>
               <Typography variant="body2" color="text.secondary" gutterBottom>
                 {t("property.score_label", "Computed Score")}
               </Typography>
-              <Chip
-                label={explanation.score.toFixed(3)}
-                color={scoreColor}
-                size="medium"
-              />
+              <Chip label={explanation.score.toFixed(3)} color={scoreColor} size="medium" />
             </Box>
           )}
 
-          {explanation.natural_language_summary && (
-            <Box>
-              <Typography variant="body1" sx={{ fontStyle: "italic", color: "text.secondary" }}>
-                {explanation.natural_language_summary}
-              </Typography>
-              <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                {t("property.summary_disclaimer", "⚠️ This is a generated summary. See evidence below for source data.")}
-              </Typography>
-            </Box>
-          )}
+          <Typography variant="body1" sx={{ fontStyle: "italic", color: "text.secondary" }}>
+            {explanation.summary}
+          </Typography>
+          <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+            {t("property.summary_disclaimer", "Generated summary. Use evidence below for auditability.")}
+          </Typography>
         </CardContent>
       </Card>
 
-      {/* Known Limitations */}
-      {(hasContradictions || explanation.confidence < 0.7) && (
+      {limitations.length > 0 && (
         <Card>
           <CardContent>
             <Stack spacing={2}>
-              <Typography variant="h6">
-                {t("property.limitations", "Known Limitations")}
-              </Typography>
-
+              <Typography variant="h6">{t("property.limitations", "Known Limitations")}</Typography>
               <List dense>
-                {!isHighConfidence && (
-                  <ListItem>
-                    <ListItemText
-                      primary={t("property.limitation.confidence", "Limited evidence quality")}
-                      secondary={t("property.limitation.confidence_detail",
-                        "Confidence level is {{value}}% - consider this conclusion provisional.",
-                        { value: Math.round((explanation.confidence || 0) * 100) }
-                      )}
-                    />
+                {limitations.map((item, index) => (
+                  <ListItem key={index}>
+                    <ListItemText primary={item} />
                   </ListItem>
-                )}
-
-                {hasContradictions && (
-                  <ListItem>
-                    <ListItemText
-                      primary={t("property.limitation.contradictions", "Contradictory evidence exists")}
-                      secondary={t("property.limitation.contradictions_detail",
-                        "{{count}} source(s) contradict this conclusion. See contradictions section below.",
-                        { count: explanation.contradictions.length }
-                      )}
-                    />
-                  </ListItem>
-                )}
-
-                {explanation.evidence_chain && explanation.evidence_chain.length < 3 && (
-                  <ListItem>
-                    <ListItemText
-                      primary={t("property.limitation.sources", "Limited source diversity")}
-                      secondary={t("property.limitation.sources_detail",
-                        "Only {{count}} source(s) support this conclusion.",
-                        { count: explanation.evidence_chain.length }
-                      )}
-                    />
-                  </ListItem>
-                )}
+                ))}
               </List>
             </Stack>
           </CardContent>
         </Card>
       )}
 
-      {/* Contradictions */}
-      {hasContradictions && (
+      {hasContradictions && contradictionDetail && (
         <Card sx={{ borderColor: "error.main", borderWidth: 2, borderStyle: "solid" }}>
           <CardContent>
             <Stack spacing={2}>
@@ -317,24 +271,34 @@ export function PropertyDetailView() {
               </Box>
 
               <Alert severity="error">
-                {t("property.contradictions_warning",
-                  "The following sources contradict this conclusion. Scientific honesty requires showing all evidence."
+                {t(
+                  "property.contradictions_warning",
+                  "Conflicting evidence is present and displayed explicitly.",
                 )}
               </Alert>
 
-              <List>
-                {explanation.contradictions.map((contradiction, index) => (
-                  <ListItem key={index}>
-                    <ListItemText
-                      primary={contradiction.detail || t("property.contradiction_detail", "Contradiction detected")}
-                      secondary={contradiction.source_count
-                        ? t("property.contradiction_sources", "{{count}} source(s)", { count: contradiction.source_count })
-                        : undefined
-                      }
-                    />
-                  </ListItem>
-                ))}
-              </List>
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                <Chip
+                  color="success"
+                  variant="outlined"
+                  label={t("property.supporting_sources", "Supporting: {{count}}", {
+                    count: contradictionDetail.supporting_sources.length,
+                  })}
+                />
+                <Chip
+                  color="error"
+                  variant="outlined"
+                  label={t("property.contradicting_sources", "Contradicting: {{count}}", {
+                    count: contradictionDetail.contradicting_sources.length,
+                  })}
+                />
+                <Chip
+                  variant="outlined"
+                  label={t("property.disagreement_score", "Disagreement score: {{value}}", {
+                    value: contradictionDetail.disagreement_score.toFixed(2),
+                  })}
+                />
+              </Box>
             </Stack>
           </CardContent>
         </Card>
@@ -342,32 +306,26 @@ export function PropertyDetailView() {
 
       <Divider />
 
-      {/* Evidence Chain */}
       <Box>
         <Typography variant="h5" gutterBottom>
           {t("property.evidence", "Supporting Evidence")}
         </Typography>
         <Typography variant="body2" color="text.secondary" paragraph>
-          {t("property.evidence_description",
-            "Complete chain of evidence supporting this conclusion. Click any source to view details."
+          {t(
+            "property.evidence_description",
+            "Complete evidence chain supporting this conclusion.",
           )}
         </Typography>
 
-        {explanation.evidence_chain && explanation.evidence_chain.length > 0 ? (
-          <EvidenceTrace evidence={explanation.evidence_chain} />
+        {explanation.source_chain.length > 0 ? (
+          <EvidenceTrace sourceChain={explanation.source_chain} />
         ) : (
-          <Alert severity="warning">
-            {t("property.no_evidence", "No evidence chain available")}
-          </Alert>
+          <Alert severity="warning">{t("property.no_evidence", "No evidence chain available")}</Alert>
         )}
       </Box>
 
-      {/* View All Evidence Button */}
       <Box sx={{ display: "flex", justifyContent: "center" }}>
-        <Button
-          variant="outlined"
-          onClick={() => navigate(`/entities/${entityId}/properties/${roleType}/evidence`)}
-        >
+        <Button variant="outlined" onClick={() => navigate(`/entities/${id}/properties/${roleType}/evidence`)}>
           {t("property.view_all_evidence", "View All Related Evidence")}
         </Button>
       </Box>

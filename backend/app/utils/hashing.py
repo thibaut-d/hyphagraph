@@ -10,13 +10,13 @@ Implements the deterministic hashing algorithm from DATABASE_SCHEMA.md:
 """
 import hashlib
 import json
-from typing import Optional, Union
+from typing import Optional, Union, Any
 from uuid import UUID
 
 
 def compute_scope_hash(
     entity_id: Union[UUID, str],
-    scope_filter: Optional[dict] = None
+    scope_filter: Optional[dict[str, Any]] = None
 ) -> str:
     """
     Compute deterministic hash for inference query scope.

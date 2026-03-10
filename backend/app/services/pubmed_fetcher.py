@@ -13,7 +13,12 @@ from dataclasses import dataclass
 from urllib.parse import urlparse, parse_qs
 import httpx
 import xml.etree.ElementTree as ET
-from fastapi import HTTPException, status
+
+from app.utils.errors import (
+    AppException,
+    ErrorCode,
+    ValidationException,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -141,29 +146,41 @@ class PubMedFetcher:
 
         except httpx.HTTPStatusError as e:
             logger.error(f"HTTP error fetching PMID {pmid}: {e.response.status_code}")
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Failed to fetch PubMed article (HTTP {e.response.status_code}): PMID {pmid}"
+            raise AppException(
+                status_code=502,
+                error_code=ErrorCode.DOCUMENT_FETCH_FAILED,
+                message="Failed to fetch PubMed article",
+                details=f"HTTP {e.response.status_code} error while fetching PMID {pmid}",
+                context={"pmid": pmid, "http_status": e.response.status_code}
             )
         except httpx.TimeoutException:
             logger.error(f"Timeout fetching PMID {pmid}")
-            raise HTTPException(
-                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-                detail=f"Request timeout after {self.TIMEOUT_SECONDS}s: PMID {pmid}"
+            raise AppException(
+                status_code=504,
+                error_code=ErrorCode.DOCUMENT_FETCH_FAILED,
+                message="PubMed request timeout",
+                details=f"Request timeout after {self.TIMEOUT_SECONDS}s for PMID {pmid}",
+                context={"pmid": pmid, "timeout_seconds": self.TIMEOUT_SECONDS}
             )
         except httpx.RequestError as e:
             logger.error(f"Request error fetching PMID {pmid}: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Failed to fetch PubMed article: {str(e)}"
+            raise AppException(
+                status_code=502,
+                error_code=ErrorCode.DOCUMENT_FETCH_FAILED,
+                message="Failed to fetch PubMed article",
+                details=f"Network error: {str(e)}",
+                context={"pmid": pmid}
             )
-        except HTTPException:
+        except AppException:
             raise
         except Exception as e:
             logger.error(f"Unexpected error fetching PMID {pmid}: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to process PubMed article: {str(e)}"
+            raise AppException(
+                status_code=500,
+                error_code=ErrorCode.INTERNAL_SERVER_ERROR,
+                message="Failed to process PubMed article",
+                details=str(e),
+                context={"pmid": pmid}
             )
 
     async def fetch_by_url(self, url: str) -> PubMedArticle:
@@ -183,9 +200,10 @@ class PubMedFetcher:
         """
         pmid = self.extract_pmid_from_url(url)
         if not pmid:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Could not extract PMID from URL: {url}"
+            raise ValidationException(
+                message="Invalid PubMed URL",
+                details=f"Could not extract PMID from URL: {url}",
+                context={"url": url}
             )
 
         return await self.fetch_by_pmid(pmid)
@@ -210,14 +228,17 @@ class PubMedFetcher:
             # Find the PubmedArticle element
             article_elem = root.find('.//PubmedArticle')
             if article_elem is None:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Article not found: PMID {pmid}"
+                raise AppException(
+                    status_code=404,
+                    error_code=ErrorCode.NOT_FOUND,
+                    message="PubMed article not found",
+                    details=f"Article with PMID {pmid} does not exist or is not available",
+                    context={"pmid": pmid}
                 )
 
             # Extract title
             title_elem = article_elem.find('.//ArticleTitle')
-            title = title_elem.text if title_elem is not None else "Untitled"
+            title = title_elem.text if title_elem is not None and title_elem.text else "Untitled"
 
             # Extract abstract (may have multiple parts)
             abstract_parts = []
@@ -228,10 +249,12 @@ class PubMedFetcher:
                     label = text_elem.get('Label')
                     text = text_elem.text or ""
 
-                    if label:
-                        abstract_parts.append(f"{label}: {text}")
-                    else:
-                        abstract_parts.append(text)
+                    # Only add non-empty text
+                    if text:
+                        if label:
+                            abstract_parts.append(f"{label}: {text}")
+                        else:
+                            abstract_parts.append(text)
 
             abstract = "\n\n".join(abstract_parts) if abstract_parts else None
 
@@ -243,29 +266,29 @@ class PubMedFetcher:
                     last_name = author.find('LastName')
                     fore_name = author.find('ForeName')
 
-                    if last_name is not None:
-                        if fore_name is not None:
+                    if last_name is not None and last_name.text:
+                        if fore_name is not None and fore_name.text:
                             authors.append(f"{fore_name.text} {last_name.text}")
                         else:
                             authors.append(last_name.text)
 
             # Extract journal
             journal_elem = article_elem.find('.//Journal/Title')
-            journal = journal_elem.text if journal_elem is not None else None
+            journal = journal_elem.text if journal_elem is not None and journal_elem.text else None
 
             # Extract year
             year = None
             year_elem = article_elem.find('.//PubDate/Year')
-            if year_elem is not None:
+            if year_elem is not None and year_elem.text:
                 try:
                     year = int(year_elem.text)
-                except ValueError:
+                except (ValueError, TypeError):
                     pass
 
             # Extract DOI
             doi = None
             for article_id in article_elem.findall('.//ArticleId'):
-                if article_id.get('IdType') == 'doi':
+                if article_id.get('IdType') == 'doi' and article_id.text:
                     doi = article_id.text
                     break
 
@@ -292,17 +315,23 @@ class PubMedFetcher:
 
         except ET.ParseError as e:
             logger.error(f"XML parse error for PMID {pmid}: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to parse PubMed XML: {str(e)}"
+            raise AppException(
+                status_code=500,
+                error_code=ErrorCode.DOCUMENT_PARSE_ERROR,
+                message="Failed to parse PubMed XML",
+                details=str(e),
+                context={"pmid": pmid}
             )
-        except HTTPException:
+        except AppException:
             raise
         except Exception as e:
             logger.error(f"Error parsing PubMed XML for PMID {pmid}: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to extract article data: {str(e)}"
+            raise AppException(
+                status_code=500,
+                error_code=ErrorCode.DOCUMENT_PARSE_ERROR,
+                message="Failed to extract article data",
+                details=str(e),
+                context={"pmid": pmid}
             )
 
     def extract_query_from_search_url(self, url: str) -> str | None:
@@ -382,11 +411,12 @@ class PubMedFetcher:
                 # Extract PMIDs
                 pmids = []
                 for id_elem in root.findall('.//Id'):
-                    pmids.append(id_elem.text)
+                    if id_elem.text:
+                        pmids.append(id_elem.text)
 
                 # Get total count
                 count_elem = root.find('.//Count')
-                total_count = int(count_elem.text) if count_elem is not None else 0
+                total_count = int(count_elem.text) if count_elem is not None and count_elem.text else 0
 
                 logger.info(
                     f"PubMed search found {total_count} results, "
@@ -397,29 +427,41 @@ class PubMedFetcher:
 
         except httpx.HTTPStatusError as e:
             logger.error(f"HTTP error searching PubMed: {e.response.status_code}")
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Failed to search PubMed (HTTP {e.response.status_code}): {query}"
+            raise AppException(
+                status_code=502,
+                error_code=ErrorCode.DOCUMENT_FETCH_FAILED,
+                message="Failed to search PubMed",
+                details=f"HTTP {e.response.status_code} error",
+                context={"query": query, "http_status": e.response.status_code}
             )
         except httpx.TimeoutException:
             logger.error(f"Timeout searching PubMed: {query}")
-            raise HTTPException(
-                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-                detail=f"PubMed search timeout after {self.TIMEOUT_SECONDS}s: {query}"
+            raise AppException(
+                status_code=504,
+                error_code=ErrorCode.DOCUMENT_FETCH_FAILED,
+                message="PubMed search timeout",
+                details=f"Request timeout after {self.TIMEOUT_SECONDS}s",
+                context={"query": query, "timeout_seconds": self.TIMEOUT_SECONDS}
             )
         except httpx.RequestError as e:
             logger.error(f"Request error searching PubMed: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Failed to search PubMed: {str(e)}"
+            raise AppException(
+                status_code=502,
+                error_code=ErrorCode.DOCUMENT_FETCH_FAILED,
+                message="Failed to search PubMed",
+                details=str(e),
+                context={"query": query}
             )
-        except HTTPException:
+        except AppException:
             raise
         except Exception as e:
             logger.error(f"Unexpected error searching PubMed: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to process PubMed search: {str(e)}"
+            raise AppException(
+                status_code=500,
+                error_code=ErrorCode.INTERNAL_SERVER_ERROR,
+                message="Failed to process PubMed search",
+                details=str(e),
+                context={"query": query}
             )
 
     async def bulk_fetch_articles(
@@ -462,7 +504,7 @@ class PubMedFetcher:
                 if i < total:
                     await asyncio.sleep(rate_limit_delay)
 
-            except HTTPException as e:
+            except AppException as e:
                 logger.warning(f"Failed to fetch PMID {pmid}: {e.detail}")
                 # Continue with next article
                 continue

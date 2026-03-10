@@ -11,7 +11,7 @@ class EntityWrite(Schema):
     Creates both the base Entity and its first EntityRevision.
     """
     slug: str
-    summary: Optional[dict] = None  # i18n: {"en": "...", "fr": "..."}
+    summary: Optional[dict[str, str]] = None  # i18n: {"en": "...", "fr": "..."}
     ui_category_id: Optional[UUID] = None
     created_with_llm: Optional[str] = None
 
@@ -27,7 +27,7 @@ class EntityRevisionRead(Schema):
     id: UUID
     entity_id: UUID
     slug: str
-    summary: Optional[dict] = None
+    summary: Optional[dict[str, str]] = None
     ui_category_id: Optional[UUID] = None
     created_with_llm: Optional[str] = None
     created_by_user_id: Optional[UUID] = None
@@ -46,7 +46,7 @@ class EntityRead(Schema):
 
     # Current revision data
     slug: str
-    summary: Optional[dict] = None
+    summary: Optional[dict[str, str]] = None
     ui_category_id: Optional[UUID] = None
 
     # Legacy fields (deprecated, for backward compatibility)

@@ -4,6 +4,14 @@ Pytest configuration and shared fixtures.
 Uses SQLite for testing to avoid PostgreSQL dependency.
 Monkey-patches PostgreSQL ARRAY to work with SQLite.
 """
+import sys
+from pathlib import Path
+
+# Add tests directory to Python path for fixtures import
+tests_dir = Path(__file__).parent
+if str(tests_dir) not in sys.path:
+    sys.path.insert(0, str(tests_dir))
+
 import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
@@ -129,6 +137,30 @@ async def db_session() -> AsyncSession:
 
     # Cleanup
     await engine.dispose()
+
+
+@pytest_asyncio.fixture
+async def test_user(db_session: AsyncSession):
+    """
+    Create a test user for authentication tests.
+
+    Returns:
+        User: Test user with active status
+    """
+    from uuid import uuid4
+    from app.utils.auth import hash_password
+
+    user = User(
+        id=uuid4(),
+        email="test@example.com",
+        hashed_password=await hash_password("testpassword123"),
+        is_active=True,
+        is_superuser=False
+    )
+    db_session.add(user)
+    await db_session.commit()
+
+    yield user
 
 
 @pytest_asyncio.fixture

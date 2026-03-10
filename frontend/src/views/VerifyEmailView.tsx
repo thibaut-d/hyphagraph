@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { verifyEmail } from "../api/auth";
+import { useNotification } from "../notifications/NotificationContext";
 
 export default function VerifyEmailView() {
   const [searchParams] = useSearchParams();
@@ -9,11 +10,9 @@ export default function VerifyEmailView() {
 
   const [loading, setLoading] = useState(true);
   const [success, setSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   useEffect(() => {
     if (!token) {
-      setError("Invalid or missing verification token");
+      showError(new Error("Invalid or missing verification token"));
       setLoading(false);
       return;
     }

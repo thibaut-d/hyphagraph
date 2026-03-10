@@ -18,10 +18,12 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { getEntity, updateEntity, EntityWrite, getEntityFilterOptions, EntityFilterOptions } from "../api/entities";
 import { EntityRead } from "../types/entity";
 import { EntityTermsManager } from "../components/EntityTermsManager";
+import { useNotification } from "../notifications/NotificationContext";
 
 export function EditEntityView() {
   const { id } = useParams<{ id: string }>();
   const { t, i18n } = useTranslation();
+  const { showError } = useNotification();
   const navigate = useNavigate();
 
   const [entity, setEntity] = useState<EntityRead | null>(null);
@@ -63,15 +65,13 @@ export function EditEntityView() {
         setUiCategoryId(data.ui_category_id || null);
       })
       .catch((err) => {
-        setError(err.message || t("common.error", "An error occurred"));
+        showError(err);
       })
       .finally(() => setLoading(false));
   }, [id, t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-
     if (!slug.trim()) {
       setError(t("create_entity.slug_required", "Slug is required"));
       return;
@@ -97,7 +97,7 @@ export function EditEntityView() {
       // Navigate back to the entity detail page
       navigate(`/entities/${id}`);
     } catch (e: any) {
-      setError(e.message || t("edit_entity.error", "Failed to update entity"));
+      showError(e);
       setSaving(false);
     }
   };

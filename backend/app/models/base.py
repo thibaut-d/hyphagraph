@@ -1,6 +1,6 @@
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from sqlalchemy.dialects.postgresql import UUID
-from uuid import uuid4
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from uuid import UUID as PyUUID, uuid4
 import datetime
 
 
@@ -9,8 +9,8 @@ class Base(DeclarativeBase):
 
 
 class UUIDMixin:
-    id: Mapped[UUID] = mapped_column(
-        UUID(as_uuid=True),
+    id: Mapped[PyUUID] = mapped_column(
+        PGUUID(as_uuid=True),
         primary_key=True,
         default=uuid4,
     )

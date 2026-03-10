@@ -4,6 +4,8 @@ import {
   useEffect,
   useState,
   ReactNode,
+  useCallback,
+  useRef,
 } from "react";
 
 import { getMe, logout as logoutApi } from "../api/auth";
@@ -11,6 +13,10 @@ import { getMe, logout as logoutApi } from "../api/auth";
 type User = {
   id: string;
   email: string;
+  is_active?: boolean;
+  is_superuser?: boolean;
+  is_verified?: boolean;
+  created_at?: string;
 };
 
 type AuthContextValue = {
@@ -34,16 +40,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(!!localStorage.getItem("auth_token"));
 
+  // Use refs to track current token values without causing re-renders
+  const tokenRef = useRef(token);
+  const refreshTokenRef = useRef(refreshToken);
+
+  // Update refs when state changes
+  useEffect(() => {
+    tokenRef.current = token;
+  }, [token]);
+
+  useEffect(() => {
+    refreshTokenRef.current = refreshToken;
+  }, [refreshToken]);
+
   // Listen for storage changes (token refresh from API client)
+  // Dependencies removed to prevent memory leak from multiple intervals
   useEffect(() => {
     const handleStorageChange = () => {
       const newToken = localStorage.getItem("auth_token");
       const newRefreshToken = localStorage.getItem("refresh_token");
 
-      if (newToken !== token) {
+      if (newToken !== tokenRef.current) {
         setToken(newToken);
       }
-      if (newRefreshToken !== refreshToken) {
+      if (newRefreshToken !== refreshTokenRef.current) {
         setRefreshToken(newRefreshToken);
       }
     };
@@ -52,35 +72,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const interval = setInterval(handleStorageChange, 1000);
 
     return () => clearInterval(interval);
-  }, [token, refreshToken]);
+  }, []); // Empty dependency array - only create interval once
 
-  useEffect(() => {
-    if (!token) {
-      setUser(null);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    getMe()
-      .then((userData: any) => {
-        setUser(userData as User);
-        setLoading(false);
-      })
-      .catch(() => {
-        logout();
-        setLoading(false);
-      });
-  }, [token]);
-
-  const login = (newToken: string, newRefreshToken: string) => {
-    localStorage.setItem("auth_token", newToken);
-    localStorage.setItem("refresh_token", newRefreshToken);
-    setToken(newToken);
-    setRefreshToken(newRefreshToken);
-  };
-
-  const logout = () => {
+  // Stabilize logout with useCallback to prevent unnecessary re-renders
+  const logout = useCallback(() => {
     const currentRefreshToken = localStorage.getItem("refresh_token");
 
     // Call logout API to revoke refresh token
@@ -95,6 +90,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null);
     setRefreshToken(null);
     setUser(null);
+  }, []); // No dependencies needed - uses localStorage directly
+
+  useEffect(() => {
+    if (!token) {
+      setUser(null);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    getMe()
+      .then((userData: any) => {
+        setUser(userData as User);
+        setLoading(false);
+      })
+      .catch((error) => {
+        // Improve error differentiation - only logout on authentication errors
+        // Network errors and other issues should not trigger logout
+        const errorMessage = error?.message || String(error);
+        const isAuthError =
+          errorMessage.includes("Session expired") ||
+          errorMessage.includes("Authentication failed") ||
+          errorMessage.includes("Unauthorized") ||
+          errorMessage.includes("401");
+
+        if (isAuthError) {
+          // Only logout for authentication-related errors
+          logout();
+        } else {
+          // For network errors or other issues, just clear loading state
+          // but keep the user logged in (they might be offline temporarily)
+          console.warn("Failed to fetch user data, but keeping session:", error);
+        }
+        setLoading(false);
+      });
+  }, [token, logout]); // Now includes logout in dependencies
+
+  const login = (newToken: string, newRefreshToken: string) => {
+    localStorage.setItem("auth_token", newToken);
+    localStorage.setItem("refresh_token", newRefreshToken);
+    setToken(newToken);
+    setRefreshToken(newRefreshToken);
   };
 
   return (

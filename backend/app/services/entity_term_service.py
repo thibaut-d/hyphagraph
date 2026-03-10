@@ -10,11 +10,11 @@ from sqlalchemy import select, delete
 from sqlalchemy.exc import IntegrityError
 from uuid import UUID
 from typing import List
-from fastapi import HTTPException
 
 from app.models.entity_term import EntityTerm
 from app.models.entity import Entity
 from app.schemas.entity_term import EntityTermWrite, EntityTermRead
+from app.utils.errors import EntityNotFoundException, ValidationException, ErrorCode, AppException
 
 
 class EntityTermService:
@@ -48,7 +48,7 @@ class EntityTermService:
         entity = entity_result.scalar_one_or_none()
 
         if not entity:
-            raise HTTPException(status_code=404, detail="Entity not found")
+            raise EntityNotFoundException(entity_id=str(entity_id))
 
         # Fetch terms
         stmt = (
@@ -98,7 +98,7 @@ class EntityTermService:
         entity = entity_result.scalar_one_or_none()
 
         if not entity:
-            raise HTTPException(status_code=404, detail="Entity not found")
+            raise EntityNotFoundException(entity_id=str(entity_id))
 
         # Create term
         term = EntityTerm(
@@ -119,9 +119,11 @@ class EntityTermService:
             # PostgreSQL: "uq_entity_term_language", SQLite: "UNIQUE constraint failed: entity_terms"
             error_str = str(e).lower()
             if "uq_entity_term_language" in error_str or "entity_terms.entity_id, entity_terms.term, entity_terms.language" in error_str:
-                raise HTTPException(
-                    status_code=409,
-                    detail=f"Term '{payload.term}' already exists for this entity and language"
+                raise ValidationException(
+                    message="Term already exists for this entity and language",
+                    field="term",
+                    details=f"Term '{payload.term}' already exists for this entity in language '{payload.language}'",
+                    context={"entity_id": str(entity_id), "term": payload.term, "language": payload.language}
                 )
             raise
 
@@ -161,9 +163,12 @@ class EntityTermService:
         term = result.scalar_one_or_none()
 
         if not term:
-            raise HTTPException(
+            raise AppException(
                 status_code=404,
-                detail="Term not found or does not belong to this entity"
+                error_code=ErrorCode.NOT_FOUND,
+                message="Entity term not found",
+                details="Term not found or does not belong to this entity",
+                context={"entity_id": str(entity_id), "term_id": str(term_id)}
             )
 
         # Update fields
@@ -179,9 +184,11 @@ class EntityTermService:
             # PostgreSQL: "uq_entity_term_language", SQLite: "UNIQUE constraint failed: entity_terms"
             error_str = str(e).lower()
             if "uq_entity_term_language" in error_str or "entity_terms.entity_id, entity_terms.term, entity_terms.language" in error_str:
-                raise HTTPException(
-                    status_code=409,
-                    detail=f"Term '{payload.term}' already exists for this entity and language"
+                raise ValidationException(
+                    message="Term already exists for this entity and language",
+                    field="term",
+                    details=f"Term '{payload.term}' already exists for this entity in language '{payload.language}'",
+                    context={"entity_id": str(entity_id), "term": payload.term, "language": payload.language}
                 )
             raise
 
@@ -214,9 +221,12 @@ class EntityTermService:
         term = result.scalar_one_or_none()
 
         if not term:
-            raise HTTPException(
+            raise AppException(
                 status_code=404,
-                detail="Term not found or does not belong to this entity"
+                error_code=ErrorCode.NOT_FOUND,
+                message="Entity term not found",
+                details="Term not found or does not belong to this entity",
+                context={"entity_id": str(entity_id), "term_id": str(term_id)}
             )
 
         # Delete term
@@ -249,7 +259,7 @@ class EntityTermService:
         entity = entity_result.scalar_one_or_none()
 
         if not entity:
-            raise HTTPException(status_code=404, detail="Entity not found")
+            raise EntityNotFoundException(entity_id=str(entity_id))
 
         # Delete all existing terms
         delete_stmt = delete(EntityTerm).where(EntityTerm.entity_id == entity_id)
@@ -279,9 +289,10 @@ class EntityTermService:
             # PostgreSQL: "uq_entity_term_language", SQLite: "UNIQUE constraint failed: entity_terms"
             error_str = str(e).lower()
             if "uq_entity_term_language" in error_str or "entity_terms.entity_id, entity_terms.term, entity_terms.language" in error_str:
-                raise HTTPException(
-                    status_code=409,
-                    detail="Duplicate terms detected in payload"
+                raise ValidationException(
+                    message="Duplicate terms detected in payload",
+                    details="Multiple terms with the same text and language were provided",
+                    context={"entity_id": str(entity_id)}
                 )
             raise
 

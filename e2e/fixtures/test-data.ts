@@ -22,51 +22,65 @@ export const TEST_USERS = {
   },
 };
 
-// Test entities
+// Test entities - Scientifically accurate fibromyalgia/chronic pain entities
 export const TEST_ENTITIES = {
-  person: {
-    name: 'John Doe',
-    description: 'A test person entity',
+  medication1: {
+    name: 'Pregabalin',
+    description: 'FDA-approved anticonvulsant for fibromyalgia (2007), first-line treatment',
   },
-  organization: {
-    name: 'ACME Corporation',
-    description: 'A test organization entity',
+  medication2: {
+    name: 'Duloxetine',
+    description: 'FDA-approved SNRI antidepressant for fibromyalgia',
   },
-  location: {
-    name: 'New York City',
-    description: 'A test location entity',
+  condition: {
+    name: 'Fibromyalgia',
+    description: 'Chronic disorder characterized by widespread musculoskeletal pain, fatigue, and tenderness',
+  },
+  symptom: {
+    name: 'Widespread Musculoskeletal Pain',
+    description: 'Pain affecting muscles and bones across multiple body regions',
+  },
+  therapy: {
+    name: 'Cognitive Behavioral Therapy',
+    description: 'Psychological intervention addressing pain perception and coping',
   },
 };
 
-// Test sources
+// Test sources - Clinical studies and guidelines
 export const TEST_SOURCES = {
-  website: {
-    name: 'Test Website',
-    url: 'https://example.com',
-    description: 'A test website source',
+  guideline: {
+    name: 'ACR 2016 Fibromyalgia Diagnostic Criteria',
+    url: 'https://doi.org/10.1016/j.semarthrit.2016.08.012',
+    description: 'American College of Rheumatology revised diagnostic criteria for fibromyalgia',
   },
-  document: {
-    name: 'Test Document',
-    description: 'A test document source',
+  study: {
+    name: 'Pregabalin FDA Approval Study',
+    url: 'https://doi.org/10.1002/art.23968',
+    description: 'Clinical trial supporting FDA approval of pregabalin for fibromyalgia treatment',
+  },
+  review: {
+    name: 'Cochrane Review: Exercise for Fibromyalgia',
+    url: 'https://doi.org/10.1002/14651858.CD003786.pub3',
+    description: 'Systematic review of exercise interventions for fibromyalgia management',
   },
 };
 
-// Test relations
+// Test relations - Medical relationships
 export const TEST_RELATIONS = {
-  employment: {
-    name: 'Works For',
-    description: 'Employment relationship',
+  treats: {
+    name: 'Treats',
+    description: 'Therapeutic intervention treats condition',
     roles: [
-      { name: 'Employee', entity_id: '' }, // Will be filled in tests
-      { name: 'Employer', entity_id: '' },
+      { name: 'Intervention', entity_id: '' }, // Will be filled in tests
+      { name: 'Condition', entity_id: '' },
     ],
   },
-  location: {
-    name: 'Located In',
-    description: 'Location relationship',
+  causes: {
+    name: 'Causes',
+    description: 'Mechanism causes symptom',
     roles: [
-      { name: 'Subject', entity_id: '' },
-      { name: 'Location', entity_id: '' },
+      { name: 'Mechanism', entity_id: '' },
+      { name: 'Symptom', entity_id: '' },
     ],
   },
 };

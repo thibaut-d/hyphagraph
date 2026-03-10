@@ -1,150 +1,111 @@
 # HyphaGraph
 
-HyphaGraph is an experimental knowledge system based on hypergraphs, designed to transform documents into auditable, traceable, and computable knowledge instead of opaque summaries.
+**Hypergraph-based Evidence Knowledge System**
 
-This repository is a proof of concept.
+HyphaGraph transforms document-based knowledge into a computable, auditable, and explainable knowledge graph. It is designed for domains where information is heterogeneous, sometimes contradictory, and supported by sources of unequal quality.
 
-
----
-
-## What problem does it solve?
-
-Most knowledge systems store information as documents or free-form summaries.
-This makes knowledge:
-
-- hard to audit,
-
-- hard to update,
-
-- hard to reason over,
-
-- and prone to subjective interpretation.
-
-
-HyphaGraph takes a different approach:
-it extracts explicit factual statements (“claims”) from documents and represents them as a structured hypergraph, preserving sources, context, and contradictions.
-
-### Typical use cases include:
-
-- scientific literature analysis
-
-- medical or technical knowledge curation
-
-- comparison of contradictory sources
-
-- explainable AI-assisted synthesis
-
-
+> Knowledge should not be written. It should be derived from documented statements.
 
 ---
 
-## Project status
+## Who is it for?
 
-- ⚠️ Experimental / Proof of concept
+- **Researchers** working with large bodies of scientific literature
+- **Physicians** navigating contradictory clinical evidence
+- **Analysts** in any field requiring auditable, evidence-based reasoning
 
-- Not production-ready
-
-- Data model and APIs are still evolving
-
-- Intended for exploration, research, and prototyping
+No prior knowledge of graphs, databases, or formal logic is required.
 
 ---
 
-## Quick start
+## Key Features
 
-To get started with the project, read the following files in this order:
-
-**GETTING_STARTED.md**
-   Setup instructions and local development workflow
-
-**PROJECT.md**
-   Scientific motivation, conceptual foundations, and detailed rationale
-
-**ARCHITECTURE.md**
-   System architecture, component responsibilities, and design constraints
-
-**DATABASE_SCHEMA.md**
-   Canonical logical data model and schema definitions
-
-**STRUCTURE.md**
-   Project file structure and organization
-
-**UX.md**
-   Design brief and user experience principles
+- **Document-grounded claims** — Knowledge is extracted from sources, never invented
+- **Hypergraph structure** — Relations connect multiple entities with explicit roles
+- **Contradiction handling** — Disagreements are preserved and surfaced, not hidden
+- **Computed syntheses** — All conclusions are derived algorithmically, never authored
+- **Full traceability** — Any conclusion reachable to its source in 2 clicks
+- **Explainability** — Confidence breakdowns, contributing factors, and uncertainty always visible
+- **Constrained AI** — LLMs assist with extraction and formatting only, never as authority
 
 ---
 
-## Tech stack
+## Quick Start
 
-- Backend: FastAPI, PostgreSQL, SQLAlchemy (async)
+### Prerequisites
 
-- Frontend: React
+- Docker + Docker Compose
+- Node.js >= 20
+- Python >= 3.12
 
-- Authentication: Custom JWT-based system (OAuth2 password flow)
-  - **Note**: We do NOT use FastAPI Users or similar authentication frameworks
-  - Rationale: FastAPI Users is in maintenance mode, and we prefer explicit, auditable authentication logic over framework magic
-  - Simple User model with JWT access tokens
-  - Explicit permission checks for authorization
-
-- LLM (optional): used in a constrained way for claim extraction and structuring
-(not for generating conclusions)
-
-
----
-
-## Testing
-
-### Unit & Integration Tests
-
-**Backend (pytest)**:
+### Setup
 
 ```bash
-cd backend
-pytest
+git clone https://github.com/your-org/hyphagraph.git
+cd hyphagraph
+cp .env.sample .env
+
+# Start services
+docker compose up --build -d
+
+# Initialize database (first run)
+docker compose exec api alembic upgrade head
 ```
 
-**Frontend (Vitest)**:
+### Access
 
-```bash
-cd frontend
-npm test
-```
-
-### E2E Tests (Playwright)
-
-End-to-end tests cover complete user workflows across the entire stack.
-
-**Quick Start**:
-
-```bash
-# Install dependencies
-cd e2e
-npm install
-
-# Start E2E environment
-cd ..
-docker-compose -f docker-compose.e2e.yml up -d
-
-# Run tests
-cd e2e
-npm test
-```
-
-**Test Coverage**:
-
-- Authentication flows (login, registration, password reset)
-- Entity CRUD operations
-- Source CRUD operations
-- Relation CRUD operations
-- Inference viewing and filtering
-- Explanation trace visualization
-
-See `e2e/README.md` for detailed documentation.
+- **Frontend**: http://localhost
+- **API docs**: http://localhost/api/docs
+- **Default admin**: `admin@example.com` / `changeme123`
 
 ---
 
-## Contributing
+## Screenshots
 
-Contributions are welcome.
+<!-- TODO: Add screenshots of key views -->
+<!-- Entity detail, inference display, explanation trace, disagreements view -->
 
-Before contributing, please read the Markdown files containing essential documentation.
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Backend | Python, FastAPI, SQLAlchemy (async) |
+| Database | PostgreSQL |
+| Frontend | React, TypeScript, Material UI |
+| Auth | Custom JWT (OAuth2 password flow) |
+| Testing | pytest, Vitest, Playwright |
+| Infrastructure | Docker Compose |
+
+---
+
+## Project Status
+
+This repository is a **proof of concept** demonstrating conceptual soundness and architectural viability of hypergraph-based evidence reasoning.
+
+See [Roadmap](docs/product/ROADMAP.md) for current status and planned work.
+
+---
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [Project Overview](PROJECT_OVERVIEW.md) | Vision, philosophy, and scientific motivation |
+| [Contributing](CONTRIBUTING.md) | Development setup, standards, and workflow |
+| [Architecture](docs/architecture/ARCHITECTURE.md) | System architecture and invariants |
+| [Database Schema](docs/architecture/DATABASE_SCHEMA.md) | Canonical data model |
+| [Computed Relations](docs/architecture/COMPUTED_RELATIONS.md) | Inference mathematical model |
+| [Code Guide](docs/development/CODE_GUIDE.md) | Coding conventions and patterns |
+| [Dev Workflow](docs/development/DEV_WORKFLOW.md) | Development workflow and commit discipline |
+| [E2E Testing](docs/development/E2E_TESTING_GUIDE.md) | Playwright E2E testing guide |
+| [UX Design Brief](docs/product/UX.md) | UX principles and design constraints |
+| [AI Agent Rules](docs/product/VIBE.md) | AI agent instructions and coding standards |
+| [Roadmap](docs/product/ROADMAP.md) | Project status and upcoming work |
+
+---
+
+## License
+
+See [LICENSE](LICENSE).

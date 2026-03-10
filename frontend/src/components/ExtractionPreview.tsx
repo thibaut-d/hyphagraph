@@ -15,6 +15,9 @@ import {
   Alert,
   Divider,
   CircularProgress,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from "@mui/material";
 import {
   CheckCircle as CheckCircleIcon,
@@ -22,6 +25,8 @@ import {
   AddCircle as AddCircleIcon,
   RemoveCircle as RemoveCircleIcon,
   Save as SaveIcon,
+  ExpandMore as ExpandMoreIcon,
+  Article as ArticleIcon,
 } from "@mui/icons-material";
 import type {
   DocumentExtractionPreview,
@@ -32,6 +37,8 @@ import type {
 import { saveExtraction } from "../api/extraction";
 import { EntityLinkingSuggestions } from "./EntityLinkingSuggestions";
 import { ExtractedRelationsList } from "./ExtractedRelationsList";
+import { getRelationKey } from "../utils/extractionRelation";
+import { useNotification } from "../notifications/NotificationContext";
 
 interface ExtractionPreviewProps {
   preview: DocumentExtractionPreview;
@@ -71,16 +78,12 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
   });
 
   const [selectedRelations, setSelectedRelations] = useState<Set<string>>(
-    new Set(preview.relations.map((r) => `${r.subject_slug}-${r.relation_type}-${r.object_slug}`))
+    new Set(preview.relations.map(getRelationKey))
   );
 
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   const handleSave = async () => {
     setSaving(true);
-    setError(null);
-
     try {
       // Build save request from user decisions
       const entitiesToCreate = preview.entities.filter(
@@ -95,11 +98,10 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
       });
 
       const relationsToCreate = preview.relations.filter((r) =>
-        selectedRelations.has(`${r.subject_slug}-${r.relation_type}-${r.object_slug}`)
+        selectedRelations.has(getRelationKey(r))
       );
 
       const request: SaveExtractionRequest = {
-        source_id: preview.source_id,
         entities_to_create: entitiesToCreate,
         entity_links: entityLinks,
         relations_to_create: relationsToCreate,
@@ -158,7 +160,7 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
           <Typography variant="body2" color="text.secondary">
             {allHighConfidence ? (
               <>
-                <strong>✓ High-confidence extraction detected.</strong> All entities have exact or synonym matches.
+                <strong>High-confidence extraction detected.</strong> All entities have exact or synonym matches.
                 You can quick-save or review details below.
               </>
             ) : (
@@ -199,6 +201,36 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
 
         <Divider />
 
+        {/* Extracted Text (Optional) */}
+        {preview.extracted_text && (
+          <Accordion>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <ArticleIcon />
+                <Typography variant="h6">
+                  Extracted Text ({preview.extracted_text.length.toLocaleString()} characters)
+                </Typography>
+              </Box>
+            </AccordionSummary>
+            <AccordionDetails>
+              <Box
+                sx={{
+                  maxHeight: 400,
+                  overflowY: "auto",
+                  p: 2,
+                  bgcolor: "grey.50",
+                  borderRadius: 1,
+                  whiteSpace: "pre-wrap",
+                  fontFamily: "monospace",
+                  fontSize: "0.875rem",
+                }}
+              >
+                {preview.extracted_text}
+              </Box>
+            </AccordionDetails>
+          </Accordion>
+        )}
+
         {/* Entity Linking Suggestions */}
         <Box>
           <Typography variant="h6" gutterBottom>
@@ -232,16 +264,23 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
           </Alert>
         )}
 
+        {/* Help message when all entities are skipped */}
+        {stats.toCreate === 0 && stats.toLink === 0 && !saving && (
+          <Alert severity="info">
+            No entities selected. Please select at least one entity to create or link before saving.
+          </Alert>
+        )}
+
         {/* Quick Save for High-Confidence Extractions */}
         {allHighConfidence && (
           <Alert severity="success" sx={{ bgcolor: "success.50" }}>
             <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
               <Box>
                 <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                  ✓ All entities validated with high confidence
+                  All entities validated with high confidence
                 </Typography>
                 <Typography variant="caption">
-                  {stats.toCreate} new entities • {stats.toLink} linked entities • {stats.relationsSelected} relations
+                  {stats.toCreate} new entities - {stats.toLink} linked entities - {stats.relationsSelected} relations
                 </Typography>
               </Box>
               <Button
@@ -253,7 +292,7 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
                 disabled={saving || !hasDecisions}
                 sx={{ minWidth: 180, fontWeight: 600 }}
               >
-                {saving ? "Saving..." : "Quick Save ✓"}
+                {saving ? "Saving..." : "Quick Save"}
               </Button>
             </Box>
           </Alert>
@@ -290,3 +329,4 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
     </Paper>
   );
 };
+

@@ -5,7 +5,8 @@ Records authentication events, security actions, and user operations
 for security monitoring and compliance.
 """
 from datetime import datetime
-from uuid import UUID, uuid4
+from uuid import UUID as PyUUID, uuid4
+from typing import Any
 
 from sqlalchemy import DateTime, ForeignKey, String, Text, JSON, func
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
@@ -28,7 +29,7 @@ class AuditLog(Base):
 
     __tablename__ = "audit_logs"
 
-    id: Mapped[UUID] = mapped_column(
+    id: Mapped[PyUUID] = mapped_column(
         PGUUID(as_uuid=True),
         primary_key=True,
         default=uuid4,
@@ -50,7 +51,7 @@ class AuditLog(Base):
     )
 
     # User information
-    user_id: Mapped[UUID | None] = mapped_column(
+    user_id: Mapped[PyUUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
@@ -79,7 +80,7 @@ class AuditLog(Base):
     )
 
     # Additional details
-    details: Mapped[dict | None] = mapped_column(
+    details: Mapped[dict[str, Any] | None] = mapped_column(
         JSON,
         nullable=True,
         comment="Additional event-specific data in JSON format"

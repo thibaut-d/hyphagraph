@@ -114,6 +114,12 @@ export function SourcesView() {
     label: t(`filters.role_${role}`, role.charAt(0).toUpperCase() + role.slice(1))
   })), [roleOptions, t]);
 
+  // Kind options with labels
+  const kindOptionsWithLabels = useMemo(() => kindOptions.map(kind => ({
+    value: kind,
+    label: t(`sources.kind_${kind}`, kind.charAt(0).toUpperCase() + kind.slice(1))
+  })), [kindOptions, t]);
+
   // Domain options with labels
   const domainOptionsWithLabels = useMemo(() => domainOptions.map(domain => ({
     value: domain,
@@ -353,7 +359,7 @@ export function SourcesView() {
       >
         <FilterSection title={t("filters.study_type", "Study Type")}>
           <CheckboxFilter
-            options={kindOptions}
+            options={kindOptionsWithLabels}
             value={filters.kind || []}
             onChange={(value) => setFilter('kind', value)}
           />

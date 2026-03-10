@@ -28,11 +28,13 @@ import {
   Chip,
   Link,
   Stack,
+  Snackbar,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import DownloadIcon from "@mui/icons-material/Download";
 import { bulkSearchPubMed, bulkImportPubMed } from "../api/pubmed";
 import type { PubMedSearchResult } from "../types/pubmed";
+import { useNotification } from "../notifications/NotificationContext";
 
 export function PubMedImportView() {
   const navigate = useNavigate();
@@ -52,6 +54,7 @@ export function PubMedImportView() {
   // Import state
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
+  const [importSuccess, setImportSuccess] = useState<string | null>(null);
 
   const handleSearch = async () => {
     if (!searchInput.trim()) {
@@ -130,10 +133,12 @@ export function PubMedImportView() {
           ? `Successfully imported ${response.sources_created} articles!`
           : `Imported ${response.sources_created} articles. ${failedCount} failed: ${response.failed_pmids.join(", ")}`;
 
-      alert(successMessage);
+      setImportSuccess(successMessage);
 
-      // Navigate to sources list
-      navigate("/sources");
+      // Navigate to sources list after short delay to allow user to see message
+      setTimeout(() => {
+        navigate("/sources");
+      }, 2000);
     } catch (error) {
       setImportError(
         error instanceof Error ? error.message : "Failed to import articles"
@@ -358,6 +363,23 @@ export function PubMedImportView() {
           </Typography>
         </Paper>
       )}
+
+      {/* Success Snackbar */}
+      <Snackbar
+        open={Boolean(importSuccess)}
+        autoHideDuration={6000}
+        onClose={() => setImportSuccess(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => setImportSuccess(null)}
+          severity="success"
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          {importSuccess}
+        </Alert>
+      </Snackbar>
     </Stack>
   );
 }

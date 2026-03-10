@@ -6,28 +6,28 @@ NO framework magic, NO RBAC abstractions.
 
 Each function clearly states what permission it checks and why.
 """
-from fastapi import HTTPException, status
 from uuid import UUID
 
 from app.models.user import User
 from app.models.relation import Relation
+from app.utils.errors import ForbiddenException
 
 
 def require_permission(has_permission: bool, message: str = "Permission denied") -> None:
     """
-    Raise HTTPException if permission check fails.
+    Raise ForbiddenException if permission check fails.
 
     Args:
         has_permission: Boolean result of permission check
         message: Error message to return
 
     Raises:
-        HTTPException 403: If permission is denied
+        ForbiddenException: If permission is denied
     """
     if not has_permission:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=message
+        raise ForbiddenException(
+            message=message,
+            details="You do not have permission to perform this action"
         )
 
 

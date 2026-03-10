@@ -4,6 +4,7 @@
     "entities": "Entities",
     "sources": "Sources",
     "search": "Search",
+    "review_queue": "Review Queue",
     "account": "My account"
   },
   "common": {
@@ -18,6 +19,15 @@
     "error": "An error occurred",
     "back_to_entity": "Back to Entity",
     "no_data": "No data"
+  },
+  "notifications": {
+    "network_error": "Network error. Please check your connection.",
+    "session_expired": "Your session has expired. Please log in again.",
+    "unauthorized": "You do not have permission to perform this action.",
+    "server_error": "Server error. Please try again later.",
+    "not_found": "Resource not found.",
+    "generic_error": "An unexpected error occurred.",
+    "operation_success": "Operation completed successfully."
   },
   "search": {
     "title": "Search",

@@ -1,7 +1,9 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import String, Integer, Float, JSON, Boolean, ForeignKey, DateTime, Text
 from sqlalchemy.sql import func
-from uuid import UUID
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from uuid import UUID as PyUUID
+from typing import Any
 from app.models.base import Base, UUIDMixin
 
 
@@ -15,7 +17,8 @@ class SourceRevision(Base, UUIDMixin):
     __tablename__ = "source_revisions"
 
     # Link to base source
-    source_id: Mapped[UUID] = mapped_column(
+    source_id: Mapped[PyUUID] = mapped_column(
+        PGUUID(as_uuid=True),
         ForeignKey("sources.id", ondelete="CASCADE"),
         nullable=False,
     )
@@ -30,12 +33,13 @@ class SourceRevision(Base, UUIDMixin):
     trust_level: Mapped[float | None] = mapped_column(Float)
 
     # i18n and metadata
-    summary: Mapped[dict | None] = mapped_column(JSON)  # i18n: {"en": "...", "fr": "..."}
-    source_metadata: Mapped[dict | None] = mapped_column(JSON)  # doi, pubmed_id, etc.
+    summary: Mapped[dict[str, str] | None] = mapped_column(JSON)  # i18n: {"en": "...", "fr": "..."}
+    source_metadata: Mapped[dict[str, Any] | None] = mapped_column(JSON)  # doi, pubmed_id, etc.
 
     # Provenance tracking
     created_with_llm: Mapped[str | None] = mapped_column(String)  # e.g., "gpt-4", "claude-3"
-    created_by_user_id: Mapped[UUID | None] = mapped_column(
+    created_by_user_id: Mapped[PyUUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )

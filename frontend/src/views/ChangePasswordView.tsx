@@ -20,16 +20,17 @@ import {
 
 import { changePassword } from "../api/auth";
 import { useAuthContext } from "../auth/AuthContext";
+import { useNotification } from "../notifications/NotificationContext";
 
 export function ChangePasswordView() {
   const { t } = useTranslation();
+  const { showError } = useNotification();
   const navigate = useNavigate();
   const { user } = useAuthContext();
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -44,9 +45,7 @@ export function ChangePasswordView() {
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setSuccess(false);
+    e.preventDefault();    setSuccess(false);
 
     // Validate passwords match
     if (newPassword !== confirmPassword) {
@@ -78,7 +77,7 @@ export function ChangePasswordView() {
         navigate("/profile");
       }, 2000);
     } catch (e: any) {
-      setError(e.message || t("change_password.error", "Failed to change password"));
+      showError(e);
     } finally {
       setLoading(false);
     }

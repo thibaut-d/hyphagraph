@@ -4,21 +4,42 @@
  * This file is executed before all tests to set up the testing environment.
  */
 import '@testing-library/jest-dom';
-import i18n from 'i18next';
-import { initReactI18next } from 'react-i18next';
+import { vi } from 'vitest';
 
-// Initialize i18next for tests
-i18n.use(initReactI18next).init({
-  lng: 'en',
-  fallbackLng: 'en',
-  ns: ['translation'],
-  defaultNS: 'translation',
-  resources: {
-    en: {
-      translation: {},
+// Mock localStorage for tests
+const localStorageMock = (() => {
+  let store: Record<string, string> = {};
+
+  return {
+    getItem: (key: string) => store[key] || null,
+    setItem: (key: string, value: string) => {
+      store[key] = value;
     },
-  },
-  interpolation: {
-    escapeValue: false,
-  },
+    removeItem: (key: string) => {
+      delete store[key];
+    },
+    clear: () => {
+      store = {};
+    },
+  };
+})();
+
+Object.defineProperty(window, 'localStorage', {
+  value: localStorageMock,
 });
+
+// Mock i18next to return the default value (second parameter) from t() calls
+// This allows components to render with English text in tests
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, defaultValue?: string) => defaultValue || key,
+    i18n: {
+      changeLanguage: () => new Promise(() => {}),
+      language: 'en',
+    },
+  }),
+  initReactI18next: {
+    type: '3rdParty',
+    init: () => {},
+  },
+}));

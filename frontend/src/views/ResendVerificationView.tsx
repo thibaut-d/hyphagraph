@@ -1,17 +1,14 @@
 import React, { useState } from "react";
 import { resendVerificationEmail } from "../api/auth";
 import { Link } from "react-router-dom";
+import { useNotification } from "../notifications/NotificationContext";
 
 export default function ResendVerificationView() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
+    e.preventDefault();    setLoading(true);
 
     try {
       await resendVerificationEmail(email);
@@ -19,11 +16,11 @@ export default function ResendVerificationView() {
     } catch (err: any) {
       // Handle specific errors
       if (err.message?.includes("already verified")) {
-        setError("This email address is already verified. You can log in now.");
+        showError(new Error("This email address is already verified. You can log in now."));
       } else if (err.message?.includes("not found")) {
-        setError("No account found with this email address.");
+        showError(new Error("No account found with this email address."));
       } else {
-        setError(err.message || "Failed to send verification email");
+        showError(err);
       }
     } finally {
       setLoading(false);

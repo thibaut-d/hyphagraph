@@ -12,18 +12,18 @@ import {
 
 import { login as apiLogin, register as apiRegister } from "../api/auth";
 import { useAuth } from "../auth/useAuth";
+import { useNotification } from "../notifications/NotificationContext";
 
 export function AccountView() {
   const { t } = useTranslation();
+  const { showError } = useNotification();
   const { user, login, logout } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
 
   const handleLogin = async () => {
-    setError(null);
     setRegistrationSuccess(false);
     try {
       const res = await apiLogin({
@@ -32,12 +32,11 @@ export function AccountView() {
       });
       login(res.access_token, res.refresh_token);
     } catch (e: any) {
-      setError(e.message);
+      showError(e);
     }
   };
 
   const handleRegister = async () => {
-    setError(null);
     setRegistrationSuccess(false);
     try {
       await apiRegister({ email, password });
@@ -46,7 +45,7 @@ export function AccountView() {
       setRegistrationSuccess(true);
       setPassword(""); // Clear password for security
     } catch (e: any) {
-      setError(e.message);
+      showError(e);
     }
   };
 

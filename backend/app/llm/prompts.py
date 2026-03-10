@@ -7,6 +7,7 @@ Contains system prompts and extraction templates for:
 - Claim extraction
 - Entity linking
 """
+from typing import Any
 
 # =============================================================================
 # System Prompts
@@ -177,36 +178,32 @@ CRITICAL: relation_type MUST be EXACTLY one of these values (no variations):
 IMPORTANT: Do NOT create new relation types. If a relationship doesn't fit the above categories, use "other".
 Do NOT use types like: "has", "integrates_with", "diagnosed_by", "correlates_with", "associated_with", etc.
 
-Example roles:
-- dosage: "100mg daily"
-- route: "oral administration"
-- duration: "for 7 days"
-- effect_size: "reduces risk by 25%"
-- population: "in adults over 65"
+Example roles in output:
+- {"entity_slug": "aspirin", "role_type": "agent"}
+- {"entity_slug": "migraine", "role_type": "target"}
+- {"entity_slug": "325-650mg", "role_type": "dosage"}
 
 Respond with a JSON array of relations:
 ```json
 [
   {{
-    "subject_slug": "drug-aspirin",
     "relation_type": "treats",
-    "object_slug": "disease-migraine",
-    "roles": {{
-      "dosage": "325-650mg",
-      "effect": "reduces pain severity"
-    }},
+    "roles": [
+      {{"entity_slug": "aspirin", "role_type": "agent"}},
+      {{"entity_slug": "migraine", "role_type": "target"}},
+      {{"entity_slug": "325-650mg", "role_type": "dosage"}}
+    ],
     "confidence": "high",
     "text_span": "aspirin 325-650mg is effective for migraine pain relief",
     "notes": "Most effective when taken at onset of symptoms"
   }},
   {{
-    "subject_slug": "drug-aspirin",
     "relation_type": "causes",
-    "object_slug": "symptom-stomach-irritation",
-    "roles": {{
-      "frequency": "common",
-      "severity": "mild to moderate"
-    }},
+    "roles": [
+      {{"entity_slug": "aspirin", "role_type": "agent"}},
+      {{"entity_slug": "stomach-irritation", "role_type": "target"}},
+      {{"entity_slug": "high-dose", "role_type": "condition"}}
+    ],
     "confidence": "high",
     "text_span": "aspirin commonly causes stomach irritation",
     "notes": "Risk increases with higher doses and prolonged use"
@@ -309,9 +306,6 @@ Extract:
    - biomarker_for
    - affects_population
    - measures
-   - compared_to
-   - studied_in
-   - correlated_with
    - other
 
    IMPORTANT: If the relationship doesn't clearly fit one of the specific types above, use "other".
@@ -330,13 +324,6 @@ Extract:
      Do NOT create: "disease affects healthy-controls" - this is illogical
    - measures: Subject is the assessment tool, object is what it measures
      Example: "vas measures pain" (NOT "pain measures vas")
-   - compared_to: Subject is study group, object is comparison/control group
-     Example: "fibromyalgia-patients compared_to healthy-controls"
-     Use this INSTEAD of affects_population for study comparisons
-   - studied_in: Subject is condition/treatment, object is the study population
-     Example: "fibromyalgia studied_in women; exercise-intervention studied_in elderly"
-   - correlated_with: Statistical correlation (symmetric, no causation implied)
-     Example: "pain-severity correlated_with depression-score"
 
    - confidence: high, medium, low
 
@@ -443,7 +430,7 @@ Respond with JSON containing three arrays:
 
 CRITICAL REMINDERS:
 - Entity slugs: Must start with letter, only lowercase letters/numbers/hyphens, minimum 3 chars
-- Relation types: ONLY use the exact 12 types listed above (use "other" if unsure)
+- Relation types: ONLY use the exact 13 types listed above (use "other" if unsure)
 - Claim types: ONLY use efficacy, safety, mechanism, epidemiology, or other
 - Evidence strength: ONLY use strong, moderate, weak, or anecdotal
 
@@ -460,7 +447,7 @@ def format_entity_extraction_prompt(text: str) -> str:
     return ENTITY_EXTRACTION_PROMPT.format(text=text)
 
 
-def format_relation_extraction_prompt(text: str, entities: list[dict]) -> str:
+def format_relation_extraction_prompt(text: str, entities: list[dict[str, Any]]) -> str:
     """Format the relation extraction prompt with text and extracted entities."""
     entities_str = "\n".join([
         f"- {e['slug']}: {e.get('summary', 'No description')}"
@@ -481,7 +468,7 @@ def format_batch_extraction_prompt(text: str) -> str:
 
 def format_entity_linking_prompt(
     mentions: list[str],
-    existing_entities: list[dict]
+    existing_entities: list[dict[str, Any]]
 ) -> str:
     """Format the entity linking prompt with mentions and existing entities."""
     mentions_str = ", ".join(f'"{m}"' for m in mentions)

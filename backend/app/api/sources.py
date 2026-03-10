@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, UploadFile, File, HTTPException, status
+from fastapi import APIRouter, Depends, Query, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 from typing import Optional, List
@@ -10,10 +10,8 @@ from app.schemas.filters import SourceFilters, SourceFilterOptions
 from app.schemas.pagination import PaginatedResponse
 from app.services.source_service import SourceService
 from app.services.document_service import DocumentService
-from app.services.pubmed_fetcher import PubMedFetcher
-from app.services.url_fetcher import UrlFetcher
 from app.dependencies.auth import get_current_user
-from app.utils.source_quality import infer_trust_level_from_pubmed_metadata, website_trust_level
+from app.utils.errors import AppException, ErrorCode
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -45,9 +43,9 @@ async def extract_metadata_from_url(
     This endpoint analyzes a URL and extracts metadata without creating a source.
     Useful for auto-filling the create source form before user validation.
 
-    Supported URL types:
-    - PubMed articles (https://pubmed.ncbi.nlm.nih.gov/...) - extracts full metadata via API
-    - General web pages - extracts title and basic info
+    Automatically detects URL type and uses appropriate extractor:
+    - PubMed articles - full metadata via NCBI API
+    - General web pages - title and basic info via HTML parsing
 
     Returns suggested values for:
     - title
@@ -55,6 +53,7 @@ async def extract_metadata_from_url(
     - year
     - origin (journal/publisher)
     - kind (article, website, etc.)
+    - trust_level (calculated automatically)
     - url (normalized)
 
     The user can then review, edit, and submit the form.
@@ -62,75 +61,22 @@ async def extract_metadata_from_url(
     logger.info(f"Metadata extraction requested for URL: {request.url}")
 
     try:
-        # Check if it's a PubMed URL
-        pubmed_fetcher = PubMedFetcher()
-        pmid = pubmed_fetcher.extract_pmid_from_url(request.url)
+        # Use factory to select and execute appropriate extractor
+        from app.services.metadata_extractors import MetadataExtractorFactory
 
-        if pmid:
-            # Use PubMed API for complete metadata
-            logger.info(f"Detected PubMed URL, fetching metadata for PMID {pmid}")
-            article = await pubmed_fetcher.fetch_by_pmid(pmid)
+        factory = MetadataExtractorFactory()
+        return await factory.extract_metadata(request.url)
 
-            # Calculate trust level based on article metadata
-            trust_level = infer_trust_level_from_pubmed_metadata(
-                title=article.title,
-                journal=article.journal,
-                year=article.year,
-                abstract=article.abstract
-            )
-
-            logger.info(f"Calculated trust level: {trust_level} (journal: {article.journal})")
-
-            return SourceMetadataSuggestion(
-                url=article.url,
-                title=article.title,
-                authors=article.authors if article.authors else None,
-                year=article.year,
-                origin=article.journal,
-                kind="article",
-                trust_level=trust_level,  # Calculated automatically
-                summary_en=article.abstract if article.abstract else None,
-                source_metadata={
-                    "pmid": article.pmid,
-                    "doi": article.doi,
-                    "source": "pubmed"
-                }
-            )
-        else:
-            # Use general URL fetcher for basic metadata
-            logger.info("Using general URL fetcher for metadata")
-            url_fetcher = UrlFetcher()
-            fetch_result = await url_fetcher.fetch_url(request.url)
-
-            # Determine kind based on URL
-            kind = "website"
-            if "youtube.com" in request.url.lower() or "youtu.be" in request.url.lower():
-                kind = "video"
-            elif any(ext in request.url.lower() for ext in ['.pdf', 'arxiv.org']):
-                kind = "article"
-
-            # Calculate trust level for website (lower than peer-reviewed articles)
-            trust_level = website_trust_level()
-
-            return SourceMetadataSuggestion(
-                url=request.url,
-                title=fetch_result.title if fetch_result.title else None,
-                authors=None,  # Can't reliably extract from general web pages
-                year=None,  # Would require text analysis
-                origin=None,  # Could extract domain name, but not implemented yet
-                kind=kind,
-                trust_level=trust_level,  # Lower for general websites
-                summary_en=None,  # Would require summarization
-                source_metadata={"fetched_url": fetch_result.url}
-            )
-
-    except HTTPException:
+    except AppException:
         raise
     except Exception as e:
         logger.error(f"Metadata extraction failed: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to extract metadata from URL: {str(e)}"
+        raise AppException(
+            status_code=500,
+            error_code=ErrorCode.INTERNAL_SERVER_ERROR,
+            message="Failed to extract metadata from URL",
+            details=str(e),
+            context={"url": request.url}
         )
 
 

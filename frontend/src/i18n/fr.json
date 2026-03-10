@@ -4,6 +4,7 @@
     "entities": "Entités",
     "sources": "Sources",
     "search": "Recherche",
+    "review_queue": "File de révision",
     "account": "Mon compte"
   },
   "common": {
@@ -18,6 +19,15 @@
     "error": "Une erreur s'est produite",
     "back_to_entity": "Retour à l'entité",
     "no_data": "Aucune donnée"
+  },
+  "notifications": {
+    "network_error": "Erreur réseau. Vérifiez votre connexion.",
+    "session_expired": "Votre session a expiré. Veuillez vous reconnecter.",
+    "unauthorized": "Vous n'avez pas la permission d'effectuer cette action.",
+    "server_error": "Erreur serveur. Veuillez réessayer plus tard.",
+    "not_found": "Ressource introuvable.",
+    "generic_error": "Une erreur inattendue s'est produite.",
+    "operation_success": "Opération terminée avec succès."
   },
   "search": {
     "title": "Recherche",

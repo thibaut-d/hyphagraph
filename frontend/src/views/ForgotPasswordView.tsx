@@ -11,17 +11,16 @@ import {
 } from "@mui/material";
 
 import { requestPasswordReset } from "../api/auth";
+import { useNotification } from "../notifications/NotificationContext";
 
 export function ForgotPasswordView() {
   const { t } = useTranslation();
+  const { showError } = useNotification();
   const [email, setEmail] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async () => {
-    setError(null);
-    setSuccess(false);
+  const handleSubmit = async () => {    setSuccess(false);
     setLoading(true);
 
     try {
@@ -29,7 +28,7 @@ export function ForgotPasswordView() {
       setSuccess(true);
       setEmail("");
     } catch (e: any) {
-      setError(e.message);
+      showError(e);
     } finally {
       setLoading(false);
     }

@@ -454,6 +454,7 @@ describe("ActiveFilters", () => {
       id: "category",
       type: "checkbox",
       label: "Category",
+      filterFn: () => true,
       options: [
         { value: "tech", label: "Technology" },
         { value: "science", label: "Science" },
@@ -463,6 +464,7 @@ describe("ActiveFilters", () => {
       id: "year",
       type: "yearRange",
       label: "Year",
+      filterFn: () => true,
       min: 2000,
       max: 2024,
     },
@@ -470,6 +472,7 @@ describe("ActiveFilters", () => {
       id: "confidence",
       type: "range",
       label: "Confidence",
+      filterFn: () => true,
       min: 0,
       max: 1,
       step: 0.1,
@@ -479,6 +482,7 @@ describe("ActiveFilters", () => {
       id: "search",
       type: "search",
       label: "Search",
+      filterFn: () => true,
     },
   ];
 

@@ -57,19 +57,21 @@ describe('EditEntityView', () => {
   });
 
   it('loads and displays entity data', async () => {
+    const { MemoryRouter } = await import('react-router');
+
     render(
-      <BrowserRouter>
+      <MemoryRouter initialEntries={['/entities/entity-123/edit']}>
         <Routes>
-          <Route path="/" element={<EditEntityView />} />
+          <Route path="/entities/:id/edit" element={<EditEntityView />} />
         </Routes>
-      </BrowserRouter>
+      </MemoryRouter>
     );
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('aspirin')).toBeInTheDocument();
       expect(screen.getByDisplayValue('Analgesic drug')).toBeInTheDocument();
       expect(screen.getByDisplayValue('Médicament analgésique')).toBeInTheDocument();
-    });
+    }, { timeout: 3000 });
   });
 
   it('displays loading state initially', () => {

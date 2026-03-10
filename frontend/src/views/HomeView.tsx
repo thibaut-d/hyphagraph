@@ -23,6 +23,7 @@ import AccountTreeIcon from "@mui/icons-material/AccountTree";
 import PsychologyIcon from "@mui/icons-material/Psychology";
 import AddIcon from "@mui/icons-material/Add";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import { useNotification } from "../notifications/NotificationContext";
 
 interface Stats {
   entities: number;
@@ -97,6 +98,7 @@ function StatCard({
 
 export function HomeView() {
   const { t } = useTranslation();
+  const { showError } = useNotification();
   const navigate = useNavigate();
   const [stats, setStats] = useState<Stats>({
     entities: 0,
@@ -184,7 +186,7 @@ export function HomeView() {
 
           <Grid container spacing={3} mb={4}>
             {/* Entities */}
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <StatCard
                 title={t("home.entities", "Entities")}
                 count={stats.entities}
@@ -198,7 +200,7 @@ export function HomeView() {
             </Grid>
 
             {/* Sources */}
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <StatCard
                 title={t("home.sources", "Sources")}
                 count={stats.sources}
@@ -212,7 +214,7 @@ export function HomeView() {
             </Grid>
 
             {/* Relations */}
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Card variant="outlined" sx={{ height: "100%" }}>
                 <CardContent>
                   <Stack direction="row" spacing={2} alignItems="center" mb={2}>
@@ -255,7 +257,7 @@ export function HomeView() {
             </Grid>
 
             {/* Inferences */}
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Card variant="outlined" sx={{ height: "100%" }}>
                 <CardContent>
                   <Stack direction="row" spacing={2} alignItems="center" mb={2}>

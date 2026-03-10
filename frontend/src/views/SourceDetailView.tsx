@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link as RouterLink, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useNotification } from "../notifications/NotificationContext";
 
 import {
   Paper,
@@ -43,6 +44,7 @@ import { UrlExtractionDialog } from "../components/UrlExtractionDialog";
 export function SourceDetailView() {
   const { id } = useParams<{ id: string }>();
   const { t } = useTranslation();
+  const { showError } = useNotification();
   const navigate = useNavigate();
 
   const [source, setSource] = useState<SourceRead | null>(null);
@@ -56,9 +58,9 @@ export function SourceDetailView() {
   // Extraction workflow state
   const [autoExtracting, setAutoExtracting] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
   const [extractionPreview, setExtractionPreview] = useState<DocumentExtractionPreview | null>(null);
   const [saveResult, setSaveResult] = useState<SaveExtractionResult | null>(null);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
 
   // URL extraction state
   const [urlDialogOpen, setUrlDialogOpen] = useState(false);
@@ -120,7 +122,6 @@ export function SourceDetailView() {
     if (!id || !source) return;
 
     setAutoExtracting(true);
-    setUploadError(null);
     setSaveResult(null);
 
     try {
@@ -130,11 +131,11 @@ export function SourceDetailView() {
         setExtractionPreview(preview);
       } else {
         // No URL available - prompt for upload
-        setUploadError("No URL available. Please upload a document or provide a URL.");
+        showError(new Error("No URL available. Please upload a document or provide a URL."));
         setAutoExtracting(false);
       }
     } catch (error) {
-      setUploadError(error instanceof Error ? error.message : "Failed to auto-extract knowledge");
+      showError(error);
       setAutoExtracting(false);
     } finally {
       setAutoExtracting(false);
@@ -146,14 +147,15 @@ export function SourceDetailView() {
     if (!file || !id) return;
 
     setUploading(true);
-    setUploadError(null);
     setSaveResult(null);
+    setUploadedFileName(file.name);
 
     try {
       const preview = await uploadAndExtract(id, file);
       setExtractionPreview(preview);
     } catch (error) {
-      setUploadError(error instanceof Error ? error.message : "Failed to upload and extract");
+      showError(error);
+      setUploadedFileName(null);
     } finally {
       setUploading(false);
       // Clear file input
@@ -175,13 +177,13 @@ export function SourceDetailView() {
   const handleCancelExtraction = () => {
     setExtractionPreview(null);
     setUploadError(null);
+    setUploadedFileName(null);
   };
 
   const handleUrlExtraction = async (url: string) => {
     if (!id) return;
 
     setUrlExtracting(true);
-    setUploadError(null);
     setSaveResult(null);
 
     try {
@@ -189,7 +191,7 @@ export function SourceDetailView() {
       setExtractionPreview(preview);
       setUrlDialogOpen(false);
     } catch (error) {
-      setUploadError(error instanceof Error ? error.message : "Failed to extract from URL");
+      showError(error);
       throw error; // Re-throw to let dialog handle error display
     } finally {
       setUrlExtracting(false);
@@ -206,7 +208,7 @@ export function SourceDetailView() {
 
   const hasUrl = !!source.url;
   const hasRelations = relations.length > 0;
-  const isHighQuality = source.trust_level && source.trust_level >= 0.75;
+  const isHighQuality = source.trust_level != null && source.trust_level >= 0.75;
 
   return (
     <Stack spacing={3}>
@@ -219,7 +221,7 @@ export function SourceDetailView() {
             <Box sx={{ display: "flex", gap: 1, alignItems: "center", flexWrap: "wrap" }}>
               <Chip label={source.kind} size="small" />
               {source.year && <Chip label={source.year} size="small" variant="outlined" />}
-              {source.trust_level !== undefined && (
+              {source.trust_level != null && (
                 <Chip
                   label={`Quality: ${Math.round(source.trust_level * 100)}%`}
                   size="small"
@@ -308,12 +310,6 @@ export function SourceDetailView() {
               })}
               {" "}
               {t("sources.can_reextract", "You can extract again to add more knowledge.")}
-            </Alert>
-          )}
-
-          {uploadError && (
-            <Alert severity="error" onClose={() => setUploadError(null)}>
-              {uploadError}
             </Alert>
           )}
 
@@ -421,6 +417,15 @@ export function SourceDetailView() {
               {t("sources.extract_from_url", "Custom URL")}
             </Button>
           </Box>
+
+          {uploadedFileName && (
+            <Chip
+              label={`Uploaded: ${uploadedFileName}`}
+              onDelete={() => setUploadedFileName(null)}
+              color="primary"
+              variant="outlined"
+            />
+          )}
 
           <Typography variant="caption" color="text.secondary" sx={{ display: "block", textAlign: "center" }}>
             {t(
@@ -572,7 +577,7 @@ export function SourceDetailView() {
         onClose={() => setUrlDialogOpen(false)}
         onSubmit={handleUrlExtraction}
         loading={urlExtracting}
-        defaultUrl={source.url}
+        defaultUrl={source.url || undefined}
       />
     </Stack>
   );

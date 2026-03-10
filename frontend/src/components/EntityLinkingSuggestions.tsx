@@ -4,7 +4,7 @@
  * Displays extracted entities with linking suggestions and allows user to decide
  * whether to create new entities or link to existing ones.
  */
-import React from "react";
+import React, { useState } from "react";
 import {
   Box,
   Card,
@@ -17,6 +17,13 @@ import {
   ToggleButtonGroup,
   ToggleButton,
   Alert,
+  Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
 } from "@mui/material";
 import {
   Link as LinkIcon,
@@ -24,6 +31,8 @@ import {
   RemoveCircle as RemoveCircleIcon,
   CheckCircle as CheckCircleIcon,
   AutoFixHigh as AutoFixHighIcon,
+  ViewList as ViewListIcon,
+  ViewModule as ViewModuleIcon,
 } from "@mui/icons-material";
 import type {
   ExtractedEntity,
@@ -64,6 +73,8 @@ export const EntityLinkingSuggestions: React.FC<EntityLinkingSuggestionsProps> =
   decisions,
   onDecisionChange,
 }) => {
+  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
+
   const getSuggestionForEntity = (slug: string): EntityLinkMatch | undefined => {
     return linkSuggestions.find((s) => s.extracted_slug === slug);
   };
@@ -91,6 +102,137 @@ export const EntityLinkingSuggestions: React.FC<EntityLinkingSuggestionsProps> =
   }
 
   return (
+    <Stack spacing={2}>
+      {/* View Mode Toggle */}
+      <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+        <ToggleButtonGroup
+          value={viewMode}
+          exclusive
+          onChange={(_, value) => value && setViewMode(value)}
+          size="small"
+        >
+          <ToggleButton value="cards">
+            <Tooltip title="Card view">
+              <ViewModuleIcon />
+            </Tooltip>
+          </ToggleButton>
+          <ToggleButton value="table">
+            <Tooltip title="Compact table view">
+              <ViewListIcon />
+            </Tooltip>
+          </ToggleButton>
+        </ToggleButtonGroup>
+      </Box>
+
+      {viewMode === "table" ? (
+        <TableContainer>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Entity</TableCell>
+                <TableCell>Category</TableCell>
+                <TableCell>Confidence</TableCell>
+                <TableCell>Match</TableCell>
+                <TableCell align="right">Action</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {entities.map((entity) => {
+                const suggestion = getSuggestionForEntity(entity.slug);
+                const decision = decisions[entity.slug];
+
+                return (
+                  <TableRow key={entity.slug} hover>
+                    <TableCell>
+                      <Typography variant="body2" fontWeight="medium">
+                        {entity.slug}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        "{entity.text_span}"
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={entity.category}
+                        size="small"
+                        sx={{
+                          bgcolor: categoryColors[entity.category],
+                          color: "white",
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={entity.confidence}
+                        size="small"
+                        color={confidenceColors[entity.confidence]}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      {suggestion && suggestion.match_type !== "none" ? (
+                        <Tooltip title={`${suggestion.matched_entity_slug} (${Math.round(suggestion.confidence * 100)}%)`}>
+                          <Chip
+                            label={suggestion.match_type}
+                            size="small"
+                            color={
+                              suggestion.match_type === "exact"
+                                ? "success"
+                                : suggestion.match_type === "synonym"
+                                ? "info"
+                                : "warning"
+                            }
+                            icon={
+                              suggestion.match_type === "exact" ? (
+                                <CheckCircleIcon />
+                              ) : (
+                                <AutoFixHighIcon />
+                              )
+                            }
+                          />
+                        </Tooltip>
+                      ) : (
+                        <Typography variant="caption" color="text.secondary">
+                          No match
+                        </Typography>
+                      )}
+                    </TableCell>
+                    <TableCell align="right">
+                      <ToggleButtonGroup
+                        value={decision?.action || "create"}
+                        exclusive
+                        onChange={(_, value) => {
+                          if (value !== null) {
+                            handleActionChange(entity.slug, value);
+                          }
+                        }}
+                        size="small"
+                      >
+                        <ToggleButton value="create">
+                          <Tooltip title="Create new">
+                            <AddCircleIcon fontSize="small" />
+                          </Tooltip>
+                        </ToggleButton>
+                        {suggestion && suggestion.match_type !== "none" && (
+                          <ToggleButton value="link">
+                            <Tooltip title="Link to existing">
+                              <LinkIcon fontSize="small" />
+                            </Tooltip>
+                          </ToggleButton>
+                        )}
+                        <ToggleButton value="skip">
+                          <Tooltip title="Skip">
+                            <RemoveCircleIcon fontSize="small" />
+                          </Tooltip>
+                        </ToggleButton>
+                      </ToggleButtonGroup>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      ) : (
     <Stack spacing={2}>
       {entities.map((entity) => {
         const suggestion = getSuggestionForEntity(entity.slug);
@@ -225,6 +367,8 @@ export const EntityLinkingSuggestions: React.FC<EntityLinkingSuggestionsProps> =
           </Card>
         );
       })}
+    </Stack>
+      )}
     </Stack>
   );
 };

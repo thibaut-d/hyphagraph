@@ -1,9 +1,11 @@
+from typing import Any
+from uuid import UUID
 from app.models.entity import Entity
 from app.models.entity_revision import EntityRevision
 from app.schemas.entity import EntityWrite, EntityRead, EntityRevisionRead
 
 
-def entity_revision_from_write(payload: EntityWrite, entity_id=None) -> dict:
+def entity_revision_from_write(payload: EntityWrite, entity_id: UUID | None = None) -> dict[str, Any]:
     """
     Convert EntityWrite payload to EntityRevision data dict.
 
@@ -29,9 +31,22 @@ def entity_to_read(entity: Entity, current_revision: EntityRevision) -> EntityRe
     summary = current_revision.summary
     if isinstance(summary, str):
         try:
-            summary = json.loads(summary)
-        except (json.JSONDecodeError, TypeError):
-            summary = {"en": summary}  # Fallback to plain string
+            parsed = json.loads(summary)
+            # Validate that parsed is a dictionary
+            if isinstance(parsed, dict):
+                summary = parsed
+            else:
+                # If not a dict, wrap it
+                summary = {"en": str(parsed)}
+        except (json.JSONDecodeError, TypeError, ValueError):
+            # Fallback to plain string wrapped in dict
+            summary = {"en": summary}
+    elif isinstance(summary, dict):
+        # Already a dict, use as-is
+        summary = summary
+    else:
+        # Handle unexpected types
+        summary = {"en": str(summary) if summary is not None else ""}
 
     return EntityRead(
         id=entity.id,
@@ -55,9 +70,22 @@ def entity_revision_to_read(revision: EntityRevision) -> EntityRevisionRead:
     summary = revision.summary
     if isinstance(summary, str):
         try:
-            summary = json.loads(summary)
-        except (json.JSONDecodeError, TypeError):
+            parsed = json.loads(summary)
+            # Validate that parsed is a dictionary
+            if isinstance(parsed, dict):
+                summary = parsed
+            else:
+                # If not a dict, wrap it
+                summary = {"en": str(parsed)}
+        except (json.JSONDecodeError, TypeError, ValueError):
+            # Fallback to plain string wrapped in dict
             summary = {"en": summary}
+    elif isinstance(summary, dict):
+        # Already a dict, use as-is
+        summary = summary
+    else:
+        # Handle unexpected types
+        summary = {"en": str(summary) if summary is not None else ""}
 
     return EntityRevisionRead(
         id=revision.id,

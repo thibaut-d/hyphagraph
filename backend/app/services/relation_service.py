@@ -1,6 +1,5 @@
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import HTTPException, status
 
 from app.schemas.relation import RelationWrite, RelationRead
 from app.repositories.relation_repo import RelationRepository
@@ -13,6 +12,7 @@ from app.mappers.relation_mapper import (
 )
 from app.services.validation_service import validate_relation
 from app.utils.revision_helpers import get_current_revision, create_new_revision
+from app.utils.errors import RelationNotFoundException, SourceNotFoundException, ValidationException, ErrorCode
 
 
 class RelationService:
@@ -82,9 +82,8 @@ class RelationService:
         """Get relation with its current revision."""
         relation = await self.repo.get_by_id(relation_id)
         if not relation:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Relation not found",
+            raise RelationNotFoundException(
+                relation_id=str(relation_id)
             )
 
         # Get current revision with roles eagerly loaded
@@ -134,16 +133,17 @@ class RelationService:
             # 2. Verify relation exists
             relation = await self.repo.get_by_id(relation_id)
             if not relation:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Relation not found",
+                raise RelationNotFoundException(
+                    relation_id=str(relation_id)
                 )
 
             # Verify source_id hasn't changed (it's immutable)
             if payload.source_id != relation.source_id:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Cannot change source_id of an existing relation",
+                raise ValidationException(
+                    message="Cannot change source_id of existing relation",
+                    field="source_id",
+                    details="The source_id field is immutable and cannot be changed after creation",
+                    context={"relation_id": str(relation_id), "current_source_id": str(relation.source_id), "attempted_source_id": str(payload.source_id)}
                 )
 
             # 3. Create new revision with updated data
@@ -182,7 +182,7 @@ class RelationService:
             # 7. Return Read
             return relation_to_read(relation, revision)
 
-        except HTTPException:
+        except (RelationNotFoundException, ValidationException):
             raise
         except Exception:
             await self.db.rollback()
@@ -198,16 +198,15 @@ class RelationService:
         try:
             relation = await self.repo.get_by_id(relation_id)
             if not relation:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Relation not found",
+                raise RelationNotFoundException(
+                    relation_id=str(relation_id)
                 )
 
             # Delete the relation (cascade should handle revisions and role revisions)
             await self.repo.delete(relation)
             await self.db.commit()
 
-        except HTTPException:
+        except RelationNotFoundException:
             raise
         except Exception:
             await self.db.rollback()

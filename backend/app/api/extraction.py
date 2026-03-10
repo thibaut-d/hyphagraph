@@ -8,7 +8,7 @@ Provides endpoints for:
 - Batch extraction (all-in-one)
 """
 import logging
-from typing import Literal
+from typing import Literal, Any
 
 from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel, Field
@@ -19,6 +19,8 @@ from app.llm.client import is_llm_available
 from app.dependencies.auth import get_current_user
 from app.models.user import User
 from app.database import get_db
+from app.utils.errors import LLMServiceUnavailableException, ValidationException, ErrorCode, AppException
+from app.api.error_handlers import handle_extraction_errors
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
@@ -47,6 +49,15 @@ class TextExtractionRequest(BaseModel):
 class EntityExtractionRequest(TextExtractionRequest):
     """Request schema for entity extraction."""
     pass
+
+
+class ExtractionStatusResponse(BaseModel):
+    """Response schema for extraction service status."""
+    status: Literal["ready", "unavailable"]
+    available: bool
+    message: str
+    provider: str | None
+    model: str | None
 
 
 class EntityExtractionResponse(BaseModel):
@@ -116,12 +127,11 @@ async def get_extraction_service(db: AsyncSession = Depends(get_db)) -> Extracti
     This allows the service to load dynamic relation types from the database.
 
     Raises:
-        HTTPException: If LLM is not available
+        LLMServiceUnavailableException: If LLM is not available
     """
     if not is_llm_available():
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="LLM service not available. Please configure OPENAI_API_KEY."
+        raise LLMServiceUnavailableException(
+            details="LLM service is not configured. Please set OPENAI_API_KEY environment variable."
         )
     return ExtractionService(db=db)
 
@@ -157,6 +167,7 @@ async def get_extraction_service(db: AsyncSession = Depends(get_db)) -> Extracti
     Requires authentication.
     """
 )
+@handle_extraction_errors
 async def extract_entities(
     request: EntityExtractionRequest,
     current_user: User = Depends(get_current_user),
@@ -165,24 +176,16 @@ async def extract_entities(
     """Extract entities from text."""
     logger.info(f"Entity extraction requested by user {current_user.email}")
 
-    try:
-        entities = await service.extract_entities(
-            text=request.text,
-            min_confidence=request.min_confidence
-        )
+    entities = await service.extract_entities(
+        text=request.text,
+        min_confidence=request.min_confidence
+    )
 
-        return EntityExtractionResponse(
-            entities=entities,
-            count=len(entities),
-            text_length=len(request.text)
-        )
-
-    except Exception as e:
-        logger.error(f"Entity extraction failed: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Entity extraction failed: {str(e)}"
-        )
+    return EntityExtractionResponse(
+        entities=entities,
+        count=len(entities),
+        text_length=len(request.text)
+    )
 
 
 @router.post(
@@ -203,11 +206,11 @@ async def extract_entities(
     - metabolized_by: Metabolic pathway
     - biomarker_for: Diagnostic/prognostic marker
     - affects_population: Population-specific effect
+    - measures: Assessment/tool relation (e.g., VAS measures pain)
 
     Each relation includes:
-    - Subject and object entity slugs
     - Relation type
-    - Contextual roles (dosage, route, duration, effect_size, population)
+    - Semantic roles array (agent, target, dosage, population, etc.)
     - Confidence level
     - Source text span
     - Optional notes
@@ -215,6 +218,7 @@ async def extract_entities(
     Requires authentication.
     """
 )
+@handle_extraction_errors
 async def extract_relations(
     request: RelationExtractionRequest,
     current_user: User = Depends(get_current_user),
@@ -223,25 +227,17 @@ async def extract_relations(
     """Extract relations from text given a list of entities."""
     logger.info(f"Relation extraction requested by user {current_user.email}")
 
-    try:
-        relations = await service.extract_relations(
-            text=request.text,
-            entities=request.entities,
-            min_confidence=request.min_confidence
-        )
+    relations = await service.extract_relations(
+        text=request.text,
+        entities=request.entities,
+        min_confidence=request.min_confidence
+    )
 
-        return RelationExtractionResponse(
-            relations=relations,
-            count=len(relations),
-            text_length=len(request.text)
-        )
-
-    except Exception as e:
-        logger.error(f"Relation extraction failed: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Relation extraction failed: {str(e)}"
-        )
+    return RelationExtractionResponse(
+        relations=relations,
+        count=len(relations),
+        text_length=len(request.text)
+    )
 
 
 @router.post(
@@ -275,6 +271,7 @@ async def extract_relations(
     Requires authentication.
     """
 )
+@handle_extraction_errors
 async def extract_claims(
     request: ClaimExtractionRequest,
     current_user: User = Depends(get_current_user),
@@ -283,24 +280,16 @@ async def extract_claims(
     """Extract factual claims from text."""
     logger.info(f"Claim extraction requested by user {current_user.email}")
 
-    try:
-        claims = await service.extract_claims(
-            text=request.text,
-            min_evidence_strength=request.min_evidence_strength
-        )
+    claims = await service.extract_claims(
+        text=request.text,
+        min_evidence_strength=request.min_evidence_strength
+    )
 
-        return ClaimExtractionResponse(
-            claims=claims,
-            count=len(claims),
-            text_length=len(request.text)
-        )
-
-    except Exception as e:
-        logger.error(f"Claim extraction failed: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Claim extraction failed: {str(e)}"
-        )
+    return ClaimExtractionResponse(
+        claims=claims,
+        count=len(claims),
+        text_length=len(request.text)
+    )
 
 
 @router.post(
@@ -325,6 +314,7 @@ async def extract_claims(
     Requires authentication.
     """
 )
+@handle_extraction_errors
 async def extract_batch(
     request: BatchExtractionRequest,
     current_user: User = Depends(get_current_user),
@@ -333,46 +323,39 @@ async def extract_batch(
     """Extract entities, relations, and claims in one batch."""
     logger.info(f"Batch extraction requested by user {current_user.email}")
 
-    try:
-        entities, relations, claims = await service.extract_batch(
-            text=request.text,
-            min_confidence=request.min_confidence,
-            min_evidence_strength=request.min_evidence_strength
-        )
+    entities, relations, claims = await service.extract_batch(
+        text=request.text,
+        min_confidence=request.min_confidence,
+        min_evidence_strength=request.min_evidence_strength
+    )
 
-        return BatchExtractionResponse(
-            entities=entities,
-            relations=relations,
-            claims=claims,
-            entity_count=len(entities),
-            relation_count=len(relations),
-            claim_count=len(claims),
-            text_length=len(request.text)
-        )
-
-    except Exception as e:
-        logger.error(f"Batch extraction failed: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Batch extraction failed: {str(e)}"
-        )
+    return BatchExtractionResponse(
+        entities=entities,
+        relations=relations,
+        claims=claims,
+        entity_count=len(entities),
+        relation_count=len(relations),
+        claim_count=len(claims),
+        text_length=len(request.text)
+    )
 
 
 @router.get(
     "/extract/status",
     summary="Check extraction service status",
-    description="Check if LLM-based extraction service is available and configured."
+    description="Check if LLM-based extraction service is available and configured.",
+    response_model=ExtractionStatusResponse
 )
-async def extraction_status() -> dict:
+async def extraction_status() -> ExtractionStatusResponse:
     """Check if extraction service is available."""
     from app.config import settings
 
     available = is_llm_available()
 
-    return {
-        "status": "ready" if available else "unavailable",
-        "available": available,
-        "message": "Extraction service is ready" if available else "LLM not configured",
-        "provider": "OpenAI" if available else None,
-        "model": settings.OPENAI_MODEL if available else None
-    }
+    return ExtractionStatusResponse(
+        status="ready" if available else "unavailable",
+        available=available,
+        message="Extraction service is ready" if available else "LLM not configured",
+        provider="OpenAI" if available else None,
+        model=settings.OPENAI_MODEL if available else None
+    )

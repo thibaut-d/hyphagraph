@@ -2,7 +2,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import String, Enum, DateTime, CheckConstraint, JSON
 from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
-from uuid import UUID
+from uuid import UUID as PyUUID
+from typing import Any
 from app.models.base import Base, UUIDMixin
 import enum
 
@@ -34,12 +35,12 @@ class Attribute(Base, UUIDMixin):
         nullable=False,
     )
 
-    owner_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
+    owner_id: Mapped[PyUUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
 
     key: Mapped[str] = mapped_column(String, nullable=False)
 
     # Value can be string, number, boolean, or JSON
-    value: Mapped[dict | str | int | float | bool] = mapped_column(JSON, nullable=False)
+    value: Mapped[dict[str, Any] | str | int | float | bool] = mapped_column(JSON, nullable=False)
 
     created_at: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True),

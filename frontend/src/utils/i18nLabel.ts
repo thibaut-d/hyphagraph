@@ -7,12 +7,14 @@
  * @returns The label in the requested language, or fallback
  */
 export function resolveLabel(
-  label: string,
+  label: string | undefined,
   labelI18n: Record<string, string> | undefined,
   language: string
 ): string {
+  const fallback = label ?? "";
+
   if (!labelI18n) {
-    return label;
+    return fallback;
   }
 
   // Try exact language match
@@ -27,5 +29,5 @@ export function resolveLabel(
   }
 
   // Fallback to original label
-  return label;
+  return fallback;
 }
