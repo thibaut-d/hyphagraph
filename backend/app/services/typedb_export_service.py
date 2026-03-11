@@ -7,10 +7,12 @@ format for import into TypeDB hypergraph database.
 TypeDB: https://typedb.com/
 TypeQL: https://github.com/typedb/typeql
 """
+import json
 import logging
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from uuid import UUID
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity import Entity
 from app.models.entity_revision import EntityRevision
@@ -22,6 +24,30 @@ from app.models.source_revision import SourceRevision
 
 
 logger = logging.getLogger(__name__)
+
+
+def _extract_summary_text(summary: dict[str, object] | str | None) -> str:
+    """Extract the English summary or fall back to a string representation."""
+    if not summary:
+        return ""
+
+    if isinstance(summary, dict):
+        english_summary = summary.get("en")
+        return english_summary if isinstance(english_summary, str) else str(summary)
+
+    if isinstance(summary, str):
+        try:
+            parsed_summary = json.loads(summary)
+        except json.JSONDecodeError:
+            return summary
+
+        if isinstance(parsed_summary, dict):
+            english_summary = parsed_summary.get("en")
+            return english_summary if isinstance(english_summary, str) else summary
+
+        return summary
+
+    return str(summary)
 
 
 class TypeDBExportService:
@@ -137,20 +163,7 @@ class TypeDBExportService:
         for entity, revision in result:
             entity_count += 1
             slug = revision.slug
-            summary = revision.summary
-
-            # Get English summary if available
-            summary_text = ""
-            if summary:
-                if isinstance(summary, dict):
-                    summary_text = summary.get('en', str(summary))
-                elif isinstance(summary, str):
-                    import json
-                    try:
-                        summary_dict = json.loads(summary)
-                        summary_text = summary_dict.get('en', summary)
-                    except:
-                        summary_text = summary
+            summary_text = _extract_summary_text(revision.summary)
 
             # Escape quotes for TypeQL
             summary_text = summary_text.replace('"', '\\"').replace("'", "\\'")

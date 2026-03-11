@@ -4,15 +4,27 @@
  * Handles human-in-the-loop review of LLM extractions.
  */
 import { apiFetch } from "./client";
+import type {
+  ExtractedClaim,
+  ExtractedEntity,
+  ExtractedRelation,
+} from "../types/extraction";
+
+export type ReviewDecision = "approve" | "reject";
+export type ExtractionStatus = "auto_verified" | "pending" | "approved" | "rejected";
+export type ExtractionType = "entity" | "relation" | "claim";
+export type StagedExtractionData = ExtractedEntity | ExtractedRelation | ExtractedClaim;
 
 export interface StagedExtractionRead {
   id: string;
-  extraction_type: "entity" | "relation" | "claim";
-  status: "auto_verified" | "pending" | "approved" | "rejected";
+  extraction_type: ExtractionType;
+  status: ExtractionStatus;
   source_id: string;
-  extraction_data: any; // JSON - original LLM output
+  extraction_data: StagedExtractionData;
   validation_score: number;
+  confidence_adjustment: number;
   validation_flags: string[];
+  matched_span?: string | null;
   materialized_entity_id?: string;
   materialized_relation_id?: string;
   reviewed_by?: string;
@@ -20,6 +32,8 @@ export interface StagedExtractionRead {
   review_notes?: string;
   llm_model?: string;
   llm_provider?: string;
+  auto_commit_eligible: boolean;
+  auto_commit_threshold?: number | null;
   created_at: string;
 }
 
@@ -40,34 +54,51 @@ export interface ReviewStats {
   pending_relations: number;
   pending_claims: number;
   avg_validation_score: number;
+  high_confidence_count: number;
   flagged_count: number;
 }
 
 export interface ReviewDecisionRequest {
-  decision: "approve" | "reject";
+  decision: ReviewDecision;
   notes?: string;
 }
 
 export interface BatchReviewRequest {
   extraction_ids: string[];
-  decision: "approve" | "reject";
+  decision: ReviewDecision;
   notes?: string;
 }
 
 export interface BatchReviewResponse {
+  total_requested: number;
   succeeded: number;
   failed: number;
+  failed_ids: string[];
+  materialized_entities: string[];
+  materialized_relations: string[];
+}
+
+export interface MaterializationResult {
+  success: boolean;
+  extraction_id: string;
+  extraction_type: ExtractionType;
+  materialized_entity_id?: string | null;
+  materialized_relation_id?: string | null;
+  error?: string | null;
 }
 
 export interface StagedExtractionFilters {
-  status?: "auto_verified" | "pending" | "approved" | "rejected";
-  extraction_type?: "entity" | "relation" | "claim";
+  status?: ExtractionStatus;
+  extraction_type?: ExtractionType;
   source_id?: string;
   min_validation_score?: number;
   max_validation_score?: number;
   has_flags?: boolean;
+  auto_commit_eligible?: boolean;
   page?: number;
   page_size?: number;
+  sort_by?: "created_at" | "validation_score" | "confidence_adjustment";
+  sort_order?: "asc" | "desc";
 }
 
 /**
@@ -94,6 +125,15 @@ export async function listPendingExtractions(
   }
   if (filters?.page_size) {
     params.append("page_size", filters.page_size.toString());
+  }
+  if (filters?.sort_by) {
+    params.append("sort_by", filters.sort_by);
+  }
+  if (filters?.sort_order) {
+    params.append("sort_order", filters.sort_order);
+  }
+  if (filters?.auto_commit_eligible !== undefined) {
+    params.append("auto_commit_eligible", filters.auto_commit_eligible.toString());
   }
 
   const queryString = params.toString();
@@ -132,8 +172,8 @@ export async function getStagedExtraction(
 export async function reviewExtraction(
   extractionId: string,
   request: ReviewDecisionRequest
-): Promise<{ success: boolean; message?: string }> {
-  return apiFetch<{ success: boolean; message?: string }>(
+): Promise<MaterializationResult> {
+  return apiFetch<MaterializationResult>(
     `/extraction-review/${extractionId}/review`,
     {
       method: "POST",

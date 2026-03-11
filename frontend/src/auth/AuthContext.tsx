@@ -9,18 +9,16 @@ import {
 } from "react";
 
 import { getMe, logout as logoutApi } from "../api/auth";
-
-type User = {
-  id: string;
-  email: string;
-  is_active?: boolean;
-  is_superuser?: boolean;
-  is_verified?: boolean;
-  created_at?: string;
-};
+import {
+  AUTH_STATE_CHANGED_EVENT,
+  clearStoredAuthTokens,
+  getStoredAuthTokens,
+  setStoredAuthTokens,
+} from "./authStorage";
+import type { UserRead } from "../types/auth";
 
 type AuthContextValue = {
-  user: User | null;
+  user: UserRead | null;
   token: string | null;
   refreshToken: string | null;
   loading: boolean;
@@ -31,18 +29,16 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(
-    localStorage.getItem("auth_token"),
-  );
-  const [refreshToken, setRefreshToken] = useState<string | null>(
-    localStorage.getItem("refresh_token"),
-  );
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState<boolean>(!!localStorage.getItem("auth_token"));
+  const initialAuth = getStoredAuthTokens();
+  const [token, setToken] = useState<string | null>(initialAuth.token);
+  const [refreshToken, setRefreshToken] = useState<string | null>(initialAuth.refreshToken);
+  const [user, setUser] = useState<UserRead | null>(null);
+  const [loading, setLoading] = useState<boolean>(!!initialAuth.token);
 
   // Use refs to track current token values without causing re-renders
   const tokenRef = useRef(token);
   const refreshTokenRef = useRef(refreshToken);
+  const requestVersionRef = useRef(0);
 
   // Update refs when state changes
   useEffect(() => {
@@ -53,44 +49,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshTokenRef.current = refreshToken;
   }, [refreshToken]);
 
-  // Listen for storage changes (token refresh from API client)
-  // Dependencies removed to prevent memory leak from multiple intervals
   useEffect(() => {
-    const handleStorageChange = () => {
-      const newToken = localStorage.getItem("auth_token");
-      const newRefreshToken = localStorage.getItem("refresh_token");
+    const syncAuthState = () => {
+      const nextAuth = getStoredAuthTokens();
 
-      if (newToken !== tokenRef.current) {
-        setToken(newToken);
+      if (nextAuth.token !== tokenRef.current) {
+        setToken(nextAuth.token);
       }
-      if (newRefreshToken !== refreshTokenRef.current) {
-        setRefreshToken(newRefreshToken);
+      if (nextAuth.refreshToken !== refreshTokenRef.current) {
+        setRefreshToken(nextAuth.refreshToken);
       }
     };
 
-    // Poll for changes (since localStorage events don't fire in same window)
-    const interval = setInterval(handleStorageChange, 1000);
+    const handleStorageEvent = (event: StorageEvent) => {
+      if (event.key === null || event.key === "auth_token" || event.key === "refresh_token") {
+        syncAuthState();
+      }
+    };
 
-    return () => clearInterval(interval);
-  }, []); // Empty dependency array - only create interval once
+    window.addEventListener("storage", handleStorageEvent);
+    window.addEventListener(AUTH_STATE_CHANGED_EVENT, syncAuthState);
 
-  // Stabilize logout with useCallback to prevent unnecessary re-renders
+    return () => {
+      window.removeEventListener("storage", handleStorageEvent);
+      window.removeEventListener(AUTH_STATE_CHANGED_EVENT, syncAuthState);
+    };
+  }, []);
+
   const logout = useCallback(() => {
-    const currentRefreshToken = localStorage.getItem("refresh_token");
+    requestVersionRef.current += 1;
+    const currentRefreshToken = refreshTokenRef.current;
 
-    // Call logout API to revoke refresh token
     if (currentRefreshToken) {
       logoutApi(currentRefreshToken).catch(() => {
-        // Ignore errors during logout
+        // Logout should clear client state even if token revocation fails.
       });
     }
 
-    localStorage.removeItem("auth_token");
-    localStorage.removeItem("refresh_token");
+    clearStoredAuthTokens();
     setToken(null);
     setRefreshToken(null);
     setUser(null);
-  }, []); // No dependencies needed - uses localStorage directly
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
     if (!token) {
@@ -99,15 +100,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    const requestVersion = ++requestVersionRef.current;
+    const requestedToken = token;
+    let cancelled = false;
+
     setLoading(true);
     getMe()
-      .then((userData: any) => {
-        setUser(userData as User);
+      .then((userData) => {
+        if (
+          cancelled ||
+          requestVersion !== requestVersionRef.current ||
+          tokenRef.current !== requestedToken
+        ) {
+          return;
+        }
+
+        setUser(userData);
         setLoading(false);
       })
       .catch((error) => {
-        // Improve error differentiation - only logout on authentication errors
-        // Network errors and other issues should not trigger logout
+        if (
+          cancelled ||
+          requestVersion !== requestVersionRef.current ||
+          tokenRef.current !== requestedToken
+        ) {
+          return;
+        }
+
         const errorMessage = error?.message || String(error);
         const isAuthError =
           errorMessage.includes("Session expired") ||
@@ -116,20 +135,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           errorMessage.includes("401");
 
         if (isAuthError) {
-          // Only logout for authentication-related errors
           logout();
         } else {
-          // For network errors or other issues, just clear loading state
-          // but keep the user logged in (they might be offline temporarily)
           console.warn("Failed to fetch user data, but keeping session:", error);
+          setLoading(false);
         }
-        setLoading(false);
       });
-  }, [token, logout]); // Now includes logout in dependencies
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, logout]);
 
   const login = (newToken: string, newRefreshToken: string) => {
-    localStorage.setItem("auth_token", newToken);
-    localStorage.setItem("refresh_token", newRefreshToken);
+    setStoredAuthTokens(newToken, newRefreshToken);
     setToken(newToken);
     setRefreshToken(newRefreshToken);
   };

@@ -1,4 +1,8 @@
 import { parseError, formatErrorForLogging } from "../utils/errorHandler";
+import {
+  clearStoredAuthTokens,
+  updateStoredAccessToken,
+} from "../auth/authStorage";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -81,6 +85,14 @@ function toHeaderRecord(headers?: HeadersInit): Record<string, string> {
   return { ...headers };
 }
 
+async function parseSuccessResponse<T>(response: Response): Promise<T> {
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  return response.json() as Promise<T>;
+}
+
 async function refreshToken(): Promise<string | null> {
   const refreshToken = localStorage.getItem("refresh_token");
   if (!refreshToken) {
@@ -97,9 +109,7 @@ async function refreshToken(): Promise<string | null> {
     });
 
     if (!response.ok) {
-      // Refresh token is invalid or expired, clear auth
-      localStorage.removeItem("auth_token");
-      localStorage.removeItem("refresh_token");
+      clearStoredAuthTokens();
       return null;
     }
 
@@ -107,7 +117,7 @@ async function refreshToken(): Promise<string | null> {
     const newToken = data.access_token;
 
     // Update stored token
-    localStorage.setItem("auth_token", newToken);
+    updateStoredAccessToken(newToken);
 
     return newToken;
   } catch (error) {
@@ -217,7 +227,7 @@ export async function apiFetch<T>(
                   console.error(formatErrorForLogging(parsedError));
                   throw new Error(parsedError.userMessage);
                 }
-                return retryRes.json();
+                return parseSuccessResponse<T>(retryRes);
               })
               .then(resolve)
               .catch(reject);
@@ -242,6 +252,7 @@ export async function apiFetch<T>(
 
     if (!newToken) {
       // Refresh failed, redirect to login
+      clearStoredAuthTokens();
       window.location.href = "/account";
       throw new Error("Session expired. Please login again.");
     }
@@ -273,7 +284,7 @@ export async function apiFetch<T>(
       throw new Error(parsedError.userMessage);
     }
 
-    return retryRes.json();
+    return parseSuccessResponse<T>(retryRes);
   }
 
   // Handle non-401 errors
@@ -294,10 +305,5 @@ export async function apiFetch<T>(
     throw new Error(parsedError.userMessage);
   }
 
-  // Handle 204 No Content responses (e.g., password reset requests)
-  if (res.status === 204) {
-    return undefined as T;
-  }
-
-  return res.json();
+  return parseSuccessResponse<T>(res);
 }

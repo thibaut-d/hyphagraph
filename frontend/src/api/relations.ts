@@ -1,5 +1,6 @@
 import { apiFetch } from "./client";
-import { RelationRead } from "../types/relation";
+import type { RelationRead } from "../types/relation";
+import type { JsonObject } from "../types/json";
 
 export interface RoleWrite {
   entity_id: string;
@@ -13,7 +14,7 @@ export interface RelationWrite {
   kind?: string;
   direction?: string;
   confidence?: number;
-  scope?: Record<string, any>;
+  scope?: JsonObject | null;
   notes?: Record<string, string>;
   roles: RoleWrite[];
   created_with_llm?: string;

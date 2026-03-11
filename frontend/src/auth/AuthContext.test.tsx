@@ -1,0 +1,127 @@
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { AuthProvider, useAuthContext } from "./AuthContext";
+import { updateStoredAccessToken } from "./authStorage";
+
+vi.mock("../api/auth", () => ({
+  getMe: vi.fn(),
+  logout: vi.fn(),
+}));
+
+import { getMe, logout } from "../api/auth";
+
+function AuthConsumer() {
+  const { token, user, logout: logoutUser } = useAuthContext();
+
+  return (
+    <>
+      <div>{`token:${token ?? "none"}`}</div>
+      <div>{`user:${user?.email ?? "none"}`}</div>
+      <button onClick={logoutUser} type="button">
+        Logout
+      </button>
+    </>
+  );
+}
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+
+  return { promise, resolve, reject };
+}
+
+describe("AuthProvider", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+  });
+
+  it("syncs token changes without polling when the access token changes in the same tab", async () => {
+    localStorage.setItem("auth_token", "stale-token");
+    localStorage.setItem("refresh_token", "refresh-token");
+
+    vi.mocked(getMe)
+      .mockResolvedValueOnce({
+        id: "1",
+        email: "stale@example.com",
+        is_active: true,
+        is_superuser: false,
+        is_verified: true,
+        created_at: "2026-03-11T00:00:00Z",
+      })
+      .mockResolvedValueOnce({
+        id: "1",
+        email: "fresh@example.com",
+        is_active: true,
+        is_superuser: false,
+        is_verified: true,
+        created_at: "2026-03-11T00:00:00Z",
+      });
+
+    render(
+      <AuthProvider>
+        <AuthConsumer />
+      </AuthProvider>,
+    );
+
+    await screen.findByText("user:stale@example.com");
+
+    await act(async () => {
+      updateStoredAccessToken("fresh-token");
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("token:fresh-token")).toBeInTheDocument();
+    });
+    await screen.findByText("user:fresh@example.com");
+  });
+
+  it("ignores stale getMe responses that resolve after logout", async () => {
+    localStorage.setItem("auth_token", "active-token");
+    localStorage.setItem("refresh_token", "refresh-token");
+
+    const pendingUserRequest = createDeferred<{
+      id: string;
+      email: string;
+      is_active: boolean;
+      is_superuser: boolean;
+      is_verified: boolean;
+      created_at: string;
+    }>();
+
+    vi.mocked(getMe).mockReturnValueOnce(pendingUserRequest.promise);
+    vi.mocked(logout).mockResolvedValue(undefined);
+
+    render(
+      <AuthProvider>
+        <AuthConsumer />
+      </AuthProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Logout" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("token:none")).toBeInTheDocument();
+      expect(screen.getByText("user:none")).toBeInTheDocument();
+    });
+
+    pendingUserRequest.resolve({
+      id: "1",
+      email: "late@example.com",
+      is_active: true,
+      is_superuser: false,
+      is_verified: true,
+      created_at: "2026-03-11T00:00:00Z",
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("user:none")).toBeInTheDocument();
+    });
+  });
+});

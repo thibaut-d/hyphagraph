@@ -1,18 +1,8 @@
 import { apiFetch } from "./client";
-import { SourceRead } from "../types/source";
+import type { SourceRead, SourceWrite } from "../types/source";
+import type { JsonObject } from "../types/json";
 
-export interface SourceWrite {
-  kind: string;
-  title: string;
-  authors?: string[];
-  year?: number;
-  origin?: string;
-  url: string;
-  trust_level?: number;
-  summary?: Record<string, string>;
-  source_metadata?: Record<string, any>;
-  created_with_llm?: string;
-}
+export type { SourceWrite } from "../types/source";
 
 export interface SourceFilters {
   kind?: string[];
@@ -48,10 +38,10 @@ export interface SourceMetadataSuggestion {
   year?: number | null;
   origin?: string | null;
   kind?: string | null;
-  trust_level?: number | null;  // Calculated quality score (0.0-1.0)
+  trust_level?: number | null;
   summary_en?: string | null;
   summary_fr?: string | null;
-  source_metadata?: Record<string, any> | null;
+  source_metadata?: JsonObject | null;
 }
 
 export function extractMetadataFromUrl(url: string): Promise<SourceMetadataSuggestion> {

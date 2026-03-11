@@ -1,3 +1,5 @@
+import type { JsonObject } from "./json";
+
 export interface SourceRead {
   id: string;
   created_at?: string;
@@ -9,7 +11,7 @@ export interface SourceRead {
   url?: string | null;
   trust_level?: number | null;
   summary?: Record<string, string> | null;
-  source_metadata?: Record<string, string | number | boolean | null> | null;
+  source_metadata?: JsonObject | null;
 }
 
 export interface SourceWrite {
@@ -21,6 +23,6 @@ export interface SourceWrite {
   url: string;
   trust_level?: number | null;
   summary?: Record<string, string> | null;
-  source_metadata?: Record<string, string | number | boolean | null> | null;
+  source_metadata?: JsonObject | null;
   created_with_llm?: string | null;
 }

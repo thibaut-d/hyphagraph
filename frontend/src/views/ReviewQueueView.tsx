@@ -3,6 +3,7 @@ import { Link as RouterLink } from "react-router-dom";
 import { useReviewQueue } from "../hooks/useReviewQueue";
 import { useSelection } from "../hooks/useSelection";
 import { useReviewDialog } from "../hooks/useReviewDialog";
+import type { StagedExtractionRead } from "../api/extractionReview";
 
 import {
   Typography,
@@ -34,6 +35,32 @@ import SelectAllIcon from "@mui/icons-material/SelectAll";
 import DeselectIcon from "@mui/icons-material/Deselect";
 
 const PAGE_SIZE = 20;
+
+function getExtractionTitle(extraction: StagedExtractionRead): string {
+  switch (extraction.extraction_type) {
+    case "entity":
+      return extraction.extraction_data.slug;
+    case "relation":
+      return extraction.extraction_data.relation_type;
+    case "claim":
+      return extraction.extraction_data.claim_text;
+  }
+}
+
+function getExtractionSummary(extraction: StagedExtractionRead): string {
+  switch (extraction.extraction_type) {
+    case "entity":
+      return extraction.extraction_data.summary;
+    case "relation":
+      return extraction.extraction_data.notes || "No notes";
+    case "claim":
+      return extraction.extraction_data.claim_text;
+  }
+}
+
+function getExtractionTextSpan(extraction: StagedExtractionRead): string {
+  return extraction.extraction_data.text_span;
+}
 
 export function ReviewQueueView() {
 
@@ -279,7 +306,7 @@ export function ReviewQueueView() {
                     primary={
                       <Stack direction="row" spacing={1} alignItems="center">
                         <Typography variant="h6">
-                          {extraction.extraction_data.slug || "Unnamed"}
+                          {getExtractionTitle(extraction)}
                         </Typography>
                         <Chip
                           label={extraction.extraction_type}
@@ -311,7 +338,7 @@ export function ReviewQueueView() {
                     secondary={
                       <Stack spacing={1} sx={{ mt: 1 }}>
                         <Typography variant="body2">
-                          {extraction.extraction_data.summary || "No summary"}
+                          {getExtractionSummary(extraction)}
                         </Typography>
                         {extraction.validation_flags.length > 0 && (
                           <Box>
@@ -329,7 +356,7 @@ export function ReviewQueueView() {
                           </Box>
                         )}
                         <Typography variant="caption" color="text.secondary">
-                          Text span: "{extraction.extraction_data.text_span}"
+                          Text span: "{getExtractionTextSpan(extraction)}"
                         </Typography>
                         <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
                           <Button

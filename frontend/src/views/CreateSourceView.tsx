@@ -28,6 +28,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import { createSource, SourceWrite, extractMetadataFromUrl } from "../api/sources";
 import { invalidateSourceFilterCache } from "../utils/cacheUtils";
 import { useNotification } from "../notifications/NotificationContext";
+import type { JsonObject } from "../types/json";
 
 const SOURCE_KINDS = [
   "article",
@@ -100,7 +101,7 @@ export function CreateSourceView() {
   const [trustLevel, setTrustLevel] = useState("0.5");
   const [summaryEn, setSummaryEn] = useState("");
   const [summaryFr, setSummaryFr] = useState("");
-  const [sourceMetadata, setSourceMetadata] = useState<Record<string, any> | null>(null);
+  const [sourceMetadata, setSourceMetadata] = useState<JsonObject | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // UI state

@@ -1,4 +1,5 @@
 import { apiFetch } from "./client";
+import type { UserRead } from "../types/auth";
 
 export type LoginPayload = {
   username: string;
@@ -22,24 +23,29 @@ export type TokenResponse = {
 };
 
 export function login(payload: LoginPayload): Promise<TokenPairResponse> {
+  const body = new URLSearchParams({
+    username: payload.username,
+    password: payload.password,
+  });
+
   return apiFetch("/auth/login", {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
     },
-    body: new URLSearchParams(payload as any),
+    body,
   });
 }
 
-export function register(payload: RegisterPayload) {
-  return apiFetch("/auth/register", {
+export function register(payload: RegisterPayload): Promise<UserRead> {
+  return apiFetch<UserRead>("/auth/register", {
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
-export function getMe() {
-  return apiFetch("/auth/me");
+export function getMe(): Promise<UserRead> {
+  return apiFetch<UserRead>("/auth/me");
 }
 
 export function refreshAccessToken(refreshToken: string): Promise<TokenResponse> {
@@ -63,15 +69,15 @@ export function requestPasswordReset(email: string): Promise<void> {
   });
 }
 
-export function resetPassword(token: string, newPassword: string) {
-  return apiFetch("/auth/reset-password", {
+export function resetPassword(token: string, newPassword: string): Promise<UserRead> {
+  return apiFetch<UserRead>("/auth/reset-password", {
     method: "POST",
     body: JSON.stringify({ token, new_password: newPassword }),
   });
 }
 
-export function verifyEmail(token: string) {
-  return apiFetch("/auth/verify-email", {
+export function verifyEmail(token: string): Promise<UserRead> {
+  return apiFetch<UserRead>("/auth/verify-email", {
     method: "POST",
     body: JSON.stringify({ token }),
   });
@@ -100,8 +106,8 @@ export type UpdateProfilePayload = {
   email?: string;
 };
 
-export function updateProfile(payload: UpdateProfilePayload): Promise<any> {
-  return apiFetch("/auth/me", {
+export function updateProfile(payload: UpdateProfilePayload): Promise<UserRead> {
+  return apiFetch<UserRead>("/auth/me", {
     method: "PUT",
     body: JSON.stringify(payload),
   });
