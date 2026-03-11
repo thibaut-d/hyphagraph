@@ -176,9 +176,14 @@ export async function apiFetch<T>(
     if (!tryAcquireRefreshLock()) {
       // Another tab is refreshing, wait for it to complete
       return new Promise((resolve, reject) => {
+        const cleanup = (timeoutId: ReturnType<typeof setTimeout>) => {
+          clearInterval(checkRefresh);
+          clearTimeout(timeoutId);
+        };
+
         const checkRefresh = setInterval(() => {
           if (!isRefreshInProgress()) {
-            clearInterval(checkRefresh);
+            cleanup(timeoutId);
 
             // Refresh completed in another tab, retry with new token
             const newToken = localStorage.getItem("auth_token");
@@ -220,7 +225,7 @@ export async function apiFetch<T>(
         }, 100); // Check every 100ms
 
         // Timeout after 15 seconds
-        setTimeout(() => {
+        const timeoutId = setTimeout(() => {
           clearInterval(checkRefresh);
           reject(new Error("Token refresh timeout"));
         }, 15000);

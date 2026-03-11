@@ -4,16 +4,22 @@ import { Link } from "react-router-dom";
 import { useNotification } from "../notifications/NotificationContext";
 
 export default function RequestPasswordResetView() {
+  const { showError } = useNotification();
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();    setLoading(true);
+    e.preventDefault();
+    setError("");
+    setLoading(true);
 
     try {
       await requestPasswordReset(email);
       setSubmitted(true);
     } catch (err: any) {
+      setError(err?.message ?? "Failed to request password reset");
       showError(err);
     } finally {
       setLoading(false);

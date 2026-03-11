@@ -46,11 +46,16 @@ export function UrlExtractionDialog({
   defaultUrl,
 }: UrlExtractionDialogProps) {
   const [url, setUrl] = useState(defaultUrl || "");
+  const [error, setError] = useState<string | null>(null);
+  const { showError } = useNotification();
 
   // Update URL when defaultUrl changes or dialog opens
   React.useEffect(() => {
     if (open && defaultUrl) {
       setUrl(defaultUrl);
+    }
+    if (open) {
+      setError(null);
     }
   }, [open, defaultUrl]);
   const isPubMedUrl = (urlString: string): boolean => {
@@ -76,15 +81,18 @@ export function UrlExtractionDialog({
 
   const handleSubmit = async () => {
     if (!url.trim()) {
+      setError("Please enter a URL");
       showError(new Error("Please enter a URL"));
       return;
     }
 
     if (!validateUrl(url)) {
+      setError("Please enter a valid URL (e.g., https://pubmed.ncbi.nlm.nih.gov/...)");
       showError(new Error("Please enter a valid URL (e.g., https://pubmed.ncbi.nlm.nih.gov/...)"));
       return;
     }
 
+    setError(null);
     try {
       await onSubmit(url);
       setUrl("");
@@ -95,7 +103,9 @@ export function UrlExtractionDialog({
 
   const handleClose = () => {
     if (!loading) {
-      setUrl("");      onClose();
+      setUrl("");
+      setError(null);
+      onClose();
     }
   };
 
@@ -128,7 +138,11 @@ export function UrlExtractionDialog({
             placeholder="https://pubmed.ncbi.nlm.nih.gov/12345678/"
             value={url}
             onChange={(e) => {
-              setUrl(e.target.value);            }}
+              setUrl(e.target.value);
+              if (error) {
+                setError(null);
+              }
+            }}
             disabled={loading}
             error={Boolean(error)}
             helperText={error || urlType}

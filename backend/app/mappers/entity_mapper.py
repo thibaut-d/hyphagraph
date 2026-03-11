@@ -45,8 +45,7 @@ def entity_to_read(entity: Entity, current_revision: EntityRevision) -> EntityRe
         # Already a dict, use as-is
         summary = summary
     else:
-        # Handle unexpected types
-        summary = {"en": str(summary) if summary is not None else ""}
+        summary = None
 
     return EntityRead(
         id=entity.id,
@@ -84,8 +83,7 @@ def entity_revision_to_read(revision: EntityRevision) -> EntityRevisionRead:
         # Already a dict, use as-is
         summary = summary
     else:
-        # Handle unexpected types
-        summary = {"en": str(summary) if summary is not None else ""}
+        summary = None
 
     return EntityRevisionRead(
         id=revision.id,

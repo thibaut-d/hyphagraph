@@ -4,6 +4,7 @@ import { resetPassword } from "../api/auth";
 import { useNotification } from "../notifications/NotificationContext";
 
 export default function ResetPasswordView() {
+  const { showError } = useNotification();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get("token");
@@ -12,15 +13,18 @@ export default function ResetPasswordView() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!token) {
       showError(new Error("Invalid or missing reset token"));
     }
-  }, [token]);
+  }, [token, showError]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
+
     // Validation
     if (newPassword.length < 8) {
       showError(new Error("Password must be at least 8 characters long"));
@@ -48,9 +52,10 @@ export default function ResetPasswordView() {
         navigate("/account");
       }, 3000);
     } catch (err: any) {
-      setError(
-        err.message || "Failed to reset password. The link may have expired."
-      );
+      const message =
+        err?.message || "Failed to reset password. The link may have expired.";
+      setError(message);
+      showError(err);
     } finally {
       setLoading(false);
     }

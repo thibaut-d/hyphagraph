@@ -4,9 +4,11 @@
  * Tests evidence table display, sorting, filtering, and scientific audit functionality.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render as rtlRender, screen, waitFor, fireEvent } from "@testing-library/react";
+import type { ReactElement } from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { EvidenceView } from "../EvidenceView";
+import { NotificationProvider } from "../../notifications/NotificationContext";
 import * as entitiesApi from "../../api/entities";
 import * as inferencesApi from "../../api/inferences";
 import * as sourcesApi from "../../api/sources";
@@ -33,6 +35,9 @@ vi.mock("react-i18next", () => ({
     i18n: { language: "en" },
   }),
 }));
+
+const render = (ui: ReactElement) =>
+  rtlRender(<NotificationProvider>{ui}</NotificationProvider>);
 
 const mockEntity: EntityRead = {
   id: "entity-1",
@@ -131,6 +136,9 @@ describe("EvidenceView", () => {
       vi.spyOn(entitiesApi, "getEntity").mockImplementation(
         () => new Promise(() => {}) // Never resolves
       );
+      vi.spyOn(inferencesApi, "getInferenceForEntity").mockImplementation(
+        () => new Promise(() => {})
+      );
 
       render(
         <MemoryRouter initialEntries={["/entities/entity-1/evidence"]}>
@@ -150,6 +158,7 @@ describe("EvidenceView", () => {
       vi.spyOn(entitiesApi, "getEntity").mockRejectedValue(
         new Error("Entity not found")
       );
+      vi.spyOn(inferencesApi, "getInferenceForEntity").mockResolvedValue(mockInference);
 
       render(
         <MemoryRouter initialEntries={["/entities/entity-1/evidence"]}>
@@ -169,6 +178,7 @@ describe("EvidenceView", () => {
       vi.spyOn(entitiesApi, "getEntity").mockRejectedValue(
         new Error("Failed to load evidence")
       );
+      vi.spyOn(inferencesApi, "getInferenceForEntity").mockResolvedValue(mockInference);
 
       // Note: This test validates the component's internal logic when entityId is undefined
       // In practice, React Router would handle invalid routes before the component renders
@@ -613,4 +623,3 @@ describe("EvidenceView", () => {
     });
   });
 });
-

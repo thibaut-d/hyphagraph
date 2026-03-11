@@ -58,15 +58,6 @@ dev = [
     "aiosqlite>=0.19",  # Async SQLite for tests
 ]
 
-[tool.uv]
-dev-dependencies = [
-    "pytest>=8.0",
-    "pytest-asyncio>=0.23",
-    "httpx>=0.27",
-    "ruff>=0.3",
-    "mypy>=1.8",
-]
-
 [tool.ruff]
 line-length = 100
 select = ["E", "F", "I"]

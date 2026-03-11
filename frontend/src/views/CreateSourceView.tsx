@@ -101,6 +101,7 @@ export function CreateSourceView() {
   const [summaryEn, setSummaryEn] = useState("");
   const [summaryFr, setSummaryFr] = useState("");
   const [sourceMetadata, setSourceMetadata] = useState<Record<string, any> | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // UI state
   const [extracting, setExtracting] = useState(false);
@@ -150,6 +151,7 @@ export function CreateSourceView() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     if (!title.trim()) {
       setError(t("create_source.title_required", "Title is required"));
       return;
@@ -192,6 +194,7 @@ export function CreateSourceView() {
       // Navigate to the created source
       navigate(`/sources/${created.id}`);
     } catch (e: any) {
+      setError(e?.message ?? t("common.error", "An error occurred"));
       showError(e);
       setLoading(false);
     }

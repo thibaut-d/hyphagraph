@@ -127,6 +127,9 @@ describe('EntitiesView', () => {
   });
 
   it('displays loading state initially', () => {
+    vi.mocked(entityApi.listEntities).mockImplementation(() => new Promise(() => {}));
+    vi.mocked(entityApi.getEntityFilterOptions).mockImplementation(() => new Promise(() => {}));
+
     render(
       <BrowserRouter>
         <EntitiesView />

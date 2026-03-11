@@ -8,6 +8,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { EntityTermsManager } from "../EntityTermsManager";
+import { NotificationProvider } from "../../notifications/NotificationContext";
 import type { EntityTermRead } from "../../api/entityTerms";
 import * as entityTermsApi from "../../api/entityTerms";
 
@@ -37,6 +38,9 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
+const renderWithNotifications = (ui: React.ReactElement) =>
+  render(<NotificationProvider>{ui}</NotificationProvider>);
+
 describe("EntityTermsManager", () => {
   const mockEntityId = "entity-123";
 
@@ -63,7 +67,7 @@ describe("EntityTermsManager", () => {
 
       vi.spyOn(entityTermsApi, "listEntityTerms").mockResolvedValue(mockTerms);
 
-      render(<EntityTermsManager entityId={mockEntityId} />);
+      renderWithNotifications(<EntityTermsManager entityId={mockEntityId} />);
 
       await waitFor(() => {
         expect(screen.getByText("Paracetamol")).toBeInTheDocument();
@@ -76,7 +80,7 @@ describe("EntityTermsManager", () => {
     it("shows info message when no terms exist", async () => {
       vi.spyOn(entityTermsApi, "listEntityTerms").mockResolvedValue([]);
 
-      render(<EntityTermsManager entityId={mockEntityId} />);
+      renderWithNotifications(<EntityTermsManager entityId={mockEntityId} />);
 
       await waitFor(() => {
         expect(
@@ -90,7 +94,7 @@ describe("EntityTermsManager", () => {
         new Error("Network error")
       );
 
-      render(<EntityTermsManager entityId={mockEntityId} />);
+      renderWithNotifications(<EntityTermsManager entityId={mockEntityId} />);
 
       await waitFor(() => {
         expect(screen.getByText("Failed to load terms")).toBeInTheDocument();
@@ -102,7 +106,7 @@ describe("EntityTermsManager", () => {
     it("shows add form when Add Term button clicked", async () => {
       vi.spyOn(entityTermsApi, "listEntityTerms").mockResolvedValue([]);
 
-      render(<EntityTermsManager entityId={mockEntityId} />);
+      renderWithNotifications(<EntityTermsManager entityId={mockEntityId} />);
 
       await waitFor(() => {
         expect(screen.getByText("Add Term")).toBeInTheDocument();
@@ -130,7 +134,7 @@ describe("EntityTermsManager", () => {
 
       vi.spyOn(entityTermsApi, "createEntityTerm").mockResolvedValue(newTerm);
 
-      render(<EntityTermsManager entityId={mockEntityId} />);
+      renderWithNotifications(<EntityTermsManager entityId={mockEntityId} />);
 
       await waitFor(() => {
         expect(screen.getByText("Add Term")).toBeInTheDocument();
@@ -168,7 +172,7 @@ describe("EntityTermsManager", () => {
     it("validates that term is not empty", async () => {
       vi.spyOn(entityTermsApi, "listEntityTerms").mockResolvedValue([]);
 
-      render(<EntityTermsManager entityId={mockEntityId} />);
+      renderWithNotifications(<EntityTermsManager entityId={mockEntityId} />);
 
       await waitFor(() => {
         expect(screen.getByText("Add Term")).toBeInTheDocument();
@@ -187,7 +191,7 @@ describe("EntityTermsManager", () => {
         new Error("Term already exists for this language")
       );
 
-      render(<EntityTermsManager entityId={mockEntityId} />);
+      renderWithNotifications(<EntityTermsManager entityId={mockEntityId} />);
 
       await waitFor(() => {
         expect(screen.getByText("Add Term")).toBeInTheDocument();
@@ -211,7 +215,7 @@ describe("EntityTermsManager", () => {
     it("can cancel adding a term", async () => {
       vi.spyOn(entityTermsApi, "listEntityTerms").mockResolvedValue([]);
 
-      render(<EntityTermsManager entityId={mockEntityId} />);
+      renderWithNotifications(<EntityTermsManager entityId={mockEntityId} />);
 
       await waitFor(() => {
         expect(screen.getByText("Add Term")).toBeInTheDocument();
@@ -235,7 +239,7 @@ describe("EntityTermsManager", () => {
 
       vi.spyOn(entityTermsApi, "listEntityTerms").mockResolvedValue(mockTerms);
 
-      render(<EntityTermsManager entityId={mockEntityId} />);
+      renderWithNotifications(<EntityTermsManager entityId={mockEntityId} />);
 
       await waitFor(() => {
         expect(screen.getByText("Paracetamol")).toBeInTheDocument();
@@ -271,7 +275,7 @@ describe("EntityTermsManager", () => {
 
       vi.spyOn(entityTermsApi, "updateEntityTerm").mockResolvedValue(updatedTerm);
 
-      render(<EntityTermsManager entityId={mockEntityId} />);
+      renderWithNotifications(<EntityTermsManager entityId={mockEntityId} />);
 
       await waitFor(() => {
         expect(screen.getByText("Paracetamol")).toBeInTheDocument();
@@ -319,7 +323,7 @@ describe("EntityTermsManager", () => {
 
       vi.spyOn(entityTermsApi, "listEntityTerms").mockResolvedValue(mockTerms);
 
-      render(<EntityTermsManager entityId={mockEntityId} />);
+      renderWithNotifications(<EntityTermsManager entityId={mockEntityId} />);
 
       await waitFor(() => {
         expect(screen.getByText("Paracetamol")).toBeInTheDocument();
@@ -353,7 +357,7 @@ describe("EntityTermsManager", () => {
 
       vi.spyOn(entityTermsApi, "deleteEntityTerm").mockResolvedValue(undefined);
 
-      render(<EntityTermsManager entityId={mockEntityId} />);
+      renderWithNotifications(<EntityTermsManager entityId={mockEntityId} />);
 
       await waitFor(() => {
         expect(screen.getByText("Paracetamol")).toBeInTheDocument();
@@ -397,7 +401,7 @@ describe("EntityTermsManager", () => {
 
       vi.spyOn(entityTermsApi, "listEntityTerms").mockResolvedValue(mockTerms);
 
-      render(<EntityTermsManager entityId={mockEntityId} />);
+      renderWithNotifications(<EntityTermsManager entityId={mockEntityId} />);
 
       await waitFor(() => {
         expect(screen.getByText("Paracetamol")).toBeInTheDocument();
@@ -440,7 +444,7 @@ describe("EntityTermsManager", () => {
 
       vi.spyOn(entityTermsApi, "listEntityTerms").mockResolvedValue(mockTerms);
 
-      render(<EntityTermsManager entityId={mockEntityId} />);
+      renderWithNotifications(<EntityTermsManager entityId={mockEntityId} />);
 
       await waitFor(() => {
         expect(screen.getByText("English (2)")).toBeInTheDocument();
@@ -455,7 +459,7 @@ describe("EntityTermsManager", () => {
 
       vi.spyOn(entityTermsApi, "listEntityTerms").mockResolvedValue(mockTerms);
 
-      render(<EntityTermsManager entityId={mockEntityId} />);
+      renderWithNotifications(<EntityTermsManager entityId={mockEntityId} />);
 
       await waitFor(() => {
         expect(screen.getByText("International (1)")).toBeInTheDocument();
@@ -476,7 +480,7 @@ describe("EntityTermsManager", () => {
 
       vi.spyOn(entityTermsApi, "listEntityTerms").mockResolvedValue(mockTerms);
 
-      render(<EntityTermsManager entityId={mockEntityId} />);
+      renderWithNotifications(<EntityTermsManager entityId={mockEntityId} />);
 
       await waitFor(() => {
         expect(screen.getByText("Display order: 1")).toBeInTheDocument();
@@ -497,7 +501,7 @@ describe("EntityTermsManager", () => {
 
       vi.spyOn(entityTermsApi, "createEntityTerm").mockResolvedValue(newTerm);
 
-      render(<EntityTermsManager entityId={mockEntityId} />);
+      renderWithNotifications(<EntityTermsManager entityId={mockEntityId} />);
 
       await waitFor(() => {
         expect(screen.getByText("Add Term")).toBeInTheDocument();
@@ -535,7 +539,7 @@ describe("EntityTermsManager", () => {
 
       vi.spyOn(entityTermsApi, "listEntityTerms").mockResolvedValue(mockTerms);
 
-      render(<EntityTermsManager entityId={mockEntityId} readonly={true} />);
+      renderWithNotifications(<EntityTermsManager entityId={mockEntityId} readonly={true} />);
 
       await waitFor(() => {
         expect(screen.getByText("Paracetamol")).toBeInTheDocument();
@@ -551,7 +555,7 @@ describe("EntityTermsManager", () => {
 
       vi.spyOn(entityTermsApi, "listEntityTerms").mockResolvedValue(mockTerms);
 
-      render(<EntityTermsManager entityId={mockEntityId} readonly={true} />);
+      renderWithNotifications(<EntityTermsManager entityId={mockEntityId} readonly={true} />);
 
       await waitFor(() => {
         expect(screen.getByText("Paracetamol")).toBeInTheDocument();
@@ -572,7 +576,7 @@ describe("EntityTermsManager", () => {
 
       vi.spyOn(entityTermsApi, "listEntityTerms").mockResolvedValue(mockTerms);
 
-      render(<EntityTermsManager entityId={mockEntityId} />);
+      renderWithNotifications(<EntityTermsManager entityId={mockEntityId} />);
 
       await waitFor(() => {
         // Check that all terms are displayed

@@ -68,7 +68,7 @@ async def explain_inference(
             scope_filter = json.loads(scope)
             if not isinstance(scope_filter, dict):
                 raise ValidationException(
-                    message="Invalid scope parameter",
+                    message="Scope must be a JSON object",
                     field="scope",
                     details="Scope must be a JSON object"
                 )

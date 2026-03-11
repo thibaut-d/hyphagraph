@@ -138,7 +138,7 @@ class AppException(HTTPException):
         # Store as both 'detail' (FastAPI standard) and structured format
         super().__init__(
             status_code=status_code,
-            detail=error_detail.model_dump(exclude_none=True),
+            detail=message,
         )
         self.error_detail = error_detail
 
@@ -226,7 +226,7 @@ class ValidationException(AppException):
         context: Optional[dict[str, Any]] = None,
     ):
         super().__init__(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_400_BAD_REQUEST,
             error_code=ErrorCode.VALIDATION_ERROR,
             message=message,
             field=field,

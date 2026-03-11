@@ -7,7 +7,22 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router';
 import { CreateEntityView } from '../CreateEntityView';
+import { NotificationProvider } from '../../notifications/NotificationContext';
 import * as entityApi from '../../api/entities';
+
+const translate = (key: string, defaultValueOrOptions?: string | { defaultValue?: string }) => {
+  if (typeof defaultValueOrOptions === 'string') {
+    return defaultValueOrOptions;
+  }
+  return defaultValueOrOptions?.defaultValue || key;
+};
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: translate,
+    i18n: { language: 'en' },
+  }),
+}));
 
 // Mock the API module
 vi.mock('../../api/entities');
@@ -21,6 +36,15 @@ vi.mock('react-router', async () => {
     useNavigate: () => mockNavigate,
   };
 });
+
+const renderWithProviders = () =>
+  render(
+    <NotificationProvider>
+      <BrowserRouter>
+        <CreateEntityView />
+      </BrowserRouter>
+    </NotificationProvider>
+  );
 
 describe('CreateEntityView', () => {
   beforeEach(() => {
@@ -38,23 +62,18 @@ describe('CreateEntityView', () => {
     });
   });
 
-  it('renders form with required fields', () => {
-    render(
-      <BrowserRouter>
-        <CreateEntityView />
-      </BrowserRouter>
-    );
+  it('renders form with required fields', async () => {
+    renderWithProviders();
 
     expect(screen.getByLabelText(/slug/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /create/i })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(entityApi.getEntityFilterOptions).toHaveBeenCalled();
+    });
   });
 
   it('validates required slug field', async () => {
-    render(
-      <BrowserRouter>
-        <CreateEntityView />
-      </BrowserRouter>
-    );
+    renderWithProviders();
 
     const submitButton = screen.getByRole('button', { name: /create/i });
     fireEvent.click(submitButton);
@@ -75,11 +94,7 @@ describe('CreateEntityView', () => {
 
     vi.mocked(entityApi.createEntity).mockResolvedValue(mockEntity);
 
-    render(
-      <BrowserRouter>
-        <CreateEntityView />
-      </BrowserRouter>
-    );
+    renderWithProviders();
 
     // Fill form
     const slugInput = screen.getByLabelText(/slug/i);
@@ -109,11 +124,7 @@ describe('CreateEntityView', () => {
       new Error('Creation failed')
     );
 
-    render(
-      <BrowserRouter>
-        <CreateEntityView />
-      </BrowserRouter>
-    );
+    renderWithProviders();
 
     const slugInput = screen.getByLabelText(/slug/i);
 
@@ -129,11 +140,7 @@ describe('CreateEntityView', () => {
   });
 
   it('renders UI category picker', async () => {
-    render(
-      <BrowserRouter>
-        <CreateEntityView />
-      </BrowserRouter>
-    );
+    renderWithProviders();
 
     // Wait for filter options to load
     await waitFor(() => {
@@ -151,11 +158,7 @@ describe('CreateEntityView', () => {
 
     vi.mocked(entityApi.createEntity).mockResolvedValue(mockEntity);
 
-    render(
-      <BrowserRouter>
-        <CreateEntityView />
-      </BrowserRouter>
-    );
+    renderWithProviders();
 
     // Wait for category options to load
     await waitFor(() => {
@@ -196,11 +199,7 @@ describe('CreateEntityView', () => {
 
     vi.mocked(entityApi.createEntity).mockResolvedValue(mockEntity);
 
-    render(
-      <BrowserRouter>
-        <CreateEntityView />
-      </BrowserRouter>
-    );
+    renderWithProviders();
 
     // Fill slug
     const slugInput = screen.getByLabelText(/slug/i);

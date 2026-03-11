@@ -8,6 +8,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter, Routes, Route } from 'react-router';
 import { ExplanationView } from '../ExplanationView';
+import { NotificationProvider } from '../../notifications/NotificationContext';
 import type { ExplanationRead } from '../../api/explanations';
 
 // Mock the explanations API
@@ -15,16 +16,29 @@ vi.mock('../../api/explanations', () => ({
   getExplanation: vi.fn(),
 }));
 
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, defaultValueOrOptions?: string | { defaultValue?: string }) => {
+      if (typeof defaultValueOrOptions === 'string') {
+        return defaultValueOrOptions;
+      }
+      return defaultValueOrOptions?.defaultValue || key;
+    },
+  }),
+}));
+
 import { getExplanation } from '../../api/explanations';
 
 // Helper to render with router and params
 const renderWithRouter = (entityId: string, roleType: string) => {
   return render(
-    <BrowserRouter>
-      <Routes>
-        <Route path="/explain/:entityId/:roleType" element={<ExplanationView />} />
-      </Routes>
-    </BrowserRouter>,
+    <NotificationProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/explain/:entityId/:roleType" element={<ExplanationView />} />
+        </Routes>
+      </BrowserRouter>
+    </NotificationProvider>,
     { wrapper: ({ children }) => {
       // Set up location to match the route
       window.history.pushState({}, '', `/explain/${entityId}/${roleType}`);
@@ -112,13 +126,17 @@ describe('ExplanationView', () => {
 
     it('displays error when entity ID is missing', async () => {
       render(
-        <BrowserRouter>
-          <ExplanationView />
-        </BrowserRouter>
+        <NotificationProvider>
+          <BrowserRouter>
+            <ExplanationView />
+          </BrowserRouter>
+        </NotificationProvider>
       );
 
       await waitFor(() => {
-        expect(screen.getByText(/missing entity id or role type/i)).toBeInTheDocument();
+        expect(
+          screen.getAllByText(/missing entity id or role type/i).length
+        ).toBeGreaterThan(0);
       });
     });
   });

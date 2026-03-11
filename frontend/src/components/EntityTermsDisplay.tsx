@@ -14,12 +14,10 @@ import {
   Chip,
   Stack,
   CircularProgress,
-  Alert,
 } from "@mui/material";
 import TranslateIcon from "@mui/icons-material/Translate";
 
 import { listEntityTerms, EntityTermRead } from "../api/entityTerms";
-import { useNotification } from "../notifications/NotificationContext";
 
 interface EntityTermsDisplayProps {
   entityId: string;
@@ -31,13 +29,13 @@ export function EntityTermsDisplay({
   compact = false,
 }: EntityTermsDisplayProps) {
   const { t } = useTranslation();
-  const { showError } = useNotification();
 
   const [terms, setTerms] = useState<EntityTermRead[]>([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     const loadTerms = async () => {
-      setLoading(true);      try {
+      setLoading(true);
+      try {
         const data = await listEntityTerms(entityId);
         setTerms(data);
       } catch (err) {
@@ -61,14 +59,6 @@ export function EntityTermsDisplay({
           {t("entityTerms.loading", "Loading terms...")}
         </Typography>
       </Box>
-    );
-  }
-
-  if (error) {
-    return (
-      <Alert severity="error" sx={{ py: 0.5 }}>
-        {error}
-      </Alert>
     );
   }
 

@@ -44,6 +44,7 @@ export function CreateRelationView() {
   const [direction, setDirection] = useState("");
   const [confidence, setConfidence] = useState(0.5);
   const [roles, setRoles] = useState<RoleWrite[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -53,8 +54,12 @@ export function CreateRelationView() {
 
     Promise.all([listEntities(), listSources()])
       .then(([entitiesRes, sourcesRes]) => {
+        const entityItems = Array.isArray(entitiesRes)
+          ? entitiesRes
+          : (entitiesRes.items ?? []);
+
         setEntities(
-          (entitiesRes.items || []).map((entity) => ({
+          entityItems.map((entity) => ({
             id: entity.id,
             label: entity.label || entity.slug,
           }))
@@ -87,6 +92,7 @@ export function CreateRelationView() {
   };
 
   const submit = async () => {
+    setError(null);
     setSubmitting(true);
     try {
       await createRelation({
@@ -104,6 +110,7 @@ export function CreateRelationView() {
       setConfidence(0.5);
       setRoles([]);
     } catch (e: any) {
+      setError(e?.message ?? t("common.error", "Something went wrong"));
       showError(e);
     } finally {
       setSubmitting(false);

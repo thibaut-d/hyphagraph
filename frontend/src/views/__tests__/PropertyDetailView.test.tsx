@@ -5,6 +5,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 import { PropertyDetailView } from "../PropertyDetailView";
+import { NotificationProvider } from "../../notifications/NotificationContext";
 import type { ExplanationRead, SourceContribution } from "../../api/explanations";
 import type { EntityRead } from "../../types/entity";
 import * as entitiesApi from "../../api/entities";
@@ -12,6 +13,36 @@ import * as explanationsApi from "../../api/explanations";
 
 vi.mock("../../api/explanations");
 vi.mock("../../api/entities");
+
+const translate = (
+  key: string,
+  defaultValueOrOptions?: string | { [key: string]: any },
+  interpolation?: { [key: string]: any },
+) => {
+  if (typeof defaultValueOrOptions === "string") {
+    let result = defaultValueOrOptions;
+    if (interpolation && typeof interpolation === "object") {
+      Object.keys(interpolation).forEach((k) => {
+        result = result.replace(`{{${k}}}`, String(interpolation[k]));
+      });
+    }
+    return result;
+  }
+  if (defaultValueOrOptions && typeof defaultValueOrOptions === "object") {
+    let result = key;
+    const fallback = defaultValueOrOptions.defaultValue;
+    if (typeof fallback === "string") {
+      result = fallback;
+    }
+    Object.keys(defaultValueOrOptions).forEach((k) => {
+      if (k !== "defaultValue") {
+        result = result.replace(`{{${k}}}`, String(defaultValueOrOptions[k]));
+      }
+    });
+    return result;
+  }
+  return key;
+};
 
 const mockNavigate = vi.fn();
 vi.mock("react-router-dom", async () => {
@@ -25,35 +56,7 @@ vi.mock("react-router-dom", async () => {
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (
-      key: string,
-      defaultValueOrOptions?: string | { [key: string]: any },
-      interpolation?: { [key: string]: any },
-    ) => {
-      if (typeof defaultValueOrOptions === "string") {
-        let result = defaultValueOrOptions;
-        if (interpolation && typeof interpolation === "object") {
-          Object.keys(interpolation).forEach((k) => {
-            result = result.replace(`{{${k}}}`, String(interpolation[k]));
-          });
-        }
-        return result;
-      }
-      if (defaultValueOrOptions && typeof defaultValueOrOptions === "object") {
-        let result = key;
-        const fallback = defaultValueOrOptions.defaultValue;
-        if (typeof fallback === "string") {
-          result = fallback;
-        }
-        Object.keys(defaultValueOrOptions).forEach((k) => {
-          if (k !== "defaultValue") {
-            result = result.replace(`{{${k}}}`, String(defaultValueOrOptions[k]));
-          }
-        });
-        return result;
-      }
-      return key;
-    },
+    t: translate,
     i18n: { language: "en" },
   }),
 }));
@@ -63,6 +66,15 @@ vi.mock("../../components/EvidenceTrace", () => ({
     <div data-testid="evidence-trace">Evidence count: {sourceChain.length}</div>
   ),
 }));
+
+const renderWithProviders = () =>
+  render(
+    <NotificationProvider>
+      <BrowserRouter>
+        <PropertyDetailView />
+      </BrowserRouter>
+    </NotificationProvider>,
+  );
 
 describe("PropertyDetailView", () => {
   const mockEntity: EntityRead = {
@@ -130,11 +142,7 @@ describe("PropertyDetailView", () => {
     vi.spyOn(entitiesApi, "getEntity").mockImplementation(() => new Promise(() => {}));
     vi.spyOn(explanationsApi, "getExplanation").mockImplementation(() => new Promise(() => {}));
 
-    render(
-      <BrowserRouter>
-        <PropertyDetailView />
-      </BrowserRouter>,
-    );
+    renderWithProviders();
 
     expect(screen.getByText("Loading property details...")).toBeInTheDocument();
   });
@@ -143,11 +151,7 @@ describe("PropertyDetailView", () => {
     vi.spyOn(entitiesApi, "getEntity").mockRejectedValue(new Error("Entity not found"));
     vi.spyOn(explanationsApi, "getExplanation").mockResolvedValue(createMockExplanation());
 
-    render(
-      <BrowserRouter>
-        <PropertyDetailView />
-      </BrowserRouter>,
-    );
+    renderWithProviders();
 
     await waitFor(() => {
       expect(screen.getByRole("alert")).toBeInTheDocument();
@@ -163,11 +167,7 @@ describe("PropertyDetailView", () => {
       }),
     );
 
-    render(
-      <BrowserRouter>
-        <PropertyDetailView />
-      </BrowserRouter>,
-    );
+    renderWithProviders();
 
     await waitFor(() => {
       expect(screen.getByText("This medication is highly effective for pain management.")).toBeInTheDocument();
@@ -182,11 +182,7 @@ describe("PropertyDetailView", () => {
       createMockExplanation({ confidence: 0.85 }),
     );
 
-    render(
-      <BrowserRouter>
-        <PropertyDetailView />
-      </BrowserRouter>,
-    );
+    renderWithProviders();
 
     await waitFor(() => {
       expect(screen.getByText("Strong Consensus")).toBeInTheDocument();
@@ -205,11 +201,7 @@ describe("PropertyDetailView", () => {
       }),
     );
 
-    render(
-      <BrowserRouter>
-        <PropertyDetailView />
-      </BrowserRouter>,
-    );
+    renderWithProviders();
 
     await waitFor(() => {
       expect(screen.getByText("Disputed / Contradictory")).toBeInTheDocument();
@@ -228,11 +220,7 @@ describe("PropertyDetailView", () => {
       }),
     );
 
-    render(
-      <BrowserRouter>
-        <PropertyDetailView />
-      </BrowserRouter>,
-    );
+    renderWithProviders();
 
     await waitFor(() => {
       expect(screen.getByText("Known Limitations")).toBeInTheDocument();

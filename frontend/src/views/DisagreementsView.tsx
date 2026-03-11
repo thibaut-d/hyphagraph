@@ -85,17 +85,20 @@ export function DisagreementsView() {
 
   const [entity, setEntity] = useState<EntityRead | null>(null);
   const [inference, setInference] = useState<InferenceRead | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Fetch entity and inferences
   useEffect(() => {
     if (!id) {
+      setError("Missing entity ID");
       showError(new Error("Missing entity ID"));
       setLoading(false);
       return;
     }
 
     setLoading(true);
+    setError(null);
 
     Promise.all([
       getEntity(id),
@@ -106,6 +109,7 @@ export function DisagreementsView() {
         setInference(inferenceData);
       })
       .catch((err) => {
+        setError(err?.message ?? "An error occurred");
         showError(err);
       })
       .finally(() => {

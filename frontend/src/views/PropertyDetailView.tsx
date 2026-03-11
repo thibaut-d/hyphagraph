@@ -45,15 +45,18 @@ export function PropertyDetailView() {
 
   const [entity, setEntity] = useState<EntityRead | null>(null);
   const [explanation, setExplanation] = useState<ExplanationRead | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     if (!id || !roleType) {
+      setError("Missing entity ID or role type");
       showError(new Error("Missing entity ID or role type"));
       setLoading(false);
       return;
     }
 
     setLoading(true);
+    setError(null);
     Promise.all([getEntity(id), getExplanation(id, roleType)])
       .then(([entityData, explanationData]) => {
         setEntity(entityData);
@@ -61,12 +64,13 @@ export function PropertyDetailView() {
       })
       .catch((err) => {
         console.error("Failed to load property details:", err);
+        setError(err?.message ?? t("common.error", "An error occurred"));
         showError(err);
       })
       .finally(() => {
         setLoading(false);
       });
-  }, [id, roleType]);
+  }, [id, roleType, showError, t]);
 
   if (loading) {
     return (

@@ -88,7 +88,7 @@ async def delete_entity_term(
     return None
 
 
-@router.put("/{entity_id}/terms", response_model=List[EntityTermRead])
+@router.put("/{entity_id}/terms-bulk", response_model=List[EntityTermRead])
 async def bulk_update_entity_terms(
     entity_id: UUID,
     payload: EntityTermBulkWrite,

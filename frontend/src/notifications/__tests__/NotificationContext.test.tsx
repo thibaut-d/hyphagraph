@@ -53,12 +53,18 @@ function TestComponent() {
   );
 }
 
+function HookOutsideProvider() {
+  useNotification();
+  return null;
+}
+
 describe("NotificationContext", () => {
   beforeEach(() => {
-    vi.useFakeTimers();
+    vi.useRealTimers();
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -67,14 +73,7 @@ describe("NotificationContext", () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     expect(() => {
-      render(
-        <div>
-          {(() => {
-            useNotification();
-            return null;
-          })()}
-        </div>,
-      );
+      render(<HookOutsideProvider />);
     }).toThrow("useNotification must be used within NotificationProvider");
 
     consoleSpy.mockRestore();
@@ -153,6 +152,7 @@ describe("NotificationContext", () => {
   });
 
   test("auto-dismisses after default timeout for success", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     render(
       <NotificationProvider>
         <TestComponent />
@@ -176,6 +176,7 @@ describe("NotificationContext", () => {
   });
 
   test("auto-dismisses after custom duration", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     render(
       <NotificationProvider>
         <TestComponent />
@@ -199,6 +200,7 @@ describe("NotificationContext", () => {
   });
 
   test("does not auto-dismiss when autoDismiss is false", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     render(
       <NotificationProvider>
         <TestComponent />
@@ -264,6 +266,7 @@ describe("NotificationContext", () => {
   });
 
   test("queue management: shows notifications one at a time", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     render(
       <NotificationProvider>
         <TestComponent />

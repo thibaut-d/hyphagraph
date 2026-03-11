@@ -30,7 +30,10 @@ async def app_exception_handler(request: Request, exc: AppException) -> JSONResp
     """
     return JSONResponse(
         status_code=exc.status_code,
-        content={"error": exc.error_detail.model_dump(exclude_none=True)},
+        content={
+            "detail": exc.detail,
+            "error": exc.error_detail.model_dump(exclude_none=True),
+        },
     )
 
 
@@ -68,7 +71,10 @@ async def validation_exception_handler(
 
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content={"error": error_detail.model_dump(exclude_none=True)},
+        content={
+            "detail": error_detail.message,
+            "error": error_detail.model_dump(exclude_none=True),
+        },
     )
 
 

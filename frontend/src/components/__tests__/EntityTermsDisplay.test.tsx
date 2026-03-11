@@ -7,6 +7,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { EntityTermsDisplay } from "../EntityTermsDisplay";
+import { NotificationProvider } from "../../notifications/NotificationContext";
 import type { EntityTermRead } from "../../api/entityTerms";
 import * as entityTermsApi from "../../api/entityTerms";
 
@@ -26,6 +27,9 @@ vi.mock("react-i18next", () => ({
     i18n: { language: "en" },
   }),
 }));
+
+const renderWithNotifications = (ui: React.ReactElement) =>
+  render(<NotificationProvider>{ui}</NotificationProvider>);
 
 describe("EntityTermsDisplay", () => {
   const mockEntityId = "entity-123";
@@ -50,7 +54,7 @@ describe("EntityTermsDisplay", () => {
         () => new Promise(() => {}) // Never resolves
       );
 
-      render(<EntityTermsDisplay entityId={mockEntityId} />);
+      renderWithNotifications(<EntityTermsDisplay entityId={mockEntityId} />);
 
       expect(screen.getByText("Loading terms...")).toBeInTheDocument();
     });
@@ -63,7 +67,7 @@ describe("EntityTermsDisplay", () => {
         new Error("Network error")
       );
 
-      const { container } = render(<EntityTermsDisplay entityId={mockEntityId} />);
+      const { container } = renderWithNotifications(<EntityTermsDisplay entityId={mockEntityId} />);
 
       await waitFor(() => {
         expect(screen.queryByText("Loading terms...")).not.toBeInTheDocument();
@@ -81,7 +85,7 @@ describe("EntityTermsDisplay", () => {
     it("renders nothing when no terms exist", async () => {
       vi.spyOn(entityTermsApi, "listEntityTerms").mockResolvedValue([]);
 
-      const { container } = render(<EntityTermsDisplay entityId={mockEntityId} />);
+      const { container } = renderWithNotifications(<EntityTermsDisplay entityId={mockEntityId} />);
 
       await waitFor(() => {
         expect(screen.queryByText("Loading terms...")).not.toBeInTheDocument();
@@ -101,7 +105,7 @@ describe("EntityTermsDisplay", () => {
 
       vi.spyOn(entityTermsApi, "listEntityTerms").mockResolvedValue(mockTerms);
 
-      render(<EntityTermsDisplay entityId={mockEntityId} compact={true} />);
+      renderWithNotifications(<EntityTermsDisplay entityId={mockEntityId} compact={true} />);
 
       await waitFor(() => {
         expect(screen.getByText("Paracetamol")).toBeInTheDocument();
@@ -119,7 +123,7 @@ describe("EntityTermsDisplay", () => {
 
       vi.spyOn(entityTermsApi, "listEntityTerms").mockResolvedValue(mockTerms);
 
-      render(<EntityTermsDisplay entityId={mockEntityId} compact={true} />);
+      renderWithNotifications(<EntityTermsDisplay entityId={mockEntityId} compact={true} />);
 
       await waitFor(() => {
         expect(screen.getByText("Paracetamol")).toBeInTheDocument();
@@ -135,7 +139,7 @@ describe("EntityTermsDisplay", () => {
 
       vi.spyOn(entityTermsApi, "listEntityTerms").mockResolvedValue(mockTerms);
 
-      const { container } = render(<EntityTermsDisplay entityId={mockEntityId} compact={true} />);
+      const { container } = renderWithNotifications(<EntityTermsDisplay entityId={mockEntityId} compact={true} />);
 
       await waitFor(() => {
         expect(screen.getByText("Paracetamol")).toBeInTheDocument();
@@ -155,7 +159,7 @@ describe("EntityTermsDisplay", () => {
 
       vi.spyOn(entityTermsApi, "listEntityTerms").mockResolvedValue(mockTerms);
 
-      render(<EntityTermsDisplay entityId={mockEntityId} compact={false} />);
+      renderWithNotifications(<EntityTermsDisplay entityId={mockEntityId} compact={false} />);
 
       await waitFor(() => {
         expect(screen.getByText("Also known as")).toBeInTheDocument();
@@ -171,7 +175,7 @@ describe("EntityTermsDisplay", () => {
 
       vi.spyOn(entityTermsApi, "listEntityTerms").mockResolvedValue(mockTerms);
 
-      render(<EntityTermsDisplay entityId={mockEntityId} compact={false} />);
+      renderWithNotifications(<EntityTermsDisplay entityId={mockEntityId} compact={false} />);
 
       await waitFor(() => {
         expect(screen.getByText("Paracetamol")).toBeInTheDocument();
@@ -190,7 +194,7 @@ describe("EntityTermsDisplay", () => {
 
       vi.spyOn(entityTermsApi, "listEntityTerms").mockResolvedValue(mockTerms);
 
-      render(<EntityTermsDisplay entityId={mockEntityId} compact={false} />);
+      renderWithNotifications(<EntityTermsDisplay entityId={mockEntityId} compact={false} />);
 
       await waitFor(() => {
         expect(screen.getByText("C8H9NO2")).toBeInTheDocument();
@@ -208,7 +212,7 @@ describe("EntityTermsDisplay", () => {
 
       vi.spyOn(entityTermsApi, "listEntityTerms").mockResolvedValue(mockTerms);
 
-      render(<EntityTermsDisplay entityId={mockEntityId} compact={false} />);
+      renderWithNotifications(<EntityTermsDisplay entityId={mockEntityId} compact={false} />);
 
       await waitFor(() => {
         expect(screen.getByText("Paracetamol")).toBeInTheDocument();
@@ -230,7 +234,7 @@ describe("EntityTermsDisplay", () => {
 
       vi.spyOn(entityTermsApi, "listEntityTerms").mockResolvedValue(mockTerms);
 
-      render(<EntityTermsDisplay entityId={mockEntityId} compact={false} />);
+      renderWithNotifications(<EntityTermsDisplay entityId={mockEntityId} compact={false} />);
 
       await waitFor(() => {
         expect(screen.getByText("English")).toBeInTheDocument();
@@ -252,7 +256,7 @@ describe("EntityTermsDisplay", () => {
 
       vi.spyOn(entityTermsApi, "listEntityTerms").mockResolvedValue(mockTerms);
 
-      render(<EntityTermsDisplay entityId={mockEntityId} compact={false} />);
+      renderWithNotifications(<EntityTermsDisplay entityId={mockEntityId} compact={false} />);
 
       await waitFor(() => {
         expect(screen.getByText("Unknown")).toBeInTheDocument();
@@ -272,7 +276,7 @@ describe("EntityTermsDisplay", () => {
         .mockResolvedValueOnce(mockTerms1)
         .mockResolvedValueOnce(mockTerms2);
 
-      const { rerender } = render(<EntityTermsDisplay entityId="entity-1" />);
+      const { rerender } = renderWithNotifications(<EntityTermsDisplay entityId="entity-1" />);
 
       await waitFor(() => {
         expect(screen.getByText("Term 1")).toBeInTheDocument();
@@ -281,7 +285,11 @@ describe("EntityTermsDisplay", () => {
       expect(listSpy).toHaveBeenCalledWith("entity-1");
 
       // Change entityId
-      rerender(<EntityTermsDisplay entityId="entity-2" />);
+      rerender(
+        <NotificationProvider>
+          <EntityTermsDisplay entityId="entity-2" />
+        </NotificationProvider>,
+      );
 
       await waitFor(() => {
         expect(screen.getByText("Term 2")).toBeInTheDocument();
@@ -300,7 +308,7 @@ describe("EntityTermsDisplay", () => {
 
       vi.spyOn(entityTermsApi, "listEntityTerms").mockResolvedValue(mockTerms);
 
-      render(<EntityTermsDisplay entityId={mockEntityId} />);
+      renderWithNotifications(<EntityTermsDisplay entityId={mockEntityId} />);
 
       await waitFor(() => {
         expect(screen.getByText("Also known as")).toBeInTheDocument();

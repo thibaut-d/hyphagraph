@@ -5,10 +5,16 @@
  * global search integration, active route highlighting, and content rendering.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render as rtlRender, screen, fireEvent } from "@testing-library/react";
+import type { ReactElement } from "react";
 import { BrowserRouter, MemoryRouter } from "react-router-dom";
 import { Layout } from "../Layout";
+import { NotificationProvider } from "../../notifications/NotificationContext";
 import i18n from "i18next";
+
+vi.mock("../../api/entities", () => ({
+  getEntityFilterOptions: () => Promise.resolve({ ui_categories: [] }),
+}));
 
 // Mock AuthContext
 const mockUseAuthContext = vi.fn();
@@ -50,6 +56,9 @@ vi.mock("i18next", () => ({
     changeLanguage: vi.fn(),
   },
 }));
+
+const render = (ui: ReactElement) =>
+  rtlRender(<NotificationProvider>{ui}</NotificationProvider>);
 
 describe("Layout", () => {
 

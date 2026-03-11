@@ -5,9 +5,11 @@
  * scientific honesty principle, statistics, and navigation.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render as rtlRender, screen, waitFor } from "@testing-library/react";
+import type { ReactElement } from "react";
 import { BrowserRouter } from "react-router-dom";
 import { DisagreementsView } from "../DisagreementsView";
+import { NotificationProvider } from "../../notifications/NotificationContext";
 import type { EntityRead } from "../../api/entities";
 import type { RelationRead } from "../../types/relation";
 import type { InferenceRead } from "../../types/inference";
@@ -60,6 +62,9 @@ vi.mock("../../utils/i18nLabel", () => ({
     return "";
   },
 }));
+
+const render = (ui: ReactElement) =>
+  rtlRender(<NotificationProvider>{ui}</NotificationProvider>);
 
 describe("DisagreementsView", () => {
   const mockEntity: EntityRead = {
@@ -162,8 +167,8 @@ describe("DisagreementsView", () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByRole("alert")).toBeInTheDocument();
-        expect(screen.getByText("Inference not found")).toBeInTheDocument();
+        expect(screen.getAllByRole("alert").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("Inference not found").length).toBeGreaterThan(0);
       });
     });
   });

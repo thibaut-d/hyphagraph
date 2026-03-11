@@ -44,9 +44,8 @@ test.describe('Login Flow', () => {
     await page.getByRole('button', { name: /login/i }).click();
 
     // Should show error message
-    await expect(page.locator('text=/incorrect|error|invalid|failed/i')).toBeVisible({
-      timeout: 5000,
-    });
+    const errorMessages = page.locator('text=/incorrect|error|invalid|failed/i');
+    await expect(errorMessages.first()).toBeVisible({ timeout: 5000 });
 
     // Should not be authenticated
     const authenticated = await isAuthenticated(page);

@@ -22,8 +22,10 @@ export function AccountView() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
+  const [error, setError] = useState("");
 
   const handleLogin = async () => {
+    setError("");
     setRegistrationSuccess(false);
     try {
       const res = await apiLogin({
@@ -32,11 +34,13 @@ export function AccountView() {
       });
       login(res.access_token, res.refresh_token);
     } catch (e: any) {
+      setError(e?.message ?? t("account.login_error", "Login failed"));
       showError(e);
     }
   };
 
   const handleRegister = async () => {
+    setError("");
     setRegistrationSuccess(false);
     try {
       await apiRegister({ email, password });
@@ -45,6 +49,7 @@ export function AccountView() {
       setRegistrationSuccess(true);
       setPassword(""); // Clear password for security
     } catch (e: any) {
+      setError(e?.message ?? t("account.register_error", "Registration failed"));
       showError(e);
     }
   };
@@ -73,20 +78,32 @@ export function AccountView() {
 
   return (
     <Paper sx={{ p: 3 }}>
-      <Stack spacing={2}>
+      <Stack
+        component="form"
+        spacing={2}
+        onSubmit={(event) => {
+          event.preventDefault();
+          void handleLogin();
+        }}
+      >
         <Typography variant="h5">
           {t("account.login", "Login")}
         </Typography>
 
         <TextField
           label={t("account.email", "Email")}
+          name="email"
+          type="email"
+          required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
 
         <TextField
           label={t("account.password", "Password")}
+          name="password"
           type="password"
+          required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
@@ -127,11 +144,17 @@ export function AccountView() {
           </Paper>
         )}
 
-        <Button variant="contained" onClick={handleLogin}>
+        <Button type="submit" variant="contained">
           {t("account.login", "Login")}
         </Button>
 
-        <Button variant="outlined" onClick={handleRegister}>
+        <Button
+          type="button"
+          variant="outlined"
+          onClick={() => {
+            void handleRegister();
+          }}
+        >
           {t("account.register", "Register")}
         </Button>
 

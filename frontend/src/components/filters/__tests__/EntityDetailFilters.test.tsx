@@ -1,13 +1,15 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { EntityDetailFilters, EntityDetailFilterValues } from "../EntityDetailFilters";
 import { SourceRead } from "../../../types/source";
 
+const t = (key: string, defaultValue: string) => defaultValue;
+
 // Mock i18n
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string, defaultValue: string) => defaultValue,
+    t,
   }),
 }));
 
@@ -210,8 +212,13 @@ describe("EntityDetailFilters", () => {
         />
       );
 
-      const checkboxes = screen.getAllByRole("checkbox", { name: /study/i });
-      const labels = checkboxes.map((cb) => cb.getAttribute("aria-label"));
+      const studyTypeSection = screen.getByText("Study Type").closest(".MuiAccordion-root");
+      expect(studyTypeSection).not.toBeNull();
+
+      const checkboxes = within(studyTypeSection as HTMLElement).getAllByRole("checkbox");
+      const labels = checkboxes.map((cb) =>
+        cb.closest("label")?.querySelector(".MuiFormControlLabel-label")?.textContent?.trim() ?? null,
+      );
 
       // Should be alphabetically sorted
       expect(labels).toEqual(["alpha_study", "meta_analysis", "zebra_study"]);
@@ -253,8 +260,8 @@ describe("EntityDetailFilters", () => {
       // RangeFilter should be rendered with min=2010, max=2020
       expect(screen.getByText("Publication Year")).toBeInTheDocument();
       // The range filter displays the range values
-      expect(screen.getByText("2010")).toBeInTheDocument();
-      expect(screen.getByText("2020")).toBeInTheDocument();
+      expect(screen.getByText(/Min:\s*2010/)).toBeInTheDocument();
+      expect(screen.getByText(/Max:\s*2020/)).toBeInTheDocument();
     });
 
     it("does not render year filter when no sources", () => {
@@ -290,8 +297,8 @@ describe("EntityDetailFilters", () => {
       );
 
       // Should display the filtered range, not the full range
-      expect(screen.getByText("2012")).toBeInTheDocument();
-      expect(screen.getByText("2018")).toBeInTheDocument();
+      expect(screen.getByText(/Min:\s*2012/)).toBeInTheDocument();
+      expect(screen.getByText(/Max:\s*2018/)).toBeInTheDocument();
     });
   });
 
@@ -324,8 +331,8 @@ describe("EntityDetailFilters", () => {
       );
 
       // Should display range from 0 to 1
-      expect(screen.getByText("0.0")).toBeInTheDocument();
-      expect(screen.getByText("1.0")).toBeInTheDocument();
+      expect(screen.getByText(/Min:\s*0\.0/)).toBeInTheDocument();
+      expect(screen.getByText(/Max:\s*1\.0/)).toBeInTheDocument();
     });
 
     it("uses filter value when provided", () => {
@@ -343,7 +350,7 @@ describe("EntityDetailFilters", () => {
       );
 
       // Should display 0.5 as the minimum
-      expect(screen.getByText("0.5")).toBeInTheDocument();
+      expect(screen.getByText(/Min:\s*0\.5/)).toBeInTheDocument();
     });
   });
 
@@ -387,7 +394,8 @@ describe("EntityDetailFilters", () => {
         />
       );
 
-      expect(screen.getByText("2015")).toBeInTheDocument();
+      expect(screen.getByText(/Min:\s*2015/)).toBeInTheDocument();
+      expect(screen.getByText(/Max:\s*2015/)).toBeInTheDocument();
 
       // Update with wider year range
       rerender(
@@ -401,8 +409,8 @@ describe("EntityDetailFilters", () => {
         />
       );
 
-      expect(screen.getByText("2010")).toBeInTheDocument();
-      expect(screen.getByText("2020")).toBeInTheDocument();
+      expect(screen.getByText(/Min:\s*2010/)).toBeInTheDocument();
+      expect(screen.getByText(/Max:\s*2020/)).toBeInTheDocument();
     });
   });
 
@@ -424,8 +432,8 @@ describe("EntityDetailFilters", () => {
       );
 
       // Should only use non-null years
-      expect(screen.getByText("2015")).toBeInTheDocument();
-      expect(screen.getByText("2020")).toBeInTheDocument();
+      expect(screen.getByText(/Min:\s*2015/)).toBeInTheDocument();
+      expect(screen.getByText(/Max:\s*2020/)).toBeInTheDocument();
     });
 
     it("handles empty study types gracefully", () => {
@@ -464,7 +472,8 @@ describe("EntityDetailFilters", () => {
 
       // Should create range [2020, 2020]
       expect(screen.getByText("Publication Year")).toBeInTheDocument();
-      expect(screen.getByText("2020")).toBeInTheDocument();
+      expect(screen.getByText(/Min:\s*2020/)).toBeInTheDocument();
+      expect(screen.getByText(/Max:\s*2020/)).toBeInTheDocument();
     });
   });
 });

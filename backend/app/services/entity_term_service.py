@@ -119,12 +119,14 @@ class EntityTermService:
             # PostgreSQL: "uq_entity_term_language", SQLite: "UNIQUE constraint failed: entity_terms"
             error_str = str(e).lower()
             if "uq_entity_term_language" in error_str or "entity_terms.entity_id, entity_terms.term, entity_terms.language" in error_str:
-                raise ValidationException(
-                    message="Term already exists for this entity and language",
-                    field="term",
-                    details=f"Term '{payload.term}' already exists for this entity in language '{payload.language}'",
-                    context={"entity_id": str(entity_id), "term": payload.term, "language": payload.language}
-                )
+                    raise AppException(
+                        status_code=409,
+                        error_code=ErrorCode.DATABASE_CONSTRAINT_VIOLATION,
+                        message="Term already exists for this entity and language",
+                        field="term",
+                        details=f"Term '{payload.term}' already exists for this entity in language '{payload.language}'",
+                        context={"entity_id": str(entity_id), "term": payload.term, "language": payload.language}
+                    )
             raise
 
         return EntityTermRead(
@@ -184,7 +186,9 @@ class EntityTermService:
             # PostgreSQL: "uq_entity_term_language", SQLite: "UNIQUE constraint failed: entity_terms"
             error_str = str(e).lower()
             if "uq_entity_term_language" in error_str or "entity_terms.entity_id, entity_terms.term, entity_terms.language" in error_str:
-                raise ValidationException(
+                raise AppException(
+                    status_code=409,
+                    error_code=ErrorCode.DATABASE_CONSTRAINT_VIOLATION,
                     message="Term already exists for this entity and language",
                     field="term",
                     details=f"Term '{payload.term}' already exists for this entity in language '{payload.language}'",
@@ -289,7 +293,9 @@ class EntityTermService:
             # PostgreSQL: "uq_entity_term_language", SQLite: "UNIQUE constraint failed: entity_terms"
             error_str = str(e).lower()
             if "uq_entity_term_language" in error_str or "entity_terms.entity_id, entity_terms.term, entity_terms.language" in error_str:
-                raise ValidationException(
+                raise AppException(
+                    status_code=409,
+                    error_code=ErrorCode.DATABASE_CONSTRAINT_VIOLATION,
                     message="Duplicate terms detected in payload",
                     details="Multiple terms with the same text and language were provided",
                     context={"entity_id": str(entity_id)}

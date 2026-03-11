@@ -1,6 +1,88 @@
 # Current Work
 
-**Last updated**: 2026-03-08
+**Last updated**: 2026-03-11
+
+## In Progress
+
+### Code Review Remediation (2026-03-11)
+
+- Fixed frontend extraction preview runtime bug:
+  - added missing local error state in `frontend/src/components/ExtractionPreview.tsx`
+  - save failures now surface without crashing the preview
+- Fixed extraction review status model inconsistencies:
+  - aligned `StagedExtraction` schema literals with backend enum values (`auto_verified`, `pending`, `approved`, `rejected`)
+  - removed invalid `MATERIALIZED` status transitions from service materialization path
+  - approval now reuses already-materialized pending extractions instead of attempting duplicate materialization
+- Fixed document extraction review regressions:
+  - restored review staging for URL-based extraction so URL and upload flows behave consistently
+  - fixed invalid logging format string that could turn successful extraction into a 500
+- Verification completed:
+  - `cd backend && uv run pytest tests/test_extraction_review_service.py tests/test_document_extraction.py -q` -> PASS (`31 passed`)
+  - `cd frontend && npm run -s build` -> PASS
+
+### Local Docker Startup Verification (2026-03-10)
+
+- Reproduced local `docker compose up` startup failure
+- Fixed first blocker: missing `fastapi.status` import in `backend/app/api/extraction_review.py`
+- Added Docker API entrypoint to run `alembic upgrade head` before starting Uvicorn
+- Verified `docker compose up` now applies migrations and completes API startup cleanly
+- Removed deprecated `tool.uv.dev-dependencies` config from backend packaging
+- Formatted `Caddyfile` to eliminate startup formatting warning
+- Suppressed Docker-volume `uv` hardlink warning by setting `UV_LINK_MODE=copy` for the API service
+- Verified startup is clean aside from expected Compose TTY noise and Caddy HTTP/TLS notices for plain HTTP dev mode
+
+### Test Suite Recovery Plan (2026-03-10)
+
+- Fix backend test environment ownership issue:
+  - Removed root-owned `backend/hyphagraph_backend.egg-info`
+  - Synced backend dev dependencies with `uv sync --extra dev`
+  - Fixed backend regressions in error semantics, entity terms routing, entity mapper behavior, slug conflict handling, extraction review batch approval, source revision loading, and URL extraction test seam compatibility
+  - Final verification: `uv run pytest` -> `406 passed, 82 warnings`
+- Fix frontend unit/integration test failures:
+  - Added missing `NotificationProvider` coverage and stabilized affected view tests
+  - Fixed auth/source views with missing local error state (`AccountView`, `RequestPasswordResetView`, `ResetPasswordView`, `ForgotPasswordView`, `EditSourceView`)
+  - Fixed full Vitest runner hang: `frontend/src/components/filters/__tests__/EntityDetailFilters.test.tsx` mocked `useTranslation()` with a new `t` function every render, which created an infinite `useEffect([sources, t])` loop in `EntityDetailFilters`
+  - Stabilized `EntityDetailFilters` assertions to match actual MUI DOM/value rendering
+  - Final verification: `npx vitest run --maxWorkers=1 --reporter=dot` -> `35 passed`, `524 passed`
+- Fix E2E auth/rate-limit failures:
+  - Enabled `TESTING=true` and disabled rate limiting in `docker-compose.e2e.yml`
+  - Switched global E2E setup to deterministic DB reset with startup bootstrap restore
+  - Hardened auth cleanup helpers and removed brittle strict-mode assertions in auth/explanation/url tests
+  - Verified green suites: `auth/login`, `auth/password-reset`, `auth/register`, `entities/crud`, `explanations/trace`, `sources/crud`, `sources/document-upload`, `sources/pubmed-import`, `sources/url-extraction`
+- Fix E2E UI contract drift in source flows:
+  - Re-aligned source edit E2E to edit a visible field (title)
+  - Added deterministic PubMed test-mode fallback in backend bulk search/import endpoints
+  - Re-ran source-related E2E suites successfully
+- Stabilize global E2E setup cleanup:
+  - Replaced stale cleanup helper usage with `/api/test/reset-database`
+  - Restored baseline startup data after reset so admin login works immediately
+- Final verification:
+  - Backend: complete and green
+  - Frontend: complete and green (`35 passed`, `524 passed`)
+  - E2E: all previously failing suites now pass in targeted reruns; last full-suite replay had reached the remaining source/import files and those were then verified green directly
+
+### Frontend Stability Audit (2026-03-11)
+
+- Audited for similar high-risk frontend failures:
+  - unstable `react-i18next` mock identities in tests
+  - long-lived timer/polling cleanup
+  - potentially unbounded data-loading loops
+- Fixed shared test harness risk in `frontend/src/test/setup.ts`:
+  - `useTranslation().t` is now stable across renders
+  - `changeLanguage()` mock now resolves immediately
+- Fixed remaining local test risk in `frontend/src/views/__tests__/PropertyDetailView.test.tsx`:
+  - local translator mock is now stable, preventing repeat fetch loops in components that depend on `t`
+- Fixed API client timer leak in `frontend/src/api/client.tsx`:
+  - cross-tab refresh wait path now clears its timeout once the refresh lock resolves
+- Re-verified:
+  - `frontend`: `npx vitest run --maxWorkers=1 --reporter=dot` -> PASS (`35 passed`, `524 passed`)
+  - `frontend`: `npm run -s build` -> PASS
+- Remaining non-blocking warnings:
+  - Resolved on 2026-03-11:
+    - fixed `act(...)` test warnings in `EntitiesView`/`CreateEntityView` by ensuring async effects are either intentionally pending or awaited in tests
+    - moved frontend Vite config from unused `vite.config.json` to active `vite.config.ts`
+    - silenced third-party esbuild `"unsupported-directive"` warnings for `"use client"` in dependencies
+    - split frontend bundle into `mui`, `react-vendor`, `router`, `vendor`, and app chunks to remove the large single-chunk warning
 
 Completed Python type safety improvements: Fixed 108 type errors (27% improvement), focusing on generic type parameters in models, schemas, and services.
 

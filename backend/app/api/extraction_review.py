@@ -4,7 +4,7 @@ API endpoints for extraction review workflow.
 Provides human-in-the-loop review interface for staged LLM extractions.
 """
 import logging
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 

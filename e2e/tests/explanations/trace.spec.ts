@@ -177,9 +177,9 @@ test.describe('Explanation Trace', () => {
     await page.goto(`/explain/${entityId}/non-existent-role`);
 
     // Should show error or empty state
-    const errorMessage = page.locator('text=/not found|no data|error|empty/i');
-    if (await errorMessage.isVisible({ timeout: 3000 })) {
-      await expect(errorMessage).toBeVisible();
+    const errorMessages = page.locator('text=/not found|no data|error|empty/i');
+    if (await errorMessages.first().isVisible({ timeout: 3000 })) {
+      await expect(errorMessages.first()).toBeVisible();
     }
   });
 });

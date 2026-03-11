@@ -7,8 +7,20 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router';
 import { CreateRelationView } from '../CreateRelationView';
+import { NotificationProvider } from '../../notifications/NotificationContext';
 import type { EntityRead } from '../../types/entity';
 import type { SourceRead } from '../../types/source';
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, defaultValueOrOptions?: string | { defaultValue?: string }) => {
+      if (typeof defaultValueOrOptions === 'string') {
+        return defaultValueOrOptions;
+      }
+      return defaultValueOrOptions?.defaultValue || key;
+    },
+  }),
+}));
 
 // Mock the API modules
 vi.mock('../../api/entities', () => ({
@@ -26,6 +38,15 @@ vi.mock('../../api/relations', () => ({
 import { listEntities } from '../../api/entities';
 import { listSources } from '../../api/sources';
 import { createRelation } from '../../api/relations';
+
+const renderWithProviders = () =>
+  render(
+    <NotificationProvider>
+      <BrowserRouter>
+        <CreateRelationView />
+      </BrowserRouter>
+    </NotificationProvider>
+  );
 
 describe('CreateRelationView', () => {
   const mockEntities: EntityRead[] = [
@@ -89,11 +110,7 @@ describe('CreateRelationView', () => {
         }), 100))
       );
 
-      render(
-        <BrowserRouter>
-          <CreateRelationView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       expect(screen.getByRole('progressbar')).toBeInTheDocument();
 
@@ -103,11 +120,7 @@ describe('CreateRelationView', () => {
     });
 
     it('loads entities and sources on mount', async () => {
-      render(
-        <BrowserRouter>
-          <CreateRelationView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       await waitFor(() => {
         expect(listEntities).toHaveBeenCalled();
@@ -118,11 +131,7 @@ describe('CreateRelationView', () => {
 
   describe('Form rendering', () => {
     it('renders all relation fields', async () => {
-      render(
-        <BrowserRouter>
-          <CreateRelationView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       await waitFor(() => {
         expect(screen.getByLabelText(/source/i)).toBeInTheDocument();
@@ -133,11 +142,7 @@ describe('CreateRelationView', () => {
     });
 
     it('renders create button', async () => {
-      render(
-        <BrowserRouter>
-          <CreateRelationView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /create/i })).toBeInTheDocument();
@@ -145,11 +150,7 @@ describe('CreateRelationView', () => {
     });
 
     it('renders add role button', async () => {
-      render(
-        <BrowserRouter>
-          <CreateRelationView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /add role/i })).toBeInTheDocument();
@@ -157,11 +158,7 @@ describe('CreateRelationView', () => {
     });
 
     it('has default confidence of 0.5', async () => {
-      render(
-        <BrowserRouter>
-          <CreateRelationView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       await waitFor(() => {
         const confidenceInput = screen.getByLabelText(/confidence/i) as HTMLInputElement;
@@ -172,11 +169,7 @@ describe('CreateRelationView', () => {
 
   describe('Source selection', () => {
     it('populates source dropdown with loaded sources', async () => {
-      render(
-        <BrowserRouter>
-          <CreateRelationView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       await waitFor(() => {
         const sourceSelect = screen.getByLabelText(/source/i);
@@ -190,11 +183,7 @@ describe('CreateRelationView', () => {
     });
 
     it('allows selecting a source', async () => {
-      render(
-        <BrowserRouter>
-          <CreateRelationView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       await waitFor(() => {
         const sourceSelect = screen.getByLabelText(/source/i);
@@ -214,11 +203,7 @@ describe('CreateRelationView', () => {
 
   describe('Role management', () => {
     it('adds a new role when add role button clicked', async () => {
-      render(
-        <BrowserRouter>
-          <CreateRelationView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       await waitFor(() => {
         expect(screen.queryByLabelText(/entity/i)).not.toBeInTheDocument();
@@ -234,11 +219,7 @@ describe('CreateRelationView', () => {
     });
 
     it('adds multiple roles', async () => {
-      render(
-        <BrowserRouter>
-          <CreateRelationView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       await waitFor(() => {
         const addRoleButton = screen.getByRole('button', { name: /add role/i });
@@ -253,11 +234,7 @@ describe('CreateRelationView', () => {
     });
 
     it('removes a role when delete button clicked', async () => {
-      render(
-        <BrowserRouter>
-          <CreateRelationView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       await waitFor(() => {
         const addRoleButton = screen.getByRole('button', { name: /add role/i });
@@ -286,11 +263,7 @@ describe('CreateRelationView', () => {
     });
 
     it('populates entity dropdown in role', async () => {
-      render(
-        <BrowserRouter>
-          <CreateRelationView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       await waitFor(() => {
         const addRoleButton = screen.getByRole('button', { name: /add role/i });
@@ -309,11 +282,7 @@ describe('CreateRelationView', () => {
     });
 
     it('updates role entity', async () => {
-      render(
-        <BrowserRouter>
-          <CreateRelationView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       await waitFor(() => {
         const addRoleButton = screen.getByRole('button', { name: /add role/i });
@@ -336,11 +305,7 @@ describe('CreateRelationView', () => {
     });
 
     it('updates role type', async () => {
-      render(
-        <BrowserRouter>
-          <CreateRelationView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       await waitFor(() => {
         const addRoleButton = screen.getByRole('button', { name: /add role/i });
@@ -369,11 +334,7 @@ describe('CreateRelationView', () => {
         created_at: new Date().toISOString(),
       });
 
-      render(
-        <BrowserRouter>
-          <CreateRelationView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       // Wait for data to load
       await waitFor(() => {
@@ -438,11 +399,7 @@ describe('CreateRelationView', () => {
         created_at: new Date().toISOString(),
       });
 
-      render(
-        <BrowserRouter>
-          <CreateRelationView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       await waitFor(() => {
         const kindInput = screen.getByLabelText(/relation kind/i);
@@ -461,11 +418,7 @@ describe('CreateRelationView', () => {
     it('displays error message on submission failure', async () => {
       (createRelation as any).mockRejectedValue(new Error('Submission failed'));
 
-      render(
-        <BrowserRouter>
-          <CreateRelationView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       await waitFor(() => {
         const kindInput = screen.getByLabelText(/relation kind/i);
@@ -485,11 +438,7 @@ describe('CreateRelationView', () => {
         () => new Promise((resolve) => setTimeout(resolve, 1000))
       );
 
-      render(
-        <BrowserRouter>
-          <CreateRelationView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       await waitFor(() => {
         const kindInput = screen.getByLabelText(/relation kind/i);
@@ -508,9 +457,11 @@ describe('CreateRelationView', () => {
   describe('Query parameter pre-fill', () => {
     it('pre-fills role from entity_id query parameter', async () => {
       const { container } = render(
-        <BrowserRouter>
-          <CreateRelationView />
-        </BrowserRouter>
+        <NotificationProvider>
+          <BrowserRouter>
+            <CreateRelationView />
+          </BrowserRouter>
+        </NotificationProvider>
       );
 
       // Simulate URL with query parameter
@@ -518,11 +469,7 @@ describe('CreateRelationView', () => {
 
       // Re-render to trigger useEffect
       container.remove();
-      render(
-        <BrowserRouter>
-          <CreateRelationView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       await waitFor(() => {
         expect(screen.queryByLabelText(/entity/i)).toBeInTheDocument();
@@ -532,11 +479,7 @@ describe('CreateRelationView', () => {
 
   describe('Relation fields', () => {
     it('updates kind field', async () => {
-      render(
-        <BrowserRouter>
-          <CreateRelationView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       await waitFor(() => {
         const kindInput = screen.getByLabelText(/relation kind/i);
@@ -548,11 +491,7 @@ describe('CreateRelationView', () => {
     });
 
     it('updates direction field', async () => {
-      render(
-        <BrowserRouter>
-          <CreateRelationView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       await waitFor(() => {
         const directionInput = screen.getByLabelText(/direction/i);
@@ -564,11 +503,7 @@ describe('CreateRelationView', () => {
     });
 
     it('updates confidence field', async () => {
-      render(
-        <BrowserRouter>
-          <CreateRelationView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       await waitFor(() => {
         const confidenceInput = screen.getByLabelText(/confidence/i);

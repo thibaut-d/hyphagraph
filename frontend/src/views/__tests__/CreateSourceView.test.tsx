@@ -7,6 +7,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router';
 import { CreateSourceView } from '../CreateSourceView';
+import { NotificationProvider } from '../../notifications/NotificationContext';
 import * as sourceApi from '../../api/sources';
 
 // Mock the API module
@@ -15,6 +16,17 @@ vi.mock('../../api/sources');
 // Mock cache utils
 vi.mock('../../utils/cacheUtils', () => ({
   invalidateSourceFilterCache: vi.fn(),
+}));
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, defaultValueOrOptions?: string | { defaultValue?: string }) => {
+      if (typeof defaultValueOrOptions === 'string') {
+        return defaultValueOrOptions;
+      }
+      return defaultValueOrOptions?.defaultValue || key;
+    },
+  }),
 }));
 
 // Mock react-router navigation
@@ -27,6 +39,15 @@ vi.mock('react-router', async () => {
   };
 });
 
+const renderWithProviders = () =>
+  render(
+    <NotificationProvider>
+      <BrowserRouter>
+        <CreateSourceView />
+      </BrowserRouter>
+    </NotificationProvider>
+  );
+
 describe('CreateSourceView', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -34,11 +55,7 @@ describe('CreateSourceView', () => {
 
   describe('Form rendering', () => {
     it('renders form with required fields', () => {
-      render(
-        <BrowserRouter>
-          <CreateSourceView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       expect(screen.getByLabelText(/type/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/title/i)).toBeInTheDocument();
@@ -47,11 +64,7 @@ describe('CreateSourceView', () => {
     }, 10000);
 
     it('renders optional fields', () => {
-      render(
-        <BrowserRouter>
-          <CreateSourceView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       expect(screen.getByLabelText(/authors/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/publication year/i)).toBeInTheDocument();
@@ -62,32 +75,20 @@ describe('CreateSourceView', () => {
     });
 
     it('shows cancel button', () => {
-      render(
-        <BrowserRouter>
-          <CreateSourceView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
     });
 
     it('has default kind value of article', () => {
-      render(
-        <BrowserRouter>
-          <CreateSourceView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       // Check the displayed text content for MUI Select
       expect(screen.getByText('article')).toBeInTheDocument();
     });
 
     it('has default trust level of 0.5', () => {
-      render(
-        <BrowserRouter>
-          <CreateSourceView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       const trustLevelInput = screen.getByLabelText(/quality score/i) as HTMLInputElement;
       expect(trustLevelInput.value).toBe('0.5');
@@ -96,11 +97,7 @@ describe('CreateSourceView', () => {
 
   describe('Form validation', () => {
     it('validates required title field', async () => {
-      render(
-        <BrowserRouter>
-          <CreateSourceView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       const urlInput = screen.getByLabelText(/url/i);
       fireEvent.change(urlInput, { target: { value: 'https://example.com' } });
@@ -119,11 +116,7 @@ describe('CreateSourceView', () => {
     });
 
     it('validates required url field', async () => {
-      render(
-        <BrowserRouter>
-          <CreateSourceView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       const titleInput = screen.getByLabelText(/title/i);
       fireEvent.change(titleInput, { target: { value: 'Test Source' } });
@@ -153,11 +146,7 @@ describe('CreateSourceView', () => {
 
       vi.mocked(sourceApi.createSource).mockResolvedValue(mockSource);
 
-      render(
-        <BrowserRouter>
-          <CreateSourceView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       const titleInput = screen.getByLabelText(/title/i);
       const urlInput = screen.getByLabelText(/url/i);
@@ -187,11 +176,7 @@ describe('CreateSourceView', () => {
 
       vi.mocked(sourceApi.createSource).mockResolvedValue(mockSource);
 
-      render(
-        <BrowserRouter>
-          <CreateSourceView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       const titleInput = screen.getByLabelText(/title/i);
       const urlInput = screen.getByLabelText(/url/i);
@@ -236,11 +221,7 @@ describe('CreateSourceView', () => {
 
       vi.mocked(sourceApi.createSource).mockResolvedValue(mockSource);
 
-      render(
-        <BrowserRouter>
-          <CreateSourceView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       // Fill all fields - use fireEvent.change for all inputs including Select
       const titleInput = screen.getByLabelText(/title/i);
@@ -298,11 +279,7 @@ describe('CreateSourceView', () => {
 
       vi.mocked(sourceApi.createSource).mockResolvedValue(mockSource);
 
-      render(
-        <BrowserRouter>
-          <CreateSourceView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       const titleInput = screen.getByLabelText(/title/i);
       const urlInput = screen.getByLabelText(/url/i);
@@ -336,11 +313,7 @@ describe('CreateSourceView', () => {
 
       vi.mocked(sourceApi.createSource).mockResolvedValue(mockSource);
 
-      render(
-        <BrowserRouter>
-          <CreateSourceView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       const titleInput = screen.getByLabelText(/title/i);
       const urlInput = screen.getByLabelText(/url/i);
@@ -363,11 +336,7 @@ describe('CreateSourceView', () => {
 
   describe('Cancel functionality', () => {
     it('navigates to sources list when cancel clicked', () => {
-      render(
-        <BrowserRouter>
-          <CreateSourceView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       const cancelButton = screen.getByRole('button', { name: /cancel/i });
       fireEvent.click(cancelButton);
@@ -376,11 +345,7 @@ describe('CreateSourceView', () => {
     });
 
     it('navigates to sources list when back button clicked', () => {
-      render(
-        <BrowserRouter>
-          <CreateSourceView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       const backButton = screen.getByRole('button', { name: '' }); // ArrowBackIcon button
       fireEvent.click(backButton);
@@ -395,11 +360,7 @@ describe('CreateSourceView', () => {
         new Error('Creation failed')
       );
 
-      render(
-        <BrowserRouter>
-          <CreateSourceView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       const titleInput = screen.getByLabelText(/title/i);
       const urlInput = screen.getByLabelText(/url/i);
@@ -422,11 +383,7 @@ describe('CreateSourceView', () => {
         new Error('Server error')
       );
 
-      render(
-        <BrowserRouter>
-          <CreateSourceView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       const titleInput = screen.getByLabelText(/title/i);
       const urlInput = screen.getByLabelText(/url/i);
@@ -453,11 +410,7 @@ describe('CreateSourceView', () => {
         () => new Promise((resolve) => setTimeout(resolve, 1000))
       );
 
-      render(
-        <BrowserRouter>
-          <CreateSourceView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       const titleInput = screen.getByLabelText(/title/i);
       const urlInput = screen.getByLabelText(/url/i);
@@ -480,11 +433,7 @@ describe('CreateSourceView', () => {
         () => new Promise((resolve) => setTimeout(resolve, 1000))
       );
 
-      render(
-        <BrowserRouter>
-          <CreateSourceView />
-        </BrowserRouter>
-      );
+      renderWithProviders();
 
       const titleInput = screen.getByLabelText(/title/i);
       const urlInput = screen.getByLabelText(/url/i);

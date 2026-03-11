@@ -5,10 +5,12 @@
  * consensus levels, knowledge gaps, and navigation.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render as rtlRender, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactElement } from "react";
 import { BrowserRouter } from "react-router-dom";
 import { SynthesisView } from "../SynthesisView";
+import { NotificationProvider } from "../../notifications/NotificationContext";
 import type { EntityRead } from "../../api/entities";
 import type { InferenceRead } from "../../types/inference";
 import type { RelationRead } from "../../types/relation";
@@ -60,6 +62,9 @@ vi.mock("../../utils/i18nLabel", () => ({
     return "";
   },
 }));
+
+const render = (ui: ReactElement) =>
+  rtlRender(<NotificationProvider>{ui}</NotificationProvider>);
 
 describe("SynthesisView", () => {
   const mockEntity: EntityRead = {
@@ -165,8 +170,10 @@ describe("SynthesisView", () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByRole("alert")).toBeInTheDocument();
-        expect(screen.getByText(/Failed to load synthesis/i)).toBeInTheDocument();
+        expect(screen.getAllByRole("alert").length).toBeGreaterThan(0);
+        expect(
+          screen.getAllByText(/Failed to load synthesis/i).length
+        ).toBeGreaterThan(0);
       });
     });
   });

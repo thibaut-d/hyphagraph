@@ -6,6 +6,8 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 
+const stableTranslate = (key: string, defaultValue?: string) => defaultValue || key;
+
 // Mock localStorage for tests
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
@@ -32,9 +34,9 @@ Object.defineProperty(window, 'localStorage', {
 // This allows components to render with English text in tests
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, defaultValue?: string) => defaultValue || key,
+    t: stableTranslate,
     i18n: {
-      changeLanguage: () => new Promise(() => {}),
+      changeLanguage: () => Promise.resolve(),
       language: 'en',
     },
   }),

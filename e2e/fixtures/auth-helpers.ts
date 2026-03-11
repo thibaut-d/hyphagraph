@@ -138,11 +138,12 @@ export async function clearAuthState(page: Page): Promise<void> {
     localStorage.clear();
     sessionStorage.clear();
   });
-  // Wait for any pending requests to complete
-  await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {
-    // Ignore timeout - sometimes there are long-polling requests
+  await page.goto('/account');
+  await page.waitForLoadState('domcontentloaded');
+  await page.getByRole('button', { name: /login/i }).waitFor({
+    state: 'visible',
+    timeout: 10000,
   });
-  await page.waitForTimeout(500);
 }
 
 /**

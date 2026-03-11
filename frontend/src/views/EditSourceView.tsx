@@ -48,6 +48,7 @@ export function EditSourceView() {
   const [trustLevel, setTrustLevel] = useState("0.5");
   const [summaryEn, setSummaryEn] = useState("");
   const [summaryFr, setSummaryFr] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -75,6 +76,7 @@ export function EditSourceView() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     if (!title.trim()) {
       setError(t("create_source.title_required", "Title is required"));
       return;
@@ -118,6 +120,7 @@ export function EditSourceView() {
       // Navigate back to the source detail page
       navigate(`/sources/${id}`);
     } catch (e: any) {
+      setError(e?.message ?? t("common.error", "An error occurred"));
       showError(e);
       setSaving(false);
     }

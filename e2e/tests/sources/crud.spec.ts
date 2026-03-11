@@ -65,7 +65,7 @@ test.describe('Source CRUD Operations', () => {
   test('should edit a source', async ({ page }) => {
     // Create a source first
     const originalTitle = generateSourceName('edit-test');
-    const updatedSummary = 'Updated summary for source';
+    const updatedTitle = generateSourceName('edit-test-updated');
 
     await page.goto('/sources/new');
     await page.getByRole('textbox', { name: 'Title' }).fill(originalTitle);
@@ -82,10 +82,10 @@ test.describe('Source CRUD Operations', () => {
     // Should navigate to edit page
     await expect(page).toHaveURL(/\/sources\/[a-f0-9-]+\/edit/);
 
-    // Update the summary
-    const summaryField = page.getByRole('textbox', { name: /summary.*english/i });
-    await summaryField.clear();
-    await summaryField.fill(updatedSummary);
+    // Update the title
+    const titleField = page.getByRole('textbox', { name: 'Title' });
+    await titleField.clear();
+    await titleField.fill(updatedTitle);
 
     // Submit form
     await page.getByRole('button', { name: /save|update/i }).click();
@@ -93,8 +93,8 @@ test.describe('Source CRUD Operations', () => {
     // Should navigate back to detail page
     await page.waitForURL(/\/sources\/[a-f0-9-]+$/);
 
-    // Edit successful - summary field is not displayed on detail page, but we can verify navigation worked
-    await expect(page.locator(`text=${originalTitle}`)).toBeVisible();
+    // Edit successful - verify updated title is shown on the detail page
+    await expect(page.locator(`text=${updatedTitle}`)).toBeVisible();
   });
 
   test('should delete a source', async ({ page }) => {

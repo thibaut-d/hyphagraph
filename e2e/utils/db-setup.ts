@@ -9,6 +9,29 @@
 
 const API_URL = process.env.API_URL || 'http://localhost:8000';
 
+async function waitForTestApi(maxAttempts: number = 30): Promise<void> {
+  let lastError: unknown = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      const response = await fetch(`${API_URL}/api/test/health`);
+      if (response.ok) {
+        return;
+      }
+
+      lastError = new Error(`Test API health check returned ${response.status}`);
+    } catch (error) {
+      lastError = error;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error('Timed out waiting for test API health endpoint');
+}
+
 /**
  * Reset the database to a clean state
  * This should be called before each test suite
@@ -18,20 +41,34 @@ const API_URL = process.env.API_URL || 'http://localhost:8000';
  */
 export async function resetDatabase(): Promise<void> {
   try {
-    const response = await fetch(`${API_URL}/api/test/reset-database`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    await waitForTestApi();
 
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Failed to reset database: ${response.status} - ${error}`);
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= 5; attempt += 1) {
+      try {
+        const response = await fetch(`${API_URL}/api/test/reset-database`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          const error = await response.text();
+          throw new Error(`Failed to reset database: ${response.status} - ${error}`);
+        }
+
+        const result = await response.json();
+        console.log(`Database reset: ${result.tables_truncated} tables truncated`);
+        return;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
     }
 
-    const result = await response.json();
-    console.log(`Database reset: ${result.tables_truncated} tables truncated`);
+    throw lastError ?? new Error('Failed to reset database');
   } catch (error) {
     console.error('Database reset failed:', error);
     throw error;

@@ -176,7 +176,6 @@ export function SourceDetailView() {
 
   const handleCancelExtraction = () => {
     setExtractionPreview(null);
-    setUploadError(null);
     setUploadedFileName(null);
   };
 

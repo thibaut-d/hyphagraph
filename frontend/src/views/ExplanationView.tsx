@@ -43,20 +43,25 @@ export function ExplanationView() {
 
   const [explanation, setExplanation] = useState<ExplanationRead | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
     if (!entityId || !roleType) {
+      setError("Missing entity ID or role type");
       showError(new Error("Missing entity ID or role type"));
       setLoading(false);
       return;
     }
 
     setLoading(true);
+    setError(null);
     getExplanation(entityId, roleType)
       .then((data) => {
         setExplanation(data);
       })
       .catch((err) => {
         console.error("Failed to load explanation:", err);
+        setError(err instanceof Error ? err.message : "Failed to load explanation");
         showError(err);
       })
       .finally(() => {

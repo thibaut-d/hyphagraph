@@ -33,11 +33,13 @@ services:
       DATABASE_URL: postgresql+asyncpg://hyphagraph_test:hyphagraph_test_password@db:5432/hyphagraph_test
       SECRET_KEY: test-secret-key-for-e2e-testing-only
       ENVIRONMENT: test
+      TESTING: "true"
       # Admin user credentials (must match test-data.ts)
       ADMIN_EMAIL: admin@example.com
       ADMIN_PASSWORD: changeme123
       # Fast bcrypt for E2E tests (10=100ms vs 12=400ms)
       BCRYPT_ROUNDS: 10
+      RATE_LIMIT_ENABLED: "false"
       # SMTP settings - use a test SMTP service or disable email
       SMTP_HOST: localhost
       SMTP_PORT: 1025

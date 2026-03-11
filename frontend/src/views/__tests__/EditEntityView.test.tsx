@@ -5,12 +5,24 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { BrowserRouter, Route, Routes } from 'react-router';
+import type { ReactElement } from 'react';
+import { MemoryRouter, Route, Routes } from 'react-router';
 import { EditEntityView } from '../EditEntityView';
+import { NotificationProvider } from '../../notifications/NotificationContext';
 import * as entityApi from '../../api/entities';
 
 // Mock the API module
 vi.mock('../../api/entities');
+
+vi.mock('../../notifications/NotificationContext', () => ({
+  NotificationProvider: ({ children }: { children: ReactElement }) => children,
+  useNotification: () => ({
+    showError: vi.fn(),
+    showInfo: vi.fn(),
+    showSuccess: vi.fn(),
+    showWarning: vi.fn(),
+  }),
+}));
 
 // Mock react-router navigation
 const mockNavigate = vi.fn();
@@ -56,16 +68,20 @@ describe('EditEntityView', () => {
     vi.mocked(entityApi.getEntity).mockResolvedValue(mockEntity);
   });
 
-  it('loads and displays entity data', async () => {
-    const { MemoryRouter } = await import('react-router');
+  const renderWithNotifications = (ui: ReactElement) =>
+    render(<NotificationProvider>{ui}</NotificationProvider>);
 
-    render(
-      <MemoryRouter initialEntries={['/entities/entity-123/edit']}>
+  const renderEditView = (initialEntry = '/entities/entity-123/edit') =>
+    renderWithNotifications(
+      <MemoryRouter initialEntries={[initialEntry]}>
         <Routes>
           <Route path="/entities/:id/edit" element={<EditEntityView />} />
         </Routes>
       </MemoryRouter>
     );
+
+  it('loads and displays entity data', async () => {
+    renderEditView();
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('aspirin')).toBeInTheDocument();
@@ -75,13 +91,9 @@ describe('EditEntityView', () => {
   });
 
   it('displays loading state initially', () => {
-    render(
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<EditEntityView />} />
-        </Routes>
-      </BrowserRouter>
-    );
+    vi.mocked(entityApi.getEntity).mockImplementation(() => new Promise(() => {}));
+
+    renderEditView();
 
     expect(screen.getByRole('progressbar')).toBeInTheDocument();
   });
@@ -91,13 +103,7 @@ describe('EditEntityView', () => {
       new Error('Entity not found')
     );
 
-    render(
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<EditEntityView />} />
-        </Routes>
-      </BrowserRouter>
-    );
+    renderEditView();
 
     await waitFor(() => {
       expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
@@ -105,13 +111,7 @@ describe('EditEntityView', () => {
   });
 
   it('renders UI category picker with current value', async () => {
-    render(
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<EditEntityView />} />
-        </Routes>
-      </BrowserRouter>
-    );
+    renderEditView();
 
     // Wait for entity to load and category picker to render
     await waitFor(() => {
@@ -123,13 +123,7 @@ describe('EditEntityView', () => {
     const updatedEntity = { ...mockEntity, slug: 'paracetamol' };
     vi.mocked(entityApi.updateEntity).mockResolvedValue(updatedEntity);
 
-    render(
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<EditEntityView />} />
-        </Routes>
-      </BrowserRouter>
-    );
+    renderEditView();
 
     // Wait for entity to load
     await waitFor(() => {
@@ -164,13 +158,7 @@ describe('EditEntityView', () => {
     const updatedEntity = { ...mockEntity, ui_category_id: 'cat-2' };
     vi.mocked(entityApi.updateEntity).mockResolvedValue(updatedEntity);
 
-    render(
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<EditEntityView />} />
-        </Routes>
-      </BrowserRouter>
-    );
+    renderEditView();
 
     // Wait for entity to load
     await waitFor(() => {
@@ -199,13 +187,7 @@ describe('EditEntityView', () => {
   });
 
   it('renders entity terms manager', async () => {
-    render(
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<EditEntityView />} />
-        </Routes>
-      </BrowserRouter>
-    );
+    renderEditView();
 
     // Wait for entity to load
     await waitFor(() => {
@@ -214,13 +196,7 @@ describe('EditEntityView', () => {
   });
 
   it('validates required slug field', async () => {
-    render(
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<EditEntityView />} />
-        </Routes>
-      </BrowserRouter>
-    );
+    renderEditView();
 
     // Wait for entity to load
     await waitFor(() => {
@@ -246,13 +222,7 @@ describe('EditEntityView', () => {
       new Error('Update failed')
     );
 
-    render(
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<EditEntityView />} />
-        </Routes>
-      </BrowserRouter>
-    );
+    renderEditView();
 
     // Wait for entity to load
     await waitFor(() => {

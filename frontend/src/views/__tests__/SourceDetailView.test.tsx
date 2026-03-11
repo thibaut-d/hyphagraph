@@ -7,6 +7,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { BrowserRouter, Routes, Route } from 'react-router';
 import { SourceDetailView } from '../SourceDetailView';
+import { NotificationProvider } from '../../notifications/NotificationContext';
 import type { SourceRead } from '../../types/source';
 import type { RelationRead } from '../../types/relation';
 
@@ -26,6 +27,17 @@ vi.mock('../../utils/cacheUtils', () => ({
   invalidateSourceFilterCache: vi.fn(),
 }));
 
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, defaultValueOrOptions?: string | { defaultValue?: string }) => {
+      if (typeof defaultValueOrOptions === 'string') {
+        return defaultValueOrOptions;
+      }
+      return defaultValueOrOptions?.defaultValue || key;
+    },
+  }),
+}));
+
 import { getSource, deleteSource } from '../../api/sources';
 import { listRelationsBySource, deleteRelation } from '../../api/relations';
 
@@ -42,11 +54,13 @@ vi.mock('react-router', async () => {
 // Helper to render with router and params
 const renderWithRouter = (sourceId: string) => {
   return render(
-    <BrowserRouter>
-      <Routes>
-        <Route path="/sources/:id" element={<SourceDetailView />} />
-      </Routes>
-    </BrowserRouter>,
+    <NotificationProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/sources/:id" element={<SourceDetailView />} />
+        </Routes>
+      </BrowserRouter>
+    </NotificationProvider>,
     {
       wrapper: ({ children }) => {
         window.history.pushState({}, '', `/sources/${sourceId}`);
@@ -120,7 +134,7 @@ describe('SourceDetailView', () => {
       renderWithRouter('123e4567-e89b-12d3-a456-426614174000');
 
       await waitFor(() => {
-        expect(screen.getByText(/2020/)).toBeInTheDocument();
+        expect(screen.getByText('2020')).toBeInTheDocument();
       });
     });
 
@@ -128,7 +142,7 @@ describe('SourceDetailView', () => {
       renderWithRouter('123e4567-e89b-12d3-a456-426614174000');
 
       await waitFor(() => {
-        expect(screen.getByText(/85%/)).toBeInTheDocument();
+        expect(screen.getByText('Quality: 85%')).toBeInTheDocument();
       });
     });
 
@@ -161,7 +175,9 @@ describe('SourceDetailView', () => {
       renderWithRouter('123e4567-e89b-12d3-a456-426614174000');
 
       await waitFor(() => {
-        expect(screen.getByText(/relations/i)).toBeInTheDocument();
+        expect(
+          screen.getByRole('heading', { name: 'Relations' })
+        ).toBeInTheDocument();
       }, { timeout: 3000 });
     });
 
@@ -169,8 +185,10 @@ describe('SourceDetailView', () => {
       renderWithRouter('123e4567-e89b-12d3-a456-426614174000');
 
       await waitFor(() => {
-        expect(screen.getByText(/effect \(positive\)/i)).toBeInTheDocument();
-        expect(screen.getByText(/mechanism \(supports\)/i)).toBeInTheDocument();
+        expect(screen.getByText('effect')).toBeInTheDocument();
+        expect(screen.getByText('mechanism')).toBeInTheDocument();
+        expect(screen.getByText('positive')).toBeInTheDocument();
+        expect(screen.getByText('supports')).toBeInTheDocument();
       }, { timeout: 3000 });
     });
 

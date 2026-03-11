@@ -19,8 +19,11 @@ export function ForgotPasswordView() {
   const [email, setEmail] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSubmit = async () => {    setSuccess(false);
+  const handleSubmit = async () => {
+    setError("");
+    setSuccess(false);
     setLoading(true);
 
     try {
@@ -28,6 +31,7 @@ export function ForgotPasswordView() {
       setSuccess(true);
       setEmail("");
     } catch (e: any) {
+      setError(e?.message ?? t("forgot_password.error", "Failed to send reset link"));
       showError(e);
     } finally {
       setLoading(false);

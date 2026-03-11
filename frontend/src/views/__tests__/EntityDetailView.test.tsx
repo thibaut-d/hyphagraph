@@ -5,8 +5,10 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router';
 import { EntityDetailView } from '../EntityDetailView';
+import { NotificationProvider } from '../../notifications/NotificationContext';
 import type { EntityRead } from '../../types/entity';
 import type { InferenceRead } from '../../types/inference';
 
@@ -18,6 +20,82 @@ vi.mock('../../api/entities', () => ({
 
 vi.mock('../../api/inferences', () => ({
   getInferenceForEntity: vi.fn(),
+}));
+
+vi.mock('../../notifications/NotificationContext', () => ({
+  NotificationProvider: ({ children }: { children: ReactNode }) => children,
+  useNotification: () => ({
+    showError: vi.fn(),
+    showInfo: vi.fn(),
+    showSuccess: vi.fn(),
+    showWarning: vi.fn(),
+  }),
+}));
+
+vi.mock('../../api/sources', () => ({
+  getSource: vi.fn().mockResolvedValue({
+    id: 'src-1',
+    kind: 'paper',
+    title: 'Mock source',
+    trust_level: 0.8,
+  }),
+}));
+
+vi.mock('../../components/entity/EntityDetailHeader', () => ({
+  EntityDetailHeader: ({
+    entity,
+    onDeleteClick,
+  }: {
+    entity: { slug: string; kind: string; id: string };
+    onDeleteClick: () => void;
+  }) => (
+    <div>
+      <div>{entity.slug}</div>
+      <div>{entity.kind}</div>
+      <a href={`/entities/${entity.id}/edit`}>Edit</a>
+      <button type="button" onClick={onDeleteClick}>
+        Delete
+      </button>
+      <div>Create relation</div>
+    </div>
+  ),
+}));
+
+vi.mock('../../components/entity/InferenceSection', () => ({
+  InferenceSection: ({
+    scopeFilterPanel,
+  }: {
+    scopeFilterPanel: ReactNode;
+  }) => (
+    <section>
+      <h2>Related assertions</h2>
+      {scopeFilterPanel}
+    </section>
+  ),
+}));
+
+vi.mock('../../components/entity/EntityDeleteDialog', () => ({
+  EntityDeleteDialog: ({
+    open,
+    onClose,
+    onConfirm,
+  }: {
+    open: boolean;
+    onClose: () => void;
+    onConfirm: () => void;
+  }) =>
+    open ? (
+      <div>
+        <div>Delete entity</div>
+        <div>Are you sure</div>
+        <button type="button" onClick={onClose}>
+          Cancel
+        </button>
+        <button type="button" onClick={onConfirm}>
+          Delete
+        </button>
+      </div>
+    ) : null,
 }));
 
 import { getEntity, deleteEntity } from '../../api/entities';
@@ -36,11 +114,13 @@ vi.mock('react-router', async () => {
 // Helper to render with router and params
 const renderWithRouter = (entityId: string) => {
   return render(
-    <BrowserRouter>
-      <Routes>
-        <Route path="/entities/:id" element={<EntityDetailView />} />
-      </Routes>
-    </BrowserRouter>,
+    <NotificationProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/entities/:id" element={<EntityDetailView />} />
+        </Routes>
+      </BrowserRouter>
+    </NotificationProvider>,
     {
       wrapper: ({ children }) => {
         // Set up location to match the route

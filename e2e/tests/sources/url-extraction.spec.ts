@@ -69,7 +69,7 @@ test.describe('URL-based Document Extraction', () => {
     await submitButton.click();
 
     // Should show error message in the dialog
-    await expect(page.getByText(/please.*enter.*valid.*url/i)).toBeVisible({ timeout: 2000 });
+    await expect(page.getByText(/please.*enter.*valid.*url/i).first()).toBeVisible({ timeout: 2000 });
   });
 
   test('should validate URL input is required', async ({ page }) => {

@@ -25,6 +25,7 @@ class Source(Base, UUIDMixin):
         back_populates="source",
         cascade="all, delete-orphan",
         order_by="SourceRevision.created_at.desc()",
+        lazy="immediate",
     )
 
     relations = relationship(

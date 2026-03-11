@@ -16,7 +16,7 @@ from app.mappers.entity_mapper import (
 from app.utils.revision_helpers import get_current_revision, create_new_revision
 from app.services.derived_properties_service import DerivedPropertiesService
 from app.services.entity_query_builder import EntityQueryBuilder
-from app.utils.errors import EntityNotFoundException, ValidationException, ErrorCode
+from app.utils.errors import AppException, EntityNotFoundException, ValidationException, ErrorCode
 
 
 class EntityService:
@@ -65,7 +65,9 @@ class EntityService:
             error_msg = str(e.orig).lower()
             if ('ix_entity_revisions_slug_current_unique' in error_msg or
                 'unique constraint failed: entity_revisions.slug' in error_msg):
-                raise ValidationException(
+                raise AppException(
+                    status_code=409,
+                    error_code=ErrorCode.ENTITY_SLUG_CONFLICT,
                     message="Entity slug already exists",
                     field="slug",
                     details=f"An entity with slug '{payload.slug}' already exists",
