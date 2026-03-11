@@ -38,7 +38,6 @@ import { saveExtraction } from "../api/extraction";
 import { EntityLinkingSuggestions } from "./EntityLinkingSuggestions";
 import { ExtractedRelationsList } from "./ExtractedRelationsList";
 import { getRelationKey } from "../utils/extractionRelation";
-import { useNotification } from "../notifications/NotificationContext";
 
 interface ExtractionPreviewProps {
   preview: DocumentExtractionPreview;
@@ -81,9 +80,11 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
     new Set(preview.relations.map(getRelationKey))
   );
 
+  const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const handleSave = async () => {
     setSaving(true);
+    setError(null);
     try {
       // Build save request from user decisions
       const entitiesToCreate = preview.entities.filter(
@@ -111,6 +112,7 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
       onSaveComplete(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save extraction");
+    } finally {
       setSaving(false);
     }
   };
@@ -329,4 +331,3 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
     </Paper>
   );
 };
-

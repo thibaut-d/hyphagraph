@@ -8,6 +8,7 @@ Handles:
 - Auto-commit logic for high-confidence extractions
 - Review statistics and querying
 """
+
 import logging
 from uuid import UUID
 from datetime import datetime
@@ -50,7 +51,7 @@ class ExtractionReviewService:
         db: AsyncSession,
         auto_commit_enabled: bool = True,
         auto_commit_threshold: float = 0.9,
-        require_no_flags_for_auto_commit: bool = True
+        require_no_flags_for_auto_commit: bool = True,
     ):
         """
         Initialize review service.
@@ -101,7 +102,9 @@ class ExtractionReviewService:
         """
         # Determine status based on validation
         is_high_confidence = self._is_auto_commit_eligible(validation_result)
-        initial_status = ExtractionStatus.AUTO_VERIFIED if is_high_confidence else ExtractionStatus.PENDING
+        initial_status = (
+            ExtractionStatus.AUTO_VERIFIED if is_high_confidence else ExtractionStatus.PENDING
+        )
 
         # Create staged extraction record
         staged = StagedExtraction(
@@ -223,7 +226,7 @@ class ExtractionReviewService:
         extraction_id: UUID,
         reviewer_id: UUID,
         notes: str | None = None,
-        auto_materialize: bool = True
+        auto_materialize: bool = True,
     ) -> MaterializationResult:
         """
         Approve a staged extraction and optionally materialize it.
@@ -248,7 +251,7 @@ class ExtractionReviewService:
                 success=False,
                 extraction_id=extraction_id,
                 extraction_type="entity",  # Dummy value
-                error="Staged extraction not found"
+                error="Staged extraction not found",
             )
 
         if staged.status != ExtractionStatus.PENDING:
@@ -256,7 +259,7 @@ class ExtractionReviewService:
                 success=False,
                 extraction_id=extraction_id,
                 extraction_type=staged.extraction_type.value,
-                error=f"Extraction already {staged.status.value}"
+                error=f"Extraction already {staged.status.value}",
             )
 
         # Update status
@@ -269,19 +272,24 @@ class ExtractionReviewService:
 
         # Materialize if requested
         if auto_materialize:
+            if staged.materialized_entity_id or staged.materialized_relation_id:
+                return MaterializationResult(
+                    success=True,
+                    extraction_id=extraction_id,
+                    extraction_type=staged.extraction_type.value,
+                    materialized_entity_id=staged.materialized_entity_id,
+                    materialized_relation_id=staged.materialized_relation_id,
+                )
             return await self.materialize_extraction(extraction_id)
         else:
             return MaterializationResult(
                 success=True,
                 extraction_id=extraction_id,
-                extraction_type=staged.extraction_type.value
+                extraction_type=staged.extraction_type.value,
             )
 
     async def reject_extraction(
-        self,
-        extraction_id: UUID,
-        reviewer_id: UUID,
-        notes: str | None = None
+        self, extraction_id: UUID, reviewer_id: UUID, notes: str | None = None
     ) -> bool:
         """
         Reject a staged extraction.
@@ -316,7 +324,7 @@ class ExtractionReviewService:
         extraction_ids: list[UUID],
         decision: str,  # "approve" or "reject"
         reviewer_id: UUID,
-        notes: str | None = None
+        notes: str | None = None,
     ) -> dict:
         """
         Review multiple extractions at once.
@@ -339,10 +347,7 @@ class ExtractionReviewService:
             try:
                 if decision == "approve":
                     result = await self.approve_extraction(
-                        extraction_id,
-                        reviewer_id,
-                        notes,
-                        auto_materialize=True
+                        extraction_id, reviewer_id, notes, auto_materialize=True
                     )
                     if result.success:
                         succeeded += 1
@@ -398,7 +403,7 @@ class ExtractionReviewService:
                 success=False,
                 extraction_id=extraction_id,
                 extraction_type="entity",  # Dummy
-                error="Staged extraction not found"
+                error="Staged extraction not found",
             )
 
         if staged.status != ExtractionStatus.APPROVED:
@@ -406,13 +411,12 @@ class ExtractionReviewService:
                 success=False,
                 extraction_id=extraction_id,
                 extraction_type=staged.extraction_type.value,
-                error=f"Extraction not approved (status: {staged.status.value})"
+                error=f"Extraction not approved (status: {staged.status.value})",
             )
 
         try:
             if staged.extraction_type == ExtractionType.ENTITY:
                 entity_id = await self._materialize_entity(staged)
-                staged.status = ExtractionStatus.MATERIALIZED
                 staged.materialized_entity_id = entity_id
                 await self.db.commit()
 
@@ -420,12 +424,11 @@ class ExtractionReviewService:
                     success=True,
                     extraction_id=extraction_id,
                     extraction_type="entity",
-                    materialized_entity_id=entity_id
+                    materialized_entity_id=entity_id,
                 )
 
             elif staged.extraction_type == ExtractionType.RELATION:
                 relation_id = await self._materialize_relation(staged)
-                staged.status = ExtractionStatus.MATERIALIZED
                 staged.materialized_relation_id = relation_id
                 await self.db.commit()
 
@@ -433,7 +436,7 @@ class ExtractionReviewService:
                     success=True,
                     extraction_id=extraction_id,
                     extraction_type="relation",
-                    materialized_relation_id=relation_id
+                    materialized_relation_id=relation_id,
                 )
 
             else:  # CLAIM
@@ -442,7 +445,7 @@ class ExtractionReviewService:
                     success=False,
                     extraction_id=extraction_id,
                     extraction_type="claim",
-                    error="Claim materialization not yet implemented"
+                    error="Claim materialization not yet implemented",
                 )
 
         except Exception as e:
@@ -452,7 +455,7 @@ class ExtractionReviewService:
                 success=False,
                 extraction_id=extraction_id,
                 extraction_type=staged.extraction_type.value,
-                error=str(e)
+                error=str(e),
             )
 
     async def _materialize_entity(self, staged: StagedExtraction) -> UUID:
@@ -562,8 +565,7 @@ class ExtractionReviewService:
     # =========================================================================
 
     async def list_extractions(
-        self,
-        filters: StagedExtractionFilters
+        self, filters: StagedExtractionFilters
     ) -> tuple[list[StagedExtraction], int]:
         """
         List staged extractions with filtering and pagination.
@@ -640,10 +642,9 @@ class ExtractionReviewService:
         """
         # Count by status
         status_counts = await self.db.execute(
-            select(
-                StagedExtraction.status,
-                func.count(StagedExtraction.id)
-            ).group_by(StagedExtraction.status)
+            select(StagedExtraction.status, func.count(StagedExtraction.id)).group_by(
+                StagedExtraction.status
+            )
         )
         status_map = {row[0]: row[1] for row in status_counts}
 
@@ -654,10 +655,7 @@ class ExtractionReviewService:
 
         # Count pending by type
         type_counts = await self.db.execute(
-            select(
-                StagedExtraction.extraction_type,
-                func.count(StagedExtraction.id)
-            )
+            select(StagedExtraction.extraction_type, func.count(StagedExtraction.id))
             .where(StagedExtraction.status == ExtractionStatus.PENDING)
             .group_by(StagedExtraction.extraction_type)
         )
@@ -674,9 +672,8 @@ class ExtractionReviewService:
                 func.count(StagedExtraction.id).filter(StagedExtraction.validation_score >= 0.9),
                 func.count(StagedExtraction.id).filter(
                     func.json_array_length(StagedExtraction.validation_flags) > 0
-                )
-            )
-            .where(StagedExtraction.status == ExtractionStatus.PENDING)
+                ),
+            ).where(StagedExtraction.status == ExtractionStatus.PENDING)
         )
         quality_row = quality_result.one()
         avg_score = float(quality_row[0] or 0.0)
@@ -762,7 +759,9 @@ class ExtractionReviewService:
                     materialized_count += 1
                 else:
                     failed_count += 1
-                    logger.warning(f"Failed to materialize auto-approved extraction {staged.id}: {result.error}")
+                    logger.warning(
+                        f"Failed to materialize auto-approved extraction {staged.id}: {result.error}"
+                    )
 
             except Exception as e:
                 failed_count += 1

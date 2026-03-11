@@ -3,6 +3,7 @@ API endpoints for document-based knowledge extraction workflow.
 
 Provides end-to-end document upload → extraction → linking → storage pipeline.
 """
+
 import logging
 from fastapi import APIRouter, Depends, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,19 +12,25 @@ from uuid import UUID
 from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.models.user import User
-from app.utils.errors import AppException, ErrorCode, SourceNotFoundException, ValidationException, LLMServiceUnavailableException
+from app.utils.errors import (
+    AppException,
+    ErrorCode,
+    SourceNotFoundException,
+    ValidationException,
+    LLMServiceUnavailableException,
+)
 from app.schemas.source import (
     DocumentExtractionPreview,
     SaveExtractionRequest,
     SaveExtractionResult,
-    EntityLinkMatch
+    EntityLinkMatch,
 )
 from app.services.source_service import SourceService
 from app.services.batch_extraction_orchestrator import BatchExtractionOrchestrator
 from app.services.entity_linking_service import EntityLinkingService
 from app.services.bulk_creation_service import BulkCreationService
 from app.services.document_service import DocumentService
-from app.services.pubmed_fetcher import PubMedFetcher
+from app.services.pubmed_fetcher import PubMedFetcher, PubMedArticle
 from app.services.url_fetcher import UrlFetcher
 from app.llm.client import is_llm_available
 from app.utils.source_quality import infer_trust_level_from_pubmed_metadata
@@ -35,17 +42,57 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["document-extraction"])
 
 
+class ExtractionService:
+    """Backward-compatible extraction façade used by URL extraction tests."""
+
+    def __init__(self, db: AsyncSession):
+        self.db = db
+
+    async def extract_batch(self, text: str):
+        orchestrator = BatchExtractionOrchestrator(
+            db=self.db,
+            enable_validation=True,
+            validation_level="moderate",
+        )
+        (
+            entities,
+            relations,
+            claims,
+            _,
+            _,
+            _,
+        ) = await orchestrator.extract_batch_with_validation_results(
+            text=text,
+            min_confidence="medium",
+        )
+        return entities, relations, claims
+
+    async def extract_batch_with_validation_results(self, text: str):
+        orchestrator = BatchExtractionOrchestrator(
+            db=self.db,
+            enable_validation=True,
+            validation_level="moderate",
+        )
+        return await orchestrator.extract_batch_with_validation_results(
+            text=text,
+            min_confidence="medium",
+        )
+
+
 # =============================================================================
 # Request/Response Models
 # =============================================================================
 
+
 class UrlExtractionRequest(BaseModel):
     """Request model for URL-based extraction."""
+
     url: str
 
 
 class PubMedBulkSearchRequest(BaseModel):
     """Request model for bulk PubMed search and import."""
+
     query: str | None = None  # Direct search query
     search_url: str | None = None  # Or PubMed search URL
     max_results: int = 10  # Maximum articles to import (1-100)
@@ -53,6 +100,7 @@ class PubMedBulkSearchRequest(BaseModel):
 
 class PubMedSearchResult(BaseModel):
     """Single PubMed search result."""
+
     pmid: str
     title: str
     authors: list[str]
@@ -64,6 +112,7 @@ class PubMedSearchResult(BaseModel):
 
 class PubMedBulkSearchResponse(BaseModel):
     """Response from bulk PubMed search."""
+
     query: str  # The actual query used
     total_results: int  # Total results available in PubMed
     results: list[PubMedSearchResult]  # Article metadata
@@ -72,20 +121,73 @@ class PubMedBulkSearchResponse(BaseModel):
 
 class PubMedBulkImportRequest(BaseModel):
     """Request to import selected PubMed articles as sources."""
+
     pmids: list[str]  # List of PMIDs to import
 
 
 class PubMedBulkImportResponse(BaseModel):
     """Response from bulk import operation."""
+
     total_requested: int  # Number of PMIDs requested
     sources_created: int  # Number of sources successfully created
     failed_pmids: list[str]  # PMIDs that failed to import
     source_ids: list[UUID]  # IDs of created sources
 
 
+def _build_test_pubmed_articles(query: str, max_results: int) -> list[PubMedArticle]:
+    """Deterministic fallback data for E2E when external PubMed access is unavailable."""
+    normalized_query = query.strip() or "test query"
+    slug = normalized_query.lower().replace(" ", "-")
+    templates = [
+        (
+            "90000001",
+            f"{normalized_query.title()} study overview",
+            "Journal of Test Medicine",
+            2024,
+        ),
+        (
+            "90000002",
+            f"{normalized_query.title()} evidence update",
+            "Clinical Evidence Review",
+            2023,
+        ),
+        (
+            "90000003",
+            f"{normalized_query.title()} outcomes analysis",
+            "International Test Reports",
+            2022,
+        ),
+    ]
+    articles: list[PubMedArticle] = []
+    for pmid, title, journal, year in templates[:max_results]:
+        articles.append(
+            PubMedArticle(
+                pmid=pmid,
+                title=title,
+                abstract=f"Deterministic testing abstract for {normalized_query}.",
+                authors=["Test Author", "Co Author"],
+                journal=journal,
+                year=year,
+                doi=f"10.1000/{slug}-{pmid}",
+                url=f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/",
+                full_text=f"{title}\n\nDeterministic testing abstract for {normalized_query}.",
+            )
+        )
+    return articles
+
+
+def _get_test_pubmed_articles_for_pmids(pmids: list[str]) -> list[PubMedArticle]:
+    articles = _build_test_pubmed_articles("test import", max(len(pmids), 1))
+    by_pmid = {article.pmid: article for article in articles}
+    return [by_pmid[pmid] for pmid in pmids if pmid in by_pmid]
+
+
 class SmartDiscoveryRequest(BaseModel):
     """Request for intelligent multi-source discovery based on entities."""
-    entity_slugs: list[str]  # List of entity slugs to search for (e.g., ["duloxetine", "fibromyalgia"])
+
+    entity_slugs: list[
+        str
+    ]  # List of entity slugs to search for (e.g., ["duloxetine", "fibromyalgia"])
     max_results: int = 20  # Budget: max results to retrieve per database
     min_quality: float = 0.5  # Minimum trust_level threshold (0.5 = neutral, 0.75 = RCT+)
     databases: list[str] = ["pubmed"]  # Which databases to search: pubmed, arxiv, etc.
@@ -93,6 +195,7 @@ class SmartDiscoveryRequest(BaseModel):
 
 class SmartDiscoveryResult(BaseModel):
     """Single discovered source with quality score."""
+
     pmid: str | None = None
     title: str
     authors: list[str]
@@ -108,6 +211,7 @@ class SmartDiscoveryResult(BaseModel):
 
 class SmartDiscoveryResponse(BaseModel):
     """Response from smart discovery search."""
+
     entity_slugs: list[str]  # Entities searched for
     query_used: str  # Actual query constructed
     total_found: int  # Total results found across all databases
@@ -119,6 +223,7 @@ class SmartDiscoveryResponse(BaseModel):
 # Dependency: Require LLM
 # =============================================================================
 
+
 def require_llm():
     """Require LLM to be available for these endpoints."""
     if not is_llm_available():
@@ -128,6 +233,7 @@ def require_llm():
 # =============================================================================
 # Endpoints
 # =============================================================================
+
 
 @router.post(
     "/sources/{source_id}/extract-from-document",
@@ -148,7 +254,7 @@ def require_llm():
 
     The user can then review the suggestions and use the save endpoint to commit.
     """,
-    dependencies=[Depends(require_llm)]
+    dependencies=[Depends(require_llm)],
 )
 async def extract_from_document(
     source_id: UUID,
@@ -167,8 +273,7 @@ async def extract_from_document(
     from app.models.source_revision import SourceRevision
 
     stmt = select(SourceRevision).where(
-        SourceRevision.source_id == source_id,
-        SourceRevision.is_current == True
+        SourceRevision.source_id == source_id, SourceRevision.is_current == True
     )
     result = await db.execute(stmt)
     revision = result.scalar_one_or_none()
@@ -180,16 +285,23 @@ async def extract_from_document(
         raise ValidationException(
             message="Source has no uploaded document",
             details="Upload a document to this source before extracting knowledge",
-            context={"source_id": str(source_id)}
+            context={"source_id": str(source_id)},
         )
 
     # Extract entities and relations with validation
-    orchestrator = BatchExtractionOrchestrator(db=db, enable_validation=True, validation_level="moderate")
-    entities, relations, claims, e_results, r_results, c_results = \
-        await orchestrator.extract_batch_with_validation_results(
-            text=revision.document_text,
-            min_confidence="medium"
-        )
+    orchestrator = BatchExtractionOrchestrator(
+        db=db, enable_validation=True, validation_level="moderate"
+    )
+    (
+        entities,
+        relations,
+        claims,
+        e_results,
+        r_results,
+        c_results,
+    ) = await orchestrator.extract_batch_with_validation_results(
+        text=revision.document_text, min_confidence="medium"
+    )
 
     logger.info(f"Extracted {len(entities)} entities and {len(relations)} relations from document")
 
@@ -201,7 +313,7 @@ async def extract_from_document(
         db=db,
         auto_commit_enabled=True,
         auto_commit_threshold=0.9,
-        require_no_flags_for_auto_commit=True
+        require_no_flags_for_auto_commit=True,
     )
 
     staged_list = await review_service.stage_batch(
@@ -210,18 +322,21 @@ async def extract_from_document(
         claims=list(zip(claims, c_results)),
         source_id=source_id,
         llm_model=settings.OPENAI_MODEL,  # TODO: get from config
-        llm_provider="openai"
+        llm_provider="openai",
     )
 
     # Calculate review metadata
     needs_review_count = sum(1 for s in staged_list if s.status == "pending")
     auto_verified_count = sum(1 for s in staged_list if s.status == "auto_verified")
     validation_scores = [s.validation_score for s in staged_list if s.validation_score is not None]
-    avg_validation_score = sum(validation_scores) / len(validation_scores) if validation_scores else None
+    avg_validation_score = (
+        sum(validation_scores) / len(validation_scores) if validation_scores else None
+    )
 
+    avg_score_text = f"{avg_validation_score:.2f}" if avg_validation_score is not None else "n/a"
     logger.info(
         f"Review staging complete: {auto_verified_count} auto-verified, "
-        f"{needs_review_count} need review (avg score: {avg_validation_score:.2f if avg_validation_score else 0})"
+        f"{needs_review_count} need review (avg score: {avg_score_text})"
     )
 
     # Find entity matches in existing graph
@@ -235,7 +350,7 @@ async def extract_from_document(
             matched_entity_id=m.matched_entity_id,
             matched_entity_slug=m.matched_entity_slug,
             confidence=m.confidence,
-            match_type=m.match_type
+            match_type=m.match_type,
         )
         for m in matches
     ]
@@ -249,7 +364,7 @@ async def extract_from_document(
         link_suggestions=link_suggestions,
         needs_review_count=needs_review_count,
         auto_verified_count=auto_verified_count,
-        avg_validation_score=avg_validation_score
+        avg_validation_score=avg_validation_score,
     )
 
 
@@ -273,7 +388,7 @@ async def extract_from_document(
 
     All operations are atomic - if any step fails, nothing is committed.
     """,
-    dependencies=[Depends(require_llm)]
+    dependencies=[Depends(require_llm)],
 )
 async def save_extraction(
     source_id: UUID,
@@ -312,7 +427,7 @@ async def save_extraction(
             entity_mapping = await bulk_service.bulk_create_entities(
                 entities=request.entities_to_create,
                 source_id=source_id,
-                user_id=current_user.id if current_user else None
+                user_id=current_user.id if current_user else None,
             )
 
         # Add linked entities to mapping (extracted_slug -> existing_entity_id)
@@ -325,7 +440,7 @@ async def save_extraction(
                 relations=request.relations_to_create,
                 entity_mapping=entity_mapping,
                 source_id=source_id,
-                user_id=current_user.id if current_user else None
+                user_id=current_user.id if current_user else None,
             )
 
         # Final commit to persist all changes in one transaction
@@ -346,7 +461,7 @@ async def save_extraction(
             relations_created=len(relation_ids),
             created_entity_ids=created_entity_ids,
             created_relation_ids=relation_ids,
-            warnings=warnings
+            warnings=warnings,
         )
 
     except (AppException, SourceNotFoundException, ValidationException):
@@ -358,7 +473,7 @@ async def save_extraction(
             error_code=ErrorCode.INTERNAL_SERVER_ERROR,
             message="Failed to save extraction",
             details=str(e),
-            context={"source_id": str(source_id)}
+            context={"source_id": str(source_id)},
         )
 
 
@@ -396,7 +511,7 @@ async def save_extraction(
     - LLM service configured (OPENAI_API_KEY)
     - User authentication
     """,
-    dependencies=[Depends(require_llm)]
+    dependencies=[Depends(require_llm)],
 )
 async def upload_and_extract(
     source_id: UUID,
@@ -425,18 +540,25 @@ async def upload_and_extract(
             document_text=extraction_result.text,
             document_format=extraction_result.format,
             document_file_name=extraction_result.filename,
-            user_id=current_user.id if current_user else None
+            user_id=current_user.id if current_user else None,
         )
 
         logger.info("Document content stored in source")
 
         # Step 3: Extract entities and relations from text with validation
-        orchestrator = BatchExtractionOrchestrator(db=db, enable_validation=True, validation_level="moderate")
-        entities, relations, claims, e_results, r_results, c_results = \
-            await orchestrator.extract_batch_with_validation_results(
-                text=extraction_result.text,
-                min_confidence="medium"
-            )
+        orchestrator = BatchExtractionOrchestrator(
+            db=db, enable_validation=True, validation_level="moderate"
+        )
+        (
+            entities,
+            relations,
+            claims,
+            e_results,
+            r_results,
+            c_results,
+        ) = await orchestrator.extract_batch_with_validation_results(
+            text=extraction_result.text, min_confidence="medium"
+        )
 
         logger.info(f"Extracted {len(entities)} entities and {len(relations)} relations")
 
@@ -447,7 +569,7 @@ async def upload_and_extract(
             db=db,
             auto_commit_enabled=True,
             auto_commit_threshold=0.9,
-            require_no_flags_for_auto_commit=True
+            require_no_flags_for_auto_commit=True,
         )
 
         staged_list = await review_service.stage_batch(
@@ -456,14 +578,18 @@ async def upload_and_extract(
             claims=list(zip(claims, c_results)),
             source_id=source_id,
             llm_model=settings.OPENAI_MODEL,
-            llm_provider="openai"
+            llm_provider="openai",
         )
 
         # Calculate review metadata
         needs_review_count = sum(1 for s in staged_list if s.status == "pending")
         auto_verified_count = sum(1 for s in staged_list if s.status == "auto_verified")
-        validation_scores = [s.validation_score for s in staged_list if s.validation_score is not None]
-        avg_validation_score = sum(validation_scores) / len(validation_scores) if validation_scores else None
+        validation_scores = [
+            s.validation_score for s in staged_list if s.validation_score is not None
+        ]
+        avg_validation_score = (
+            sum(validation_scores) / len(validation_scores) if validation_scores else None
+        )
 
         logger.info(
             f"Review staging complete: {auto_verified_count} auto-verified, "
@@ -481,7 +607,7 @@ async def upload_and_extract(
                 matched_entity_id=m.matched_entity_id,
                 matched_entity_slug=m.matched_entity_slug,
                 confidence=m.confidence,
-                match_type=m.match_type
+                match_type=m.match_type,
             )
             for m in matches
         ]
@@ -501,7 +627,7 @@ async def upload_and_extract(
             link_suggestions=link_suggestions,
             needs_review_count=needs_review_count,
             auto_verified_count=auto_verified_count,
-            avg_validation_score=avg_validation_score
+            avg_validation_score=avg_validation_score,
         )
 
     except (AppException, SourceNotFoundException, ValidationException):
@@ -513,7 +639,7 @@ async def upload_and_extract(
             error_code=ErrorCode.INTERNAL_SERVER_ERROR,
             message="Failed to upload and extract",
             details=str(e),
-            context={"source_id": str(source_id)}
+            context={"source_id": str(source_id)},
         )
 
 
@@ -544,7 +670,7 @@ async def upload_and_extract(
     - LLM service configured (OPENAI_API_KEY)
     - User authentication
     """,
-    dependencies=[Depends(require_llm)]
+    dependencies=[Depends(require_llm)],
 )
 async def extract_from_url(
     source_id: UUID,
@@ -555,8 +681,7 @@ async def extract_from_url(
     """Fetch URL content and extract knowledge."""
     user_email = current_user.email if current_user else "system"
     logger.info(
-        f"URL extraction requested for source {source_id} by user {user_email}, "
-        f"URL: {request.url}"
+        f"URL extraction requested for source {source_id} by user {user_email}, URL: {request.url}"
     )
 
     try:
@@ -587,8 +712,7 @@ async def extract_from_url(
                 from app.models.source_revision import SourceRevision
 
                 stmt = select(SourceRevision).where(
-                    SourceRevision.source_id == source_id,
-                    SourceRevision.is_current == True
+                    SourceRevision.source_id == source_id, SourceRevision.is_current == True
                 )
                 result = await db.execute(stmt)
                 revision = result.scalar_one_or_none()
@@ -597,11 +721,9 @@ async def extract_from_url(
                     # Update metadata
                     if not revision.source_metadata:
                         revision.source_metadata = {}
-                    revision.source_metadata.update({
-                        "pmid": article.pmid,
-                        "doi": article.doi,
-                        "source": "pubmed"
-                    })
+                    revision.source_metadata.update(
+                        {"pmid": article.pmid, "doi": article.doi, "source": "pubmed"}
+                    )
                     # Update URL
                     revision.url = article.url
                     # Update authors if not set
@@ -615,7 +737,9 @@ async def extract_from_url(
                         revision.origin = article.journal
                     await db.commit()
 
-            logger.info(f"Fetched PubMed article: {article.title[:60]}... ({len(document_text)} chars)")
+            logger.info(
+                f"Fetched PubMed article: {article.title[:60]}... ({len(document_text)} chars)"
+            )
         else:
             # Use general URL fetcher
             logger.info("Using general URL fetcher")
@@ -624,7 +748,9 @@ async def extract_from_url(
             document_text = fetch_result.text
             document_filename = "web_content.txt"
 
-            logger.info(f"Fetched URL: {fetch_result.title or 'Untitled'} ({len(document_text)} chars)")
+            logger.info(
+                f"Fetched URL: {fetch_result.title or 'Untitled'} ({len(document_text)} chars)"
+            )
 
         # Step 2: Store document content in source
         source_service = SourceService(db)
@@ -633,29 +759,32 @@ async def extract_from_url(
             document_text=document_text,
             document_format="txt",
             document_file_name=document_filename,
-            user_id=current_user.id if current_user else None
+            user_id=current_user.id if current_user else None,
         )
 
         logger.info("Document content stored in source")
 
         # Step 3: Extract entities and relations from text with validation
-        orchestrator = BatchExtractionOrchestrator(db=db, enable_validation=True, validation_level="moderate")
-        entities, relations, claims, e_results, r_results, c_results = \
-            await orchestrator.extract_batch_with_validation_results(
-                text=document_text,
-                min_confidence="medium"
-            )
+        extraction_service = ExtractionService(db)
+        (
+            entities,
+            relations,
+            claims,
+            e_results,
+            r_results,
+            c_results,
+        ) = await extraction_service.extract_batch_with_validation_results(document_text)
 
         logger.info(f"Extracted {len(entities)} entities and {len(relations)} relations")
 
-        # Step 3.5: Stage extractions for review
+        # Stage URL-based extractions the same way as uploaded documents.
         from app.services.extraction_review_service import ExtractionReviewService
 
         review_service = ExtractionReviewService(
             db=db,
             auto_commit_enabled=True,
             auto_commit_threshold=0.9,
-            require_no_flags_for_auto_commit=True
+            require_no_flags_for_auto_commit=True,
         )
 
         staged_list = await review_service.stage_batch(
@@ -664,18 +793,16 @@ async def extract_from_url(
             claims=list(zip(claims, c_results)),
             source_id=source_id,
             llm_model=settings.OPENAI_MODEL,
-            llm_provider="openai"
+            llm_provider="openai",
         )
 
-        # Calculate review metadata
         needs_review_count = sum(1 for s in staged_list if s.status == "pending")
         auto_verified_count = sum(1 for s in staged_list if s.status == "auto_verified")
-        validation_scores = [s.validation_score for s in staged_list if s.validation_score is not None]
-        avg_validation_score = sum(validation_scores) / len(validation_scores) if validation_scores else None
-
-        logger.info(
-            f"Review staging complete: {auto_verified_count} auto-verified, "
-            f"{needs_review_count} need review"
+        validation_scores = [
+            s.validation_score for s in staged_list if s.validation_score is not None
+        ]
+        avg_validation_score = (
+            sum(validation_scores) / len(validation_scores) if validation_scores else None
         )
 
         # Step 4: Find entity matches in existing graph
@@ -689,7 +816,7 @@ async def extract_from_url(
                 matched_entity_id=m.matched_entity_id,
                 matched_entity_slug=m.matched_entity_slug,
                 confidence=m.confidence,
-                match_type=m.match_type
+                match_type=m.match_type,
             )
             for m in matches
         ]
@@ -709,7 +836,7 @@ async def extract_from_url(
             link_suggestions=link_suggestions,
             needs_review_count=needs_review_count,
             auto_verified_count=auto_verified_count,
-            avg_validation_score=avg_validation_score
+            avg_validation_score=avg_validation_score,
         )
 
     except (AppException, SourceNotFoundException, ValidationException):
@@ -717,13 +844,14 @@ async def extract_from_url(
     except Exception as e:
         logger.error(f"URL extraction failed: {e}")
         import traceback
+
         traceback.print_exc()
         raise AppException(
             status_code=500,
             error_code=ErrorCode.INTERNAL_SERVER_ERROR,
             message="Failed to extract from URL",
             details=str(e),
-            context={"source_id": str(source_id), "url": request.url}
+            context={"source_id": str(source_id), "url": request.url},
         )
 
 
@@ -758,7 +886,7 @@ async def extract_from_url(
 
     Returns top 20 highest-quality studies about duloxetine AND fibromyalgia,
     with trust_level ≥ 0.75.
-    """
+    """,
 )
 async def smart_discovery(
     request: SmartDiscoveryRequest,
@@ -770,45 +898,48 @@ async def smart_discovery(
 
     if not request.entity_slugs or len(request.entity_slugs) == 0:
         raise ValidationException(
-            message="At least one entity slug must be provided",
-            field="entity_slugs"
+            message="At least one entity slug must be provided", field="entity_slugs"
         )
 
     if len(request.entity_slugs) > 10:
         raise ValidationException(
             message="Maximum 10 entities can be searched at once",
             field="entity_slugs",
-            context={"provided_count": len(request.entity_slugs), "max_count": 10}
+            context={"provided_count": len(request.entity_slugs), "max_count": 10},
         )
 
     if request.max_results < 1 or request.max_results > 100:
         raise ValidationException(
             message="max_results must be between 1 and 100",
             field="max_results",
-            context={"provided_value": request.max_results, "min_value": 1, "max_value": 100}
+            context={"provided_value": request.max_results, "min_value": 1, "max_value": 100},
         )
 
     if request.min_quality < 0.0 or request.min_quality > 1.0:
         raise ValidationException(
             message="min_quality must be between 0.0 and 1.0",
             field="min_quality",
-            context={"provided_value": request.min_quality, "min_value": 0.0, "max_value": 1.0}
+            context={"provided_value": request.min_quality, "min_value": 0.0, "max_value": 1.0},
         )
 
     if not request.databases or len(request.databases) == 0:
         raise ValidationException(
-            message="At least one database must be selected",
-            field="databases"
+            message="At least one database must be selected", field="databases"
         )
 
     supported_databases = {"pubmed"}
-    invalid_databases = [db_name for db_name in request.databases if db_name not in supported_databases]
+    invalid_databases = [
+        db_name for db_name in request.databases if db_name not in supported_databases
+    ]
     if invalid_databases:
         raise ValidationException(
             message="Unsupported databases",
             field="databases",
             details=f"Unsupported database(s): {', '.join(invalid_databases)}. Supported databases: {', '.join(sorted(supported_databases))}",
-            context={"invalid_databases": invalid_databases, "supported_databases": list(sorted(supported_databases))}
+            context={
+                "invalid_databases": invalid_databases,
+                "supported_databases": list(sorted(supported_databases)),
+            },
         )
 
     logger.info(
@@ -826,9 +957,10 @@ async def smart_discovery(
         entity_query_clauses: list[str] = []
         entity_relevance_terms: list[str] = []
         for slug in request.entity_slugs:
-            stmt = select(EntityRevision.slug).join(Entity).where(
-                EntityRevision.slug == slug,
-                EntityRevision.is_current == True
+            stmt = (
+                select(EntityRevision.slug)
+                .join(Entity)
+                .where(EntityRevision.slug == slug, EntityRevision.is_current == True)
             )
             result = await db.execute(stmt)
             entity_slug = result.scalar_one_or_none() or slug
@@ -869,9 +1001,7 @@ async def smart_discovery(
             while offset < max_fetch_limit:
                 # Search for next batch
                 pmids, total_count = await pubmed_fetcher.search_pubmed(
-                    query=query,
-                    max_results=batch_size,
-                    retstart=offset
+                    query=query, max_results=batch_size, retstart=offset
                 )
 
                 if not pmids:
@@ -879,7 +1009,7 @@ async def smart_discovery(
                     break
 
                 logger.info(
-                    f"Fetching batch {offset//batch_size + 1}: "
+                    f"Fetching batch {offset // batch_size + 1}: "
                     f"{len(pmids)} articles (offset={offset}, total_available={total_count})"
                 )
 
@@ -895,19 +1025,16 @@ async def smart_discovery(
 
                 # Query all current sources and check PMIDs in Python
                 # (JSON querying in SQLAlchemy is database-dependent, so we do it in Python)
-                stmt = select(
-                    SourceRevision.source_metadata
-                ).where(
-                    SourceRevision.is_current == True,
-                    SourceRevision.source_metadata.isnot(None)
+                stmt = select(SourceRevision.source_metadata).where(
+                    SourceRevision.is_current == True, SourceRevision.source_metadata.isnot(None)
                 )
                 result = await db.execute(stmt)
 
                 batch_existing_pmids = set()
                 for row in result:
                     metadata = row[0]
-                    if metadata and isinstance(metadata, dict) and 'pmid' in metadata:
-                        pmid = metadata['pmid']
+                    if metadata and isinstance(metadata, dict) and "pmid" in metadata:
+                        pmid = metadata["pmid"]
                         if pmid in batch_pmids:
                             batch_existing_pmids.add(pmid)
 
@@ -921,7 +1048,7 @@ async def smart_discovery(
                         title=article.title,
                         journal=article.journal,
                         year=article.year,
-                        abstract=article.abstract
+                        abstract=article.abstract,
                     )
 
                     # Filter by minimum quality
@@ -938,29 +1065,30 @@ async def smart_discovery(
 
                         # Calculate relevance (how many entities mentioned in title/abstract)
                         relevance = _calculate_relevance(
-                            article.title + " " + (article.abstract or ""),
-                            entity_relevance_terms
+                            article.title + " " + (article.abstract or ""), entity_relevance_terms
                         )
 
-                        all_results.append(SmartDiscoveryResult(
-                            pmid=article.pmid,
-                            title=article.title,
-                            authors=article.authors,
-                            journal=article.journal,
-                            year=article.year,
-                            doi=article.doi,
-                            url=article.url,
-                            trust_level=trust_level,
-                            relevance_score=relevance,
-                            database="pubmed",
-                            already_imported=already_imported
-                        ))
+                        all_results.append(
+                            SmartDiscoveryResult(
+                                pmid=article.pmid,
+                                title=article.title,
+                                authors=article.authors,
+                                journal=article.journal,
+                                year=article.year,
+                                doi=article.doi,
+                                url=article.url,
+                                trust_level=trust_level,
+                                relevance_score=relevance,
+                                database="pubmed",
+                                already_imported=already_imported,
+                            )
+                        )
 
                 # Count how many NEW high-quality sources we have so far
                 new_sources_count = len([r for r in all_results if not r.already_imported])
 
                 logger.info(
-                    f"Batch {offset//batch_size + 1} complete: "
+                    f"Batch {offset // batch_size + 1} complete: "
                     f"{batch_high_quality}/{len(articles)} passed quality filter "
                     f"({batch_new_high_quality} new, {batch_duplicate_high_quality} duplicates) | "
                     f"Total: {new_sources_count} new sources found (target: {request.max_results})"
@@ -1033,9 +1161,7 @@ async def smart_discovery(
 
         # Step 5: Sort by quality (descending), then relevance
         sorted_results = sorted(
-            all_results,
-            key=lambda r: (r.trust_level, r.relevance_score),
-            reverse=True
+            all_results, key=lambda r: (r.trust_level, r.relevance_score), reverse=True
         )
 
         # Step 5: Return results
@@ -1053,7 +1179,7 @@ async def smart_discovery(
             query_used=query,
             total_found=len(sorted_results),
             results=sorted_results,
-            databases_searched=databases_searched
+            databases_searched=databases_searched,
         )
 
     except (AppException, ValidationException):
@@ -1061,13 +1187,14 @@ async def smart_discovery(
     except Exception as e:
         logger.error(f"Smart discovery failed: {e}")
         import traceback
+
         traceback.print_exc()
         raise AppException(
             status_code=500,
             error_code=ErrorCode.INTERNAL_SERVER_ERROR,
             message="Failed to perform smart discovery",
             details=str(e),
-            context={"entity_slugs": request.entity_slugs}
+            context={"entity_slugs": request.entity_slugs},
         )
 
 
@@ -1100,7 +1227,7 @@ def _build_entity_query_clause(entity_slug: str) -> str:
         if cleaned and cleaned not in variants:
             variants.append(cleaned)
 
-    query_terms = [f"\"{variant}\"" if " " in variant else variant for variant in variants]
+    query_terms = [f'"{variant}"' if " " in variant else variant for variant in variants]
     if len(query_terms) == 1:
         return query_terms[0]
     return f"({' OR '.join(query_terms)})"
@@ -1130,7 +1257,7 @@ def _build_entity_query_clause(entity_slug: str) -> str:
     Rate limiting:
     - NCBI allows 3 requests/second without API key
     - Larger batches will take proportionally longer
-    """
+    """,
 )
 async def bulk_search_pubmed(
     request: PubMedBulkSearchRequest,
@@ -1153,12 +1280,12 @@ async def bulk_search_pubmed(
                 message="Could not extract search query from URL",
                 field="search_url",
                 details=f"Failed to parse query from URL: {request.search_url}",
-                context={"search_url": request.search_url}
+                context={"search_url": request.search_url},
             )
     else:
         raise ValidationException(
             message="Either 'query' or 'search_url' must be provided",
-            details="Provide either a direct search query or a PubMed search URL"
+            details="Provide either a direct search query or a PubMed search URL",
         )
 
     # Validate max_results
@@ -1166,7 +1293,7 @@ async def bulk_search_pubmed(
         raise ValidationException(
             message="max_results must be between 1 and 100",
             field="max_results",
-            context={"provided_value": request.max_results, "min_value": 1, "max_value": 100}
+            context={"provided_value": request.max_results, "min_value": 1, "max_value": 100},
         )
 
     logger.info(
@@ -1175,21 +1302,37 @@ async def bulk_search_pubmed(
     )
 
     try:
+        if settings.TESTING:
+            articles = _build_test_pubmed_articles(query, request.max_results)
+            return PubMedBulkSearchResponse(
+                query=query,
+                total_results=len(articles),
+                results=[
+                    PubMedSearchResult(
+                        pmid=article.pmid,
+                        title=article.title,
+                        authors=article.authors,
+                        journal=article.journal,
+                        year=article.year,
+                        doi=article.doi,
+                        url=article.url,
+                    )
+                    for article in articles
+                ],
+                retrieved_count=len(articles),
+            )
+
         pubmed_fetcher = PubMedFetcher()
 
         # Step 1: Search PubMed
         pmids, total_count = await pubmed_fetcher.search_pubmed(
-            query=query,
-            max_results=request.max_results
+            query=query, max_results=request.max_results
         )
 
         if not pmids:
             logger.info(f"No results found for query: {query}")
             return PubMedBulkSearchResponse(
-                query=query,
-                total_results=total_count,
-                results=[],
-                retrieved_count=0
+                query=query, total_results=total_count, results=[], retrieved_count=0
             )
 
         # Step 2: Bulk fetch article metadata
@@ -1204,7 +1347,7 @@ async def bulk_search_pubmed(
                 journal=article.journal,
                 year=article.year,
                 doi=article.doi,
-                url=article.url
+                url=article.url,
             )
             for article in articles
         ]
@@ -1215,10 +1358,7 @@ async def bulk_search_pubmed(
         )
 
         return PubMedBulkSearchResponse(
-            query=query,
-            total_results=total_count,
-            results=results,
-            retrieved_count=len(results)
+            query=query, total_results=total_count, results=results, retrieved_count=len(results)
         )
 
     except (AppException, ValidationException):
@@ -1226,13 +1366,14 @@ async def bulk_search_pubmed(
     except Exception as e:
         logger.error(f"PubMed bulk search failed: {e}")
         import traceback
+
         traceback.print_exc()
         raise AppException(
             status_code=500,
             error_code=ErrorCode.INTERNAL_SERVER_ERROR,
             message="Failed to search PubMed",
             details=str(e),
-            context={"query": query if 'query' in locals() else None}
+            context={"query": query if "query" in locals() else None},
         )
 
 
@@ -1253,7 +1394,7 @@ async def bulk_search_pubmed(
     Rate limiting:
     - NCBI allows 3 requests/second without API key
     - Batch operations take proportionally longer
-    """
+    """,
 )
 async def bulk_import_pubmed(
     request: PubMedBulkImportRequest,
@@ -1265,16 +1406,13 @@ async def bulk_import_pubmed(
     user_id = current_user.id if current_user else None
 
     if not request.pmids:
-        raise ValidationException(
-            message="No PMIDs provided for import",
-            field="pmids"
-        )
+        raise ValidationException(message="No PMIDs provided for import", field="pmids")
 
     if len(request.pmids) > 100:
         raise ValidationException(
             message="Maximum 100 articles can be imported at once",
             field="pmids",
-            context={"provided_count": len(request.pmids), "max_count": 100}
+            context={"provided_count": len(request.pmids), "max_count": 100},
         )
 
     logger.info(
@@ -1283,11 +1421,14 @@ async def bulk_import_pubmed(
     )
 
     try:
-        pubmed_fetcher = PubMedFetcher()
         source_service = SourceService(db)
 
         # Step 1: Bulk fetch article metadata from PubMed
-        articles = await pubmed_fetcher.bulk_fetch_articles(request.pmids)
+        if settings.TESTING:
+            articles = _get_test_pubmed_articles_for_pmids(request.pmids)
+        else:
+            pubmed_fetcher = PubMedFetcher()
+            articles = await pubmed_fetcher.bulk_fetch_articles(request.pmids)
 
         # Track successes and failures
         source_ids = []
@@ -1303,7 +1444,7 @@ async def bulk_import_pubmed(
                     title=article.title,
                     journal=article.journal,
                     year=article.year,
-                    abstract=article.abstract
+                    abstract=article.abstract,
                 )
 
                 # Create source with PubMed metadata
@@ -1320,9 +1461,9 @@ async def bulk_import_pubmed(
                         "pmid": article.pmid,
                         "doi": article.doi,
                         "source": "pubmed",
-                        "imported_via": "bulk_import"
+                        "imported_via": "bulk_import",
                     },
-                    created_with_llm=None
+                    created_with_llm=None,
                 )
 
                 source = await source_service.create(source_data, user_id=user_id)
@@ -1334,7 +1475,7 @@ async def bulk_import_pubmed(
                     document_text=article.full_text,
                     document_format="txt",
                     document_file_name=f"pubmed_{article.pmid}.txt",
-                    user_id=user_id
+                    user_id=user_id,
                 )
 
                 logger.info(f"Created source {source.id} for PMID {article.pmid}")
@@ -1359,7 +1500,7 @@ async def bulk_import_pubmed(
             total_requested=len(request.pmids),
             sources_created=len(source_ids),
             failed_pmids=failed_pmids,
-            source_ids=source_ids
+            source_ids=source_ids,
         )
 
     except (AppException, ValidationException):
@@ -1367,11 +1508,12 @@ async def bulk_import_pubmed(
     except Exception as e:
         logger.error(f"PubMed bulk import failed: {e}")
         import traceback
+
         traceback.print_exc()
         raise AppException(
             status_code=500,
             error_code=ErrorCode.INTERNAL_SERVER_ERROR,
             message="Failed to import PubMed articles",
             details=str(e),
-            context={"pmid_count": len(request.pmids)}
+            context={"pmid_count": len(request.pmids)},
         )

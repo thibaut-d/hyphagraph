@@ -4,6 +4,7 @@ Tests for document extraction API endpoints.
 Tests smart discovery, URL extraction, and PubMed bulk import.
 Uses scientifically accurate fibromyalgia/chronic pain test data.
 """
+
 import pytest
 from uuid import uuid4, UUID
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -72,6 +73,7 @@ MOCK_EXERCISE_ARTICLE = PubMedArticle(
 # Fixtures
 # =============================================================================
 
+
 @pytest.fixture
 async def mock_source(db_session, test_user):
     """Create a test source for extraction tests."""
@@ -114,6 +116,7 @@ async def test_user(db_session):
 # Tests - Smart Discovery
 # =============================================================================
 
+
 @pytest.mark.asyncio
 class TestSmartDiscovery:
     """Test intelligent source discovery based on entities."""
@@ -135,7 +138,9 @@ class TestSmartDiscovery:
             mock_fetcher.bulk_fetch_articles = AsyncMock(return_value=[MOCK_PREGABALIN_ARTICLE])
 
             # Mock trust level calculation
-            with patch("app.api.document_extraction.infer_trust_level_from_pubmed_metadata") as mock_trust:
+            with patch(
+                "app.api.document_extraction.infer_trust_level_from_pubmed_metadata"
+            ) as mock_trust:
                 mock_trust.return_value = 0.80
 
                 # Import the endpoint function
@@ -167,8 +172,12 @@ class TestSmartDiscovery:
 
         # Arrange - Create entities
         entity_service = EntityService(db_session)
-        await entity_service.create(EntityWrite(slug=ScientificEntities.DULOXETINE["slug"], kind="drug"))
-        await entity_service.create(EntityWrite(slug=ScientificEntities.FIBROMYALGIA["slug"], kind="disease"))
+        await entity_service.create(
+            EntityWrite(slug=ScientificEntities.DULOXETINE["slug"], kind="drug")
+        )
+        await entity_service.create(
+            EntityWrite(slug=ScientificEntities.FIBROMYALGIA["slug"], kind="disease")
+        )
 
         # Mock PubMed search and fetch
         with patch("app.api.document_extraction.PubMedFetcher") as mock_fetcher_class:
@@ -176,7 +185,9 @@ class TestSmartDiscovery:
             mock_fetcher.search_pubmed = AsyncMock(return_value=(["18059454"], 1))
             mock_fetcher.bulk_fetch_articles = AsyncMock(return_value=[MOCK_DULOXETINE_ARTICLE])
 
-            with patch("app.api.document_extraction.infer_trust_level_from_pubmed_metadata") as mock_trust:
+            with patch(
+                "app.api.document_extraction.infer_trust_level_from_pubmed_metadata"
+            ) as mock_trust:
                 mock_trust.return_value = 0.75
 
                 from app.api.document_extraction import smart_discovery
@@ -206,7 +217,9 @@ class TestSmartDiscovery:
 
         # Arrange
         entity_service = EntityService(db_session)
-        await entity_service.create(EntityWrite(slug=ScientificEntities.FIBROMYALGIA["slug"], kind="disease"))
+        await entity_service.create(
+            EntityWrite(slug=ScientificEntities.FIBROMYALGIA["slug"], kind="disease")
+        )
 
         # Mock two articles with different quality scores
         with patch("app.api.document_extraction.PubMedFetcher") as mock_fetcher_class:
@@ -218,7 +231,9 @@ class TestSmartDiscovery:
 
             # First article: 0.90 (high quality, passes)
             # Second article: 0.60 (low quality, filtered out)
-            with patch("app.api.document_extraction.infer_trust_level_from_pubmed_metadata") as mock_trust:
+            with patch(
+                "app.api.document_extraction.infer_trust_level_from_pubmed_metadata"
+            ) as mock_trust:
                 mock_trust.side_effect = [0.90, 0.60]
 
                 from app.api.document_extraction import smart_discovery
@@ -246,7 +261,9 @@ class TestSmartDiscovery:
 
         # Arrange - Create entity and existing source with PMID
         entity_service = EntityService(db_session)
-        await entity_service.create(EntityWrite(slug=ScientificEntities.PREGABALIN["slug"], kind="drug"))
+        await entity_service.create(
+            EntityWrite(slug=ScientificEntities.PREGABALIN["slug"], kind="drug")
+        )
 
         source_service = SourceService(db_session)
         existing_source = SourceWrite(
@@ -263,7 +280,9 @@ class TestSmartDiscovery:
             mock_fetcher.search_pubmed = AsyncMock(return_value=(["17333346"], 1))
             mock_fetcher.bulk_fetch_articles = AsyncMock(return_value=[MOCK_PREGABALIN_ARTICLE])
 
-            with patch("app.api.document_extraction.infer_trust_level_from_pubmed_metadata") as mock_trust:
+            with patch(
+                "app.api.document_extraction.infer_trust_level_from_pubmed_metadata"
+            ) as mock_trust:
                 mock_trust.return_value = 0.80
 
                 from app.api.document_extraction import smart_discovery
@@ -322,6 +341,7 @@ class TestSmartDiscovery:
 # =============================================================================
 # Tests - PubMed Bulk Search
 # =============================================================================
+
 
 @pytest.mark.asyncio
 class TestPubMedBulkSearch:
@@ -417,6 +437,7 @@ class TestPubMedBulkSearch:
 # Tests - PubMed Bulk Import
 # =============================================================================
 
+
 @pytest.mark.asyncio
 class TestPubMedBulkImport:
     """Test PubMed bulk import endpoint."""
@@ -431,7 +452,9 @@ class TestPubMedBulkImport:
             )
 
             # Mock trust level calculation
-            with patch("app.api.document_extraction.infer_trust_level_from_pubmed_metadata") as mock_trust:
+            with patch(
+                "app.api.document_extraction.infer_trust_level_from_pubmed_metadata"
+            ) as mock_trust:
                 mock_trust.return_value = 0.75
 
                 from app.api.document_extraction import bulk_import_pubmed
@@ -485,6 +508,7 @@ class TestPubMedBulkImport:
 # Tests - URL Extraction
 # =============================================================================
 
+
 @pytest.mark.asyncio
 class TestUrlExtraction:
     """Test URL-based extraction endpoint."""
@@ -500,40 +524,60 @@ class TestUrlExtraction:
             # Mock extraction service
             with patch("app.api.document_extraction.ExtractionService") as mock_extraction_class:
                 mock_extraction = mock_extraction_class.return_value
-                mock_extraction.extract_batch = AsyncMock(
+                mock_extraction.extract_batch_with_validation_results = AsyncMock(
                     return_value=(
-                        [{
-                            "slug": "pregabalin",
-                            "summary": "Anticonvulsant drug",
-                            "category": "drug",
-                            "confidence": "high",
-                            "text_span": "Pregabalin"
-                        }],
-                        [{
-                            "relation_type": "treats",
-                            "roles": [
-                                {"entity_slug": "pregabalin", "role_type": "agent"},
-                                {"entity_slug": "fibromyalgia", "role_type": "target"}
-                            ],
-                            "confidence": "high",
-                            "text_span": "Pregabalin treats fibromyalgia"
-                        }],
-                        None,
+                        [
+                            {
+                                "slug": "pregabalin",
+                                "summary": "Anticonvulsant drug",
+                                "category": "drug",
+                                "confidence": "high",
+                                "text_span": "Pregabalin",
+                            }
+                        ],
+                        [
+                            {
+                                "relation_type": "treats",
+                                "roles": [
+                                    {"entity_slug": "pregabalin", "role_type": "agent"},
+                                    {"entity_slug": "fibromyalgia", "role_type": "target"},
+                                ],
+                                "confidence": "high",
+                                "text_span": "Pregabalin treats fibromyalgia",
+                            }
+                        ],
+                        [],
+                        [],
+                        [],
+                        [],
                     )
                 )
 
-                # Mock entity linking service
-                with patch("app.api.document_extraction.EntityLinkingService") as mock_linking_class:
-                    mock_linking = mock_linking_class.return_value
-                    mock_linking.find_entity_matches = AsyncMock(return_value=[])
+                with patch(
+                    "app.services.extraction_review_service.ExtractionReviewService"
+                ) as mock_review_class:
+                    mock_review = mock_review_class.return_value
+                    mock_review.stage_batch = AsyncMock(return_value=[])
 
-                    from app.api.document_extraction import extract_from_url
+                    # Mock entity linking service
+                    with patch(
+                        "app.api.document_extraction.EntityLinkingService"
+                    ) as mock_linking_class:
+                        mock_linking = mock_linking_class.return_value
+                        mock_linking.find_entity_matches = AsyncMock(return_value=[])
 
-                    # Act
-                    request = UrlExtractionRequest(url="https://pubmed.ncbi.nlm.nih.gov/17333346/")
-                    response = await extract_from_url(
-                        source_id=mock_source.id, request=request, db=db_session, current_user=test_user
-                    )
+                        from app.api.document_extraction import extract_from_url
+
+                        # Act
+                        request = UrlExtractionRequest(
+                            url="https://pubmed.ncbi.nlm.nih.gov/17333346/"
+                        )
+                        response = await extract_from_url(
+                            source_id=mock_source.id,
+                            request=request,
+                            db=db_session,
+                            current_user=test_user,
+                        )
 
         # Assert
         assert response.source_id == mock_source.id
@@ -545,6 +589,7 @@ class TestUrlExtraction:
 # =============================================================================
 # Tests - Helper Functions
 # =============================================================================
+
 
 def test_calculate_relevance():
     """Test relevance score calculation."""
