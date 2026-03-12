@@ -36,6 +36,7 @@ import { getEntity } from "../api/entities";
 import type { EntityRead } from "../types/entity";
 import { EvidenceTrace } from "../components/EvidenceTrace";
 import { useNotification } from "../notifications/NotificationContext";
+import { parseError } from "../utils/errorHandler";
 
 export function PropertyDetailView() {
   const { id, roleType } = useParams<{ id: string; roleType: string }>();
@@ -64,7 +65,10 @@ export function PropertyDetailView() {
       })
       .catch((err) => {
         console.error("Failed to load property details:", err);
-        setError(err?.message ?? t("common.error", "An error occurred"));
+        const parsedError = parseError(err, "Failed to load property details");
+        setEntity(null);
+        setExplanation(null);
+        setError(parsedError.userMessage);
         showError(err);
       })
       .finally(() => {

@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Typography, Stack, CircularProgress } from "@mui/material";
+import { Alert, Typography, Stack, CircularProgress } from "@mui/material";
 
 import { EntityDetailFilterValues, FilterDrawer, EntityDetailFilters } from "../components/filters";
 import { EntityDetailHeader } from "../components/entity/EntityDetailHeader";
@@ -21,8 +21,8 @@ export function EntityDetailView() {
   const navigate = useNavigate();
 
   // Custom hooks
-  const { entity, loading } = useEntityData(id);
-  const { inference, sources, loadingSources, loadInference } = useEntityInference(id);
+  const { entity, loading, error } = useEntityData(id);
+  const { inference, sources, loadingSources, error: inferenceError, loadInference } = useEntityInference(id);
   const {
     scopeFilter,
     newFilterKey,
@@ -85,6 +85,14 @@ export function EntityDetailView() {
     );
   }
 
+  if (error) {
+    return (
+      <Alert severity="error">
+        {error.message || t("common.error", "An error occurred")}
+      </Alert>
+    );
+  }
+
   // Not found
   if (!entity) {
     return (
@@ -102,6 +110,12 @@ export function EntityDetailView() {
       <EntityDetailHeader entity={entity} onDeleteClick={openDeleteDialog} />
 
       {/* Inference */}
+      {inferenceError && (
+        <Alert severity="error">
+          {inferenceError.message || t("common.error", "An error occurred")}
+        </Alert>
+      )}
+
       <InferenceSection
         entity={entity}
         inference={inference}

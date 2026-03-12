@@ -182,4 +182,26 @@ test.describe('Explanation Trace', () => {
       await expect(errorMessages.first()).toBeVisible();
     }
   });
+
+  test('should display a parsed rate-limit error when explanation loading is throttled', async ({ page }) => {
+    await page.route('**/api/explain/**', async (route) => {
+      await route.fulfill({
+        status: 429,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          error: {
+            code: 'RATE_LIMIT_EXCEEDED',
+            message: 'Too many requests. Please try again later.',
+            details: 'Explanation endpoint rate limited',
+          },
+        }),
+      });
+    });
+
+    await page.goto('/explain/00000000-0000-0000-0000-000000000000/test-role');
+
+    await expect(
+      page.getByText('Too many requests. Please try again later.').first()
+    ).toBeVisible();
+  });
 });

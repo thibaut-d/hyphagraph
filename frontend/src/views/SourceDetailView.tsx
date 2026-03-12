@@ -40,6 +40,7 @@ import { invalidateSourceFilterCache } from "../utils/cacheUtils";
 import { DocumentExtractionPreview, SaveExtractionResult } from "../types/extraction";
 import { ExtractionPreview } from "../components/ExtractionPreview";
 import { UrlExtractionDialog } from "../components/UrlExtractionDialog";
+import { parseError } from "../utils/errorHandler";
 
 export function SourceDetailView() {
   const { id } = useParams<{ id: string }>();
@@ -49,6 +50,9 @@ export function SourceDetailView() {
 
   const [source, setSource] = useState<SourceRead | null>(null);
   const [relations, setRelations] = useState<RelationRead[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [relationsError, setRelationsError] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [relationToDelete, setRelationToDelete] = useState<RelationRead | null>(null);
@@ -68,9 +72,67 @@ export function SourceDetailView() {
 
   useEffect(() => {
     if (!id) return;
+    let isMounted = true;
 
-    getSource(id).then(setSource);
-    listRelationsBySource(id).then(setRelations);
+    const loadRelations = async (): Promise<RelationRead[]> => {
+      try {
+        const relationsData = await listRelationsBySource(id);
+        if (!isMounted) {
+          return [];
+        }
+
+        setRelations(relationsData);
+        setRelationsError(null);
+        return relationsData;
+      } catch (err) {
+        const parsedError = parseError(err, "Failed to load relations");
+        if (!isMounted) {
+          return [];
+        }
+
+        setRelations([]);
+        setRelationsError(parsedError.userMessage);
+        showError(err);
+        return [];
+      }
+    };
+
+    const loadSourceDetail = async () => {
+      setLoading(true);
+      setError(null);
+      setRelationsError(null);
+
+      try {
+        const sourceData = await getSource(id);
+
+        if (!isMounted) {
+          return;
+        }
+
+        setSource(sourceData);
+        await loadRelations();
+      } catch (err) {
+        const parsedError = parseError(err, "Failed to load source");
+        if (!isMounted) {
+          return;
+        }
+        setSource(null);
+        setRelations([]);
+        setRelationsError(null);
+        setError(parsedError.userMessage);
+        showError(err);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadSourceDetail();
+
+    return () => {
+      isMounted = false;
+    };
   }, [id]);
 
   const handleDelete = async () => {
@@ -86,8 +148,9 @@ export function SourceDetailView() {
       navigate("/sources");
     } catch (error) {
       console.error("Failed to delete source:", error);
+      showError(error);
+    } finally {
       setDeleting(false);
-      setDeleteDialogOpen(false);
     }
   };
 
@@ -98,12 +161,21 @@ export function SourceDetailView() {
     try {
       await deleteRelation(relationToDelete.id);
       // Refresh relations list
-      const updatedRelations = await listRelationsBySource(id);
-      setRelations(updatedRelations);
+      try {
+        const updatedRelations = await listRelationsBySource(id);
+        setRelations(updatedRelations);
+        setRelationsError(null);
+      } catch (error) {
+        const parsedError = parseError(error, "Failed to refresh relations");
+        setRelations([]);
+        setRelationsError(parsedError.userMessage);
+        showError(error);
+      }
       setDeleteRelationDialogOpen(false);
       setRelationToDelete(null);
     } catch (error) {
       console.error("Failed to delete relation:", error);
+      showError(error);
     } finally {
       setDeletingRelation(false);
     }
@@ -131,12 +203,10 @@ export function SourceDetailView() {
         setExtractionPreview(preview);
       } else {
         // No URL available - prompt for upload
-        showError(new Error("No URL available. Please upload a document or provide a URL."));
-        setAutoExtracting(false);
+        showError("No URL available. Please upload a document or provide a URL.");
       }
     } catch (error) {
       showError(error);
-      setAutoExtracting(false);
     } finally {
       setAutoExtracting(false);
     }
@@ -169,8 +239,16 @@ export function SourceDetailView() {
 
     // Refresh relations list
     if (id) {
-      const updatedRelations = await listRelationsBySource(id);
-      setRelations(updatedRelations);
+      try {
+        const updatedRelations = await listRelationsBySource(id);
+        setRelations(updatedRelations);
+        setRelationsError(null);
+      } catch (error) {
+        const parsedError = parseError(error, "Failed to refresh relations");
+        setRelations([]);
+        setRelationsError(parsedError.userMessage);
+        showError(error);
+      }
     }
   };
 
@@ -197,12 +275,16 @@ export function SourceDetailView() {
     }
   };
 
-  if (!source) {
+  if (loading) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
         <CircularProgress />
       </Box>
     );
+  }
+
+  if (error || !source) {
+    return <Alert severity="error">{error || t("common.error", "An error occurred")}</Alert>;
   }
 
   const hasUrl = !!source.url;
@@ -281,7 +363,7 @@ export function SourceDetailView() {
             <Typography variant="h5">{t("sources.extract_knowledge", "Knowledge Extraction")}</Typography>
           </Box>
 
-          {!hasRelations && (
+          {!hasRelations && !relationsError && (
             <Alert severity="info" icon={<AutoFixHighIcon />}>
               {hasUrl ? (
                 <>
@@ -455,11 +537,17 @@ export function SourceDetailView() {
 
         <Divider sx={{ mb: 2 }} />
 
-        {relations.length === 0 ? (
+        {relationsError && (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            {relationsError}
+          </Alert>
+        )}
+
+        {relations.length === 0 && !relationsError ? (
           <Alert severity="info">
             {t("sources.no_relations", "No relations yet. Extract knowledge from this source to create relations.")}
           </Alert>
-        ) : (
+        ) : relations.length > 0 ? (
           <List>
             {relations.map((r) => (
               <ListItem
@@ -520,7 +608,7 @@ export function SourceDetailView() {
               </ListItem>
             ))}
           </List>
-        )}
+        ) : null}
       </Paper>
 
       {/* Delete Source Confirmation Dialog */}

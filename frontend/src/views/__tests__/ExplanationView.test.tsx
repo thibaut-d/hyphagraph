@@ -115,12 +115,16 @@ describe('ExplanationView', () => {
 
   describe('Error state', () => {
     it('displays error message when API call fails', async () => {
-      (getExplanation as any).mockRejectedValue(new Error('Failed to load'));
+      (getExplanation as any).mockRejectedValue({
+        code: 'RATE_LIMIT_EXCEEDED',
+        message: 'Too many requests. Please try again later.',
+        details: 'Explanation endpoint rate limited',
+      });
 
       renderWithRouter('123e4567-e89b-12d3-a456-426614174000', 'drug');
 
       await waitFor(() => {
-        expect(screen.getByText(/failed to load/i)).toBeInTheDocument();
+        expect(screen.getByText(/too many requests/i)).toBeInTheDocument();
       });
     });
 

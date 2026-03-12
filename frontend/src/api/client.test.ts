@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { apiFetch } from "./client";
+import { ErrorCode, ParsedAppError } from "../utils/errorHandler";
 
 const REFRESH_LOCK_KEY = "token_refresh_in_progress";
 
@@ -8,11 +9,13 @@ function createResponse(
   status: number,
   options: {
     json?: ReturnType<typeof vi.fn>;
+    statusText?: string;
   } = {},
 ): Response {
   return {
     ok: status >= 200 && status < 300,
     status,
+    statusText: options.statusText ?? "",
     json: options.json ?? vi.fn().mockResolvedValue({}),
   } as unknown as Response;
 }
@@ -91,5 +94,51 @@ describe("apiFetch", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(retryJson).not.toHaveBeenCalled();
+  });
+
+  it("preserves structured backend errors for UI consumers", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      createResponse(404, {
+        json: vi.fn().mockResolvedValue({
+          error: {
+            code: ErrorCode.ENTITY_NOT_FOUND,
+            message: "Entity not found",
+            details: "Entity with ID '123' does not exist",
+            context: { entity_id: "123" },
+          },
+        }),
+      }),
+    );
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(apiFetch("/entities/123")).rejects.toMatchObject({
+      name: "ParsedAppError",
+      message: "Entity not found",
+      userMessage: "Entity not found",
+      developerMessage: "Entity with ID '123' does not exist",
+      code: ErrorCode.ENTITY_NOT_FOUND,
+      context: { entity_id: "123" },
+    } satisfies Partial<ParsedAppError>);
+  });
+
+  it("falls back to response metadata when the backend error body is not JSON", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      createResponse(503, {
+        statusText: "Service Unavailable",
+        json: vi.fn().mockRejectedValue(new SyntaxError("Unexpected token <")),
+      }),
+    );
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(apiFetch("/search?q=aspirin")).rejects.toMatchObject({
+      name: "ParsedAppError",
+      message: "Server error. Please try again later.",
+      userMessage: "Server error. Please try again later.",
+      developerMessage: "HTTP 503: Service Unavailable",
+      code: ErrorCode.INTERNAL_SERVER_ERROR,
+      statusCode: 503,
+    } satisfies Partial<ParsedAppError>);
   });
 });

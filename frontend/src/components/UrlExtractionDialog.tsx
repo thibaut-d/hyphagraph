@@ -19,6 +19,7 @@ import {
 } from "@mui/material";
 import { Link as LinkIcon, CheckCircle as CheckCircleIcon } from "@mui/icons-material";
 import { useNotification } from "../notifications/NotificationContext";
+import { parseError } from "../utils/errorHandler";
 
 interface UrlExtractionDialogProps {
   open: boolean;
@@ -82,13 +83,13 @@ export function UrlExtractionDialog({
   const handleSubmit = async () => {
     if (!url.trim()) {
       setError("Please enter a URL");
-      showError(new Error("Please enter a URL"));
+      showError("Please enter a URL");
       return;
     }
 
     if (!validateUrl(url)) {
       setError("Please enter a valid URL (e.g., https://pubmed.ncbi.nlm.nih.gov/...)");
-      showError(new Error("Please enter a valid URL (e.g., https://pubmed.ncbi.nlm.nih.gov/...)"));
+      showError("Please enter a valid URL (e.g., https://pubmed.ncbi.nlm.nih.gov/...)");
       return;
     }
 
@@ -97,7 +98,8 @@ export function UrlExtractionDialog({
       await onSubmit(url);
       setUrl("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to extract from URL");
+      const parsedError = parseError(err, "Failed to extract from URL");
+      setError(parsedError.userMessage);
     }
   };
 

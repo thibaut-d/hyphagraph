@@ -50,6 +50,7 @@ import InfoIcon from "@mui/icons-material/Info";
 import { smartDiscovery, bulkImportFromDiscovery, SmartDiscoveryResult } from "../api/smart-discovery";
 import { listEntities } from "../api/entities";
 import { EntityRead } from "../types/entity";
+import { parseError } from "../utils/errorHandler";
 
 const ENTITY_PAGE_SIZE = 100;
 const ENTITY_MAX_PAGES = 50;
@@ -64,6 +65,7 @@ export function SmartSourceDiscoveryView() {
   const [availableEntities, setAvailableEntities] = useState<EntityRead[]>([]);
   const [selectedEntities, setSelectedEntities] = useState<EntityRead[]>([]);
   const [loadingEntities, setLoadingEntities] = useState(false);
+  const [entityLoadError, setEntityLoadError] = useState<string | null>(null);
 
   // Search configuration
   const [maxResults, setMaxResults] = useState(20);
@@ -72,6 +74,7 @@ export function SmartSourceDiscoveryView() {
 
   // Search state
   const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   // Results state
   const [results, setResults] = useState<SmartDiscoveryResult[]>([]);
@@ -81,6 +84,7 @@ export function SmartSourceDiscoveryView() {
 
   // Import state
   const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
   const [importSuccess, setImportSuccess] = useState<{ created: number; failed: number } | null>(null);
 
   // Load entities on mount
@@ -89,6 +93,7 @@ export function SmartSourceDiscoveryView() {
 
     const loadEntities = async () => {
       setLoadingEntities(true);
+      setEntityLoadError(null);
 
       try {
         // Load all pages so discovery remains usable on large graphs (>100 entities).
@@ -140,6 +145,11 @@ export function SmartSourceDiscoveryView() {
         }
       } catch (error) {
         console.error("Failed to load entities:", error);
+        const parsedError = parseError(error, "Failed to load entities");
+        if (isMounted) {
+          setEntityLoadError(parsedError.userMessage);
+        }
+        showError(error);
       } finally {
         if (isMounted) {
           setLoadingEntities(false);
@@ -156,18 +166,20 @@ export function SmartSourceDiscoveryView() {
 
   const handleSearch = async () => {
     if (selectedEntities.length === 0) {
-      showError(new Error("Please select at least one entity"));
+      showError("Please select at least one entity");
       return;
     }
     if (selectedDatabases.length === 0) {
-      showError(new Error("Please select at least one database"));
+      showError("Please select at least one database");
       return;
     }
 
     setSearching(true);
+    setSearchError(null);
     setResults([]);
     setSelectedPmids(new Set());
     setImportSuccess(null);
+    setImportError(null);
 
     try {
       const entitySlugs = selectedEntities.map((e) => e.slug);
@@ -192,6 +204,8 @@ export function SmartSourceDiscoveryView() {
 
       setSelectedPmids(new Set(toSelect));
     } catch (error) {
+      const parsedError = parseError(error, "Failed to run smart discovery");
+      setSearchError(parsedError.userMessage);
       showError(error);
     } finally {
       setSearching(false);
@@ -222,11 +236,12 @@ export function SmartSourceDiscoveryView() {
 
   const handleImport = async () => {
     if (selectedPmids.size === 0) {
-      showError(new Error("Please select at least one article to import"));
+      showError("Please select at least one article to import");
       return;
     }
 
     setImporting(true);
+    setImportError(null);
 
     try {
       const response = await bulkImportFromDiscovery(Array.from(selectedPmids));
@@ -241,6 +256,8 @@ export function SmartSourceDiscoveryView() {
         navigate("/sources");
       }, 2000);
     } catch (error) {
+      const parsedError = parseError(error, "Failed to import articles");
+      setImportError(parsedError.userMessage);
       showError(error);
     } finally {
       setImporting(false);
@@ -324,6 +341,12 @@ export function SmartSourceDiscoveryView() {
             ))
           }
         />
+
+        {entityLoadError && (
+          <Alert severity="error" sx={{ mt: 2 }}>
+            {entityLoadError}
+          </Alert>
+        )}
 
         {selectedEntities.length > 0 && (
           <Alert severity="success" sx={{ mt: 2 }}>
@@ -438,6 +461,12 @@ export function SmartSourceDiscoveryView() {
               ? t("smart_discovery.searching", "Searching databases...")
               : t("smart_discovery.search", "🔍 Discover Sources")}
           </Button>
+
+          {searchError && (
+            <Alert severity="error">
+              {searchError}
+            </Alert>
+          )}
         </Stack>
       </Paper>
 
@@ -479,6 +508,12 @@ export function SmartSourceDiscoveryView() {
                 {importSuccess.failed > 0 && `, ${importSuccess.failed} failed`}
                 <br />
                 <Typography variant="caption">Redirecting to sources list...</Typography>
+              </Alert>
+            )}
+
+            {importError && (
+              <Alert severity="error" sx={{ mt: 2 }}>
+                {importError}
               </Alert>
             )}
 

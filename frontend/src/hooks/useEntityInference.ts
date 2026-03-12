@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { InferenceRead } from "../types/inference";
 import { SourceRead } from "../types/source";
 import { ScopeFilter, getInferenceForEntity } from "../api/inferences";
 import { getSource } from "../api/sources";
 import { useNotification } from "../notifications/NotificationContext";
+import { ParsedAppError, parseError } from "../utils/errorHandler";
 
 /**
  * Hook for fetching and managing entity inference data with source cache.
@@ -20,6 +21,7 @@ export interface UseEntityInferenceReturn {
   inference: InferenceRead | null;
   sources: Record<string, SourceRead>;
   loadingSources: boolean;
+  error: Error | null;
   loadInference: (filter: ScopeFilter) => Promise<void>;
 }
 
@@ -31,12 +33,27 @@ export function useEntityInference(
   const [inference, setInference] = useState<InferenceRead | null>(null);
   const [sources, setSources] = useState<Record<string, SourceRead>>({});
   const [loadingSources, setLoadingSources] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const requestIdRef = useRef(0);
 
   const loadInference = async (filter: ScopeFilter) => {
-    if (!entityId) return;
+    const requestId = ++requestIdRef.current;
+
+    if (!entityId) {
+      setInference(null);
+      setSources({});
+      setError(new Error("Missing entity ID"));
+      setLoadingSources(false);
+      return;
+    }
 
     try {
+      setError(null);
       const inferenceRes = await getInferenceForEntity(entityId, filter);
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+
       setInference(inferenceRes);
 
       // Extract unique source IDs from relations
@@ -66,10 +83,30 @@ export function useEntityInference(
             sourcesMap[source.id] = source;
           }
         });
+        if (requestId !== requestIdRef.current) {
+          return;
+        }
+
         setSources(sourcesMap);
         setLoadingSources(false);
+        return;
       }
+
+      setSources({});
+      setLoadingSources(false);
     } catch (err) {
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+
+      const parsedError = parseError(err, "Failed to load inference");
+      const nextError =
+        err instanceof Error ? err : new ParsedAppError(parsedError);
+
+      setInference(null);
+      setSources({});
+      setLoadingSources(false);
+      setError(nextError);
       showError(err);
     }
   };
@@ -82,6 +119,7 @@ export function useEntityInference(
     inference,
     sources,
     loadingSources,
+    error,
     loadInference,
   };
 }

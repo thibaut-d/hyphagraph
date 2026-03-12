@@ -361,14 +361,39 @@ describe('SourceDetailView', () => {
   });
 
   describe('Error state', () => {
-    it('shows loading state when source is null', async () => {
-      (getSource as any).mockResolvedValue(null);
+    it('shows API error when source loading fails', async () => {
+      (getSource as any).mockRejectedValue({
+        code: 'SOURCE_NOT_FOUND',
+        message: 'Source not found',
+        details: 'Source with ID 123 does not exist',
+      });
       (listRelationsBySource as any).mockResolvedValue([]);
 
       renderWithRouter('123e4567-e89b-12d3-a456-426614174000');
 
-      // Component shows loading spinner when source is null
-      expect(screen.getByRole('progressbar')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText('Source not found')).toBeInTheDocument();
+      });
+    });
+
+    it('keeps source metadata visible when only relations loading fails', async () => {
+      (getSource as any).mockResolvedValue(mockSource);
+      (listRelationsBySource as any).mockRejectedValue({
+        code: 'RATE_LIMIT_EXCEEDED',
+        message: 'Too many requests. Please try again later.',
+        details: 'Relations endpoint rate limited',
+      });
+
+      renderWithRouter('123e4567-e89b-12d3-a456-426614174000');
+
+      await waitFor(() => {
+        expect(screen.getByText('Test Study on Aspirin')).toBeInTheDocument();
+      });
+
+      expect(
+        screen.getAllByText('Too many requests. Please try again later.').length
+      ).toBeGreaterThan(0);
+      expect(screen.queryByText(/no relations yet/i)).not.toBeInTheDocument();
     });
   });
 });

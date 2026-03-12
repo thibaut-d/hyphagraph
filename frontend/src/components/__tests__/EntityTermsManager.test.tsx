@@ -97,7 +97,7 @@ describe("EntityTermsManager", () => {
       renderWithNotifications(<EntityTermsManager entityId={mockEntityId} />);
 
       await waitFor(() => {
-        expect(screen.getByText("Failed to load terms")).toBeInTheDocument();
+        expect(screen.getByText("Network error")).toBeInTheDocument();
       });
     });
   });
@@ -207,7 +207,7 @@ describe("EntityTermsManager", () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText("This term already exists for this language")
+          screen.getByText("Term already exists for this language")
         ).toBeInTheDocument();
       });
     });

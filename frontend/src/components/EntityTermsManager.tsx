@@ -46,6 +46,7 @@ import CancelIcon from "@mui/icons-material/Cancel";
 import TranslateIcon from "@mui/icons-material/Translate";
 
 import { useNotification } from "../notifications/NotificationContext";
+import { parseError } from "../utils/errorHandler";
 import {
   listEntityTerms,
   createEntityTerm,
@@ -114,8 +115,9 @@ export function EntityTermsManager({
       setTerms(data);
     } catch (err) {
       console.error("Failed to load terms:", err);
-      setError("Failed to load terms");
-      showError(new Error("Failed to load terms"));
+      const parsedError = parseError(err, "Failed to load terms");
+      setError(parsedError.userMessage);
+      showError(err);
     } finally {
       setLoading(false);
     }
@@ -181,13 +183,9 @@ export function EntityTermsManager({
       handleCancel();
     } catch (err: any) {
       console.error("Failed to save term:", err);
-      if (err.message && err.message.includes("already exists")) {
-        setError("This term already exists for this language");
-        showError(new Error("This term already exists for this language"));
-      } else {
-        setError("Failed to save term");
-        showError(new Error("Failed to save term"));
-      }
+      const parsedError = parseError(err, "Failed to save term");
+      setError(parsedError.userMessage);
+      showError(err);
     } finally {
       setLoading(false);
     }
@@ -210,8 +208,9 @@ export function EntityTermsManager({
       setTermToDelete(null);
     } catch (err) {
       console.error("Failed to delete term:", err);
-      setError("Failed to delete term");
-      showError(new Error("Failed to delete term"));
+      const parsedError = parseError(err, "Failed to delete term");
+      setError(parsedError.userMessage);
+      showError(err);
     } finally {
       setLoading(false);
     }

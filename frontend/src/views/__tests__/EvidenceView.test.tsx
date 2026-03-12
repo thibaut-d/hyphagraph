@@ -173,6 +173,29 @@ describe("EvidenceView", () => {
       });
     });
 
+    it("shows parsed backend error messages inline", async () => {
+      vi.spyOn(entitiesApi, "getEntity").mockRejectedValue({
+        code: "RATE_LIMIT_EXCEEDED",
+        message: "Too many requests. Please try again later.",
+        details: "Evidence endpoint rate limited",
+      });
+      vi.spyOn(inferencesApi, "getInferenceForEntity").mockResolvedValue(mockInference);
+
+      render(
+        <MemoryRouter initialEntries={["/entities/entity-1/evidence"]}>
+          <Routes>
+            <Route path="/entities/:id/evidence" element={<EvidenceView />} />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getAllByText("Too many requests. Please try again later.").length,
+        ).toBeGreaterThan(0);
+      });
+    });
+
     it("shows error when missing entity ID", async () => {
       // Mock API to reject when entityId is "undefined" string
       vi.spyOn(entitiesApi, "getEntity").mockRejectedValue(
@@ -192,7 +215,7 @@ describe("EvidenceView", () => {
 
       await waitFor(() => {
         // The component shows the error from the failed API call
-        expect(screen.getByText("Failed to load evidence")).toBeInTheDocument();
+        expect(screen.getAllByText("Failed to load evidence").length).toBeGreaterThan(0);
       });
     });
   });

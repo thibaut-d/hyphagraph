@@ -22,6 +22,7 @@ import {
 
 import { search, SearchResult, SearchResultType } from "../api/search";
 import { useNotification } from "../notifications/NotificationContext";
+import { parseError } from "../utils/errorHandler";
 
 const RESULTS_PER_PAGE = 20;
 
@@ -39,6 +40,7 @@ export function SearchView() {
   const [sourceCount, setSourceCount] = useState(0);
   const [relationCount, setRelationCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [typeFilter, setTypeFilter] = useState<SearchResultType[]>([]);
 
@@ -46,6 +48,7 @@ export function SearchView() {
   const performSearch = useCallback(
     async (searchQuery: string, currentPage: number, types: SearchResultType[]) => {
       if (!searchQuery.trim()) {
+        setError(null);
         setResults([]);
         setTotal(0);
         setEntityCount(0);
@@ -55,6 +58,7 @@ export function SearchView() {
       }
 
       setLoading(true);
+      setError(null);
       try {
         const response = await search({
           query: searchQuery.trim(),
@@ -70,9 +74,14 @@ export function SearchView() {
         setRelationCount(response.relation_count);
       } catch (err) {
         console.error("Search failed:", err);
-        showError(new Error("Failed to perform search. Please try again."));
+        const parsedError = parseError(err, "Failed to perform search. Please try again.");
+        setError(parsedError.userMessage);
+        showError(err);
         setResults([]);
         setTotal(0);
+        setEntityCount(0);
+        setSourceCount(0);
+        setRelationCount(0);
       } finally {
         setLoading(false);
       }
@@ -195,7 +204,9 @@ export function SearchView() {
         )}
 
         {/* Error State */}
-        
+        {error && !loading && (
+          <Alert severity="error">{error}</Alert>
+        )}
 
         {/* Results */}
         {!loading && query && (

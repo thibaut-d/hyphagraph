@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError, OperationalError
+from slowapi.errors import RateLimitExceeded
 
 from app.utils.errors import (
     ErrorCode,
@@ -176,6 +177,26 @@ async def generic_exception_handler(request: Request, exc: Exception) -> JSONRes
     )
 
 
+async def rate_limit_exception_handler(
+    request: Request,
+    exc: RateLimitExceeded,
+) -> JSONResponse:
+    """
+    Return rate limit errors using the same structured error envelope as the rest of the API.
+    """
+    detail = getattr(exc, "detail", None) or "Rate limit exceeded"
+    error_detail = ErrorDetail(
+        code=ErrorCode.RATE_LIMIT_EXCEEDED,
+        message="Too many requests. Please try again later.",
+        details=str(detail),
+    )
+
+    return JSONResponse(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        content={"error": error_detail.model_dump(exclude_none=True)},
+    )
+
+
 def register_error_handlers(app) -> None:
     """
     Register all error handlers with the FastAPI application.
@@ -187,6 +208,7 @@ def register_error_handlers(app) -> None:
     app.add_exception_handler(ValidationError, validation_exception_handler)
     app.add_exception_handler(IntegrityError, integrity_error_handler)
     app.add_exception_handler(OperationalError, operational_error_handler)
+    app.add_exception_handler(RateLimitExceeded, rate_limit_exception_handler)
     app.add_exception_handler(Exception, generic_exception_handler)
 
     logger.info("Error handlers registered successfully")

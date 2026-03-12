@@ -42,7 +42,9 @@ import PeopleIcon from "@mui/icons-material/People";
 import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import EmailIcon from "@mui/icons-material/Email";
+import { apiFetch } from "../api/client";
 import { useNotification } from "../notifications/NotificationContext";
+import { parseError } from "../utils/errorHandler";
 
 interface UserStats {
   total_users: number;
@@ -66,6 +68,7 @@ export function AdminView() {
   const [stats, setStats] = useState<UserStats | null>(null);
   const [users, setUsers] = useState<UserListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserListItem | null>(null);
@@ -80,30 +83,18 @@ export function AdminView() {
 
   const loadData = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const token = localStorage.getItem("auth_token");
-
-      // Load stats
-      const statsRes = await fetch("/api/admin/stats", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (statsRes.ok) {
-        setStats(await statsRes.json());
-      }
-
-      // Load users
-      const usersRes = await fetch("/api/admin/users", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (usersRes.ok) {
-        setUsers(await usersRes.json());
-      } else if (usersRes.status === 403) {
-        showError(new Error("Access denied. Superuser privileges required."));
-      }
+      const [statsData, usersData] = await Promise.all([
+        apiFetch<UserStats>("/admin/stats"),
+        apiFetch<UserListItem[]>("/admin/users"),
+      ]);
+      setStats(statsData);
+      setUsers(usersData);
     } catch (err) {
-      showError(new Error("Failed to load admin data"));
+      const parsedError = parseError(err, "Failed to load admin data");
+      setError(parsedError.userMessage);
+      showError(err);
     } finally {
       setLoading(false);
     }
@@ -121,30 +112,21 @@ export function AdminView() {
     if (!selectedUser) return;
 
     try {
-      const token = localStorage.getItem("auth_token");
-
-      const response = await fetch(`/api/admin/users/${selectedUser.id}`, {
+      await apiFetch(`/admin/users/${selectedUser.id}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           is_active: editIsActive,
           is_superuser: editIsSuperuser,
           is_verified: editIsVerified,
         }),
       });
-
-      if (response.ok) {
-        setEditDialogOpen(false);
-        loadData(); // Reload data
-      } else {
-        const error = await response.json();
-        showError(new Error(error.detail || "Failed to update user"));
-      }
+      setError(null);
+      setEditDialogOpen(false);
+      await loadData();
     } catch (err) {
-      showError(new Error("Failed to update user"));
+      const parsedError = parseError(err, "Failed to update user");
+      setError(parsedError.userMessage);
+      showError(err);
     }
   };
 
@@ -157,22 +139,16 @@ export function AdminView() {
     if (!selectedUser) return;
 
     try {
-      const token = localStorage.getItem("auth_token");
-
-      const response = await fetch(`/api/admin/users/${selectedUser.id}`, {
+      await apiFetch(`/admin/users/${selectedUser.id}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
       });
-
-      if (response.ok) {
-        setDeleteDialogOpen(false);
-        loadData(); // Reload data
-      } else {
-        const error = await response.json();
-        showError(new Error(error.detail || "Failed to delete user"));
-      }
+      setError(null);
+      setDeleteDialogOpen(false);
+      await loadData();
     } catch (err) {
-      showError(new Error("Failed to delete user"));
+      const parsedError = parseError(err, "Failed to delete user");
+      setError(parsedError.userMessage);
+      showError(err);
     }
   };
 

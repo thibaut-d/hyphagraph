@@ -45,6 +45,14 @@ class UrlFetcher:
 
     # User agent to identify our requests (browser-like to avoid blocking)
     USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    REQUEST_HEADERS = {
+        "User-Agent": USER_AGENT,
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+    }
 
     async def fetch_url(
         self,
@@ -62,83 +70,36 @@ class UrlFetcher:
             UrlFetchResult with extracted text and metadata
 
         Raises:
-            HTTPException: If fetching or parsing fails
+            AppException: If fetching or parsing fails
         """
         max_len = max_length or self.MAX_TEXT_LENGTH
-        warnings = []
+        warnings: list[str] = []
 
         try:
-            # Fetch URL content with browser-like headers
-            headers = {
-                "User-Agent": self.USER_AGENT,
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-                "Accept-Language": "en-US,en;q=0.9",
-                "Accept-Encoding": "gzip, deflate, br",
-                "Connection": "keep-alive",
-                "Upgrade-Insecure-Requests": "1",
-            }
+            response = await self._fetch_response(url)
+            self._validate_html_content_type(response, url)
+            self._validate_response_size(response, url)
 
-            async with httpx.AsyncClient(
-                timeout=self.TIMEOUT_SECONDS,
-                headers=headers,
-                follow_redirects=True
-            ) as client:
-                logger.info(f"Fetching URL: {url}")
-                response = await client.get(url)
-                response.raise_for_status()
+            extracted_text, title = self._extract_text_from_html(response.text, url)
+            extracted_text, was_truncated, truncation_warnings = self._truncate_text(
+                extracted_text,
+                max_len,
+            )
+            warnings.extend(truncation_warnings)
 
-                # Check content type
-                content_type = response.headers.get("content-type", "").lower()
+            logger.info(
+                f"Successfully fetched {url}: "
+                f"{len(extracted_text)} chars, title='{title}'"
+            )
 
-                if "html" not in content_type:
-                    raise AppException(
-                        status_code=415,
-                        error_code=ErrorCode.DOCUMENT_UNSUPPORTED_FORMAT,
-                        message="Unsupported content type",
-                        details=f"Content type '{content_type}' is not supported. Only HTML pages are supported.",
-                        context={"content_type": content_type, "url": url}
-                    )
-
-                # Check response size
-                content_length = len(response.content)
-                max_size = self.MAX_RESPONSE_SIZE_MB * 1024 * 1024
-
-                if content_length > max_size:
-                    raise AppException(
-                        status_code=413,
-                        error_code=ErrorCode.DOCUMENT_TOO_LARGE,
-                        message="Response too large",
-                        details=f"Response size {content_length / 1024 / 1024:.1f}MB exceeds maximum of {self.MAX_RESPONSE_SIZE_MB}MB",
-                        context={"size_mb": content_length / 1024 / 1024, "max_mb": self.MAX_RESPONSE_SIZE_MB, "url": url}
-                    )
-
-                # Parse HTML
-                html_content = response.text
-                text, title = self._extract_text_from_html(html_content, url)
-
-                # Check for truncation
-                truncated = False
-                if len(text) > max_len:
-                    truncated = True
-                    text = text[:max_len]
-                    warnings.append(
-                        f"Content truncated to {max_len} characters "
-                        f"(~10-15 pages) for processing"
-                    )
-
-                logger.info(
-                    f"Successfully fetched {url}: "
-                    f"{len(text)} chars, title='{title}'"
-                )
-
-                return UrlFetchResult(
-                    text=text,
-                    url=url,
-                    title=title,
-                    char_count=len(text),
-                    truncated=truncated,
-                    warnings=warnings
-                )
+            return UrlFetchResult(
+                text=extracted_text,
+                url=url,
+                title=title,
+                char_count=len(extracted_text),
+                truncated=was_truncated,
+                warnings=warnings
+            )
 
         except httpx.HTTPStatusError as e:
             logger.error(f"HTTP error fetching {url}: {e.response.status_code}")
@@ -178,6 +139,62 @@ class UrlFetcher:
                 details=str(e),
                 context={"url": url}
             )
+
+    async def _fetch_response(self, url: str) -> httpx.Response:
+        logger.info(f"Fetching URL: {url}")
+        async with httpx.AsyncClient(
+            timeout=self.TIMEOUT_SECONDS,
+            headers=self.REQUEST_HEADERS,
+            follow_redirects=True
+        ) as client:
+            response = await client.get(url)
+            response.raise_for_status()
+            return response
+
+    def _validate_html_content_type(self, response: httpx.Response, url: str) -> None:
+        content_type = response.headers.get("content-type", "").lower()
+        if "html" in content_type:
+            return
+
+        raise AppException(
+            status_code=415,
+            error_code=ErrorCode.DOCUMENT_UNSUPPORTED_FORMAT,
+            message="Unsupported content type",
+            details=f"Content type '{content_type}' is not supported. Only HTML pages are supported.",
+            context={"content_type": content_type, "url": url}
+        )
+
+    def _validate_response_size(self, response: httpx.Response, url: str) -> None:
+        content_size_bytes = len(response.content)
+        max_size_bytes = self.MAX_RESPONSE_SIZE_MB * 1024 * 1024
+        if content_size_bytes <= max_size_bytes:
+            return
+
+        content_size_mb = content_size_bytes / 1024 / 1024
+        raise AppException(
+            status_code=413,
+            error_code=ErrorCode.DOCUMENT_TOO_LARGE,
+            message="Response too large",
+            details=(
+                f"Response size {content_size_mb:.1f}MB exceeds maximum "
+                f"of {self.MAX_RESPONSE_SIZE_MB}MB"
+            ),
+            context={
+                "size_mb": content_size_mb,
+                "max_mb": self.MAX_RESPONSE_SIZE_MB,
+                "url": url,
+            }
+        )
+
+    def _truncate_text(self, text: str, max_length: int) -> tuple[str, bool, list[str]]:
+        if len(text) <= max_length:
+            return text, False, []
+
+        warning = (
+            f"Content truncated to {max_length} characters "
+            f"(~10-15 pages) for processing"
+        )
+        return text[:max_length], True, [warning]
 
     def _extract_text_from_html(self, html: str, url: str) -> tuple[str, str | None]:
         """

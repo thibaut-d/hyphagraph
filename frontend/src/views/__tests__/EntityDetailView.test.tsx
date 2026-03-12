@@ -223,6 +223,32 @@ describe('EntityDetailView', () => {
         expect(screen.getByText(/related assertions/i)).toBeInTheDocument();
       });
     });
+
+    it('shows fetch errors instead of a misleading not found state', async () => {
+      (getEntity as any).mockRejectedValue(new Error('Server error while loading entity'));
+      (getInferenceForEntity as any).mockResolvedValue(mockInference);
+
+      renderWithRouter('123e4567-e89b-12d3-a456-426614174000');
+
+      await waitFor(() => {
+        expect(screen.getByText('Server error while loading entity')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText(/not found/i)).not.toBeInTheDocument();
+    });
+
+    it('shows an inline inference error when the inference request fails', async () => {
+      (getEntity as any).mockResolvedValue(mockEntity);
+      (getInferenceForEntity as any).mockRejectedValue(new Error('Inference service unavailable'));
+
+      renderWithRouter('123e4567-e89b-12d3-a456-426614174000');
+
+      await waitFor(() => {
+        expect(screen.getByText('Inference service unavailable')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText(/related assertions/i)).toBeInTheDocument();
+    });
   });
 
   describe('Delete functionality', () => {

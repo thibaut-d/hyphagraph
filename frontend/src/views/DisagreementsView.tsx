@@ -56,6 +56,7 @@ import { getInferenceForEntity } from "../api/inferences";
 import { InferenceRead } from "../types/inference";
 import { RelationRead } from "../types/relation";
 import { resolveLabel } from "../utils/i18nLabel";
+import { parseError } from "../utils/errorHandler";
 
 interface DisagreementGroup {
   roleType: string;
@@ -109,7 +110,10 @@ export function DisagreementsView() {
         setInference(inferenceData);
       })
       .catch((err) => {
-        setError(err?.message ?? "An error occurred");
+        const parsedError = parseError(err, "Failed to load disagreements");
+        setEntity(null);
+        setInference(null);
+        setError(parsedError.userMessage);
         showError(err);
       })
       .finally(() => {
@@ -422,7 +426,7 @@ export function DisagreementsView() {
                   <Typography variant="h6">
                     {t("disagreements.guidance.title", "How to Interpret Disagreements")}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Box sx={{ color: "text.secondary" }}>
                     {t("disagreements.guidance.text",
                       "• Contradictions are normal in science - they indicate evolving knowledge.\n" +
                       "• Check source quality and publication dates - newer studies may supersede older ones.\n" +
@@ -433,7 +437,7 @@ export function DisagreementsView() {
                         {line}
                       </Typography>
                     ))}
-                  </Typography>
+                  </Box>
                 </Stack>
               </Box>
             </CardContent>

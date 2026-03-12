@@ -54,6 +54,7 @@ import { getEntity, EntityRead } from "../api/entities";
 import { getInferenceForEntity } from "../api/inferences";
 import { InferenceRead } from "../types/inference";
 import { resolveLabel } from "../utils/i18nLabel";
+import { parseError } from "../utils/errorHandler";
 
 /**
  * SynthesisView Component
@@ -96,7 +97,10 @@ export function SynthesisView() {
       })
       .catch((err) => {
         console.error("Failed to load synthesis:", err);
-        setError(err?.message ?? "An error occurred");
+        const parsedError = parseError(err, "Failed to load synthesis");
+        setEntity(null);
+        setInference(null);
+        setError(parsedError.userMessage);
         showError(err);
       })
       .finally(() => {

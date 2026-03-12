@@ -1,9 +1,7 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi import _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
 from app.api import sources, entities, relations, inferences, explain, search, extraction, document_extraction, relation_types, export, admin, extraction_review, entity_terms
@@ -60,7 +58,6 @@ register_error_handlers(app)
 
 # --- Rate Limiting ---
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # --- CORS (dev only; safe behind Caddy) ---
 app.add_middleware(

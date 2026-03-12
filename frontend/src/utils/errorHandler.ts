@@ -110,6 +110,32 @@ export interface ParsedError {
 }
 
 /**
+ * Error instance that preserves parsed API metadata while remaining compatible
+ * with existing `error.message` consumers across the UI.
+ */
+export class ParsedAppError extends Error implements ParsedError {
+  userMessage: string;
+  developerMessage: string;
+  code: ErrorCode;
+  field?: string;
+  context?: Record<string, any>;
+  originalError?: any;
+  statusCode?: number;
+
+  constructor(parsedError: ParsedError) {
+    super(parsedError.userMessage);
+    this.name = "ParsedAppError";
+    this.userMessage = parsedError.userMessage;
+    this.developerMessage = parsedError.developerMessage;
+    this.code = parsedError.code;
+    this.field = parsedError.field;
+    this.context = parsedError.context;
+    this.originalError = parsedError.originalError;
+    this.statusCode = parsedError.statusCode;
+  }
+}
+
+/**
  * Parse an error from any source into a standardized format.
  *
  * Handles:
@@ -260,6 +286,17 @@ export function parseError(
     code: ErrorCode.UNKNOWN_ERROR,
     originalError: error,
   };
+}
+
+export function toParsedAppError(
+  error: any,
+  fallbackMessage: string = "An unexpected error occurred",
+): ParsedAppError {
+  if (error instanceof ParsedAppError) {
+    return error;
+  }
+
+  return new ParsedAppError(parseError(error, fallbackMessage));
 }
 
 /**

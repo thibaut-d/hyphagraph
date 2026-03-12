@@ -33,6 +33,7 @@ import InfoIcon from "@mui/icons-material/Info";
 import { getExplanation, ExplanationRead } from "../api/explanations";
 import { EvidenceTrace } from "../components/EvidenceTrace";
 import { useNotification } from "../notifications/NotificationContext";
+import { parseError } from "../utils/errorHandler";
 
 
 export function ExplanationView() {
@@ -47,8 +48,9 @@ export function ExplanationView() {
 
   useEffect(() => {
     if (!entityId || !roleType) {
-      setError("Missing entity ID or role type");
-      showError(new Error("Missing entity ID or role type"));
+      const message = "Missing entity ID or role type";
+      setError(message);
+      showError(message);
       setLoading(false);
       return;
     }
@@ -61,7 +63,8 @@ export function ExplanationView() {
       })
       .catch((err) => {
         console.error("Failed to load explanation:", err);
-        setError(err instanceof Error ? err.message : "Failed to load explanation");
+        const parsedError = parseError(err, "Failed to load explanation");
+        setError(parsedError.userMessage);
         showError(err);
       })
       .finally(() => {

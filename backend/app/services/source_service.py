@@ -1,22 +1,33 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_, and_, cast, String, func, distinct, case
 from typing import Optional, Tuple
 from uuid import UUID
 
-from app.schemas.source import SourceWrite, SourceRead
-from app.schemas.filters import SourceFilters, SourceFilterOptions
-from app.repositories.source_repo import SourceRepository
-from app.models.source import Source
-from app.models.source_revision import SourceRevision
+from sqlalchemy import String, and_, case, cast, distinct, func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql import Select
+
+from app.mappers.source_mapper import source_revision_from_write, source_to_read
 from app.models.relation import Relation
 from app.models.relation_revision import RelationRevision
-from app.mappers.source_mapper import (
-    source_revision_from_write,
-    source_to_read,
-)
-from app.utils.revision_helpers import get_current_revision, create_new_revision
-from app.services.derived_properties_service import DerivedPropertiesService
-from app.utils.errors import SourceNotFoundException, ValidationException, ErrorCode
+from app.models.source import Source
+from app.models.source_revision import SourceRevision
+from app.repositories.source_repo import SourceRepository
+from app.schemas.filters import SourceFilterOptions, SourceFilters
+from app.schemas.source import SourceWrite, SourceRead
+from app.utils.errors import SourceNotFoundException
+from app.utils.revision_helpers import create_new_revision, get_current_revision
+
+DOMAIN_KEYWORDS: dict[str, list[str]] = {
+    "cardiology": ["cardio", "heart", "cardiac", "cardiovascular"],
+    "neurology": ["neuro", "brain", "neural", "cognitive"],
+    "psychiatry": ["psychiatry", "mental", "psychology", "behavioral"],
+    "oncology": ["cancer", "oncology", "tumor", "carcinoma"],
+    "endocrinology": ["endocrine", "diabetes", "hormone", "metabolic"],
+    "immunology": ["immune", "immunology", "antibody", "vaccine"],
+    "gastroenterology": ["gastro", "digestive", "intestinal", "gi"],
+    "nephrology": ["kidney", "renal", "nephrology"],
+    "pulmonology": ["lung", "respiratory", "pulmonary"],
+    "rheumatology": ["rheumat", "arthritis", "autoimmune"],
+}
 
 
 class SourceService:
@@ -94,153 +105,151 @@ class SourceService:
         Returns:
             Tuple of (items, total_count)
         """
-        # Build base query for sources with their current revisions
-        base_query = (
+        base_query = self._build_list_query(filters)
+        count_query = select(func.count()).select_from(base_query.subquery())
+        total_result = await self.db.execute(count_query)
+        total = total_result.scalar() or 0
+
+        limit = filters.limit if filters else 50
+        offset = filters.offset if filters else 0
+        items_query = base_query.limit(limit).offset(offset)
+        result_rows = await self.db.execute(items_query)
+        items = self._map_list_rows(result_rows.all())
+        return items, total
+
+    def _build_list_query(self, filters: Optional[SourceFilters]) -> Select:
+        query = (
             select(Source, SourceRevision)
             .join(SourceRevision, Source.id == SourceRevision.source_id)
             .where(SourceRevision.is_current == True)
         )
 
-        # Apply basic filters if provided
-        if filters:
-            # Filter by kind (OR logic)
-            if filters.kind:
-                base_query = base_query.where(SourceRevision.kind.in_(filters.kind))
+        if not filters:
+            return query
 
-            # Filter by year range
-            if filters.year_min is not None:
-                base_query = base_query.where(SourceRevision.year >= filters.year_min)
-            if filters.year_max is not None:
-                base_query = base_query.where(SourceRevision.year <= filters.year_max)
+        query = self._apply_basic_filters(query, filters)
+        query = self._apply_domain_filters(query, filters.domain)
+        query = self._apply_role_filters(query, filters.role)
+        return query
 
-            # Filter by trust level range
-            if filters.trust_level_min is not None:
-                base_query = base_query.where(SourceRevision.trust_level >= filters.trust_level_min)
-            if filters.trust_level_max is not None:
-                base_query = base_query.where(SourceRevision.trust_level <= filters.trust_level_max)
+    def _apply_basic_filters(self, query: Select, filters: SourceFilters) -> Select:
+        if filters.kind:
+            query = query.where(SourceRevision.kind.in_(filters.kind))
 
-            # Search in title, authors, or origin (case-insensitive)
-            if filters.search:
-                search_term = f"%{filters.search.lower()}%"
-                # Convert authors array to string for searching
-                base_query = base_query.where(
-                    or_(
-                        SourceRevision.title.ilike(search_term),
-                        SourceRevision.origin.ilike(search_term),
-                        cast(SourceRevision.authors, String).ilike(search_term),
-                    )
+        if filters.year_min is not None:
+            query = query.where(SourceRevision.year >= filters.year_min)
+        if filters.year_max is not None:
+            query = query.where(SourceRevision.year <= filters.year_max)
+
+        if filters.trust_level_min is not None:
+            query = query.where(SourceRevision.trust_level >= filters.trust_level_min)
+        if filters.trust_level_max is not None:
+            query = query.where(SourceRevision.trust_level <= filters.trust_level_max)
+
+        if filters.search:
+            search_pattern = f"%{filters.search.lower()}%"
+            query = query.where(
+                or_(
+                    SourceRevision.title.ilike(search_pattern),
+                    SourceRevision.origin.ilike(search_pattern),
+                    cast(SourceRevision.authors, String).ilike(search_pattern),
                 )
+            )
 
-            # === Advanced Filters (computed properties) ===
+        return query
 
-            # Filter by domain (keyword matching on origin/title)
-            if filters.domain:
-                # Build keyword search for domains
-                domain_conditions = []
-                for domain in filters.domain:
-                    # Domain keyword patterns (simplified - matches derived_properties_service logic)
-                    domain_keywords = {
-                        "cardiology": ["cardio", "heart", "cardiac", "cardiovascular"],
-                        "neurology": ["neuro", "brain", "neural", "cognitive"],
-                        "psychiatry": ["psychiatry", "mental", "psychology", "behavioral"],
-                        "oncology": ["cancer", "oncology", "tumor", "carcinoma"],
-                        "endocrinology": ["endocrine", "diabetes", "hormone", "metabolic"],
-                        "immunology": ["immune", "immunology", "antibody", "vaccine"],
-                        "gastroenterology": ["gastro", "digestive", "intestinal", "gi"],
-                        "nephrology": ["kidney", "renal", "nephrology"],
-                        "pulmonology": ["lung", "respiratory", "pulmonary"],
-                        "rheumatology": ["rheumat", "arthritis", "autoimmune"],
-                    }
+    def _apply_domain_filters(
+        self,
+        query: Select,
+        domains: Optional[list[str]],
+    ) -> Select:
+        if not domains:
+            return query
 
-                    keywords = domain_keywords.get(domain, [])
-                    if keywords or domain == "general":
-                        # Build OR conditions for keywords in this domain
-                        keyword_conditions = []
-                        for keyword in keywords:
-                            keyword_pattern = f"%{keyword}%"
-                            keyword_conditions.append(
-                                or_(
-                                    SourceRevision.origin.ilike(keyword_pattern),
-                                    SourceRevision.title.ilike(keyword_pattern),
-                                )
-                            )
-                        if keyword_conditions:
-                            domain_conditions.append(or_(*keyword_conditions))
+        domain_conditions = []
+        for domain in domains:
+            keyword_conditions = self._build_domain_keyword_conditions(domain)
+            if keyword_conditions:
+                domain_conditions.append(or_(*keyword_conditions))
 
-                if domain_conditions:
-                    base_query = base_query.where(or_(*domain_conditions))
+        if not domain_conditions:
+            return query
 
-            # Filter by role in graph (requires computing relation count)
-            if filters.role:
-                # Subquery to compute relation count per source
-                relation_count_subquery = (
-                    select(
-                        Relation.source_id,
-                        func.count(distinct(Relation.id)).label('relation_count'),
-                        func.sum(
-                            case(
-                                (RelationRevision.direction == "contradicts", 1),
-                                else_=0
-                            )
-                        ).label('contradictory_count')
-                    )
-                    .join(RelationRevision, Relation.id == RelationRevision.relation_id)
-                    .where(RelationRevision.is_current == True)
-                    .group_by(Relation.source_id)
-                    .subquery()
+        return query.where(or_(*domain_conditions))
+
+    def _build_domain_keyword_conditions(self, domain: str) -> list:
+        keyword_conditions = []
+        for keyword in DOMAIN_KEYWORDS.get(domain, []):
+            keyword_pattern = f"%{keyword}%"
+            keyword_conditions.append(
+                or_(
+                    SourceRevision.origin.ilike(keyword_pattern),
+                    SourceRevision.title.ilike(keyword_pattern),
                 )
+            )
+        return keyword_conditions
 
-                # Join with the relation count subquery
-                base_query = base_query.join(
-                    relation_count_subquery,
-                    Source.id == relation_count_subquery.c.source_id,
-                    isouter=True  # LEFT JOIN to include sources with 0 relations
-                )
+    def _apply_role_filters(
+        self,
+        query: Select,
+        roles: Optional[list[str]],
+    ) -> Select:
+        if not roles:
+            return query
 
-                # Build role conditions
-                role_conditions = []
-                if "pillar" in filters.role:
-                    role_conditions.append(relation_count_subquery.c.relation_count > 5)
-                if "supporting" in filters.role:
-                    role_conditions.append(and_(
-                        relation_count_subquery.c.relation_count >= 2,
-                        relation_count_subquery.c.relation_count <= 5
-                    ))
-                if "contradictory" in filters.role:
-                    role_conditions.append(relation_count_subquery.c.contradictory_count > 0)
-                if "single" in filters.role:
-                    role_conditions.append(relation_count_subquery.c.relation_count == 1)
-
-                if role_conditions:
-                    base_query = base_query.where(or_(*role_conditions))
-
-        # Count total results before pagination
-        count_query = select(func.count()).select_from(
-            base_query.subquery()
+        relation_stats = self._build_relation_stats_subquery()
+        query = query.join(
+            relation_stats,
+            Source.id == relation_stats.c.source_id,
+            isouter=True,
         )
-        total_result = await self.db.execute(count_query)
-        total = total_result.scalar() or 0
 
-        # Apply pagination to items query
-        limit = filters.limit if filters else 50
-        offset = filters.offset if filters else 0
-        items_query = base_query.limit(limit).offset(offset)
+        role_conditions = []
+        if "pillar" in roles:
+            role_conditions.append(relation_stats.c.relation_count > 5)
+        if "supporting" in roles:
+            role_conditions.append(
+                and_(
+                    relation_stats.c.relation_count >= 2,
+                    relation_stats.c.relation_count <= 5,
+                )
+            )
+        if "contradictory" in roles:
+            role_conditions.append(relation_stats.c.contradictory_count > 0)
+        if "single" in roles:
+            role_conditions.append(relation_stats.c.relation_count == 1)
 
-        # Execute items query
-        result_rows = await self.db.execute(items_query)
-        results = result_rows.all()
+        if not role_conditions:
+            return query
 
-        # Convert to SourceRead objects
-        # Note: results may have extra columns from subqueries, extract just (Source, SourceRevision)
-        items = []
-        for row in results:
-            # row is a tuple, first two elements are Source and SourceRevision
-            source = row[0] if hasattr(row[0], '__tablename__') else row[0]
+        return query.where(or_(*role_conditions))
+
+    def _build_relation_stats_subquery(self):
+        return (
+            select(
+                Relation.source_id,
+                func.count(distinct(Relation.id)).label("relation_count"),
+                func.sum(
+                    case(
+                        (RelationRevision.direction == "contradicts", 1),
+                        else_=0,
+                    )
+                ).label("contradictory_count"),
+            )
+            .join(RelationRevision, Relation.id == RelationRevision.relation_id)
+            .where(RelationRevision.is_current == True)
+            .group_by(Relation.source_id)
+            .subquery()
+        )
+
+    def _map_list_rows(self, rows) -> list[SourceRead]:
+        items: list[SourceRead] = []
+        for row in rows:
+            source = row[0]
             revision = row[1] if len(row) > 1 else None
             if source and revision:
                 items.append(source_to_read(source, revision))
-
-        return items, total
+        return items
 
     async def update(self, source_id: str, payload: SourceWrite, user_id=None) -> SourceRead:
         """

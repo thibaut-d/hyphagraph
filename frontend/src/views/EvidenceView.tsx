@@ -51,6 +51,7 @@ import { getSource } from "../api/sources";
 import type { EntityRead } from "../types/entity";
 import type { SourceRead } from "../types/source";
 import type { RelationRead } from "../types/relation";
+import { parseError } from "../utils/errorHandler";
 
 type SortField = "kind" | "direction" | "confidence" | "source";
 type SortOrder = "asc" | "desc";
@@ -93,6 +94,7 @@ export function EvidenceView() {
 
   const [entity, setEntity] = useState<EntityRead | null>(null);
   const [relations, setRelations] = useState<EnrichedRelation[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [sortField, setSortField] = useState<SortField>("confidence");
@@ -101,18 +103,26 @@ export function EvidenceView() {
   // Fetch entity and relations
   useEffect(() => {
     if (!id) {
+      setError("Missing entity ID");
       showError(new Error("Missing entity ID"));
       setLoading(false);
       return;
     }
 
+    let isMounted = true;
+
     setLoading(true);
+    setError(null);
 
     Promise.all([
       getEntity(id),
       getInferenceForEntity(id),
     ])
       .then(async ([entityData, inferenceData]) => {
+        if (!isMounted) {
+          return;
+        }
+
         setEntity(entityData);
 
         // Extract all relations from inference data
@@ -147,14 +157,32 @@ export function EvidenceView() {
           })
         );
 
+        if (!isMounted) {
+          return;
+        }
+
         setRelations(enrichedRelations);
       })
       .catch((err) => {
+        const parsedError = parseError(err, "Failed to load evidence");
+        if (!isMounted) {
+          return;
+        }
+
+        setEntity(null);
+        setRelations([]);
+        setError(parsedError.userMessage);
         showError(err);
       })
       .finally(() => {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       });
+
+    return () => {
+      isMounted = false;
+    };
   }, [id, roleType, showError]);
 
   // Handle sorting
@@ -202,10 +230,10 @@ export function EvidenceView() {
   }
 
   // Error state
-  if (!entity && !loading) {
+  if (error || (!entity && !loading)) {
     return (
       <Alert severity="error">
-        {t("common.error", "An error occurred")}
+        {error || t("common.error", "An error occurred")}
       </Alert>
     );
   }
@@ -501,4 +529,3 @@ export function EvidenceView() {
     </Stack>
   );
 }
-

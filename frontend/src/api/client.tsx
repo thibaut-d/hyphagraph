@@ -1,4 +1,8 @@
-import { parseError, formatErrorForLogging } from "../utils/errorHandler";
+import {
+  parseError,
+  formatErrorForLogging,
+  toParsedAppError,
+} from "../utils/errorHandler";
 import {
   clearStoredAuthTokens,
   updateStoredAccessToken,
@@ -159,7 +163,7 @@ export async function apiFetch<T>(
     // Network error (e.g., no internet, CORS, DNS failure)
     const parsedError = parseError(error, "Network request failed");
     console.error(formatErrorForLogging(parsedError));
-    throw error; // Re-throw original error for compatibility
+    throw toParsedAppError(error, "Network request failed");
   }
 
   // Handle 401 Unauthorized - attempt token refresh
@@ -170,16 +174,16 @@ export async function apiFetch<T>(
       try {
         errorData = await res.json();
       } catch {
-        const parsedError = parseError(res, "Authentication failed");
-        console.error(formatErrorForLogging(parsedError));
-        throw new Error(parsedError.userMessage);
+        const parsedAppError = toParsedAppError(res, "Authentication failed");
+        console.error(formatErrorForLogging(parsedAppError));
+        throw parsedAppError;
       }
 
       // Parse backend error response
       const backendError = errorData.error || errorData.detail || errorData;
-      const parsedError = parseError(backendError, "Authentication failed");
-      console.error(formatErrorForLogging(parsedError));
-      throw new Error(parsedError.userMessage);
+      const parsedAppError = toParsedAppError(backendError, "Authentication failed");
+      console.error(formatErrorForLogging(parsedAppError));
+      throw parsedAppError;
     }
 
     // Try to acquire refresh lock (cross-tab synchronized)
@@ -217,15 +221,15 @@ export async function apiFetch<T>(
                   try {
                     errorData = await retryRes.json();
                   } catch {
-                    const parsedError = parseError(retryRes, "API request failed");
-                    console.error(formatErrorForLogging(parsedError));
-                    throw new Error(parsedError.userMessage);
+                    const parsedAppError = toParsedAppError(retryRes, "API request failed");
+                    console.error(formatErrorForLogging(parsedAppError));
+                    throw parsedAppError;
                   }
 
                   const backendError = errorData.error || errorData.detail || errorData;
-                  const parsedError = parseError(backendError, "API request failed");
-                  console.error(formatErrorForLogging(parsedError));
-                  throw new Error(parsedError.userMessage);
+                  const parsedAppError = toParsedAppError(backendError, "API request failed");
+                  console.error(formatErrorForLogging(parsedAppError));
+                  throw parsedAppError;
                 }
                 return parseSuccessResponse<T>(retryRes);
               })
@@ -273,15 +277,15 @@ export async function apiFetch<T>(
       try {
         errorData = await retryRes.json();
       } catch {
-        const parsedError = parseError(retryRes, "API request failed");
-        console.error(formatErrorForLogging(parsedError));
-        throw new Error(parsedError.userMessage);
+        const parsedAppError = toParsedAppError(retryRes, "API request failed");
+        console.error(formatErrorForLogging(parsedAppError));
+        throw parsedAppError;
       }
 
       const backendError = errorData.error || errorData.detail || errorData;
-      const parsedError = parseError(backendError, "API request failed");
-      console.error(formatErrorForLogging(parsedError));
-      throw new Error(parsedError.userMessage);
+      const parsedAppError = toParsedAppError(backendError, "API request failed");
+      console.error(formatErrorForLogging(parsedAppError));
+      throw parsedAppError;
     }
 
     return parseSuccessResponse<T>(retryRes);
@@ -293,16 +297,16 @@ export async function apiFetch<T>(
     try {
       errorData = await res.json();
     } catch {
-      const parsedError = parseError(res, "API request failed");
-      console.error(formatErrorForLogging(parsedError));
-      throw new Error(parsedError.userMessage);
+      const parsedAppError = toParsedAppError(res, "API request failed");
+      console.error(formatErrorForLogging(parsedAppError));
+      throw parsedAppError;
     }
 
     // Backend sends errors in { error: { code, message, details, ... } } format
     const backendError = errorData.error || errorData.detail || errorData;
-    const parsedError = parseError(backendError, "API request failed");
-    console.error(formatErrorForLogging(parsedError));
-    throw new Error(parsedError.userMessage);
+    const parsedAppError = toParsedAppError(backendError, "API request failed");
+    console.error(formatErrorForLogging(parsedAppError));
+    throw parsedAppError;
   }
 
   return parseSuccessResponse<T>(res);

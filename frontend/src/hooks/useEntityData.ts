@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { EntityRead } from "../types/entity";
 import { getEntity } from "../api/entities";
 import { useNotification } from "../notifications/NotificationContext";
+import { parseError, ParsedAppError } from "../utils/errorHandler";
 
 /**
  * Hook for fetching and managing entity data.
@@ -24,9 +25,14 @@ export function useEntityData(entityId: string | undefined): UseEntityDataReturn
   const [entity, setEntity] = useState<EntityRead | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const requestIdRef = useRef(0);
 
   const fetchEntity = async () => {
+    const requestId = ++requestIdRef.current;
+
     if (!entityId) {
+      setEntity(null);
+      setError(new Error("Missing entity ID"));
       setLoading(false);
       return;
     }
@@ -35,13 +41,26 @@ export function useEntityData(entityId: string | undefined): UseEntityDataReturn
       setLoading(true);
       setError(null);
       const entityRes = await getEntity(entityId);
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
       setEntity(entityRes);
     } catch (err) {
-      const error = err instanceof Error ? err : new Error(String(err));
-      setError(error);
-      showError(error);
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+
+      const parsedError = parseError(err, "Failed to load entity");
+      const nextError =
+        err instanceof Error ? err : new ParsedAppError(parsedError);
+
+      setEntity(null);
+      setError(nextError);
+      showError(err);
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   };
 
