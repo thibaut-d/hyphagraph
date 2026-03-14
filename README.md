@@ -101,7 +101,7 @@ See [Roadmap](docs/product/ROADMAP.md) for current status and planned work.
 | [Dev Workflow](docs/development/DEV_WORKFLOW.md) | Development workflow and commit discipline |
 | [E2E Testing](docs/development/E2E_TESTING_GUIDE.md) | Playwright E2E testing guide |
 | [UX Design Brief](docs/product/UX.md) | UX principles and design constraints |
-| [AI Agent Rules](docs/product/VIBE.md) | AI agent instructions and coding standards |
+| [AI Agent Guide](.ai/AI.md) | Canonical AI-agent entrypoint and workflow |
 | [Roadmap](docs/product/ROADMAP.md) | Project status and upcoming work |
 
 ---
