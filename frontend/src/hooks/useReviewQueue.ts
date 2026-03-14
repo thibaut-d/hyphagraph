@@ -6,7 +6,7 @@ import {
   type ReviewStats,
   type StagedExtractionFilters,
 } from "../api/extractionReview";
-import { useNotification } from "../notifications/NotificationContext";
+import { usePageErrorHandler } from "./usePageErrorHandler";
 
 /**
  * Hook for managing review queue data and pagination.
@@ -38,7 +38,7 @@ export function useReviewQueue(
   options: UseReviewQueueOptions = {}
 ): UseReviewQueueReturn {
   const { pageSize = 20, minScore: initialMinScore, onlyFlagged: initialOnlyFlagged } = options;
-  const { showError } = useNotification();
+  const handlePageError = usePageErrorHandler();
 
   const [extractions, setExtractions] = useState<StagedExtractionRead[]>([]);
   const [stats, setStats] = useState<ReviewStats | null>(null);
@@ -71,12 +71,12 @@ export function useReviewQueue(
 
         setHasMore(response.has_more);
       } catch (err) {
-        showError(err);
+        handlePageError(err, "Failed to load review queue");
       } finally {
         setIsLoading(false);
       }
     },
-    [page, pageSize, minScore, onlyFlagged, showError]
+    [handlePageError, page, pageSize, minScore, onlyFlagged]
   );
 
   const loadStats = useCallback(async () => {
@@ -84,9 +84,9 @@ export function useReviewQueue(
       const statsData = await getReviewStats();
       setStats(statsData);
     } catch (err) {
-      console.error("Failed to load stats:", err);
+      handlePageError(err, "Failed to load review stats");
     }
-  }, []);
+  }, [handlePageError]);
 
   const loadMore = useCallback(() => {
     if (!isLoading && hasMore) {

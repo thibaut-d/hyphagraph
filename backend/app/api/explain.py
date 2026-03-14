@@ -6,15 +6,13 @@ allowing users to trace inference scores back to source documents.
 """
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 from typing import Optional
-import json
 
-from app.database import get_db
+from app.api.inference_dependencies import get_explanation_service, parse_scope_filter
 from app.schemas.explanation import ExplanationRead
 from app.services.explanation_service import ExplanationService
-from app.utils.errors import AppException, ErrorCode, ValidationException
+from app.utils.errors import AppException, ErrorCode
 
 
 router = APIRouter()
@@ -29,7 +27,7 @@ async def explain_inference(
         description='Scope filter as JSON string (same format as inference API). '
                     'Example: {"population": "adults", "condition": "chronic_pain"}',
     ),
-    db: AsyncSession = Depends(get_db),
+    service: ExplanationService = Depends(get_explanation_service),
 ):
     """
     Generate comprehensive explanation for a computed inference.
@@ -59,25 +57,7 @@ async def explain_inference(
         404: Role type not found in computed inference
         500: Internal server error during inference computation
     """
-    service = ExplanationService(db)
-
-    # Parse scope filter (same pattern as inferences.py)
-    scope_filter = None
-    if scope:
-        try:
-            scope_filter = json.loads(scope)
-            if not isinstance(scope_filter, dict):
-                raise ValidationException(
-                    message="Scope must be a JSON object",
-                    field="scope",
-                    details="Scope must be a JSON object"
-                )
-        except json.JSONDecodeError as e:
-            raise ValidationException(
-                message="Invalid JSON in scope parameter",
-                field="scope",
-                details=str(e)
-            )
+    scope_filter = parse_scope_filter(scope)
 
     try:
         return await service.explain_inference(entity_id, role_type, scope_filter)

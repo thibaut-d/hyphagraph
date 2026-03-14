@@ -5,9 +5,10 @@ Handles initialization tasks that should run when the application starts,
 such as creating the default admin user and system source.
 """
 import logging
-from uuid import uuid4
-from sqlalchemy.ext.asyncio import AsyncSession
+from uuid import UUID, uuid4
+
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.user import User
@@ -61,7 +62,6 @@ async def create_admin_user(db: AsyncSession) -> None:
         admin_user = await user_service.create(admin_data)
 
         # Upgrade to superuser
-        from sqlalchemy import select
         stmt = select(User).where(User.id == admin_user.id)
         result = await db.execute(stmt)
         user = result.scalar_one()
@@ -93,7 +93,6 @@ async def create_system_source(db: AsyncSession) -> None:
     try:
         # Check if system source already exists by ID or by title
         if settings.SYSTEM_SOURCE_ID:
-            from uuid import UUID
             stmt = select(Source).where(Source.id == UUID(settings.SYSTEM_SOURCE_ID))
             result = await db.execute(stmt)
             existing = result.scalar_one_or_none()

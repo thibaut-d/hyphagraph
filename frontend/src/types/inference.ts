@@ -1,4 +1,5 @@
 import { RelationRead } from "./relation";
+import { SourceRead } from "./source";
 
 export interface EntityRoleInference {
   entity_slug: string;  // The linked entity
@@ -22,4 +23,42 @@ export interface InferenceRead {
   entity_id: string;
   relations_by_kind: Record<string, RelationRead[]>;
   role_inferences?: RoleInference[];
+}
+
+export interface EvidenceItemRead extends RelationRead {
+  source?: SourceRead | null;
+}
+
+export interface RelationKindSummaryRead {
+  kind: string;
+  relation_count: number;
+  average_confidence: number;
+  supporting_count: number;
+  contradicting_count: number;
+  neutral_count: number;
+}
+
+export interface DisagreementGroupRead {
+  kind: string;
+  supporting: EvidenceItemRead[];
+  contradicting: EvidenceItemRead[];
+  confidence: number;
+}
+
+export interface InferenceStatsRead {
+  total_relations: number;
+  unique_sources_count: number;
+  average_confidence: number;
+  confidence_count: number;
+  high_confidence_count: number;
+  low_confidence_count: number;
+  contradiction_count: number;
+  relation_type_count: number;
+}
+
+export interface InferenceDetailRead extends InferenceRead {
+  stats: InferenceStatsRead;
+  relation_kind_summaries: RelationKindSummaryRead[];
+  evidence_items: EvidenceItemRead[];
+  disagreement_groups: DisagreementGroupRead[];
 }

@@ -3,8 +3,8 @@ import { InferenceRead } from "../types/inference";
 import { SourceRead } from "../types/source";
 import { ScopeFilter, getInferenceForEntity } from "../api/inferences";
 import { getSource } from "../api/sources";
-import { useNotification } from "../notifications/NotificationContext";
-import { ParsedAppError, parseError } from "../utils/errorHandler";
+import { ParsedAppError } from "../utils/errorHandler";
+import { usePageErrorHandler } from "./usePageErrorHandler";
 
 /**
  * Hook for fetching and managing entity inference data with source cache.
@@ -29,7 +29,7 @@ export function useEntityInference(
   entityId: string | undefined,
   initialScopeFilter: ScopeFilter = {}
 ): UseEntityInferenceReturn {
-  const { showError } = useNotification();
+  const handlePageError = usePageErrorHandler();
   const [inference, setInference] = useState<InferenceRead | null>(null);
   const [sources, setSources] = useState<Record<string, SourceRead>>({});
   const [loadingSources, setLoadingSources] = useState(false);
@@ -99,7 +99,7 @@ export function useEntityInference(
         return;
       }
 
-      const parsedError = parseError(err, "Failed to load inference");
+      const parsedError = handlePageError(err, "Failed to load inference");
       const nextError =
         err instanceof Error ? err : new ParsedAppError(parsedError);
 
@@ -107,7 +107,6 @@ export function useEntityInference(
       setSources({});
       setLoadingSources(false);
       setError(nextError);
-      showError(err);
     }
   };
 

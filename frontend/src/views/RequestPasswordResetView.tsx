@@ -1,28 +1,38 @@
 import React, { useState } from "react";
 import { requestPasswordReset } from "../api/auth";
 import { Link } from "react-router-dom";
-import { useNotification } from "../notifications/NotificationContext";
+import { useAsyncAction } from "../hooks/useAsyncAction";
+import { useValidationMessage } from "../hooks/useValidationMessage";
+
+type ValidationField = "email";
 
 export default function RequestPasswordResetView() {
-  const { showError } = useNotification();
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const {
+    setValidationMessage,
+    clearValidationMessage: clearError,
+    getFieldError,
+    hasFieldError,
+  } = useValidationMessage<ValidationField>();
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const { isRunning: loading, run } = useAsyncAction((message) => setSubmitError(message ?? ""));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    setLoading(true);
-
-    try {
-      await requestPasswordReset(email);
+    clearError();
+    setSubmitError(null);
+    if (!email.trim()) {
+      setValidationMessage("Email address is required", "email");
+      return;
+    }
+    const result = await run(async () => {
+      await requestPasswordReset(email.trim());
       setSubmitted(true);
-    } catch (err: any) {
-      setError(err?.message ?? "Failed to request password reset");
-      showError(err);
-    } finally {
-      setLoading(false);
+    }, "Failed to request password reset");
+
+    if (!result.ok) {
+      return;
     }
   };
 
@@ -93,7 +103,10 @@ export default function RequestPasswordResetView() {
           <input
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              clearError("email");
+            }}
             required
             disabled={loading}
             placeholder="your-email@example.com"
@@ -101,14 +114,19 @@ export default function RequestPasswordResetView() {
               width: "100%",
               padding: "10px",
               fontSize: "16px",
-              border: "1px solid #ddd",
+              border: `1px solid ${hasFieldError("email") ? "#c00" : "#ddd"}`,
               borderRadius: "4px",
               boxSizing: "border-box",
             }}
           />
+          {getFieldError("email") && (
+            <div style={{ marginTop: "5px", color: "#c00", fontSize: "14px" }}>
+              {getFieldError("email")}
+            </div>
+          )}
         </div>
 
-        {error && (
+        {submitError && (
           <div
             style={{
               background: "#fee",
@@ -119,7 +137,7 @@ export default function RequestPasswordResetView() {
               color: "#c00",
             }}
           >
-            {error}
+            {submitError}
           </div>
         )}
 

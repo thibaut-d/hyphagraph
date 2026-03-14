@@ -8,6 +8,8 @@ import logging
 from typing import TYPE_CHECKING
 
 from app.schemas.source import SourceMetadataSuggestion
+from app.services.metadata_extractors.generic_extractor import GenericUrlMetadataExtractor
+from app.services.metadata_extractors.pubmed_extractor import PubMedMetadataExtractor
 from app.utils.errors import AppException, ErrorCode
 
 if TYPE_CHECKING:
@@ -30,10 +32,6 @@ class MetadataExtractorFactory:
 
         Extractors are automatically ordered by priority (lower = higher priority).
         """
-        # Import here to avoid circular dependencies
-        from app.services.metadata_extractors.pubmed_extractor import PubMedMetadataExtractor
-        from app.services.metadata_extractors.generic_extractor import GenericUrlMetadataExtractor
-
         # Register extractors (will be sorted by priority)
         self.extractors: list["MetadataExtractor"] = [
             PubMedMetadataExtractor(),

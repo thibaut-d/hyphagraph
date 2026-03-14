@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Optional, Tuple
 from uuid import UUID
 
@@ -13,6 +14,7 @@ from app.models.source_revision import SourceRevision
 from app.repositories.source_repo import SourceRepository
 from app.schemas.filters import SourceFilterOptions, SourceFilters
 from app.schemas.source import SourceWrite, SourceRead
+from app.services.derived_properties_service import DerivedPropertiesService
 from app.utils.errors import SourceNotFoundException
 from app.utils.revision_helpers import create_new_revision, get_current_revision
 
@@ -31,9 +33,16 @@ DOMAIN_KEYWORDS: dict[str, list[str]] = {
 
 
 class SourceService:
-    def __init__(self, db: AsyncSession):
+    def __init__(
+        self,
+        db: AsyncSession,
+        derived_properties_service: DerivedPropertiesService | None = None,
+    ):
         self.db = db
         self.repo = SourceRepository(db)
+        self.derived_properties_service = (
+            derived_properties_service or DerivedPropertiesService(db)
+        )
 
     async def create(self, payload: SourceWrite, user_id=None) -> SourceRead:
         """
@@ -339,10 +348,8 @@ class SourceService:
         min_year, max_year = year_result.one()
 
         # Get advanced filter options using derived properties service
-        derived_service = DerivedPropertiesService(self.db)
-
         # Get available domains
-        domains = await derived_service.get_all_domains()
+        domains = await self.derived_properties_service.get_all_domains()
 
         return SourceFilterOptions(
             kinds=sorted(kinds),
@@ -398,7 +405,6 @@ class SourceService:
                 )
 
             # Update document fields
-            from datetime import datetime, timezone
             current_revision.document_text = document_text
             current_revision.document_format = document_format
             current_revision.document_file_name = document_file_name

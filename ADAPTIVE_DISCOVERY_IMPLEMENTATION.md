@@ -234,10 +234,10 @@ This helps with:
 
 ### Test Script
 
-Created `/home/thibaut/code/hyphagraph/backend/test_adaptive_discovery.py`:
+Created `/home/thibaut/code/hyphagraph/backend/scripts/adaptive_discovery_probe.py`:
 
 ```bash
-python backend/test_adaptive_discovery.py
+python backend/scripts/adaptive_discovery_probe.py
 ```
 
 **Results**:
@@ -275,8 +275,8 @@ assert len(set(pmids1) & set(pmids2)) == 0  # No overlap ✅
    - Added `skip_pmc_enrichment` to `fetch_by_pmid()`
    - Added `skip_pmc_enrichment` to `bulk_fetch_articles()`
 
-3. **`backend/test_adaptive_discovery.py`** (NEW, 145 lines)
-   - Test script for adaptive discovery
+3. **`backend/scripts/adaptive_discovery_probe.py`** (NEW)
+   - Developer probe for adaptive discovery
    - Simulates real-world fibromyalgia search
    - Validates success rates and batch counts
 

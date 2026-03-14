@@ -27,8 +27,11 @@ import SearchIcon from "@mui/icons-material/Search";
 
 import { createSource, SourceWrite, extractMetadataFromUrl } from "../api/sources";
 import { invalidateSourceFilterCache } from "../utils/cacheUtils";
-import { useNotification } from "../notifications/NotificationContext";
+import { useAsyncAction } from "../hooks/useAsyncAction";
+import { useValidationMessage } from "../hooks/useValidationMessage";
 import type { JsonObject } from "../types/json";
+
+type ValidationField = "title" | "url";
 
 const SOURCE_KINDS = [
   "article",
@@ -88,7 +91,6 @@ function _getQualityBadge(value: number): {
 
 export function CreateSourceView() {
   const { t } = useTranslation();
-  const { showError } = useNotification();
   const navigate = useNavigate();
 
   // Form state
@@ -102,14 +104,20 @@ export function CreateSourceView() {
   const [summaryEn, setSummaryEn] = useState("");
   const [summaryFr, setSummaryFr] = useState("");
   const [sourceMetadata, setSourceMetadata] = useState<JsonObject | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    setValidationMessage,
+    clearValidationMessage: clearError,
+    getFieldError,
+    hasFieldError,
+  } = useValidationMessage<ValidationField>();
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // UI state
-  const [extracting, setExtracting] = useState(false);
   const [extractError, setExtractError] = useState<string | null>(null);
   const [autofilled, setAutofilled] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const { isRunning: extracting, run: runMetadataExtraction } = useAsyncAction(setExtractError);
+  const { isRunning: loading, run: runCreateSource } = useAsyncAction(setSubmitError);
 
   const handleExtractMetadata = async () => {
     if (!url.trim()) {
@@ -117,11 +125,8 @@ export function CreateSourceView() {
       return;
     }
 
-    setExtractError(null);
-    setExtracting(true);
     setAutofilled(false);
-
-    try {
+    const result = await runMetadataExtraction(async () => {
       const metadata = await extractMetadataFromUrl(url.trim());
 
       // Autofill form with extracted metadata
@@ -141,31 +146,28 @@ export function CreateSourceView() {
 
       setAutofilled(true);
       setExtractError(null);
-    } catch (e: any) {
-      setExtractError(
-        e.message || t("create_source.extract_error", "Failed to extract metadata from URL")
-      );
-    } finally {
-      setExtracting(false);
+    }, t("create_source.extract_error", "Failed to extract metadata from URL"));
+
+    if (!result.ok) {
+      return;
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    clearError();
+    setSubmitError(null);
     if (!title.trim()) {
-      setError(t("create_source.title_required", "Title is required"));
+      setValidationMessage(t("create_source.title_required", "Title is required"), "title");
       return;
     }
 
     if (!url.trim()) {
-      setError(t("create_source.url_required", "URL is required"));
+      setValidationMessage(t("create_source.url_required", "URL is required"), "url");
       return;
     }
 
-    setLoading(true);
-
-    try {
+    const result = await runCreateSource(async () => {
       const summary: Record<string, string> = {};
       if (summaryEn.trim()) summary.en = summaryEn.trim();
       if (summaryFr.trim()) summary.fr = summaryFr.trim();
@@ -194,10 +196,10 @@ export function CreateSourceView() {
 
       // Navigate to the created source
       navigate(`/sources/${created.id}`);
-    } catch (e: any) {
-      setError(e?.message ?? t("common.error", "An error occurred"));
-      showError(e);
-      setLoading(false);
+    }, t("common.error", "An error occurred"));
+
+    if (!result.ok) {
+      return;
     }
   };
 
@@ -235,7 +237,7 @@ export function CreateSourceView() {
         </Stack>
 
         {/* Error message (form submission) */}
-        {error && <Alert severity="error">{error}</Alert>}
+        {submitError && <Alert severity="error">{submitError}</Alert>}
 
         {/* Main Form */}
         <form onSubmit={handleSubmit}>
@@ -247,15 +249,22 @@ export function CreateSourceView() {
                   fullWidth
                   label={t("create_source.url_label", "Source URL") + " *"}
                   value={url}
-                  onChange={(e) => setUrl(e.target.value)}
+                  onChange={(e) => {
+                    setUrl(e.target.value);
+                    clearError("url");
+                  }}
                   required
                   disabled={loading}
                   type="url"
                   placeholder="https://pubmed.ncbi.nlm.nih.gov/12345678/"
-                  helperText={t(
-                    "create_source.url_help",
-                    "Paste URL and click 'Auto-Fill' to extract metadata automatically"
-                  )}
+                  error={hasFieldError("url")}
+                  helperText={
+                    getFieldError("url") ??
+                    t(
+                      "create_source.url_help",
+                      "Paste URL and click 'Auto-Fill' to extract metadata automatically"
+                    )
+                  }
                   sx={{
                     "& .MuiInputBase-root": autofilled
                       ? {
@@ -329,10 +338,15 @@ export function CreateSourceView() {
                 <TextField
                   label={t("create_source.title_label", "Title") + " *"}
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  onChange={(e) => {
+                    setTitle(e.target.value);
+                    clearError("title");
+                  }}
                   required
                   disabled={loading}
                   fullWidth
+                  error={hasFieldError("title")}
+                  helperText={getFieldError("title") ?? " "}
                   sx={{
                     "& .MuiInputBase-root": autofilled && title
                       ? {

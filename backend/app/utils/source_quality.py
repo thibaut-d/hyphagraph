@@ -14,6 +14,7 @@ study design, and publication venue.
 
 See also: backend/docs/EVIDENCE_QUALITY_STANDARDS.md for detailed documentation.
 """
+from datetime import datetime
 from typing import Literal
 
 
@@ -154,7 +155,6 @@ def calculate_trust_level(
 
     # Recency modifier (slight penalty for very old studies)
     if publication_year is not None:
-        from datetime import datetime
         current_year = datetime.now().year
         age = current_year - publication_year
 

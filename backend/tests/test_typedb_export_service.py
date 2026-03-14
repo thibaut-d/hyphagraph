@@ -37,3 +37,26 @@ async def test_export_data_handles_invalid_summary_json() -> None:
 
     assert 'has slug "duloxetine"' in export
     assert 'has summary "{\\"en\\": \\"Broken\\""' in export
+
+
+@pytest.mark.asyncio
+async def test_export_schema_uses_injected_lookup_services() -> None:
+    relation_type_service = AsyncMock()
+    relation_type_service.get_all_active.return_value = [
+        SimpleNamespace(type_id="treats_condition", description="Treats condition")
+    ]
+    semantic_role_service = AsyncMock()
+    semantic_role_service.get_all_active.return_value = [{"role_type": "target_entity"}]
+
+    service = TypeDBExportService(
+        db=AsyncMock(),
+        relation_type_service=relation_type_service,
+        semantic_role_service=semantic_role_service,
+    )
+
+    export = await service.export_schema()
+
+    assert "treats-condition sub relation" in export
+    assert "relates target-entity" in export
+    relation_type_service.get_all_active.assert_awaited_once()
+    semantic_role_service.get_all_active.assert_awaited_once()

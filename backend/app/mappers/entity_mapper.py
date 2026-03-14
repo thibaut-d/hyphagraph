@@ -1,3 +1,5 @@
+import json
+
 from typing import Any
 from uuid import UUID
 from app.models.entity import Entity
@@ -25,8 +27,6 @@ def entity_to_read(entity: Entity, current_revision: EntityRevision) -> EntityRe
 
     Combines base entity + current revision data.
     """
-    import json
-
     # Parse summary if it's a JSON string
     summary = current_revision.summary
     if isinstance(summary, str):
@@ -63,8 +63,6 @@ def entity_to_read(entity: Entity, current_revision: EntityRevision) -> EntityRe
 
 def entity_revision_to_read(revision: EntityRevision) -> EntityRevisionRead:
     """Convert EntityRevision ORM to EntityRevisionRead schema."""
-    import json
-
     # Parse summary if it's a JSON string
     summary = revision.summary
     if isinstance(summary, str):

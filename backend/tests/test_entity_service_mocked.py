@@ -181,3 +181,30 @@ class TestEntityServiceMocked:
 
         # Verify rollback was called
         assert mock_db.rollback.called
+
+    async def test_get_filter_options_uses_injected_derived_properties_service(
+        self, mock_db
+    ):
+        """Test filter options use the injected derived properties collaborator."""
+        derived_service = AsyncMock()
+        derived_service.get_all_clinical_effects.return_value = [
+            {"type_id": "supports", "label": {"en": "Supports"}}
+        ]
+        derived_service.get_evidence_quality_range.return_value = (0.2, 0.9)
+        derived_service.get_entity_year_range.return_value = (2010, 2024)
+
+        category_result = MagicMock()
+        category_result.all = MagicMock(return_value=[("cat-1", {"en": "Category"})])
+        mock_db.execute = AsyncMock(return_value=category_result)
+
+        service = EntityService(mock_db, derived_properties_service=derived_service)
+
+        result = await service.get_filter_options()
+
+        assert result.ui_categories[0].id == "cat-1"
+        assert result.clinical_effects[0].type_id == "supports"
+        assert result.evidence_quality_range == (0.2, 0.9)
+        assert result.year_range == (2010, 2024)
+        derived_service.get_all_clinical_effects.assert_awaited_once()
+        derived_service.get_evidence_quality_range.assert_awaited_once()
+        derived_service.get_entity_year_range.assert_awaited_once()

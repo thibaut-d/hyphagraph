@@ -12,16 +12,17 @@ from typing import Literal, Any
 
 from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel, Field
-
-from app.services.extraction_service import ExtractionService
-from app.llm.schemas import ExtractedEntity, ExtractedRelation, ExtractedClaim
-from app.llm.client import is_llm_available
-from app.dependencies.auth import get_current_user
-from app.models.user import User
-from app.database import get_db
-from app.utils.errors import LLMServiceUnavailableException, ValidationException, ErrorCode, AppException
-from app.api.error_handlers import handle_extraction_errors
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.error_handlers import handle_extraction_errors
+from app.config import settings
+from app.database import get_db
+from app.dependencies.auth import get_current_user
+from app.llm.client import is_llm_available
+from app.llm.schemas import ExtractedEntity, ExtractedRelation, ExtractedClaim
+from app.models.user import User
+from app.services.extraction_service import ExtractionService
+from app.utils.errors import LLMServiceUnavailableException, ValidationException, ErrorCode, AppException
 
 logger = logging.getLogger(__name__)
 
@@ -348,8 +349,6 @@ async def extract_batch(
 )
 async def extraction_status() -> ExtractionStatusResponse:
     """Check if extraction service is available."""
-    from app.config import settings
-
     available = is_llm_available()
 
     return ExtractionStatusResponse(

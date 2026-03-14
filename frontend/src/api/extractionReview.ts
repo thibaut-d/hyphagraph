@@ -4,6 +4,12 @@
  * Handles human-in-the-loop review of LLM extractions.
  */
 import { apiFetch } from "./client";
+import {
+  appendOptionalNumber,
+  appendOptionalParam,
+  buildQueryString,
+  createSearchParams,
+} from "./queryString";
 import type {
   ExtractedClaim,
   ExtractedEntity,
@@ -109,39 +115,20 @@ export interface StagedExtractionFilters {
 export async function listPendingExtractions(
   filters?: StagedExtractionFilters
 ): Promise<StagedExtractionListResponse> {
-  const params = new URLSearchParams();
+  const params = createSearchParams((query) => {
+    appendOptionalNumber(query, "min_validation_score", filters?.min_validation_score);
+    appendOptionalNumber(query, "max_validation_score", filters?.max_validation_score);
+    appendOptionalParam(query, "has_flags", filters?.has_flags);
+    appendOptionalNumber(query, "page", filters?.page);
+    appendOptionalNumber(query, "page_size", filters?.page_size);
+    appendOptionalParam(query, "sort_by", filters?.sort_by);
+    appendOptionalParam(query, "sort_order", filters?.sort_order);
+    appendOptionalParam(query, "auto_commit_eligible", filters?.auto_commit_eligible);
+  });
 
-  if (filters?.min_validation_score !== undefined) {
-    params.append("min_validation_score", filters.min_validation_score.toString());
-  }
-  if (filters?.max_validation_score !== undefined) {
-    params.append("max_validation_score", filters.max_validation_score.toString());
-  }
-  if (filters?.has_flags !== undefined) {
-    params.append("has_flags", filters.has_flags.toString());
-  }
-  if (filters?.page) {
-    params.append("page", filters.page.toString());
-  }
-  if (filters?.page_size) {
-    params.append("page_size", filters.page_size.toString());
-  }
-  if (filters?.sort_by) {
-    params.append("sort_by", filters.sort_by);
-  }
-  if (filters?.sort_order) {
-    params.append("sort_order", filters.sort_order);
-  }
-  if (filters?.auto_commit_eligible !== undefined) {
-    params.append("auto_commit_eligible", filters.auto_commit_eligible.toString());
-  }
-
-  const queryString = params.toString();
-  const url = queryString
-    ? `/extraction-review/pending?${queryString}`
-    : "/extraction-review/pending";
-
-  return apiFetch<StagedExtractionListResponse>(url);
+  return apiFetch<StagedExtractionListResponse>(
+    `/extraction-review/pending${buildQueryString(params)}`
+  );
 }
 
 /**
@@ -204,28 +191,15 @@ export async function batchReview(
 export async function listAllExtractions(
   filters?: StagedExtractionFilters
 ): Promise<StagedExtractionListResponse> {
-  const params = new URLSearchParams();
+  const params = createSearchParams((query) => {
+    appendOptionalParam(query, "status", filters?.status);
+    appendOptionalParam(query, "extraction_type", filters?.extraction_type);
+    appendOptionalParam(query, "source_id", filters?.source_id);
+    appendOptionalNumber(query, "page", filters?.page);
+    appendOptionalNumber(query, "page_size", filters?.page_size);
+  });
 
-  if (filters?.status) {
-    params.append("status", filters.status);
-  }
-  if (filters?.extraction_type) {
-    params.append("extraction_type", filters.extraction_type);
-  }
-  if (filters?.source_id) {
-    params.append("source_id", filters.source_id);
-  }
-  if (filters?.page) {
-    params.append("page", filters.page.toString());
-  }
-  if (filters?.page_size) {
-    params.append("page_size", filters.page_size.toString());
-  }
-
-  const queryString = params.toString();
-  const url = queryString
-    ? `/extraction-review/all?${queryString}`
-    : "/extraction-review/all";
-
-  return apiFetch<StagedExtractionListResponse>(url);
+  return apiFetch<StagedExtractionListResponse>(
+    `/extraction-review/all${buildQueryString(params)}`
+  );
 }

@@ -35,13 +35,12 @@ import { getExplanation, ExplanationRead } from "../api/explanations";
 import { getEntity } from "../api/entities";
 import type { EntityRead } from "../types/entity";
 import { EvidenceTrace } from "../components/EvidenceTrace";
-import { useNotification } from "../notifications/NotificationContext";
-import { parseError } from "../utils/errorHandler";
+import { usePageErrorHandler } from "../hooks/usePageErrorHandler";
 
 export function PropertyDetailView() {
   const { id, roleType } = useParams<{ id: string; roleType: string }>();
   const { t } = useTranslation();
-  const { showError } = useNotification();
+  const handlePageError = usePageErrorHandler();
   const navigate = useNavigate();
 
   const [entity, setEntity] = useState<EntityRead | null>(null);
@@ -51,7 +50,7 @@ export function PropertyDetailView() {
   useEffect(() => {
     if (!id || !roleType) {
       setError("Missing entity ID or role type");
-      showError(new Error("Missing entity ID or role type"));
+      handlePageError(new Error("Missing entity ID or role type"), "Missing entity ID or role type");
       setLoading(false);
       return;
     }
@@ -65,16 +64,15 @@ export function PropertyDetailView() {
       })
       .catch((err) => {
         console.error("Failed to load property details:", err);
-        const parsedError = parseError(err, "Failed to load property details");
+        const parsedError = handlePageError(err, "Failed to load property details");
         setEntity(null);
         setExplanation(null);
         setError(parsedError.userMessage);
-        showError(err);
       })
       .finally(() => {
         setLoading(false);
       });
-  }, [id, roleType, showError, t]);
+  }, [handlePageError, id, roleType, t]);
 
   if (loading) {
     return (

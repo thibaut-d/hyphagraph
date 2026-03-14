@@ -43,8 +43,7 @@ import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import EmailIcon from "@mui/icons-material/Email";
 import { apiFetch } from "../api/client";
-import { useNotification } from "../notifications/NotificationContext";
-import { parseError } from "../utils/errorHandler";
+import { usePageErrorHandler } from "../hooks/usePageErrorHandler";
 
 interface UserStats {
   total_users: number;
@@ -64,7 +63,7 @@ interface UserListItem {
 
 export function AdminView() {
   const { t } = useTranslation();
-  const { showError } = useNotification();
+  const handlePageError = usePageErrorHandler();
   const [stats, setStats] = useState<UserStats | null>(null);
   const [users, setUsers] = useState<UserListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,9 +91,8 @@ export function AdminView() {
       setStats(statsData);
       setUsers(usersData);
     } catch (err) {
-      const parsedError = parseError(err, "Failed to load admin data");
+      const parsedError = handlePageError(err, "Failed to load admin data");
       setError(parsedError.userMessage);
-      showError(err);
     } finally {
       setLoading(false);
     }
@@ -124,9 +122,8 @@ export function AdminView() {
       setEditDialogOpen(false);
       await loadData();
     } catch (err) {
-      const parsedError = parseError(err, "Failed to update user");
+      const parsedError = handlePageError(err, "Failed to update user");
       setError(parsedError.userMessage);
-      showError(err);
     }
   };
 
@@ -146,9 +143,8 @@ export function AdminView() {
       setDeleteDialogOpen(false);
       await loadData();
     } catch (err) {
-      const parsedError = parseError(err, "Failed to delete user");
+      const parsedError = handlePageError(err, "Failed to delete user");
       setError(parsedError.userMessage);
-      showError(err);
     }
   };
 

@@ -12,17 +12,10 @@ Handles:
 import logging
 from uuid import UUID
 from datetime import datetime
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.models.staged_extraction import StagedExtraction, ExtractionStatus, ExtractionType
-from app.models.entity import Entity
-from app.models.entity_revision import EntityRevision
-from app.models.relation import Relation
-from app.models.relation_revision import RelationRevision
-from app.models.relation_role_revision import RelationRoleRevision
-from app.models.user import User
 from app.llm.schemas import ExtractedEntity, ExtractedRelation, ExtractedClaim
 from app.schemas.staged_extraction import (
     StagedExtractionRead,
@@ -31,6 +24,16 @@ from app.schemas.staged_extraction import (
     MaterializationResult,
 )
 from app.services.extraction_validation_service import ValidationResult
+from app.services.extraction_review.materialization import (
+    materialize_entity,
+    materialize_relation,
+)
+from app.services.extraction_review.queries import (
+    apply_review_metadata,
+    get_stats as get_review_stats,
+    list_extractions as list_review_extractions,
+    load_staged_extraction,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -200,7 +203,7 @@ class ExtractionReviewService:
 
         # Stage claims
         for claim, validation_result in claims:
-            staged = await self.stage_extraction(
+            staged, _ = await self.stage_extraction(
                 extraction_type=ExtractionType.CLAIM,
                 extraction_data=claim,
                 source_id=source_id,
@@ -241,10 +244,7 @@ class ExtractionReviewService:
             MaterializationResult with success status and created IDs
         """
         # Load staged extraction
-        result = await self.db.execute(
-            select(StagedExtraction).where(StagedExtraction.id == extraction_id)
-        )
-        staged = result.scalar_one_or_none()
+        staged = await load_staged_extraction(self.db, extraction_id)
 
         if not staged:
             return MaterializationResult(
@@ -263,10 +263,7 @@ class ExtractionReviewService:
             )
 
         # Update status
-        staged.status = ExtractionStatus.APPROVED
-        staged.reviewed_by = reviewer_id
-        staged.reviewed_at = datetime.utcnow()
-        staged.review_notes = notes
+        apply_review_metadata(staged, reviewer_id, notes, approved=True)
 
         await self.db.commit()
 
@@ -302,18 +299,12 @@ class ExtractionReviewService:
         Returns:
             True if successful, False otherwise
         """
-        result = await self.db.execute(
-            select(StagedExtraction).where(StagedExtraction.id == extraction_id)
-        )
-        staged = result.scalar_one_or_none()
+        staged = await load_staged_extraction(self.db, extraction_id)
 
         if not staged or staged.status != ExtractionStatus.PENDING:
             return False
 
-        staged.status = ExtractionStatus.REJECTED
-        staged.reviewed_by = reviewer_id
-        staged.reviewed_at = datetime.utcnow()
-        staged.review_notes = notes
+        apply_review_metadata(staged, reviewer_id, notes, approved=False)
 
         await self.db.commit()
         logger.info(f"Rejected extraction {extraction_id}")
@@ -393,10 +384,7 @@ class ExtractionReviewService:
             MaterializationResult with created IDs
         """
         # Load staged extraction
-        result = await self.db.execute(
-            select(StagedExtraction).where(StagedExtraction.id == extraction_id)
-        )
-        staged = result.scalar_one_or_none()
+        staged = await load_staged_extraction(self.db, extraction_id)
 
         if not staged:
             return MaterializationResult(
@@ -468,29 +456,7 @@ class ExtractionReviewService:
         Returns:
             Created entity ID
         """
-        # Parse extraction data
-        entity_data = ExtractedEntity(**staged.extraction_data)
-
-        # Create Entity base record
-        entity = Entity()
-        self.db.add(entity)
-        await self.db.flush()
-
-        # Create EntityRevision with extracted data
-        # Convert summary string to i18n dict format
-        summary_dict = {"en": entity_data.summary} if entity_data.summary else None
-
-        revision = EntityRevision(
-            entity_id=entity.id,
-            slug=entity_data.slug,
-            summary=summary_dict,
-            is_current=True,
-        )
-        self.db.add(revision)
-        await self.db.flush()
-
-        logger.info(f"Materialized entity {entity.id} from staged extraction {staged.id}")
-        return entity.id
+        return await materialize_entity(self.db, staged)
 
     async def _materialize_relation(self, staged: StagedExtraction) -> UUID:
         """
@@ -502,63 +468,7 @@ class ExtractionReviewService:
         Returns:
             Created relation ID
         """
-        # Parse extraction data
-        relation_data = ExtractedRelation(**staged.extraction_data)
-
-        # Create Relation base record
-        relation = Relation(source_id=staged.source_id)
-        self.db.add(relation)
-        await self.db.flush()
-
-        # Create RelationRevision
-        # Note: Confidence from LLM is string ("high"/"medium"/"low"), convert to float
-        confidence_map = {"high": 0.9, "medium": 0.7, "low": 0.5}
-        confidence_value = confidence_map.get(relation_data.confidence, 0.7)
-
-        # Apply validation adjustment
-        final_confidence = confidence_value * staged.confidence_adjustment
-
-        revision = RelationRevision(
-            relation_id=relation.id,
-            kind=relation_data.relation_type,
-            confidence=final_confidence,
-            context=relation_data.text_span or "",
-            is_deleted=False,
-        )
-        self.db.add(revision)
-        await self.db.flush()
-
-        # Create role revisions
-        # Note: We need to look up entity IDs by slug
-        for role_data in relation_data.roles:
-            # Find entity by slug
-            entity_result = await self.db.execute(
-                select(EntityRevision)
-                .where(EntityRevision.slug == role_data["entity_slug"])
-                .where(EntityRevision.is_deleted == False)
-                .order_by(EntityRevision.created_at.desc())
-                .limit(1)
-            )
-            entity_revision = entity_result.scalar_one_or_none()
-
-            if not entity_revision:
-                logger.warning(
-                    f"Entity with slug '{role_data['entity_slug']}' not found, "
-                    f"skipping role in relation {relation.id}"
-                )
-                continue
-
-            role_revision = RelationRoleRevision(
-                revision_id=revision.id,
-                entity_id=entity_revision.entity_id,
-                role_type=role_data["role_type"],
-            )
-            self.db.add(role_revision)
-
-        await self.db.flush()
-
-        logger.info(f"Materialized relation {relation.id} from staged extraction {staged.id}")
-        return relation.id
+        return await materialize_relation(self.db, staged)
 
     # =========================================================================
     # Querying and Statistics
@@ -576,62 +486,7 @@ class ExtractionReviewService:
         Returns:
             Tuple of (extractions, total_count)
         """
-        # Build query
-        query = select(StagedExtraction)
-
-        # Apply filters
-        conditions = []
-        if filters.status:
-            conditions.append(StagedExtraction.status == filters.status)
-        if filters.extraction_type:
-            conditions.append(StagedExtraction.extraction_type == filters.extraction_type)
-        if filters.source_id:
-            conditions.append(StagedExtraction.source_id == filters.source_id)
-        if filters.min_validation_score is not None:
-            conditions.append(StagedExtraction.validation_score >= filters.min_validation_score)
-        if filters.max_validation_score is not None:
-            conditions.append(StagedExtraction.validation_score <= filters.max_validation_score)
-        if filters.has_flags is not None:
-            if filters.has_flags:
-                # Use json_array_length for SQLite compatibility (works in both SQLite and PostgreSQL)
-                conditions.append(func.json_array_length(StagedExtraction.validation_flags) > 0)
-            else:
-                conditions.append(func.json_array_length(StagedExtraction.validation_flags) == 0)
-        if filters.auto_commit_eligible is not None:
-            conditions.append(StagedExtraction.auto_commit_eligible == filters.auto_commit_eligible)
-
-        if conditions:
-            query = query.where(and_(*conditions))
-
-        # Get total count
-        count_query = select(func.count()).select_from(StagedExtraction)
-        if conditions:
-            count_query = count_query.where(and_(*conditions))
-        total_result = await self.db.execute(count_query)
-        total = total_result.scalar() or 0
-
-        # Apply sorting
-        if filters.sort_by == "created_at":
-            order_col = StagedExtraction.created_at
-        elif filters.sort_by == "validation_score":
-            order_col = StagedExtraction.validation_score
-        else:  # confidence_adjustment
-            order_col = StagedExtraction.confidence_adjustment
-
-        if filters.sort_order == "desc":
-            query = query.order_by(order_col.desc())
-        else:
-            query = query.order_by(order_col.asc())
-
-        # Apply pagination
-        offset = (filters.page - 1) * filters.page_size
-        query = query.offset(offset).limit(filters.page_size)
-
-        # Execute
-        result = await self.db.execute(query)
-        extractions = result.scalars().all()
-
-        return list(extractions), total
+        return await list_review_extractions(self.db, filters)
 
     async def get_stats(self) -> ReviewStats:
         """
@@ -640,58 +495,7 @@ class ExtractionReviewService:
         Returns:
             ReviewStats with counts and metrics
         """
-        # Count by status
-        status_counts = await self.db.execute(
-            select(StagedExtraction.status, func.count(StagedExtraction.id)).group_by(
-                StagedExtraction.status
-            )
-        )
-        status_map = {row[0]: row[1] for row in status_counts}
-
-        total_pending = status_map.get(ExtractionStatus.PENDING, 0)
-        total_approved = status_map.get(ExtractionStatus.APPROVED, 0)
-        total_rejected = status_map.get(ExtractionStatus.REJECTED, 0)
-        total_auto_verified = status_map.get(ExtractionStatus.AUTO_VERIFIED, 0)
-
-        # Count pending by type
-        type_counts = await self.db.execute(
-            select(StagedExtraction.extraction_type, func.count(StagedExtraction.id))
-            .where(StagedExtraction.status == ExtractionStatus.PENDING)
-            .group_by(StagedExtraction.extraction_type)
-        )
-        type_map = {row[0]: row[1] for row in type_counts}
-
-        pending_entities = type_map.get(ExtractionType.ENTITY, 0)
-        pending_relations = type_map.get(ExtractionType.RELATION, 0)
-        pending_claims = type_map.get(ExtractionType.CLAIM, 0)
-
-        # Quality metrics for pending
-        quality_result = await self.db.execute(
-            select(
-                func.avg(StagedExtraction.validation_score),
-                func.count(StagedExtraction.id).filter(StagedExtraction.validation_score >= 0.9),
-                func.count(StagedExtraction.id).filter(
-                    func.json_array_length(StagedExtraction.validation_flags) > 0
-                ),
-            ).where(StagedExtraction.status == ExtractionStatus.PENDING)
-        )
-        quality_row = quality_result.one()
-        avg_score = float(quality_row[0] or 0.0)
-        high_confidence_count = int(quality_row[1] or 0)
-        flagged_count = int(quality_row[2] or 0)
-
-        return ReviewStats(
-            total_pending=total_pending,
-            total_approved=total_approved,
-            total_rejected=total_rejected,
-            total_auto_verified=total_auto_verified,
-            pending_entities=pending_entities,
-            pending_relations=pending_relations,
-            pending_claims=pending_claims,
-            avg_validation_score=avg_score,
-            high_confidence_count=high_confidence_count,
-            flagged_count=flagged_count,
-        )
+        return await get_review_stats(self.db)
 
     # =========================================================================
     # Auto-Commit Logic

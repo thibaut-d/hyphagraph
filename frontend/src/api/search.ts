@@ -1,4 +1,11 @@
 import { apiFetch } from "./client";
+import {
+  appendArrayParam,
+  appendOptionalNumber,
+  appendOptionalParam,
+  buildQueryString,
+  createSearchParams,
+} from "./queryString";
 
 /**
  * Search API client for unified search across entities, sources, and relations.
@@ -79,31 +86,16 @@ export interface SearchSuggestionsResponse {
  * Perform unified search across entities, sources, and relations.
  */
 export function search(filters: SearchFilters): Promise<SearchResponse> {
-  const params = new URLSearchParams();
+  const params = createSearchParams((query) => {
+    appendOptionalParam(query, "query", filters.query);
+    appendArrayParam(query, "types", filters.types);
+    appendArrayParam(query, "ui_category_id", filters.ui_category_id);
+    appendArrayParam(query, "source_kind", filters.source_kind);
+    appendOptionalNumber(query, "limit", filters.limit);
+    appendOptionalNumber(query, "offset", filters.offset);
+  });
 
-  params.append("query", filters.query);
-
-  if (filters.types) {
-    filters.types.forEach(type => params.append("types", type));
-  }
-
-  if (filters.ui_category_id) {
-    filters.ui_category_id.forEach(id => params.append("ui_category_id", id));
-  }
-
-  if (filters.source_kind) {
-    filters.source_kind.forEach(kind => params.append("source_kind", kind));
-  }
-
-  if (filters.limit !== undefined) {
-    params.append("limit", filters.limit.toString());
-  }
-
-  if (filters.offset !== undefined) {
-    params.append("offset", filters.offset.toString());
-  }
-
-  return apiFetch(`/search?${params.toString()}`, {
+  return apiFetch(`/search${buildQueryString(params)}`, {
     method: "POST",
   });
 }
@@ -116,19 +108,13 @@ export function getSuggestions(
   types?: ("entity" | "source")[],
   limit?: number
 ): Promise<SearchSuggestionsResponse> {
-  const params = new URLSearchParams();
+  const params = createSearchParams((params) => {
+    appendOptionalParam(params, "query", query);
+    appendArrayParam(params, "types", types);
+    appendOptionalNumber(params, "limit", limit);
+  });
 
-  params.append("query", query);
-
-  if (types) {
-    types.forEach(type => params.append("types", type));
-  }
-
-  if (limit !== undefined) {
-    params.append("limit", limit.toString());
-  }
-
-  return apiFetch(`/search/suggestions?${params.toString()}`, {
+  return apiFetch(`/search/suggestions${buildQueryString(params)}`, {
     method: "POST",
   });
 }

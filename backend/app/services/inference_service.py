@@ -1,46 +1,52 @@
-from collections import defaultdict
-from uuid import UUID, uuid4
+from uuid import UUID
 from typing import Optional
-import math
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
 from app.repositories.relation_repo import RelationRepository
 from app.repositories.computed_relation_repo import ComputedRelationRepository
-from app.mappers.relation_mapper import relation_to_read
-from app.schemas.inference import InferenceRead
+from app.schemas.inference import InferenceDetailRead, InferenceRead, RoleInference
 from app.utils.hashing import compute_scope_hash
 from app.config import settings
-from app.models.entity_revision import EntityRevision
+from app.services.source_service import SourceService
+from app.services.inference.detail_views import build_inference_detail_read
+from app.services.inference.math import (
+    aggregate_evidence as aggregate_evidence_metric,
+    compute_claim_score as compute_claim_score_metric,
+    compute_confidence as compute_confidence_metric,
+    compute_disagreement as compute_disagreement_metric,
+    compute_role_contribution as compute_role_contribution_metric,
+)
+from app.services.inference.evidence_views import RoleEvidenceRead, build_role_evidence_views
+from app.services.inference.read_models import (
+    build_grouped_inference_read,
+    cache_computed_inference,
+    compute_role_inferences,
+    convert_cached_to_inference_read,
+    matches_scope,
+)
 
 
 class InferenceService:
-    def __init__(self, db: AsyncSession):
+    def __init__(
+        self,
+        db: AsyncSession,
+        *,
+        source_service: SourceService | None = None,
+    ):
         self.db = db
         self.repo = RelationRepository(db)
         self.computed_repo = ComputedRelationRepository(db)
+        self.source_service = source_service or SourceService(db)
 
-    async def _resolve_entity_slugs(self, entity_ids: set[UUID]) -> dict[UUID, str]:
-        """
-        Resolve entity IDs to their current slugs.
-
-        Args:
-            entity_ids: Set of entity UUIDs to resolve
-
-        Returns:
-            Dict mapping entity_id to slug
-        """
-        if not entity_ids:
-            return {}
-
-        stmt = select(EntityRevision.entity_id, EntityRevision.slug).where(
-            EntityRevision.entity_id.in_(entity_ids),
-            EntityRevision.is_current == True
-        )
-        result = await self.db.execute(stmt)
-        rows = result.all()
-
-        return {row.entity_id: row.slug for row in rows}
+    async def _list_filtered_relations(
+        self,
+        entity_id: UUID,
+        scope_filter: Optional[dict] = None,
+    ):
+        relations = await self.repo.list_by_entity(entity_id)
+        if scope_filter:
+            return [relation for relation in relations if matches_scope(relation, scope_filter)]
+        return relations
 
     async def infer_for_entity(
         self,
@@ -64,8 +70,6 @@ class InferenceService:
             - Grouped relations by kind
             - Computed inference scores per role type
         """
-        from app.schemas.inference import RoleInference
-
         # Check cache first if enabled
         if use_cache:
             scope_hash = compute_scope_hash(entity_id, scope_filter)
@@ -76,133 +80,57 @@ class InferenceService:
 
             if cached:
                 # Return cached result - convert ComputedRelation to InferenceRead
-                return await self._convert_cached_to_inference_read(
+                return await convert_cached_to_inference_read(
+                    db=self.db,
+                    repo=self.repo,
                     entity_id=entity_id,
                     cached_computed=cached,
-                    scope_filter=scope_filter
+                    scope_filter=scope_filter,
                 )
 
-        relations = await self.repo.list_by_entity(entity_id)
+        relations = await self._list_filtered_relations(entity_id, scope_filter)
 
-        # Apply scope filtering if specified
-        if scope_filter:
-            relations = [rel for rel in relations if self._matches_scope(rel, scope_filter)]
-
-        # Collect all entity IDs from roles to resolve slugs
-        entity_ids = set()
-        for rel in relations:
-            current_rev = next((r for r in rel.revisions if r.is_current), None) if rel.revisions else None
-            if current_rev and current_rev.roles:
-                for role in current_rev.roles:
-                    entity_ids.add(role.entity_id)
-
-        # Resolve entity slugs in batch
-        entity_slug_map = await self._resolve_entity_slugs(entity_ids)
-
-        # Group relations by kind for display
-        grouped = defaultdict(list)
-        for rel in relations:
-            # Get current revision
-            current_rev = next((r for r in rel.revisions if r.is_current), None) if rel.revisions else None
-            relation_read = relation_to_read(rel, current_revision=current_rev, entity_slug_map=entity_slug_map)
-
-            # Group by kind (use revision kind if available, else fallback)
-            kind = current_rev.kind if current_rev else rel.kind
-            if kind:  # Only group if kind is defined
-                grouped[kind].append(relation_read)
-
-        # Compute inference scores per role type (pass entity_slug_map for connected entities)
-        role_inferences = self._compute_role_inferences(relations, entity_slug_map, entity_id)
-
-        result = InferenceRead(
-            entity_id=entity_id,
-            relations_by_kind=dict(grouped),
-            role_inferences=role_inferences,
-        )
+        role_inferences = compute_role_inferences(relations, entity_id)
+        result = await build_grouped_inference_read(self.db, entity_id, relations, role_inferences)
 
         # Store in cache if enabled
         if use_cache and role_inferences:
-            await self._cache_computed_inference(entity_id, scope_filter, role_inferences)
+            await cache_computed_inference(
+                db=self.db,
+                computed_repo=self.computed_repo,
+                entity_id=entity_id,
+                scope_filter=scope_filter,
+                role_inferences=role_inferences,
+            )
 
         return result
 
+    async def list_role_evidence(
+        self,
+        entity_id: UUID,
+        scope_filter: Optional[dict] = None,
+    ) -> dict[str, list[RoleEvidenceRead]]:
+        relations = await self._list_filtered_relations(entity_id, scope_filter)
+        return await build_role_evidence_views(self.db, relations)
+
+    async def get_detail_for_entity(
+        self,
+        entity_id: UUID,
+        scope_filter: Optional[dict] = None,
+        use_cache: bool = True,
+    ) -> InferenceDetailRead:
+        inference = await self.infer_for_entity(
+            entity_id,
+            scope_filter=scope_filter,
+            use_cache=use_cache,
+        )
+        return await build_inference_detail_read(
+            inference=inference,
+            source_service=self.source_service,
+        )
+
     def _compute_role_inferences(self, relations, entity_slug_map: dict = None, current_entity_id: UUID = None) -> list:
-        """
-        Compute inference scores for each role type of the current entity.
-
-        This aggregates all relations where the current entity plays a specific role,
-        computing overall scores for each role type.
-
-        Args:
-            relations: List of Relation models with current revisions
-            entity_slug_map: Dict mapping entity_id to slug (unused, kept for compatibility)
-            current_entity_id: The entity we're computing inferences for
-
-        Returns:
-            List of RoleInference objects with aggregated scores per role type
-        """
-        from app.schemas.inference import RoleInference
-
-        # Group relations by the role type of the CURRENT entity
-        # Structure: {role_type: [relation_data]}
-        grouped_by_role = defaultdict(list)
-
-        for rel in relations:
-            if not rel.revisions:
-                continue
-
-            current_rev = next((r for r in rel.revisions if r.is_current), None)
-            if not current_rev or not current_rev.roles:
-                continue
-
-            # Find role(s) for the current entity in this relation
-            for role in current_rev.roles:
-                if current_entity_id and role.entity_id == current_entity_id:
-                    role_type = role.role_type
-
-                    # Get relation weight (confidence)
-                    relation_weight = current_rev.confidence if current_rev.confidence is not None else 1.0
-
-                    # Determine contribution based on direction
-                    if current_rev.direction == "positive" or current_rev.direction == "supports":
-                        contribution = 1.0
-                    elif current_rev.direction == "negative" or current_rev.direction == "contradicts":
-                        contribution = -1.0
-                    else:
-                        # Neutral/unknown direction - use role weight if available
-                        contribution = role.weight if role.weight is not None else 1.0
-
-                    grouped_by_role[role_type].append({
-                        "weight": relation_weight,
-                        "contribution": contribution
-                    })
-
-        # Compute aggregated scores for each role type
-        inferences = []
-        for role_type, rel_data_list in grouped_by_role.items():
-            # Prepare data for aggregation formulas
-            relations_data = []
-            for rel_data in rel_data_list:
-                relations_data.append({
-                    "weight": rel_data["weight"],
-                    "roles": {role_type: rel_data["contribution"]}
-                })
-
-            # Compute aggregated metrics
-            result = self.aggregate_evidence(relations_data, role=role_type)
-            coverage = float(len(rel_data_list))
-            confidence = self.compute_confidence(coverage)
-            disagreement = self.compute_disagreement(relations_data, role=role_type)
-
-            inferences.append(RoleInference(
-                role_type=role_type,
-                score=result["score"],
-                coverage=coverage,
-                confidence=confidence,
-                disagreement=disagreement
-            ))
-
-        return inferences
+        return compute_role_inferences(relations, current_entity_id)
 
     # ============================================================
     # Inference Engine - Mathematical Model Implementation
@@ -222,7 +150,7 @@ class InferenceService:
         Returns:
             Score in [-1, 1]
         """
-        return polarity * intensity
+        return compute_claim_score_metric(polarity, intensity)
 
     def compute_role_contribution(self, claims: list[float]) -> Optional[float]:
         """
@@ -236,19 +164,7 @@ class InferenceService:
         Returns:
             Contribution in [-1, 1], or None if no claims
         """
-        if not claims:
-            return None  # Role not exposed
-
-        numerator = sum(claims)
-        denominator = sum(abs(c) for c in claims)
-
-        if denominator == 0:
-            return 0  # All neutral claims
-
-        contribution = numerator / denominator
-
-        # Clamp to [-1, 1] to handle floating point errors
-        return max(-1.0, min(1.0, contribution))
+        return compute_role_contribution_metric(claims)
 
     def aggregate_evidence(
         self,
@@ -270,30 +186,7 @@ class InferenceService:
         Returns:
             Dict with 'score', 'coverage'
         """
-        evidence = 0.0
-        coverage = 0.0
-
-        for relation in relations_data:
-            weight = relation.get("weight", 1.0)
-            roles = relation.get("roles", {})
-
-            # Check if role is exposed in this relation (mask)
-            if role in roles:
-                contribution = roles[role]
-                if contribution is not None:
-                    evidence += weight * contribution
-                    coverage += weight
-
-        # Compute normalized score
-        if coverage > 0:
-            score = evidence / coverage
-        else:
-            score = None  # No information
-
-        return {
-            "score": score,
-            "coverage": coverage,
-        }
+        return aggregate_evidence_metric(relations_data, role)
 
     def compute_confidence(
         self,
@@ -312,10 +205,7 @@ class InferenceService:
         Returns:
             Confidence in [0, 1)
         """
-        if coverage <= 0:
-            return 0.0
-
-        return 1 - math.exp(-lambda_param * coverage)
+        return compute_confidence_metric(coverage, lambda_param)
 
     def compute_disagreement(
         self,
@@ -337,24 +227,7 @@ class InferenceService:
             - 0 = full agreement
             - 1 = maximal contradiction
         """
-        signed_sum = 0.0
-        absolute_sum = 0.0
-
-        for relation in relations_data:
-            weight = relation.get("weight", 1.0)
-            roles = relation.get("roles", {})
-
-            if role in roles:
-                contribution = roles[role]
-                if contribution is not None:
-                    signed_sum += weight * contribution
-                    absolute_sum += weight * abs(contribution)
-
-        if absolute_sum == 0:
-            return 0.0  # No evidence, no disagreement
-
-        disagreement = 1 - (abs(signed_sum) / absolute_sum)
-        return disagreement
+        return compute_disagreement_metric(relations_data, role)
 
     def _matches_scope(self, relation, scope_filter: dict) -> bool:
         """
@@ -383,29 +256,7 @@ class InferenceService:
             scope: {"population": "adults", "condition": "chronic", "dosage": "high"} → True
             scope: {"population": "adults"} → False (missing condition)
         """
-        # Get current revision
-        if not relation.revisions:
-            return False
-
-        current_rev = next((r for r in relation.revisions if r.is_current), None)
-        if not current_rev:
-            return False
-
-        # Get scope from revision
-        relation_scope = current_rev.scope
-
-        # If relation has no scope, it doesn't match any filter
-        if relation_scope is None:
-            return False
-
-        # Check if all filter attributes match
-        for key, value in scope_filter.items():
-            if key not in relation_scope:
-                return False  # Missing attribute
-            if relation_scope[key] != value:
-                return False  # Value mismatch
-
-        return True  # All filter attributes match
+        return matches_scope(relation, scope_filter)
 
     async def _convert_cached_to_inference_read(
         self,
@@ -424,67 +275,12 @@ class InferenceService:
         Returns:
             InferenceRead with cached role inferences and fresh relation grouping
         """
-        from app.schemas.inference import RoleInference
-
-        # Extract role inferences from cached relation's revision roles
-        role_inferences = []
-
-        if cached_computed.relation and cached_computed.relation.revisions:
-            current_rev = next(
-                (r for r in cached_computed.relation.revisions if r.is_current),
-                None
-            )
-
-            if current_rev and current_rev.roles:
-                for role_rev in current_rev.roles:
-                    # Reconstruct RoleInference from cached role revision
-                    # Note: We can't recover the exact disagreement value, so we use
-                    # uncertainty from ComputedRelation as a proxy
-                    role_inferences.append(RoleInference(
-                        role_type=role_rev.role_type,
-                        score=role_rev.weight,  # weight stores the computed score
-                        coverage=role_rev.coverage or 0.0,
-                        confidence=self.compute_confidence(role_rev.coverage or 0.0),
-                        disagreement=cached_computed.uncertainty,  # Use cached uncertainty
-                    ))
-
-        # Still need to fetch and group actual relations for relations_by_kind
-        # (Cache only stores computed scores, not the full relation list)
-        relations = await self.repo.list_by_entity(entity_id)
-
-        # Apply scope filtering if specified
-        if scope_filter:
-            relations = [rel for rel in relations if self._matches_scope(rel, scope_filter)]
-
-        # Collect all entity IDs from roles to resolve slugs
-        entity_ids = set()
-        for rel in relations:
-            current_rev = next((r for r in rel.revisions if r.is_current), None) if rel.revisions else None
-            if current_rev and current_rev.roles:
-                for role in current_rev.roles:
-                    entity_ids.add(role.entity_id)
-
-        # Resolve entity slugs in batch
-        entity_slug_map = await self._resolve_entity_slugs(entity_ids)
-
-        # Group relations by kind for display
-        grouped = defaultdict(list)
-        for rel in relations:
-            current_rev = next(
-                (r for r in rel.revisions if r.is_current),
-                None
-            ) if rel.revisions else None
-
-            relation_read = relation_to_read(rel, current_revision=current_rev, entity_slug_map=entity_slug_map)
-
-            kind = current_rev.kind if current_rev else rel.kind
-            if kind:
-                grouped[kind].append(relation_read)
-
-        return InferenceRead(
+        return await convert_cached_to_inference_read(
+            db=self.db,
+            repo=self.repo,
             entity_id=entity_id,
-            relations_by_kind=dict(grouped),
-            role_inferences=role_inferences,
+            cached_computed=cached_computed,
+            scope_filter=scope_filter,
         )
 
     async def _cache_computed_inference(
@@ -503,78 +299,10 @@ class InferenceService:
             scope_filter: Scope filter used for inference
             role_inferences: Computed role inferences to cache
         """
-        from app.models.relation import Relation
-        from app.models.relation_revision import RelationRevision
-        from app.models.relation_role_revision import RelationRoleRevision
-        from app.models.computed_relation import ComputedRelation
-
-        # Check if system source exists
-        # Note: System source is auto-created on startup via app/startup.py
-        if not settings.SYSTEM_SOURCE_ID:
-            # Cannot cache without system source
-            return
-
-        system_source_id = UUID(settings.SYSTEM_SOURCE_ID)
-
-        # Compute scope hash
-        scope_hash = compute_scope_hash(entity_id, scope_filter)
-
-        # Check if cache entry already exists for this scope
-        existing = await self.computed_repo.get_by_scope_hash(
-            scope_hash,
-            settings.INFERENCE_MODEL_VERSION
+        await cache_computed_inference(
+            db=self.db,
+            computed_repo=self.computed_repo,
+            entity_id=entity_id,
+            scope_filter=scope_filter,
+            role_inferences=role_inferences,
         )
-
-        if existing:
-            # Cache already exists, no need to store again
-            return
-
-        # Create new Relation for computed inference
-        relation = Relation(
-            id=uuid4(),
-            source_id=system_source_id,
-        )
-        self.db.add(relation)
-        await self.db.flush()
-
-        # Create RelationRevision with computed kind
-        revision = RelationRevision(
-            relation_id=relation.id,
-            kind="computed_inference",
-            direction="positive",  # Computed inferences are informational
-            confidence=1.0,  # We're confident in our computation
-            scope=scope_filter,  # Store the scope this was computed for
-            is_current=True,
-        )
-        self.db.add(revision)
-        await self.db.flush()
-
-        # Create role revisions for each computed role inference
-        for role_inf in role_inferences:
-            role_revision = RelationRoleRevision(
-                relation_revision_id=revision.id,
-                entity_id=entity_id,
-                role_type=role_inf.role_type,
-                weight=role_inf.score,
-                coverage=role_inf.coverage,
-            )
-            self.db.add(role_revision)
-
-        await self.db.flush()
-
-        # Compute uncertainty from disagreement
-        # Use average disagreement across all role types as uncertainty measure
-        avg_disagreement = (
-            sum(ri.disagreement for ri in role_inferences) / len(role_inferences)
-            if role_inferences else 0.0
-        )
-
-        # Create ComputedRelation metadata
-        computed_relation = ComputedRelation(
-            relation_id=relation.id,
-            scope_hash=scope_hash,
-            model_version=settings.INFERENCE_MODEL_VERSION,
-            uncertainty=avg_disagreement,
-        )
-        self.db.add(computed_relation)
-        await self.db.flush()

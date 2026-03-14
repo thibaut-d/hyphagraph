@@ -30,6 +30,8 @@ from app.services.extraction_validation_service import (
     ValidationLevel,
     ValidationResult,
 )
+from app.services.relation_type_service import RelationTypeService
+from app.services.semantic_role_service import SemanticRoleService
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +55,9 @@ class ExtractionService:
         max_tokens: int = 3000,
         db=None,
         enable_validation: bool = True,
-        validation_level: ValidationLevel = "moderate"
+        validation_level: ValidationLevel = "moderate",
+        relation_type_service: RelationTypeService | None = None,
+        semantic_role_service: SemanticRoleService | None = None,
     ):
         """
         Initialize extraction service.
@@ -71,6 +75,14 @@ class ExtractionService:
         self.system_prompt = MEDICAL_KNOWLEDGE_SYSTEM_PROMPT
         self.db = db
         self._relation_types_cache = None  # Cache relation types for this service instance
+        self.relation_type_service = (
+            relation_type_service or RelationTypeService(db)
+            if db else relation_type_service
+        )
+        self.semantic_role_service = (
+            semantic_role_service or SemanticRoleService(db)
+            if db else semantic_role_service
+        )
 
         # Hallucination validation
         self.enable_validation = enable_validation
@@ -91,9 +103,9 @@ class ExtractionService:
 
         if self.db:
             try:
-                from app.services.relation_type_service import RelationTypeService
-                service = RelationTypeService(self.db)
-                prompt_text = await service.get_for_llm_prompt()
+                if not self.relation_type_service:
+                    raise RuntimeError("Relation type service unavailable")
+                prompt_text = await self.relation_type_service.get_for_llm_prompt()
                 self._relation_types_cache = prompt_text
                 logger.info("Using DYNAMIC relation types from database")
                 return prompt_text
@@ -113,9 +125,9 @@ class ExtractionService:
         """
         if self.db:
             try:
-                from app.services.semantic_role_service import SemanticRoleService
-                service = SemanticRoleService(self.db)
-                prompt_text = await service.get_for_llm_prompt()
+                if not self.semantic_role_service:
+                    raise RuntimeError("Semantic role service unavailable")
+                prompt_text = await self.semantic_role_service.get_for_llm_prompt()
                 logger.info("Using DYNAMIC semantic roles from database")
                 return prompt_text
             except Exception as e:

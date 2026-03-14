@@ -12,7 +12,7 @@ import { DisagreementsView } from "../DisagreementsView";
 import { NotificationProvider } from "../../notifications/NotificationContext";
 import type { EntityRead } from "../../api/entities";
 import type { RelationRead } from "../../types/relation";
-import type { InferenceRead } from "../../types/inference";
+import type { InferenceDetailRead } from "../../types/inference";
 import * as entitiesApi from "../../api/entities";
 import * as inferencesApi from "../../api/inferences";
 
@@ -90,7 +90,7 @@ describe("DisagreementsView", () => {
     ...overrides,
   });
 
-  const createMockInference = (overrides?: Partial<InferenceRead>): InferenceRead => ({
+  const createMockInference = (overrides?: Partial<InferenceDetailRead>): InferenceDetailRead => ({
     entity_id: "entity-123",
     relations_by_kind: {
       therapeutic_use: [
@@ -107,6 +107,19 @@ describe("DisagreementsView", () => {
         disagreement: 0.3,
       },
     ],
+    stats: {
+      total_relations: 2,
+      unique_sources_count: 1,
+      average_confidence: 0.8,
+      confidence_count: 2,
+      high_confidence_count: 2,
+      low_confidence_count: 0,
+      contradiction_count: 1,
+      relation_type_count: 1,
+    },
+    relation_kind_summaries: [],
+    evidence_items: [],
+    disagreement_groups: [],
     ...overrides,
   });
 
@@ -119,7 +132,7 @@ describe("DisagreementsView", () => {
       vi.spyOn(entitiesApi, "getEntity").mockImplementation(
         () => new Promise(() => {}) // Never resolves
       );
-      vi.spyOn(inferencesApi, "getInferenceForEntity").mockImplementation(
+      vi.spyOn(inferencesApi, "getInferenceDetailForEntity").mockImplementation(
         () => new Promise(() => {})
       );
 
@@ -138,7 +151,7 @@ describe("DisagreementsView", () => {
       vi.spyOn(entitiesApi, "getEntity").mockRejectedValue(
         new Error("Entity not found")
       );
-      vi.spyOn(inferencesApi, "getInferenceForEntity").mockResolvedValue(
+      vi.spyOn(inferencesApi, "getInferenceDetailForEntity").mockResolvedValue(
         createMockInference()
       );
 
@@ -156,7 +169,7 @@ describe("DisagreementsView", () => {
 
     it("shows error message when inference fetch fails", async () => {
       vi.spyOn(entitiesApi, "getEntity").mockResolvedValue(mockEntity);
-      vi.spyOn(inferencesApi, "getInferenceForEntity").mockRejectedValue(
+      vi.spyOn(inferencesApi, "getInferenceDetailForEntity").mockRejectedValue(
         new Error("Inference not found")
       );
 
@@ -176,7 +189,7 @@ describe("DisagreementsView", () => {
   describe("Successful rendering", () => {
     it("renders disagreements view with breadcrumbs", async () => {
       vi.spyOn(entitiesApi, "getEntity").mockResolvedValue(mockEntity);
-      vi.spyOn(inferencesApi, "getInferenceForEntity").mockResolvedValue(
+      vi.spyOn(inferencesApi, "getInferenceDetailForEntity").mockResolvedValue(
         createMockInference()
       );
 
@@ -197,7 +210,7 @@ describe("DisagreementsView", () => {
 
     it("displays scientific honesty warning", async () => {
       vi.spyOn(entitiesApi, "getEntity").mockResolvedValue(mockEntity);
-      vi.spyOn(inferencesApi, "getInferenceForEntity").mockResolvedValue(
+      vi.spyOn(inferencesApi, "getInferenceDetailForEntity").mockResolvedValue(
         createMockInference()
       );
 
@@ -233,7 +246,7 @@ describe("DisagreementsView", () => {
       });
 
       vi.spyOn(entitiesApi, "getEntity").mockResolvedValue(mockEntity);
-      vi.spyOn(inferencesApi, "getInferenceForEntity").mockResolvedValue(inference);
+      vi.spyOn(inferencesApi, "getInferenceDetailForEntity").mockResolvedValue(inference);
 
       render(
         <BrowserRouter>
@@ -260,7 +273,7 @@ describe("DisagreementsView", () => {
       });
 
       vi.spyOn(entitiesApi, "getEntity").mockResolvedValue(mockEntity);
-      vi.spyOn(inferencesApi, "getInferenceForEntity").mockResolvedValue(inference);
+      vi.spyOn(inferencesApi, "getInferenceDetailForEntity").mockResolvedValue(inference);
 
       render(
         <BrowserRouter>
@@ -287,7 +300,7 @@ describe("DisagreementsView", () => {
       });
 
       vi.spyOn(entitiesApi, "getEntity").mockResolvedValue(mockEntity);
-      vi.spyOn(inferencesApi, "getInferenceForEntity").mockResolvedValue(inference);
+      vi.spyOn(inferencesApi, "getInferenceDetailForEntity").mockResolvedValue(inference);
 
       render(
         <BrowserRouter>
@@ -314,7 +327,7 @@ describe("DisagreementsView", () => {
       });
 
       vi.spyOn(entitiesApi, "getEntity").mockResolvedValue(mockEntity);
-      vi.spyOn(inferencesApi, "getInferenceForEntity").mockResolvedValue(inference);
+      vi.spyOn(inferencesApi, "getInferenceDetailForEntity").mockResolvedValue(inference);
 
       render(
         <BrowserRouter>
@@ -351,7 +364,7 @@ describe("DisagreementsView", () => {
       });
 
       vi.spyOn(entitiesApi, "getEntity").mockResolvedValue(mockEntity);
-      vi.spyOn(inferencesApi, "getInferenceForEntity").mockResolvedValue(inference);
+      vi.spyOn(inferencesApi, "getInferenceDetailForEntity").mockResolvedValue(inference);
 
       render(
         <BrowserRouter>
@@ -380,7 +393,7 @@ describe("DisagreementsView", () => {
       });
 
       vi.spyOn(entitiesApi, "getEntity").mockResolvedValue(mockEntity);
-      vi.spyOn(inferencesApi, "getInferenceForEntity").mockResolvedValue(inference);
+      vi.spyOn(inferencesApi, "getInferenceDetailForEntity").mockResolvedValue(inference);
 
       render(
         <BrowserRouter>
@@ -398,7 +411,7 @@ describe("DisagreementsView", () => {
   describe("Guidance section", () => {
     it("displays guidance on interpreting disagreements", async () => {
       vi.spyOn(entitiesApi, "getEntity").mockResolvedValue(mockEntity);
-      vi.spyOn(inferencesApi, "getInferenceForEntity").mockResolvedValue(
+      vi.spyOn(inferencesApi, "getInferenceDetailForEntity").mockResolvedValue(
         createMockInference()
       );
 
@@ -430,7 +443,7 @@ describe("DisagreementsView", () => {
       });
 
       vi.spyOn(entitiesApi, "getEntity").mockResolvedValue(mockEntity);
-      vi.spyOn(inferencesApi, "getInferenceForEntity").mockResolvedValue(inference);
+      vi.spyOn(inferencesApi, "getInferenceDetailForEntity").mockResolvedValue(inference);
 
       render(
         <BrowserRouter>
@@ -457,7 +470,7 @@ describe("DisagreementsView", () => {
       });
 
       vi.spyOn(entitiesApi, "getEntity").mockResolvedValue(mockEntity);
-      vi.spyOn(inferencesApi, "getInferenceForEntity").mockResolvedValue(inference);
+      vi.spyOn(inferencesApi, "getInferenceDetailForEntity").mockResolvedValue(inference);
 
       render(
         <BrowserRouter>
@@ -476,7 +489,7 @@ describe("DisagreementsView", () => {
   describe("Navigation actions", () => {
     it("shows view synthesis button", async () => {
       vi.spyOn(entitiesApi, "getEntity").mockResolvedValue(mockEntity);
-      vi.spyOn(inferencesApi, "getInferenceForEntity").mockResolvedValue(
+      vi.spyOn(inferencesApi, "getInferenceDetailForEntity").mockResolvedValue(
         createMockInference()
       );
 
@@ -493,7 +506,7 @@ describe("DisagreementsView", () => {
 
     it("shows back to entity button", async () => {
       vi.spyOn(entitiesApi, "getEntity").mockResolvedValue(mockEntity);
-      vi.spyOn(inferencesApi, "getInferenceForEntity").mockResolvedValue(
+      vi.spyOn(inferencesApi, "getInferenceDetailForEntity").mockResolvedValue(
         createMockInference()
       );
 

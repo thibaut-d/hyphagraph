@@ -5,11 +5,14 @@ Provides human-in-the-loop review interface for staged LLM extractions.
 """
 import logging
 from fastapi import APIRouter, Depends, Query, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
+from app.api.service_dependencies import get_extraction_review_service
 from app.database import get_db
 from app.dependencies.auth import get_current_user, get_current_active_superuser
+from app.models.staged_extraction import StagedExtraction
 from app.models.user import User
 from app.schemas.staged_extraction import (
     StagedExtractionRead,
@@ -41,7 +44,7 @@ async def list_pending_extractions(
     extraction_type: str | None = None,
     min_validation_score: float | None = Query(None, ge=0.0, le=1.0),
     has_flags: bool | None = None,
-    db: AsyncSession = Depends(get_db),
+    service: ExtractionReviewService = Depends(get_extraction_review_service),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -49,8 +52,6 @@ async def list_pending_extractions(
 
     Supports filtering by type, validation score, and flag presence.
     """
-    service = ExtractionReviewService(db)
-
     filters = StagedExtractionFilters(
         status="pending",
         extraction_type=extraction_type,
@@ -73,7 +74,7 @@ async def list_pending_extractions(
 
 @router.get("/stats", response_model=ReviewStats)
 async def get_review_stats(
-    db: AsyncSession = Depends(get_db),
+    service: ExtractionReviewService = Depends(get_extraction_review_service),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -81,7 +82,6 @@ async def get_review_stats(
 
     Includes counts by status, type, and quality metrics.
     """
-    service = ExtractionReviewService(db)
     return await service.get_stats()
 
 
@@ -94,9 +94,6 @@ async def get_extraction(
     """
     Get details of a specific staged extraction.
     """
-    from sqlalchemy import select
-    from app.models.staged_extraction import StagedExtraction
-
     result = await db.execute(
         select(StagedExtraction).where(StagedExtraction.id == extraction_id)
     )
@@ -122,7 +119,7 @@ async def get_extraction(
 async def review_extraction(
     extraction_id: UUID,
     decision: ReviewDecisionRequest,
-    db: AsyncSession = Depends(get_db),
+    service: ExtractionReviewService = Depends(get_extraction_review_service),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -130,8 +127,6 @@ async def review_extraction(
 
     If approved, automatically materializes the extraction into the knowledge graph.
     """
-    service = ExtractionReviewService(db)
-
     if decision.decision == "approve":
         result = await service.approve_extraction(
             extraction_id=extraction_id,
@@ -165,7 +160,7 @@ async def review_extraction(
 @router.post("/batch-review", response_model=BatchReviewResponse)
 async def batch_review_extractions(
     request: BatchReviewRequest,
-    db: AsyncSession = Depends(get_db),
+    service: ExtractionReviewService = Depends(get_extraction_review_service),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -173,8 +168,6 @@ async def batch_review_extractions(
 
     All extractions will receive the same decision and notes.
     """
-    service = ExtractionReviewService(db)
-
     result = await service.batch_review(
         extraction_ids=request.extraction_ids,
         decision=request.decision,
@@ -191,7 +184,7 @@ async def batch_review_extractions(
 
 @router.post("/auto-commit", response_model=dict)
 async def trigger_auto_commit(
-    db: AsyncSession = Depends(get_db),
+    service: ExtractionReviewService = Depends(get_extraction_review_service),
     current_user: User = Depends(get_current_active_superuser),
 ):
     """
@@ -200,7 +193,6 @@ async def trigger_auto_commit(
     Admin only. This will approve and materialize all high-confidence extractions
     that meet auto-commit criteria.
     """
-    service = ExtractionReviewService(db)
     result = await service.auto_commit_eligible_extractions()
 
     return {
@@ -220,7 +212,7 @@ async def list_all_extractions(
     status: str | None = None,
     extraction_type: str | None = None,
     source_id: UUID | None = None,
-    db: AsyncSession = Depends(get_db),
+    service: ExtractionReviewService = Depends(get_extraction_review_service),
     current_user: User = Depends(get_current_active_superuser),
 ):
     """
@@ -228,8 +220,6 @@ async def list_all_extractions(
 
     Admin only. Allows viewing extractions in any status.
     """
-    service = ExtractionReviewService(db)
-
     filters = StagedExtractionFilters(
         status=status,
         extraction_type=extraction_type,
@@ -260,9 +250,6 @@ async def delete_staged_extraction(
 
     Admin only. Useful for removing erroneous or duplicate extractions.
     """
-    from sqlalchemy import select
-    from app.models.staged_extraction import StagedExtraction
-
     result = await db.execute(
         select(StagedExtraction).where(StagedExtraction.id == extraction_id)
     )

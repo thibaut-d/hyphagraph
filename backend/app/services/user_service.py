@@ -28,6 +28,7 @@ from app.utils.errors import (
     ValidationException,
     UnauthorizedException,
 )
+from app.services.user.common import load_active_refresh_tokens, to_user_read, user_not_found
 
 
 class UserService:
@@ -83,14 +84,7 @@ class UserService:
             await self.db.commit()
             await self.db.refresh(user)
 
-            return UserRead(
-                id=user.id,
-                email=user.email,
-                is_active=user.is_active,
-                is_superuser=user.is_superuser,
-                is_verified=user.is_verified,
-                created_at=user.created_at,
-            )
+            return to_user_read(user)
 
         except Exception:
             await self.db.rollback()
@@ -111,22 +105,9 @@ class UserService:
         """
         user = await self.repo.get_by_id(user_id)
         if not user:
-            raise AppException(
-                status_code=404,
-                error_code=ErrorCode.USER_NOT_FOUND,
-                message="User not found",
-                details=f"User with ID '{user_id}' does not exist",
-                context={"user_id": str(user_id)}
-            )
+            raise user_not_found(user_id)
 
-        return UserRead(
-            id=user.id,
-            email=user.email,
-            is_active=user.is_active,
-            is_superuser=user.is_superuser,
-            is_verified=user.is_verified,
-            created_at=user.created_at,
-        )
+        return to_user_read(user)
 
     async def get_by_email(self, email: str) -> User | None:
         """
@@ -151,13 +132,7 @@ class UserService:
         """
         users = await self.repo.list_all()
         return [
-            UserRead(
-                id=user.id,
-                email=user.email,
-                is_active=user.is_active,
-                is_superuser=user.is_superuser,
-                created_at=user.created_at,
-            )
+            to_user_read(user)
             for user in users
         ]
 
@@ -178,13 +153,7 @@ class UserService:
         """
         user = await self.repo.get_by_id(user_id)
         if not user:
-            raise AppException(
-                status_code=404,
-                error_code=ErrorCode.USER_NOT_FOUND,
-                message="User not found",
-                details=f"User with ID '{user_id}' does not exist",
-                context={"user_id": str(user_id)}
-            )
+            raise user_not_found(user_id)
 
         try:
             # Update email if provided
@@ -212,14 +181,7 @@ class UserService:
             await self.db.commit()
             await self.db.refresh(user)
 
-            return UserRead(
-                id=user.id,
-                email=user.email,
-                is_active=user.is_active,
-                is_superuser=user.is_superuser,
-                is_verified=user.is_verified,
-                created_at=user.created_at,
-            )
+            return to_user_read(user)
 
         except HTTPException:
             await self.db.rollback()
@@ -243,13 +205,7 @@ class UserService:
         """
         user = await self.repo.get_by_id(user_id)
         if not user:
-            raise AppException(
-                status_code=404,
-                error_code=ErrorCode.USER_NOT_FOUND,
-                message="User not found",
-                details=f"User with ID '{user_id}' does not exist",
-                context={"user_id": str(user_id)}
-            )
+            raise user_not_found(user_id)
 
         try:
             # Set user as inactive
@@ -257,12 +213,7 @@ class UserService:
             await self.repo.update(user)
 
             # Revoke all active refresh tokens for this user
-            stmt = select(RefreshToken).where(
-                RefreshToken.user_id == user_id,
-                RefreshToken.is_revoked == False
-            )
-            result = await self.db.execute(stmt)
-            active_tokens = result.scalars().all()
+            active_tokens = await load_active_refresh_tokens(self.db, user_id)
 
             for token in active_tokens:
                 token.is_revoked = True
@@ -286,13 +237,7 @@ class UserService:
         """
         user = await self.repo.get_by_id(user_id)
         if not user:
-            raise AppException(
-                status_code=404,
-                error_code=ErrorCode.USER_NOT_FOUND,
-                message="User not found",
-                details=f"User with ID '{user_id}' does not exist",
-                context={"user_id": str(user_id)}
-            )
+            raise user_not_found(user_id)
 
         try:
             # Delete user (refresh tokens cascade automatically)
@@ -361,13 +306,7 @@ class UserService:
         """
         user = await self.repo.get_by_id(user_id)
         if not user:
-            raise AppException(
-                status_code=404,
-                error_code=ErrorCode.USER_NOT_FOUND,
-                message="User not found",
-                details=f"User with ID '{user_id}' does not exist",
-                context={"user_id": str(user_id)}
-            )
+            raise user_not_found(user_id)
 
         # Verify current password
         if not await verify_password(current_password, user.hashed_password):
@@ -438,8 +377,6 @@ class UserService:
         Raises:
             UnauthorizedException: If refresh token invalid or expired
         """
-        from sqlalchemy import select
-
         # Calculate lookup hash for O(1) database query
         lookup_hash = hash_token_for_lookup(refresh_token)
 
@@ -484,8 +421,6 @@ class UserService:
         Raises:
             AppException: If refresh token not found
         """
-        from sqlalchemy import select
-
         # Calculate lookup hash for O(1) database query
         lookup_hash = hash_token_for_lookup(refresh_token)
 
@@ -533,13 +468,7 @@ class UserService:
         """
         user = await self.repo.get_by_id(user_id)
         if not user:
-            raise AppException(
-                status_code=404,
-                error_code=ErrorCode.USER_NOT_FOUND,
-                message="User not found",
-                details=f"User with ID '{user_id}' does not exist",
-                context={"user_id": str(user_id)}
-            )
+            raise user_not_found(user_id)
 
         try:
             # Generate new verification token
@@ -601,14 +530,7 @@ class UserService:
             await self.db.commit()
             await self.db.refresh(user)
 
-            return UserRead(
-                id=user.id,
-                email=user.email,
-                is_active=user.is_active,
-                is_superuser=user.is_superuser,
-                is_verified=user.is_verified,
-                created_at=user.created_at,
-            )
+            return to_user_read(user)
 
         except Exception:
             await self.db.rollback()
@@ -691,14 +613,7 @@ class UserService:
             await self.db.commit()
             await self.db.refresh(user)
 
-            return UserRead(
-                id=user.id,
-                email=user.email,
-                is_active=user.is_active,
-                is_superuser=user.is_superuser,
-                is_verified=user.is_verified,
-                created_at=user.created_at,
-            )
+            return to_user_read(user)
 
         except Exception:
             await self.db.rollback()

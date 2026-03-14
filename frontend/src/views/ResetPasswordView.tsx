@@ -2,6 +2,10 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { resetPassword } from "../api/auth";
 import { useNotification } from "../notifications/NotificationContext";
+import { useAsyncAction } from "../hooks/useAsyncAction";
+import { useValidationMessage } from "../hooks/useValidationMessage";
+
+type ValidationField = "newPassword" | "confirmPassword";
 
 export default function ResetPasswordView() {
   const { showError } = useNotification();
@@ -11,9 +15,15 @@ export default function ResetPasswordView() {
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [error, setError] = useState("");
+  const [submitError, setSubmitError] = useState("");
+  const {
+    clearValidationMessage,
+    setValidationMessage,
+    getFieldError,
+    hasFieldError,
+  } = useValidationMessage<ValidationField>();
+  const { isRunning, run } = useAsyncAction((message) => setSubmitError(message ?? ""));
 
   useEffect(() => {
     if (!token) {
@@ -23,16 +33,17 @@ export default function ResetPasswordView() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setSubmitError("");
+    clearValidationMessage();
 
     // Validation
     if (newPassword.length < 8) {
-      showError(new Error("Password must be at least 8 characters long"));
+      setValidationMessage("Password must be at least 8 characters long", "newPassword");
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      showError(new Error("Passwords do not match"));
+      setValidationMessage("Passwords do not match", "confirmPassword");
       return;
     }
 
@@ -41,9 +52,7 @@ export default function ResetPasswordView() {
       return;
     }
 
-    setLoading(true);
-
-    try {
+    const result = await run(async () => {
       await resetPassword(token, newPassword);
       setSuccess(true);
 
@@ -51,13 +60,10 @@ export default function ResetPasswordView() {
       setTimeout(() => {
         navigate("/account");
       }, 3000);
-    } catch (err: any) {
-      const message =
-        err?.message || "Failed to reset password. The link may have expired.";
-      setError(message);
-      showError(err);
-    } finally {
-      setLoading(false);
+    }, "Failed to reset password. The link may have expired.");
+
+    if (!result.ok) {
+      return;
     }
   };
 
@@ -126,19 +132,27 @@ export default function ResetPasswordView() {
           <input
             type="password"
             value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
+            onChange={(e) => {
+              setNewPassword(e.target.value);
+              clearValidationMessage("newPassword");
+            }}
             required
-            disabled={loading || !token}
+            disabled={isRunning || !token}
             placeholder="Enter new password (min 8 characters)"
             style={{
               width: "100%",
               padding: "10px",
               fontSize: "16px",
-              border: "1px solid #ddd",
+              border: `1px solid ${hasFieldError("newPassword") ? "#c00" : "#ddd"}`,
               borderRadius: "4px",
               boxSizing: "border-box",
             }}
           />
+          {getFieldError("newPassword") && (
+            <div style={{ marginTop: "5px", color: "#c00", fontSize: "14px" }}>
+              {getFieldError("newPassword")}
+            </div>
+          )}
         </div>
 
         <div style={{ marginBottom: "20px" }}>
@@ -154,22 +168,30 @@ export default function ResetPasswordView() {
           <input
             type="password"
             value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
+            onChange={(e) => {
+              setConfirmPassword(e.target.value);
+              clearValidationMessage("confirmPassword");
+            }}
             required
-            disabled={loading || !token}
+            disabled={isRunning || !token}
             placeholder="Confirm new password"
             style={{
               width: "100%",
               padding: "10px",
               fontSize: "16px",
-              border: "1px solid #ddd",
+              border: `1px solid ${hasFieldError("confirmPassword") ? "#c00" : "#ddd"}`,
               borderRadius: "4px",
               boxSizing: "border-box",
             }}
           />
+          {getFieldError("confirmPassword") && (
+            <div style={{ marginTop: "5px", color: "#c00", fontSize: "14px" }}>
+              {getFieldError("confirmPassword")}
+            </div>
+          )}
         </div>
 
-        {error && (
+        {submitError && (
           <div
             style={{
               background: "#fee",
@@ -180,26 +202,26 @@ export default function ResetPasswordView() {
               color: "#c00",
             }}
           >
-            {error}
+            {submitError}
           </div>
         )}
 
         <button
           type="submit"
-          disabled={loading || !token}
+          disabled={isRunning || !token}
           style={{
             width: "100%",
             padding: "12px",
             fontSize: "16px",
             fontWeight: "600",
             color: "white",
-            background: loading || !token ? "#ccc" : "#0ea5e9",
+            background: isRunning || !token ? "#ccc" : "#0ea5e9",
             border: "none",
             borderRadius: "4px",
-            cursor: loading || !token ? "not-allowed" : "pointer",
+            cursor: isRunning || !token ? "not-allowed" : "pointer",
           }}
         >
-          {loading ? "Resetting..." : "Reset Password"}
+          {isRunning ? "Resetting..." : "Reset Password"}
         </button>
       </form>
 

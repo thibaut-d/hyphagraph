@@ -19,6 +19,7 @@ import { getEntity, updateEntity, EntityWrite, getEntityFilterOptions, EntityFil
 import { EntityRead } from "../types/entity";
 import { EntityTermsManager } from "../components/EntityTermsManager";
 import { useNotification } from "../notifications/NotificationContext";
+import { useAsyncAction } from "../hooks/useAsyncAction";
 
 export function EditEntityView() {
   const { id } = useParams<{ id: string }>();
@@ -34,7 +35,7 @@ export function EditEntityView() {
   const [filterOptions, setFilterOptions] = useState<EntityFilterOptions | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const { isRunning: saving, run: runSave } = useAsyncAction(setError);
 
   // Fetch UI category options
   useEffect(() => {
@@ -79,9 +80,7 @@ export function EditEntityView() {
 
     if (!id) return;
 
-    setSaving(true);
-
-    try {
+    const result = await runSave(async () => {
       const summary: Record<string, string> = {};
       if (summaryEn.trim()) summary.en = summaryEn.trim();
       if (summaryFr.trim()) summary.fr = summaryFr.trim();
@@ -96,9 +95,10 @@ export function EditEntityView() {
 
       // Navigate back to the entity detail page
       navigate(`/entities/${id}`);
-    } catch (e: any) {
-      showError(e);
-      setSaving(false);
+    }, t("common.error", "An error occurred"));
+
+    if (!result.ok) {
+      return;
     }
   };
 

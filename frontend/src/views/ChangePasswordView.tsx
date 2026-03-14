@@ -20,11 +20,13 @@ import {
 
 import { changePassword } from "../api/auth";
 import { useAuthContext } from "../auth/AuthContext";
-import { useNotification } from "../notifications/NotificationContext";
+import { useAsyncAction } from "../hooks/useAsyncAction";
+import { useValidationMessage } from "../hooks/useValidationMessage";
+
+type ValidationField = "newPassword" | "confirmPassword";
 
 export function ChangePasswordView() {
   const { t } = useTranslation();
-  const { showError } = useNotification();
   const navigate = useNavigate();
   const { user } = useAuthContext();
 
@@ -32,7 +34,14 @@ export function ChangePasswordView() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [success, setSuccess] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const {
+    setValidationMessage,
+    clearValidationMessage: clearError,
+    getFieldError,
+    hasFieldError,
+  } = useValidationMessage<ValidationField>();
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const { isRunning: loading, run } = useAsyncAction(setSubmitError);
 
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -45,23 +54,27 @@ export function ChangePasswordView() {
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();    setSuccess(false);
+    e.preventDefault();
+    setSuccess(false);
+    clearError();
+    setSubmitError(null);
 
     // Validate passwords match
     if (newPassword !== confirmPassword) {
-      setError(t("change_password.passwords_dont_match", "Passwords do not match"));
+      setValidationMessage(t("change_password.passwords_dont_match", "Passwords do not match"), "confirmPassword");
       return;
     }
 
     // Validate password length
     if (newPassword.length < 8) {
-      setError(t("change_password.password_too_short", "Password must be at least 8 characters"));
+      setValidationMessage(
+        t("change_password.password_too_short", "Password must be at least 8 characters"),
+        "newPassword"
+      );
       return;
     }
 
-    setLoading(true);
-
-    try {
+    const result = await run(async () => {
       await changePassword({
         current_password: currentPassword,
         new_password: newPassword,
@@ -76,10 +89,10 @@ export function ChangePasswordView() {
       setTimeout(() => {
         navigate("/profile");
       }, 2000);
-    } catch (e: any) {
-      showError(e);
-    } finally {
-      setLoading(false);
+    }, t("common.error", "An error occurred"));
+
+    if (!result.ok) {
+      return;
     }
   };
 
@@ -111,7 +124,7 @@ export function ChangePasswordView() {
         )}
 
         {/* Error message */}
-        {error && <Alert severity="error">{error}</Alert>}
+        {submitError && <Alert severity="error">{submitError}</Alert>}
 
         {/* Form */}
         <form onSubmit={handleSubmit}>
@@ -143,11 +156,15 @@ export function ChangePasswordView() {
               label={t("change_password.new_password", "New Password")}
               type={showNewPassword ? "text" : "password"}
               value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
+              onChange={(e) => {
+                setNewPassword(e.target.value);
+                clearError("newPassword");
+              }}
               required
               disabled={loading || success}
               fullWidth
-              helperText={t(
+              error={hasFieldError("newPassword")}
+              helperText={getFieldError("newPassword") ?? t(
                 "change_password.password_requirements",
                 "Minimum 8 characters"
               )}
@@ -170,10 +187,15 @@ export function ChangePasswordView() {
               label={t("change_password.confirm_password", "Confirm New Password")}
               type={showConfirmPassword ? "text" : "password"}
               value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              onChange={(e) => {
+                setConfirmPassword(e.target.value);
+                clearError("confirmPassword");
+              }}
               required
               disabled={loading || success}
               fullWidth
+              error={hasFieldError("confirmPassword")}
+              helperText={getFieldError("confirmPassword") ?? " "}
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">

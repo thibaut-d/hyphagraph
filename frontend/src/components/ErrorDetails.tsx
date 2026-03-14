@@ -19,7 +19,7 @@ import {
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import { ParsedError, getErrorTitle } from "../utils/errorHandler";
+import { ParsedError, getErrorTitle, parseError } from "../utils/errorHandler";
 import { useNotification } from "../notifications/NotificationContext";
 
 interface ErrorDetailsProps {
@@ -196,7 +196,7 @@ export function useErrorDetails() {
     const parsed =
       error && typeof error === "object" && "code" in error
         ? (error as ParsedError)
-        : require("../utils/errorHandler").parseError(error);
+        : parseError(error);
     setCurrentError(parsed);
   };
 

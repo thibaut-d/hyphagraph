@@ -1,9 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 from typing import List
 
-from app.database import get_db
+from app.api.service_dependencies import get_entity_term_service
 from app.schemas.entity_term import EntityTermWrite, EntityTermRead, EntityTermBulkWrite
 from app.services.entity_term_service import EntityTermService
 from app.dependencies.auth import get_current_user
@@ -14,7 +13,7 @@ router = APIRouter()
 @router.get("/{entity_id}/terms", response_model=List[EntityTermRead])
 async def list_entity_terms(
     entity_id: UUID,
-    db: AsyncSession = Depends(get_db),
+    service: EntityTermService = Depends(get_entity_term_service),
 ):
     """
     Get all terms/aliases for a specific entity.
@@ -23,7 +22,6 @@ async def list_entity_terms(
 
     - **entity_id**: The entity UUID
     """
-    service = EntityTermService(db)
     return await service.list_by_entity(entity_id)
 
 
@@ -31,7 +29,7 @@ async def list_entity_terms(
 async def create_entity_term(
     entity_id: UUID,
     payload: EntityTermWrite,
-    db: AsyncSession = Depends(get_db),
+    service: EntityTermService = Depends(get_entity_term_service),
     user=Depends(get_current_user),
 ):
     """
@@ -45,7 +43,6 @@ async def create_entity_term(
     - **language**: ISO 639-1 language code (en, fr) or null for international terms
     - **display_order**: Display priority (lower = shown first)
     """
-    service = EntityTermService(db)
     return await service.create(entity_id, payload)
 
 
@@ -54,7 +51,7 @@ async def update_entity_term(
     entity_id: UUID,
     term_id: UUID,
     payload: EntityTermWrite,
-    db: AsyncSession = Depends(get_db),
+    service: EntityTermService = Depends(get_entity_term_service),
     user=Depends(get_current_user),
 ):
     """
@@ -66,7 +63,6 @@ async def update_entity_term(
     - **language**: Updated language code
     - **display_order**: Updated display order
     """
-    service = EntityTermService(db)
     return await service.update(entity_id, term_id, payload)
 
 
@@ -74,7 +70,7 @@ async def update_entity_term(
 async def delete_entity_term(
     entity_id: UUID,
     term_id: UUID,
-    db: AsyncSession = Depends(get_db),
+    service: EntityTermService = Depends(get_entity_term_service),
     user=Depends(get_current_user),
 ):
     """
@@ -83,7 +79,6 @@ async def delete_entity_term(
     - **entity_id**: The entity UUID
     - **term_id**: The term UUID to delete
     """
-    service = EntityTermService(db)
     await service.delete(entity_id, term_id)
     return None
 
@@ -92,7 +87,7 @@ async def delete_entity_term(
 async def bulk_update_entity_terms(
     entity_id: UUID,
     payload: EntityTermBulkWrite,
-    db: AsyncSession = Depends(get_db),
+    service: EntityTermService = Depends(get_entity_term_service),
     user=Depends(get_current_user),
 ):
     """
@@ -104,5 +99,4 @@ async def bulk_update_entity_terms(
     - **entity_id**: The entity UUID
     - **terms**: List of terms to set (replaces all existing)
     """
-    service = EntityTermService(db)
     return await service.bulk_update(entity_id, payload.terms)

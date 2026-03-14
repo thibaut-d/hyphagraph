@@ -12,45 +12,47 @@ import {
 
 import { login as apiLogin, register as apiRegister } from "../api/auth";
 import { useAuth } from "../auth/useAuth";
-import { useNotification } from "../notifications/NotificationContext";
+import { useAsyncAction } from "../hooks/useAsyncAction";
 
 export function AccountView() {
   const { t } = useTranslation();
-  const { showError } = useNotification();
   const { user, login, logout } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [error, setError] = useState("");
+  const { isRunning, run } = useAsyncAction((message) => setError(message ?? ""));
 
   const handleLogin = async () => {
     setError("");
     setRegistrationSuccess(false);
-    try {
+    const result = await run(async () => {
       const res = await apiLogin({
         username: email,
         password,
       });
       login(res.access_token, res.refresh_token);
-    } catch (e: any) {
-      setError(e?.message ?? t("account.login_error", "Login failed"));
-      showError(e);
+    }, t("account.login_error", "Login failed"));
+
+    if (!result.ok) {
+      return;
     }
   };
 
   const handleRegister = async () => {
     setError("");
     setRegistrationSuccess(false);
-    try {
+    const result = await run(async () => {
       await apiRegister({ email, password });
       // Show success message instead of auto-login
       // (in case email verification is required)
       setRegistrationSuccess(true);
       setPassword(""); // Clear password for security
-    } catch (e: any) {
-      setError(e?.message ?? t("account.register_error", "Registration failed"));
-      showError(e);
+    }, t("account.register_error", "Registration failed"));
+
+    if (!result.ok) {
+      return;
     }
   };
 
@@ -144,13 +146,14 @@ export function AccountView() {
           </Paper>
         )}
 
-        <Button type="submit" variant="contained">
+        <Button type="submit" variant="contained" disabled={isRunning}>
           {t("account.login", "Login")}
         </Button>
 
         <Button
           type="button"
           variant="outlined"
+          disabled={isRunning}
           onClick={() => {
             void handleRegister();
           }}

@@ -14,51 +14,25 @@
  * Navigation: PropertyDetailView -> "View All Related Evidence" -> This View
  */
 
-import { useEffect, useState } from "react";
-import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
+import { useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useNotification } from "../notifications/NotificationContext";
 import {
-  Typography,
-  Paper,
-  Stack,
-  CircularProgress,
   Alert,
-  Box,
-  Breadcrumbs,
-  Link,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TableSortLabel,
-  Chip,
-  Button,
-  IconButton,
-  Tooltip,
+  CircularProgress,
+  Stack,
+  Typography,
 } from "@mui/material";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import CancelIcon from "@mui/icons-material/Cancel";
-import HelpIcon from "@mui/icons-material/Help";
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 
-import { getEntity } from "../api/entities";
-import { getInferenceForEntity } from "../api/inferences";
-import { getSource } from "../api/sources";
-import type { EntityRead } from "../types/entity";
-import type { SourceRead } from "../types/source";
-import type { RelationRead } from "../types/relation";
-import { parseError } from "../utils/errorHandler";
-
-type SortField = "kind" | "direction" | "confidence" | "source";
-type SortOrder = "asc" | "desc";
-
-interface EnrichedRelation extends RelationRead {
-  source?: SourceRead;
-}
+import { EvidenceHeaderSection } from "../components/evidence/EvidenceHeaderSection";
+import {
+  EvidenceTableSection,
+  type SortField,
+  type SortOrder,
+} from "../components/evidence/EvidenceTableSection";
+import { useEntityInferenceDetail } from "../hooks/useEntityInferenceDetail";
+import { useEvidenceRelations } from "../hooks/useEvidenceRelations";
+import type { EvidenceItemRead } from "../types/inference";
 
 function resolveRelationNotes(
   notes: string | Record<string, string> | null | undefined,
@@ -89,101 +63,31 @@ function resolveRelationNotes(
 export function EvidenceView() {
   const { id, roleType } = useParams<{ id: string; roleType?: string }>();
   const { t, i18n } = useTranslation();
-  const { showError } = useNotification();
   const navigate = useNavigate();
-
-  const [entity, setEntity] = useState<EntityRead | null>(null);
-  const [relations, setRelations] = useState<EnrichedRelation[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const {
+    data,
+    error,
+    loading: detailLoading,
+  } = useEntityInferenceDetail(id, "Failed to load evidence");
+  const entity = data?.entity ?? null;
+  const inference = data?.inference ?? null;
+  const fallbackRelations = useEvidenceRelations(
+    id,
+    roleType,
+    inference?.evidence_items ? null : inference,
+  );
+  const relations = (inference?.evidence_items
+    ? inference.evidence_items.filter((relation: EvidenceItemRead) =>
+        roleType
+          ? relation.roles.some(
+              (role) => role.entity_id === id && role.role_type === roleType,
+            )
+          : true,
+      )
+    : fallbackRelations);
 
   const [sortField, setSortField] = useState<SortField>("confidence");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
-
-  // Fetch entity and relations
-  useEffect(() => {
-    if (!id) {
-      setError("Missing entity ID");
-      showError(new Error("Missing entity ID"));
-      setLoading(false);
-      return;
-    }
-
-    let isMounted = true;
-
-    setLoading(true);
-    setError(null);
-
-    Promise.all([
-      getEntity(id),
-      getInferenceForEntity(id),
-    ])
-      .then(async ([entityData, inferenceData]) => {
-        if (!isMounted) {
-          return;
-        }
-
-        setEntity(entityData);
-
-        // Extract all relations from inference data
-        const allRelations: RelationRead[] = [];
-        if (inferenceData && inferenceData.relations_by_kind) {
-          Object.values(inferenceData.relations_by_kind).forEach((rels: any) => {
-            if (Array.isArray(rels)) {
-              allRelations.push(...rels);
-            }
-          });
-        }
-
-        // Filter by roleType if specified
-        const filteredRelations = roleType
-          ? allRelations.filter((rel) =>
-              rel.roles.some(
-                (role) => role.entity_id === id && role.role_type === roleType
-              )
-            )
-          : allRelations;
-
-        // Enrich with source data
-        const enrichedRelations = await Promise.all(
-          filteredRelations.map(async (rel) => {
-            try {
-              const source = await getSource(rel.source_id);
-              return { ...rel, source };
-            } catch (err) {
-              console.error(`Failed to load source ${rel.source_id}:`, err);
-              return rel;
-            }
-          })
-        );
-
-        if (!isMounted) {
-          return;
-        }
-
-        setRelations(enrichedRelations);
-      })
-      .catch((err) => {
-        const parsedError = parseError(err, "Failed to load evidence");
-        if (!isMounted) {
-          return;
-        }
-
-        setEntity(null);
-        setRelations([]);
-        setError(parsedError.userMessage);
-        showError(err);
-      })
-      .finally(() => {
-        if (isMounted) {
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [id, roleType, showError]);
 
   // Handle sorting
   const handleSort = (field: SortField) => {
@@ -218,7 +122,7 @@ export function EvidenceView() {
   });
 
   // Loading state
-  if (loading) {
+  if (detailLoading) {
     return (
       <Stack alignItems="center" mt={4}>
         <CircularProgress />
@@ -230,7 +134,7 @@ export function EvidenceView() {
   }
 
   // Error state
-  if (error || (!entity && !loading)) {
+  if (error || (!entity && !detailLoading)) {
     return (
       <Alert severity="error">
         {error || t("common.error", "An error occurred")}
@@ -240,284 +144,32 @@ export function EvidenceView() {
 
   const entityLabel = entity.label || entity.slug;
 
-  // Direction chip helper
-  const getDirectionChip = (direction: string) => {
-    switch (direction) {
-      case "supports":
-        return (
-          <Chip
-            icon={<CheckCircleIcon />}
-            label={t("evidence.supports", "Supports")}
-            color="success"
-            size="small"
-          />
-        );
-      case "contradicts":
-        return (
-          <Chip
-            icon={<CancelIcon />}
-            label={t("evidence.contradicts", "Contradicts")}
-            color="error"
-            size="small"
-          />
-        );
-      default:
-        return (
-          <Chip
-            icon={<HelpIcon />}
-            label={t("evidence.neutral", "Neutral")}
-            color="default"
-            size="small"
-            variant="outlined"
-          />
-        );
-    }
-  };
-
   return (
     <Stack spacing={3}>
-      {/* Breadcrumbs */}
-      <Breadcrumbs>
-        <Link component={RouterLink} to="/entities" underline="hover">
-          {t("menu.entities", "Entities")}
-        </Link>
-        <Link component={RouterLink} to={`/entities/${id}`} underline="hover">
-          {entityLabel}
-        </Link>
-        {roleType && (
-          <Link
-            component={RouterLink}
-            to={`/entities/${id}/properties/${roleType}`}
-            underline="hover"
-          >
-            {roleType}
-          </Link>
-        )}
-        <Typography color="text.primary">
-          {t("evidence.title", "Evidence")}
-        </Typography>
-      </Breadcrumbs>
+      <EvidenceHeaderSection
+        entityId={id}
+        entityLabel={entityLabel}
+        roleType={roleType}
+        relationCount={relations.length}
+        onBack={() =>
+          roleType
+            ? navigate(`/entities/${id}/properties/${roleType}`)
+            : navigate(`/entities/${id}`)
+        }
+      />
 
-      {/* Back button */}
-      <Box>
-        <Button
-          startIcon={<ArrowBackIcon />}
-          onClick={() =>
-            roleType
-              ? navigate(`/entities/${id}/properties/${roleType}`)
-              : navigate(`/entities/${id}`)
-          }
-          variant="outlined"
-          size="small"
-        >
-          {t("common.back", "Back")}
-        </Button>
-      </Box>
+      <EvidenceTableSection
+        entityId={id}
+        entityLabel={entityLabel}
+        language={i18n.language}
+        roleType={roleType}
+        relations={sortedRelations}
+        sortField={sortField}
+        sortOrder={sortOrder}
+        onSort={handleSort}
+        resolveNotes={resolveRelationNotes}
+      />
 
-      {/* Header */}
-      <Paper sx={{ p: 3 }}>
-        <Stack spacing={2}>
-          <Typography variant="h4" component="h1">
-            {roleType
-              ? t("evidence.header_filtered", "Evidence for {{roleType}}", { roleType })
-              : t("evidence.header_all", "All Evidence")}
-          </Typography>
-          <Typography variant="h6" color="text.secondary">
-            {entityLabel}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {t(
-              "evidence.description",
-              "Complete audit trail of all evidence items (hyperedges) involving this entity. Each row represents a relation from a source document."
-            )}
-          </Typography>
-          <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
-            <Chip
-              label={t("evidence.count", "{{count}} evidence items", {
-                count: relations.length,
-              })}
-              color="primary"
-              variant="outlined"
-            />
-          </Box>
-        </Stack>
-      </Paper>
-
-      {/* Evidence Table */}
-      {relations.length > 0 ? (
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>
-                  <TableSortLabel
-                    active={sortField === "kind"}
-                    direction={sortField === "kind" ? sortOrder : "asc"}
-                    onClick={() => handleSort("kind")}
-                  >
-                    <strong>{t("evidence.table.claim", "Claim / Relation Kind")}</strong>
-                  </TableSortLabel>
-                </TableCell>
-                <TableCell>
-                  <TableSortLabel
-                    active={sortField === "direction"}
-                    direction={sortField === "direction" ? sortOrder : "asc"}
-                    onClick={() => handleSort("direction")}
-                  >
-                    <strong>{t("evidence.table.direction", "Direction")}</strong>
-                  </TableSortLabel>
-                </TableCell>
-                <TableCell>
-                  <TableSortLabel
-                    active={sortField === "confidence"}
-                    direction={sortField === "confidence" ? sortOrder : "asc"}
-                    onClick={() => handleSort("confidence")}
-                  >
-                    <strong>{t("evidence.table.confidence", "Confidence")}</strong>
-                  </TableSortLabel>
-                </TableCell>
-                <TableCell>
-                  <strong>{t("evidence.table.roles", "Roles")}</strong>
-                </TableCell>
-                <TableCell>
-                  <TableSortLabel
-                    active={sortField === "source"}
-                    direction={sortField === "source" ? sortOrder : "asc"}
-                    onClick={() => handleSort("source")}
-                  >
-                    <strong>{t("evidence.table.source", "Source")}</strong>
-                  </TableSortLabel>
-                </TableCell>
-                <TableCell>
-                  <strong>{t("evidence.table.notes", "Notes")}</strong>
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {sortedRelations.map((relation) => (
-                <TableRow key={relation.id} hover>
-                  {/* Claim/Kind */}
-                  <TableCell>
-                    <Typography variant="body2" fontWeight={500}>
-                      {relation.kind || "-"}
-                    </Typography>
-                  </TableCell>
-
-                  {/* Direction */}
-                  <TableCell>{getDirectionChip(relation.direction || "")}</TableCell>
-
-                  {/* Confidence */}
-                  <TableCell>
-                    {(() => {
-                      const confidence = relation.confidence ?? 0;
-                      return (
-                    <Chip
-                      label={`${Math.round(confidence * 100)}%`}
-                      size="small"
-                      color={
-                        confidence > 0.7
-                          ? "success"
-                          : confidence > 0.4
-                          ? "warning"
-                          : "error"
-                      }
-                    />
-                      );
-                    })()}
-                  </TableCell>
-
-                  {/* Roles */}
-                  <TableCell>
-                    <Stack spacing={0.5}>
-                      {relation.roles.map((role, idx) => (
-                        <Box key={idx} sx={{ display: "flex", gap: 0.5, alignItems: "center" }}>
-                          <Typography variant="caption" color="text.secondary">
-                            {role.role_type}:
-                          </Typography>
-                          <Link
-                            component={RouterLink}
-                            to={`/entities/${role.entity_id}`}
-                            variant="caption"
-                            underline="hover"
-                          >
-                            {role.entity_id === id ? entityLabel : role.entity_id}
-                          </Link>
-                        </Box>
-                      ))}
-                    </Stack>
-                  </TableCell>
-
-                  {/* Source */}
-                  <TableCell>
-                    {relation.source ? (
-                      <Box>
-                        <Link
-                          component={RouterLink}
-                          to={`/sources/${relation.source_id}`}
-                          variant="body2"
-                          sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
-                        >
-                          {relation.source.title}
-                          <OpenInNewIcon fontSize="small" />
-                        </Link>
-                        {relation.source.authors && relation.source.authors.length > 0 && (
-                          <Typography variant="caption" color="text.secondary">
-                            {relation.source.authors.slice(0, 2).join(", ")}
-                            {relation.source.authors.length > 2 && " et al."}
-                            {relation.source.year && ` (${relation.source.year})`}
-                          </Typography>
-                        )}
-                      </Box>
-                    ) : (
-                      <Link
-                        component={RouterLink}
-                        to={`/sources/${relation.source_id}`}
-                        variant="body2"
-                      >
-                        View Source
-                      </Link>
-                    )}
-                  </TableCell>
-
-                  {/* Notes */}
-                  <TableCell>
-                    {resolveRelationNotes(relation.notes, i18n.language) ? (
-                      <Tooltip title={resolveRelationNotes(relation.notes, i18n.language)} arrow>
-                        <IconButton size="small">
-                          <HelpIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    ) : (
-                      <Typography variant="caption" color="text.secondary">
-                        -
-                      </Typography>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      ) : (
-        <Alert severity="info">
-          <Typography variant="body1" gutterBottom>
-            {t("evidence.no_data.title", "No evidence found")}
-          </Typography>
-          <Typography variant="body2">
-            {roleType
-              ? t(
-                  "evidence.no_data.filtered",
-                  "No evidence items found for this specific property type."
-                )
-              : t(
-                  "evidence.no_data.all",
-                  "This entity has no associated relations yet. Add sources and relations to build the evidence base."
-                )}
-          </Typography>
-        </Alert>
-      )}
-
-      {/* Scientific Honesty Note */}
       <Alert severity="info">
         <Typography variant="body2">
           {t(

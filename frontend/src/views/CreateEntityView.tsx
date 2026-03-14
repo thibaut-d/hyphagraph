@@ -15,11 +15,13 @@ import {
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 import { createEntity, EntityWrite, getEntityFilterOptions, EntityFilterOptions } from "../api/entities";
-import { useNotification } from "../notifications/NotificationContext";
+import { useAsyncAction } from "../hooks/useAsyncAction";
+import { useValidationMessage } from "../hooks/useValidationMessage";
+
+type ValidationField = "slug";
 
 export function CreateEntityView() {
   const { t, i18n } = useTranslation();
-  const { showError } = useNotification();
   const navigate = useNavigate();
 
   const [slug, setSlug] = useState("");
@@ -27,8 +29,14 @@ export function CreateEntityView() {
   const [summaryFr, setSummaryFr] = useState("");
   const [uiCategoryId, setUiCategoryId] = useState<string | null>(null);
   const [filterOptions, setFilterOptions] = useState<EntityFilterOptions | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const {
+    setValidationMessage,
+    clearValidationMessage: clearError,
+    getFieldError,
+    hasFieldError,
+  } = useValidationMessage<ValidationField>();
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const { isRunning: loading, run } = useAsyncAction(setSubmitError);
 
   // Fetch UI category options
   useEffect(() => {
@@ -53,14 +61,14 @@ export function CreateEntityView() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    clearError();
+    setSubmitError(null);
     if (!slug.trim()) {
-      setError(t("create_entity.slug_required", "Slug is required"));
+      setValidationMessage(t("create_entity.slug_required", "Slug is required"), "slug");
       return;
     }
 
-    setLoading(true);
-
-    try {
+    const result = await run(async () => {
       const summary: Record<string, string> = {};
       if (summaryEn.trim()) summary.en = summaryEn.trim();
       if (summaryFr.trim()) summary.fr = summaryFr.trim();
@@ -75,9 +83,10 @@ export function CreateEntityView() {
 
       // Navigate to the created entity
       navigate(`/entities/${created.id}`);
-    } catch (e: any) {
-      showError(e);
-      setLoading(false);
+    }, t("common.error", "An error occurred"));
+
+    if (!result.ok) {
+      return;
     }
   };
 
@@ -102,7 +111,7 @@ export function CreateEntityView() {
         </Typography>
 
         {/* Error message */}
-        {error && <Alert severity="error">{error}</Alert>}
+        {submitError && <Alert severity="error">{submitError}</Alert>}
 
         {/* Form */}
         <form onSubmit={handleSubmit}>
@@ -110,14 +119,21 @@ export function CreateEntityView() {
             <TextField
               label={t("create_entity.slug", "Slug")}
               value={slug}
-              onChange={(e) => setSlug(e.target.value)}
+              onChange={(e) => {
+                setSlug(e.target.value);
+                clearError("slug");
+              }}
               required
               disabled={loading}
               fullWidth
-              helperText={t(
-                "create_entity.slug_help",
-                "A unique identifier (e.g., person-albert-einstein)"
-              )}
+              error={hasFieldError("slug")}
+              helperText={
+                getFieldError("slug") ??
+                t(
+                  "create_entity.slug_help",
+                  "A unique identifier (e.g., person-albert-einstein)"
+                )
+              }
             />
 
             <Autocomplete

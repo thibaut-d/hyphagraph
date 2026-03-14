@@ -1,58 +1,43 @@
-import { useEffect, useState } from "react";
-import { useParams, Link as RouterLink, useNavigate } from "react-router-dom";
+import { useCallback, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useNotification } from "../notifications/NotificationContext";
 
 import {
-  Paper,
-  Typography,
-  Stack,
-  Divider,
-  List,
-  ListItem,
-  ListItemText,
-  Link,
-  IconButton,
-  Box,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogContentText,
-  DialogActions,
-  Button,
   Alert,
+  Box,
   CircularProgress,
-  Chip,
+  Stack,
 } from "@mui/material";
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
-import UploadFileIcon from "@mui/icons-material/UploadFile";
-import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
-import LinkIcon from "@mui/icons-material/Link";
-import SmartToyIcon from "@mui/icons-material/SmartToy";
 
 import { getSource, deleteSource } from "../api/sources";
-import { listRelationsBySource, deleteRelation } from "../api/relations";
+import { deleteRelation } from "../api/relations";
 import { uploadAndExtract, extractFromUrl } from "../api/extraction";
 import { SourceRead } from "../types/source";
 import { RelationRead } from "../types/relation";
 import { invalidateSourceFilterCache } from "../utils/cacheUtils";
 import { DocumentExtractionPreview, SaveExtractionResult } from "../types/extraction";
 import { ExtractionPreview } from "../components/ExtractionPreview";
-import { UrlExtractionDialog } from "../components/UrlExtractionDialog";
-import { parseError } from "../utils/errorHandler";
+import { SourceDetailDialogs } from "../components/source-detail/SourceDetailDialogs";
+import { SourceExtractionSection } from "../components/source-detail/SourceExtractionSection";
+import { SourceMetadataSection } from "../components/source-detail/SourceMetadataSection";
+import { SourceRelationsSection } from "../components/source-detail/SourceRelationsSection";
+import { useAsyncResource } from "../hooks/useAsyncResource";
+import { usePageErrorHandler } from "../hooks/usePageErrorHandler";
+import { useSourceRelations } from "../hooks/useSourceRelations";
 
 export function SourceDetailView() {
   const { id } = useParams<{ id: string }>();
   const { t } = useTranslation();
   const { showError } = useNotification();
   const navigate = useNavigate();
+  const handlePageError = usePageErrorHandler();
 
-  const [source, setSource] = useState<SourceRead | null>(null);
-  const [relations, setRelations] = useState<RelationRead[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [relationsError, setRelationsError] = useState<string | null>(null);
+  const {
+    relations,
+    relationsError,
+    reloadRelations,
+  } = useSourceRelations(id);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [relationToDelete, setRelationToDelete] = useState<RelationRead | null>(null);
@@ -70,70 +55,26 @@ export function SourceDetailView() {
   const [urlDialogOpen, setUrlDialogOpen] = useState(false);
   const [urlExtracting, setUrlExtracting] = useState(false);
 
-  useEffect(() => {
-    if (!id) return;
-    let isMounted = true;
+  const loadSource = useCallback(async (): Promise<SourceRead> => {
+    if (!id) {
+      throw new Error("Missing source ID");
+    }
 
-    const loadRelations = async (): Promise<RelationRead[]> => {
-      try {
-        const relationsData = await listRelationsBySource(id);
-        if (!isMounted) {
-          return [];
-        }
+    const sourceData = await getSource(id);
+    await reloadRelations();
+    return sourceData;
+  }, [id, reloadRelations]);
 
-        setRelations(relationsData);
-        setRelationsError(null);
-        return relationsData;
-      } catch (err) {
-        const parsedError = parseError(err, "Failed to load relations");
-        if (!isMounted) {
-          return [];
-        }
-
-        setRelations([]);
-        setRelationsError(parsedError.userMessage);
-        showError(err);
-        return [];
-      }
-    };
-
-    const loadSourceDetail = async () => {
-      setLoading(true);
-      setError(null);
-      setRelationsError(null);
-
-      try {
-        const sourceData = await getSource(id);
-
-        if (!isMounted) {
-          return;
-        }
-
-        setSource(sourceData);
-        await loadRelations();
-      } catch (err) {
-        const parsedError = parseError(err, "Failed to load source");
-        if (!isMounted) {
-          return;
-        }
-        setSource(null);
-        setRelations([]);
-        setRelationsError(null);
-        setError(parsedError.userMessage);
-        showError(err);
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    loadSourceDetail();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [id]);
+  const {
+    data: source,
+    loading,
+    error,
+  } = useAsyncResource<SourceRead>({
+    enabled: Boolean(id),
+    deps: [id],
+    load: loadSource,
+    onError: (err) => handlePageError(err, "Failed to load source").userMessage,
+  });
 
   const handleDelete = async () => {
     if (!id) return;
@@ -160,21 +101,10 @@ export function SourceDetailView() {
     setDeletingRelation(true);
     try {
       await deleteRelation(relationToDelete.id);
-      // Refresh relations list
-      try {
-        const updatedRelations = await listRelationsBySource(id);
-        setRelations(updatedRelations);
-        setRelationsError(null);
-      } catch (error) {
-        const parsedError = parseError(error, "Failed to refresh relations");
-        setRelations([]);
-        setRelationsError(parsedError.userMessage);
-        showError(error);
-      }
+      await reloadRelations();
       setDeleteRelationDialogOpen(false);
       setRelationToDelete(null);
     } catch (error) {
-      console.error("Failed to delete relation:", error);
       showError(error);
     } finally {
       setDeletingRelation(false);
@@ -202,8 +132,8 @@ export function SourceDetailView() {
         const preview = await extractFromUrl(id, source.url);
         setExtractionPreview(preview);
       } else {
-        // No URL available - prompt for upload
-        showError("No URL available. Please upload a document or provide a URL.");
+        // No source URL is available, so route the user into the URL flow directly.
+        setUrlDialogOpen(true);
       }
     } catch (error) {
       showError(error);
@@ -237,19 +167,7 @@ export function SourceDetailView() {
     setSaveResult(result);
     setExtractionPreview(null);
 
-    // Refresh relations list
-    if (id) {
-      try {
-        const updatedRelations = await listRelationsBySource(id);
-        setRelations(updatedRelations);
-        setRelationsError(null);
-      } catch (error) {
-        const parsedError = parseError(error, "Failed to refresh relations");
-        setRelations([]);
-        setRelationsError(parsedError.userMessage);
-        showError(error);
-      }
-    }
+    await reloadRelations();
   };
 
   const handleCancelExtraction = () => {
@@ -293,231 +211,29 @@ export function SourceDetailView() {
 
   return (
     <Stack spacing={3}>
-      {/* Source Metadata */}
-      <Paper sx={{ p: 3 }}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-          <Stack spacing={1} sx={{ flex: 1 }}>
-            <Typography variant="h4">{source.title ?? t("sources.untitled", "Untitled source")}</Typography>
+      <SourceMetadataSection
+        source={source}
+        onDelete={() => setDeleteDialogOpen(true)}
+      />
 
-            <Box sx={{ display: "flex", gap: 1, alignItems: "center", flexWrap: "wrap" }}>
-              <Chip label={source.kind} size="small" />
-              {source.year && <Chip label={source.year} size="small" variant="outlined" />}
-              {source.trust_level != null && (
-                <Chip
-                  label={`Quality: ${Math.round(source.trust_level * 100)}%`}
-                  size="small"
-                  color={source.trust_level >= 0.9 ? "success" : source.trust_level >= 0.75 ? "info" : "default"}
-                />
-              )}
-            </Box>
+      <SourceExtractionSection
+        hasUrl={hasUrl}
+        hasRelations={hasRelations}
+        relationsCount={relations.length}
+        relationsError={relationsError}
+        isHighQuality={isHighQuality}
+        autoExtracting={autoExtracting}
+        uploading={uploading}
+        urlExtracting={urlExtracting}
+        uploadedFileName={uploadedFileName}
+        saveResult={saveResult}
+        onClearSaveResult={() => setSaveResult(null)}
+        onAutoExtract={() => void handleAutoExtract()}
+        onFileUpload={handleFileUpload}
+        onOpenUrlDialog={() => setUrlDialogOpen(true)}
+        onClearUploadedFile={() => setUploadedFileName(null)}
+      />
 
-            {source.authors && source.authors.length > 0 && (
-              <Typography variant="body2" color="text.secondary">
-                {source.authors.join(", ")}
-              </Typography>
-            )}
-
-            {source.origin && (
-              <Typography variant="body2" color="text.secondary">
-                {source.origin}
-              </Typography>
-            )}
-
-            {source.url && (
-              <Link href={source.url} target="_blank" rel="noopener noreferrer" sx={{ fontSize: "0.875rem" }}>
-                {source.url}
-              </Link>
-            )}
-
-            {source.source_metadata?.pmid && (
-              <Box sx={{ display: "flex", gap: 1, mt: 1 }}>
-                <Chip label={`PMID: ${source.source_metadata.pmid}`} size="small" icon={<LinkIcon />} />
-                {source.source_metadata?.doi && (
-                  <Chip label={`DOI: ${source.source_metadata.doi}`} size="small" icon={<LinkIcon />} />
-                )}
-              </Box>
-            )}
-          </Stack>
-
-          <Box sx={{ display: "flex", gap: 1 }}>
-            <IconButton
-              component={RouterLink}
-              to={`/sources/${source.id}/edit`}
-              color="primary"
-              title={t("common.edit", "Edit")}
-            >
-              <EditIcon />
-            </IconButton>
-            <IconButton onClick={() => setDeleteDialogOpen(true)} color="error" title={t("common.delete", "Delete")}>
-              <DeleteIcon />
-            </IconButton>
-          </Box>
-        </Box>
-      </Paper>
-
-      {/* Knowledge Extraction Section - IMPROVED */}
-      <Paper sx={{ p: 3 }}>
-        <Stack spacing={2}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <SmartToyIcon color="primary" />
-            <Typography variant="h5">{t("sources.extract_knowledge", "Knowledge Extraction")}</Typography>
-          </Box>
-
-          {!hasRelations && !relationsError && (
-            <Alert severity="info" icon={<AutoFixHighIcon />}>
-              {hasUrl ? (
-                <>
-                  <strong>{t("sources.ready_to_extract", "Ready to extract knowledge!")}</strong>
-                  {" "}
-                  {t(
-                    "sources.auto_extract_hint",
-                    "Click the button below to automatically extract entities and relations from this source using AI."
-                  )}
-                </>
-              ) : (
-                <>
-                  <strong>{t("sources.no_url", "No URL available")}</strong>
-                  {" "}
-                  {t("sources.upload_hint", "Please upload a PDF or TXT document to extract knowledge.")}
-                </>
-              )}
-            </Alert>
-          )}
-
-          {hasRelations && (
-            <Alert severity="success">
-              {t("sources.has_relations", "This source has {{count}} relations in the knowledge graph.", {
-                count: relations.length,
-              })}
-              {" "}
-              {t("sources.can_reextract", "You can extract again to add more knowledge.")}
-            </Alert>
-          )}
-
-          {saveResult && (
-            <Alert severity="success" onClose={() => setSaveResult(null)}>
-              <strong>{t("sources.save_success", "✓ Successfully saved to knowledge graph!")}</strong>
-              <br />
-              {saveResult.entities_created > 0 && (
-                <>
-                  {t("sources.entities_created", "{{count}} entities created", {
-                    count: saveResult.entities_created,
-                  })}
-                  <br />
-                </>
-              )}
-              {saveResult.entities_linked > 0 && (
-                <>
-                  {t("sources.entities_linked", "{{count}} entities linked", {
-                    count: saveResult.entities_linked,
-                  })}
-                  <br />
-                </>
-              )}
-              {saveResult.relations_created > 0 && (
-                <>
-                  {t("sources.relations_created", "{{count}} relations created", {
-                    count: saveResult.relations_created,
-                  })}
-                </>
-              )}
-            </Alert>
-          )}
-
-          {/* Primary Action: Auto-Extract (Smart) */}
-          {hasUrl && (
-            <Box>
-              <Button
-                variant="contained"
-                size="large"
-                fullWidth
-                startIcon={autoExtracting ? <CircularProgress size={20} /> : <AutoFixHighIcon />}
-                onClick={handleAutoExtract}
-                disabled={autoExtracting || uploading || urlExtracting}
-                sx={{
-                  py: 2,
-                  fontSize: "1.1rem",
-                  fontWeight: 600,
-                  bgcolor: "primary.main",
-                  "&:hover": {
-                    bgcolor: "primary.dark",
-                  },
-                }}
-              >
-                {autoExtracting
-                  ? t("sources.auto_extracting", "Extracting knowledge...")
-                  : t("sources.auto_extract", "🤖 Auto-Extract Knowledge from URL")}
-              </Button>
-
-              {isHighQuality && (
-                <Typography variant="caption" color="text.secondary" sx={{ display: "block", textAlign: "center", mt: 1 }}>
-                  {t(
-                    "sources.high_quality_hint",
-                    "✓ High-quality source detected - extraction will use strict validation"
-                  )}
-                </Typography>
-              )}
-            </Box>
-          )}
-
-          {/* Secondary Actions: Manual Options */}
-          <Divider sx={{ my: 1 }}>
-            <Typography variant="caption" color="text.secondary">
-              {t("sources.or_manual", "Or choose manual option")}
-            </Typography>
-          </Divider>
-
-          <Box sx={{ display: "flex", gap: 2 }}>
-            <input
-              accept=".pdf,.txt"
-              style={{ display: "none" }}
-              id="document-upload"
-              type="file"
-              onChange={handleFileUpload}
-              disabled={uploading || autoExtracting}
-            />
-            <label htmlFor="document-upload" style={{ flex: 1 }}>
-              <Button
-                variant="outlined"
-                component="span"
-                fullWidth
-                startIcon={uploading ? <CircularProgress size={16} /> : <UploadFileIcon />}
-                disabled={uploading || autoExtracting}
-              >
-                {uploading ? t("sources.uploading", "Uploading...") : t("sources.upload_document", "Upload PDF/TXT")}
-              </Button>
-            </label>
-
-            <Button
-              variant="outlined"
-              onClick={() => setUrlDialogOpen(true)}
-              disabled={uploading || urlExtracting || autoExtracting}
-              startIcon={<LinkIcon />}
-              sx={{ flex: 1 }}
-            >
-              {t("sources.extract_from_url", "Custom URL")}
-            </Button>
-          </Box>
-
-          {uploadedFileName && (
-            <Chip
-              label={`Uploaded: ${uploadedFileName}`}
-              onDelete={() => setUploadedFileName(null)}
-              color="primary"
-              variant="outlined"
-            />
-          )}
-
-          <Typography variant="caption" color="text.secondary" sx={{ display: "block", textAlign: "center" }}>
-            {t(
-              "sources.extraction_info",
-              "AI will analyze the document and suggest entities and relations for your review before adding them to the graph."
-            )}
-          </Typography>
-        </Stack>
-      </Paper>
-
-      {/* Extraction Preview - IMPROVED */}
       {extractionPreview && (
         <ExtractionPreview
           preview={extractionPreview}
@@ -526,145 +242,27 @@ export function SourceDetailView() {
         />
       )}
 
-      {/* Relations List */}
-      <Paper sx={{ p: 3 }}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-          <Typography variant="h5">{t("sources.relations", "Relations")}</Typography>
-          {hasRelations && (
-            <Chip label={`${relations.length} ${t("sources.relations_count", "relations")}`} color="primary" size="small" />
-          )}
-        </Box>
+      <SourceRelationsSection
+        relations={relations}
+        relationsError={relationsError}
+        onDeleteRelation={openDeleteRelationDialog}
+      />
 
-        <Divider sx={{ mb: 2 }} />
-
-        {relationsError && (
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            {relationsError}
-          </Alert>
-        )}
-
-        {relations.length === 0 && !relationsError ? (
-          <Alert severity="info">
-            {t("sources.no_relations", "No relations yet. Extract knowledge from this source to create relations.")}
-          </Alert>
-        ) : relations.length > 0 ? (
-          <List>
-            {relations.map((r) => (
-              <ListItem
-                key={r.id}
-                sx={{
-                  borderLeft: 3,
-                  borderColor: r.direction === "supports" ? "success.main" : r.direction === "contradicts" ? "error.main" : "grey.400",
-                  mb: 1,
-                  bgcolor: "background.default",
-                }}
-                secondaryAction={
-                  <Box sx={{ display: "flex", gap: 0.5 }}>
-                    <IconButton
-                      component={RouterLink}
-                      to={`/relations/${r.id}/edit`}
-                      edge="end"
-                      size="small"
-                      title={t("common.edit", "Edit")}
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      edge="end"
-                      size="small"
-                      color="error"
-                      onClick={() => openDeleteRelationDialog(r)}
-                      title={t("common.delete", "Delete")}
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </Box>
-                }
-              >
-                <ListItemText
-                  primary={
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                      <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                        {r.kind}
-                      </Typography>
-                      <Chip
-                        label={r.direction}
-                        size="small"
-                        color={r.direction === "supports" ? "success" : r.direction === "contradicts" ? "error" : "default"}
-                        sx={{ fontSize: "0.7rem" }}
-                      />
-                    </Box>
-                  }
-                  secondary={
-                    <>
-                      {r.roles.map((role, idx) => (
-                        <Link key={idx} component={RouterLink} to={`/entities/${role.entity_id}`} sx={{ mr: 1 }}>
-                          {role.role_type}
-                        </Link>
-                      ))}
-                    </>
-                  }
-                />
-              </ListItem>
-            ))}
-          </List>
-        ) : null}
-      </Paper>
-
-      {/* Delete Source Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onClose={() => !deleting && setDeleteDialogOpen(false)}>
-        <DialogTitle>{t("source.delete_confirm_title", "Delete Source")}</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            {t(
-              "source.delete_confirm_message",
-              "Are you sure you want to delete this source? This will also delete all relations associated with it. This action cannot be undone."
-            )}
-          </DialogContentText>
-          <Typography variant="body2" sx={{ mt: 2, fontWeight: 600 }}>
-            {source.title ?? t("sources.untitled", "Untitled source")}
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)} disabled={deleting}>
-            {t("common.cancel", "Cancel")}
-          </Button>
-          <Button onClick={handleDelete} color="error" disabled={deleting}>
-            {deleting ? t("common.deleting", "Deleting...") : t("common.delete", "Delete")}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Delete Relation Confirmation Dialog */}
-      <Dialog open={deleteRelationDialogOpen} onClose={() => !deletingRelation && setDeleteRelationDialogOpen(false)}>
-        <DialogTitle>{t("relation.delete_confirm_title", "Delete Relation")}</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            {t("relation.delete_confirm_message", "Are you sure you want to delete this relation? This action cannot be undone.")}
-          </DialogContentText>
-          {relationToDelete && (
-            <Typography variant="body2" sx={{ mt: 2, fontWeight: 600 }}>
-              {relationToDelete.kind} ({relationToDelete.direction})
-            </Typography>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteRelationDialogOpen(false)} disabled={deletingRelation}>
-            {t("common.cancel", "Cancel")}
-          </Button>
-          <Button onClick={handleDeleteRelation} color="error" disabled={deletingRelation}>
-            {deletingRelation ? t("common.deleting", "Deleting...") : t("common.delete", "Delete")}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* URL Extraction Dialog */}
-      <UrlExtractionDialog
-        open={urlDialogOpen}
-        onClose={() => setUrlDialogOpen(false)}
-        onSubmit={handleUrlExtraction}
-        loading={urlExtracting}
-        defaultUrl={source.url || undefined}
+      <SourceDetailDialogs
+        source={source}
+        deleteDialogOpen={deleteDialogOpen}
+        deleting={deleting}
+        onCloseDeleteDialog={() => setDeleteDialogOpen(false)}
+        onConfirmDelete={() => void handleDelete()}
+        deleteRelationDialogOpen={deleteRelationDialogOpen}
+        deletingRelation={deletingRelation}
+        relationToDelete={relationToDelete}
+        onCloseDeleteRelationDialog={() => setDeleteRelationDialogOpen(false)}
+        onConfirmDeleteRelation={() => void handleDeleteRelation()}
+        urlDialogOpen={urlDialogOpen}
+        urlExtracting={urlExtracting}
+        onCloseUrlDialog={() => setUrlDialogOpen(false)}
+        onSubmitUrlExtraction={handleUrlExtraction}
       />
     </Stack>
   );

@@ -23,6 +23,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { listEntities } from "../api/entities";
 import { getRelation, updateRelation, RoleWrite } from "../api/relations";
 import { RelationRead } from "../types/relation";
+import { useAsyncAction } from "../hooks/useAsyncAction";
 
 type EntityOption = {
   id: string;
@@ -44,7 +45,8 @@ export function EditRelationView() {
   const [roles, setRoles] = useState<RoleWrite[]>([]);
 
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { isRunning: saving, run: runSave } = useAsyncAction(setError);
 
   // Load relation and entities
   useEffect(() => {
@@ -96,9 +98,7 @@ export function EditRelationView() {
   const handleSubmit = async () => {
     if (!id || !relation) return;
 
-    setSaving(true);
-
-    try {
+    const result = await runSave(async () => {
       await updateRelation(id, {
         source_id: relation.source_id, // source_id is immutable
         kind,
@@ -109,9 +109,10 @@ export function EditRelationView() {
 
       // Navigate back to source detail page (where relations are displayed)
       navigate(`/sources/${relation.source_id}`);
-    } catch (e: any) {
-      showError(e);
-      setSaving(false);
+    }, t("common.error", "An error occurred"));
+
+    if (!result.ok) {
+      return;
     }
   };
 

@@ -16,6 +16,8 @@ def mock_db():
     db = AsyncMock()
     db.commit = AsyncMock()
     db.rollback = AsyncMock()
+    db.add = MagicMock()
+    db.flush = AsyncMock()
     return db
 
 
@@ -82,3 +84,25 @@ class TestSourceServiceMocked:
             await service.create(payload)
 
         assert mock_db.rollback.called
+
+    async def test_get_filter_options_uses_injected_derived_properties_service(
+        self, mock_db
+    ):
+        """Test source filter options use the injected derived properties collaborator."""
+        derived_service = AsyncMock()
+        derived_service.get_all_domains.return_value = ["neurology", "rheumatology"]
+
+        kind_result = MagicMock()
+        kind_result.all = MagicMock(return_value=[("study",), ("review",)])
+        year_result = MagicMock()
+        year_result.one = MagicMock(return_value=(1999, 2024))
+        mock_db.execute = AsyncMock(side_effect=[kind_result, year_result])
+
+        service = SourceService(mock_db, derived_properties_service=derived_service)
+
+        result = await service.get_filter_options()
+
+        assert result.kinds == ["review", "study"]
+        assert result.year_range == (1999, 2024)
+        assert result.domains == ["neurology", "rheumatology"]
+        derived_service.get_all_domains.assert_awaited_once()

@@ -1,4 +1,11 @@
 import { apiFetch } from "./client";
+import {
+  appendArrayParam,
+  appendOptionalNumber,
+  appendOptionalParam,
+  buildQueryString,
+  createSearchParams,
+} from "./queryString";
 import type { EntityRead } from "../types/entity";
 export type { EntityRead } from "../types/entity";
 
@@ -52,46 +59,19 @@ export interface PaginatedResponse<T> {
 }
 
 export function listEntities(filters?: EntityFilters): Promise<PaginatedResponse<EntityRead>> {
-  const params = new URLSearchParams();
+  const params = createSearchParams((query) => {
+    appendArrayParam(query, "ui_category_id", filters?.ui_category_id);
+    appendOptionalParam(query, "search", filters?.search);
+    appendArrayParam(query, "clinical_effects", filters?.clinical_effects);
+    appendArrayParam(query, "consensus_level", filters?.consensus_level);
+    appendOptionalNumber(query, "evidence_quality_min", filters?.evidence_quality_min);
+    appendOptionalNumber(query, "evidence_quality_max", filters?.evidence_quality_max);
+    appendArrayParam(query, "recency", filters?.recency);
+    appendOptionalNumber(query, "limit", filters?.limit);
+    appendOptionalNumber(query, "offset", filters?.offset);
+  });
 
-  if (filters?.ui_category_id) {
-    filters.ui_category_id.forEach(id => params.append('ui_category_id', id));
-  }
-
-  if (filters?.search) {
-    params.append('search', filters.search);
-  }
-
-  if (filters?.clinical_effects) {
-    filters.clinical_effects.forEach(effect => params.append('clinical_effects', effect));
-  }
-
-  if (filters?.consensus_level) {
-    filters.consensus_level.forEach(level => params.append('consensus_level', level));
-  }
-
-  if (filters?.evidence_quality_min !== undefined) {
-    params.append('evidence_quality_min', filters.evidence_quality_min.toString());
-  }
-
-  if (filters?.evidence_quality_max !== undefined) {
-    params.append('evidence_quality_max', filters.evidence_quality_max.toString());
-  }
-
-  if (filters?.recency) {
-    filters.recency.forEach(r => params.append('recency', r));
-  }
-
-  if (filters?.limit !== undefined) {
-    params.append('limit', filters.limit.toString());
-  }
-
-  if (filters?.offset !== undefined) {
-    params.append('offset', filters.offset.toString());
-  }
-
-  const queryString = params.toString();
-  return apiFetch(`/entities${queryString ? `?${queryString}` : ''}`);
+  return apiFetch(`/entities${buildQueryString(params)}`);
 }
 
 export function getEntity(id: string): Promise<EntityRead> {

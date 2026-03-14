@@ -1,4 +1,5 @@
 import { apiFetch } from "./client";
+import { buildFormUrlEncoded } from "./queryString";
 import type { UserRead } from "../types/auth";
 
 export type LoginPayload = {
@@ -23,7 +24,7 @@ export type TokenResponse = {
 };
 
 export function login(payload: LoginPayload): Promise<TokenPairResponse> {
-  const body = new URLSearchParams({
+  const body = buildFormUrlEncoded({
     username: payload.username,
     password: payload.password,
   });

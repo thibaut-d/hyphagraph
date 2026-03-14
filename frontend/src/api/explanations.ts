@@ -7,6 +7,7 @@
 
 import { apiFetch } from "./client";
 import { ScopeFilter } from "./inferences";
+import { appendOptionalJson, buildQueryString, createSearchParams } from "./queryString";
 
 
 export interface SourceContribution {
@@ -71,16 +72,8 @@ export function getExplanation(
   roleType: string,
   scopeFilter?: ScopeFilter
 ): Promise<ExplanationRead> {
-  const params = new URLSearchParams();
-
-  if (scopeFilter && Object.keys(scopeFilter).length > 0) {
-    params.set("scope", JSON.stringify(scopeFilter));
-  }
-
-  const queryString = params.toString();
-  const url = queryString
-    ? `/explain/inference/${entityId}/${roleType}?${queryString}`
-    : `/explain/inference/${entityId}/${roleType}`;
-
-  return apiFetch(url);
+  const params = createSearchParams((query) => {
+    appendOptionalJson(query, "scope", scopeFilter);
+  });
+  return apiFetch(`/explain/inference/${entityId}/${roleType}${buildQueryString(params)}`);
 }

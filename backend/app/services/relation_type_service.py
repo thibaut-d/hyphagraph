@@ -8,10 +8,13 @@ Provides:
 - Usage tracking
 - Suggestion system for new types
 """
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
-from typing import List
+from datetime import datetime
 import difflib
+import json
+from typing import List
+
+from sqlalchemy import select, func
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.relation_type import RelationType
 
@@ -66,9 +69,6 @@ class RelationTypeService:
             )
 
         # Create new type
-        import json
-        from datetime import datetime
-
         new_type = RelationType(
             type_id=type_id,
             label=label,
@@ -111,7 +111,6 @@ class RelationTypeService:
                 return existing_type
 
             # Check if type_id matches any alias
-            import json
             aliases = json.loads(existing_type.aliases) if existing_type.aliases else []
             if type_id.lower() in [a.lower() for a in aliases]:
                 return existing_type

@@ -34,12 +34,11 @@ import SearchIcon from "@mui/icons-material/Search";
 import DownloadIcon from "@mui/icons-material/Download";
 import { bulkSearchPubMed, bulkImportPubMed } from "../api/pubmed";
 import type { PubMedSearchResult } from "../types/pubmed";
-import { useNotification } from "../notifications/NotificationContext";
-import { parseError } from "../utils/errorHandler";
+import { usePageErrorHandler } from "../hooks/usePageErrorHandler";
 
 export function PubMedImportView() {
   const navigate = useNavigate();
-  const { showError } = useNotification();
+  const handlePageError = usePageErrorHandler();
 
   // Search state
   const [searchInput, setSearchInput] = useState("");
@@ -87,9 +86,8 @@ export function PubMedImportView() {
       const allPmids = new Set(response.results.map((r) => r.pmid));
       setSelectedPmids(allPmids);
     } catch (error) {
-      const parsedError = parseError(error, "Failed to search PubMed");
+      const parsedError = handlePageError(error, "Failed to search PubMed");
       setSearchError(parsedError.userMessage);
-      showError(error);
     } finally {
       setSearching(false);
     }
@@ -142,9 +140,8 @@ export function PubMedImportView() {
         navigate("/sources");
       }, 2000);
     } catch (error) {
-      const parsedError = parseError(error, "Failed to import articles");
+      const parsedError = handlePageError(error, "Failed to import articles");
       setImportError(parsedError.userMessage);
-      showError(error);
     } finally {
       setImporting(false);
     }

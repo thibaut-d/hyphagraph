@@ -6,11 +6,11 @@ Provides:
 - POST /search/suggestions - Autocomplete suggestions for typeahead
 """
 
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional, List, Literal
+from typing import Annotated
 
-from app.database import get_db
+from fastapi import APIRouter, Depends
+
+from app.api.service_dependencies import get_search_service
 from app.schemas.search import (
     SearchFilters,
     SearchResponse,
@@ -24,36 +24,8 @@ router = APIRouter(prefix="/search", tags=["search"])
 
 @router.post("/", response_model=SearchResponse)
 async def search(
-    query: str = Query(
-        ...,
-        description="Search query (full-text search across entities, sources, relations)",
-        min_length=1,
-        max_length=200,
-    ),
-    types: Optional[List[Literal["entity", "source", "relation"]]] = Query(
-        None,
-        description="Filter by result type (entity, source, relation). If not provided, searches all types.",
-    ),
-    ui_category_id: Optional[List[str]] = Query(
-        None,
-        description="Filter entities by UI category ID (OR logic)",
-    ),
-    source_kind: Optional[List[str]] = Query(
-        None,
-        description="Filter sources by kind (OR logic)",
-    ),
-    limit: int = Query(
-        20,
-        description="Maximum number of results",
-        ge=1,
-        le=100,
-    ),
-    offset: int = Query(
-        0,
-        description="Number of results to skip for pagination",
-        ge=0,
-    ),
-    db: AsyncSession = Depends(get_db),
+    filters: Annotated[SearchFilters, Depends()],
+    service: SearchService = Depends(get_search_service),
 ):
     """
     Unified search across entities, sources, and relations.
@@ -83,17 +55,6 @@ async def search(
     POST /api/search?query=paracetamol&types=entity&types=source&limit=10
     ```
     """
-    service = SearchService(db)
-
-    filters = SearchFilters(
-        query=query,
-        types=types,
-        ui_category_id=ui_category_id,
-        source_kind=source_kind,
-        limit=limit,
-        offset=offset,
-    )
-
     (
         results,
         total,
@@ -103,11 +64,11 @@ async def search(
     ) = await service.search(filters)
 
     return SearchResponse(
-        query=query,
+        query=filters.query,
         results=results,
         total=total,
-        limit=limit,
-        offset=offset,
+        limit=filters.limit,
+        offset=filters.offset,
         entity_count=entity_count,
         source_count=source_count,
         relation_count=relation_count,
@@ -116,23 +77,8 @@ async def search(
 
 @router.post("/suggestions", response_model=SearchSuggestionsResponse)
 async def get_suggestions(
-    query: str = Query(
-        ...,
-        description="Partial search query for autocomplete",
-        min_length=1,
-        max_length=100,
-    ),
-    types: Optional[List[Literal["entity", "source"]]] = Query(
-        None,
-        description="Filter suggestions by type (entity, source). If not provided, suggests all types.",
-    ),
-    limit: int = Query(
-        10,
-        description="Maximum number of suggestions",
-        ge=1,
-        le=50,
-    ),
-    db: AsyncSession = Depends(get_db),
+    request: Annotated[SearchSuggestionRequest, Depends()],
+    service: SearchService = Depends(get_search_service),
 ):
     """
     Get autocomplete suggestions for search queries.
@@ -180,17 +126,9 @@ async def get_suggestions(
     }
     ```
     """
-    service = SearchService(db)
-
-    request = SearchSuggestionRequest(
-        query=query,
-        types=types,
-        limit=limit,
-    )
-
     suggestions = await service.get_suggestions(request)
 
     return SearchSuggestionsResponse(
-        query=query,
+        query=request.query,
         suggestions=suggestions,
     )

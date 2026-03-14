@@ -10,7 +10,14 @@ from uuid import uuid4, UUID
 from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi import HTTPException
 
-from app.api.document_extraction import (
+from app.api.document_extraction_dependencies import calculate_relevance
+from app.api.document_extraction_routes.discovery import (
+    bulk_import_pubmed,
+    bulk_search_pubmed,
+    smart_discovery,
+)
+from app.api.document_extraction_routes.document import extract_from_url
+from app.api.document_extraction_schemas import (
     SmartDiscoveryRequest,
     SmartDiscoveryResponse,
     SmartDiscoveryResult,
@@ -20,7 +27,6 @@ from app.api.document_extraction import (
     PubMedBulkImportRequest,
     PubMedBulkImportResponse,
     UrlExtractionRequest,
-    _calculate_relevance,
 )
 from app.services.pubmed_fetcher import PubMedArticle
 from app.services.source_service import SourceService
@@ -132,20 +138,18 @@ class TestSmartDiscovery:
         await entity_service.create(EntityWrite(slug=entity_data["slug"], kind="drug"))
 
         # Mock PubMed search and fetch
-        with patch("app.api.document_extraction.PubMedFetcher") as mock_fetcher_class:
+        with patch("app.api.document_extraction_routes.discovery.PubMedFetcher") as mock_fetcher_class:
             mock_fetcher = mock_fetcher_class.return_value
             mock_fetcher.search_pubmed = AsyncMock(return_value=(["17333346"], 1))
             mock_fetcher.bulk_fetch_articles = AsyncMock(return_value=[MOCK_PREGABALIN_ARTICLE])
 
             # Mock trust level calculation
             with patch(
-                "app.api.document_extraction.infer_trust_level_from_pubmed_metadata"
+                "app.api.document_extraction_routes.discovery.infer_trust_level_from_pubmed_metadata"
             ) as mock_trust:
                 mock_trust.return_value = 0.80
 
                 # Import the endpoint function
-                from app.api.document_extraction import smart_discovery
-
                 # Act
                 request = SmartDiscoveryRequest(
                     entity_slugs=["pregabalin"],
@@ -180,17 +184,15 @@ class TestSmartDiscovery:
         )
 
         # Mock PubMed search and fetch
-        with patch("app.api.document_extraction.PubMedFetcher") as mock_fetcher_class:
+        with patch("app.api.document_extraction_routes.discovery.PubMedFetcher") as mock_fetcher_class:
             mock_fetcher = mock_fetcher_class.return_value
             mock_fetcher.search_pubmed = AsyncMock(return_value=(["18059454"], 1))
             mock_fetcher.bulk_fetch_articles = AsyncMock(return_value=[MOCK_DULOXETINE_ARTICLE])
 
             with patch(
-                "app.api.document_extraction.infer_trust_level_from_pubmed_metadata"
+                "app.api.document_extraction_routes.discovery.infer_trust_level_from_pubmed_metadata"
             ) as mock_trust:
                 mock_trust.return_value = 0.75
-
-                from app.api.document_extraction import smart_discovery
 
                 # Act
                 request = SmartDiscoveryRequest(
@@ -222,7 +224,7 @@ class TestSmartDiscovery:
         )
 
         # Mock two articles with different quality scores
-        with patch("app.api.document_extraction.PubMedFetcher") as mock_fetcher_class:
+        with patch("app.api.document_extraction_routes.discovery.PubMedFetcher") as mock_fetcher_class:
             mock_fetcher = mock_fetcher_class.return_value
             mock_fetcher.search_pubmed = AsyncMock(return_value=(["17333346", "18059454"], 2))
             mock_fetcher.bulk_fetch_articles = AsyncMock(
@@ -232,11 +234,9 @@ class TestSmartDiscovery:
             # First article: 0.90 (high quality, passes)
             # Second article: 0.60 (low quality, filtered out)
             with patch(
-                "app.api.document_extraction.infer_trust_level_from_pubmed_metadata"
+                "app.api.document_extraction_routes.discovery.infer_trust_level_from_pubmed_metadata"
             ) as mock_trust:
                 mock_trust.side_effect = [0.90, 0.60]
-
-                from app.api.document_extraction import smart_discovery
 
                 # Act - Set minimum quality to 0.75
                 request = SmartDiscoveryRequest(
@@ -275,17 +275,15 @@ class TestSmartDiscovery:
         await source_service.create(existing_source)
 
         # Mock PubMed search - returns PMID that already exists
-        with patch("app.api.document_extraction.PubMedFetcher") as mock_fetcher_class:
+        with patch("app.api.document_extraction_routes.discovery.PubMedFetcher") as mock_fetcher_class:
             mock_fetcher = mock_fetcher_class.return_value
             mock_fetcher.search_pubmed = AsyncMock(return_value=(["17333346"], 1))
             mock_fetcher.bulk_fetch_articles = AsyncMock(return_value=[MOCK_PREGABALIN_ARTICLE])
 
             with patch(
-                "app.api.document_extraction.infer_trust_level_from_pubmed_metadata"
+                "app.api.document_extraction_routes.discovery.infer_trust_level_from_pubmed_metadata"
             ) as mock_trust:
                 mock_trust.return_value = 0.80
-
-                from app.api.document_extraction import smart_discovery
 
                 # Act
                 request = SmartDiscoveryRequest(
@@ -303,8 +301,6 @@ class TestSmartDiscovery:
 
     async def test_smart_discovery_no_entity_slugs(self, db_session, test_user):
         """Test that smart discovery raises error with no entity slugs."""
-        from app.api.document_extraction import smart_discovery
-
         # Act & Assert
         request = SmartDiscoveryRequest(
             entity_slugs=[],
@@ -321,8 +317,6 @@ class TestSmartDiscovery:
 
     async def test_smart_discovery_too_many_entities(self, db_session, test_user):
         """Test that smart discovery rejects more than 10 entity slugs."""
-        from app.api.document_extraction import smart_discovery
-
         # Act & Assert
         request = SmartDiscoveryRequest(
             entity_slugs=[f"entity{i}" for i in range(11)],  # 11 entities
@@ -350,14 +344,12 @@ class TestPubMedBulkSearch:
     async def test_bulk_search_with_query(self, db_session, test_user):
         """Test bulk search with direct query string."""
         # Mock PubMed search and fetch
-        with patch("app.api.document_extraction.PubMedFetcher") as mock_fetcher_class:
+        with patch("app.api.document_extraction_routes.discovery.PubMedFetcher") as mock_fetcher_class:
             mock_fetcher = mock_fetcher_class.return_value
             mock_fetcher.search_pubmed = AsyncMock(return_value=(["17333346", "18059454"], 150))
             mock_fetcher.bulk_fetch_articles = AsyncMock(
                 return_value=[MOCK_PREGABALIN_ARTICLE, MOCK_DULOXETINE_ARTICLE]
             )
-
-            from app.api.document_extraction import bulk_search_pubmed
 
             # Act
             request = PubMedBulkSearchRequest(
@@ -377,13 +369,11 @@ class TestPubMedBulkSearch:
     async def test_bulk_search_with_url(self, db_session, test_user):
         """Test bulk search with PubMed URL (extracts query from URL)."""
         # Mock PubMed fetcher
-        with patch("app.api.document_extraction.PubMedFetcher") as mock_fetcher_class:
+        with patch("app.api.document_extraction_routes.discovery.PubMedFetcher") as mock_fetcher_class:
             mock_fetcher = mock_fetcher_class.return_value
             mock_fetcher.extract_query_from_search_url = MagicMock(return_value="fibromyalgia")
             mock_fetcher.search_pubmed = AsyncMock(return_value=(["17333346"], 50))
             mock_fetcher.bulk_fetch_articles = AsyncMock(return_value=[MOCK_PREGABALIN_ARTICLE])
-
-            from app.api.document_extraction import bulk_search_pubmed
 
             # Act
             request = PubMedBulkSearchRequest(
@@ -400,11 +390,9 @@ class TestPubMedBulkSearch:
     async def test_bulk_search_no_results(self, db_session, test_user):
         """Test bulk search with query that returns no results."""
         # Mock PubMed search returning no results
-        with patch("app.api.document_extraction.PubMedFetcher") as mock_fetcher_class:
+        with patch("app.api.document_extraction_routes.discovery.PubMedFetcher") as mock_fetcher_class:
             mock_fetcher = mock_fetcher_class.return_value
             mock_fetcher.search_pubmed = AsyncMock(return_value=([], 0))
-
-            from app.api.document_extraction import bulk_search_pubmed
 
             # Act
             request = PubMedBulkSearchRequest(
@@ -421,8 +409,6 @@ class TestPubMedBulkSearch:
 
     async def test_bulk_search_no_query_or_url(self, db_session, test_user):
         """Test bulk search raises error when neither query nor URL provided."""
-        from app.api.document_extraction import bulk_search_pubmed
-
         # Act & Assert
         request = PubMedBulkSearchRequest(max_results=10)
 
@@ -445,7 +431,7 @@ class TestPubMedBulkImport:
     async def test_bulk_import_creates_sources(self, db_session, test_user):
         """Test bulk import creates sources for each PMID."""
         # Mock PubMed fetcher
-        with patch("app.api.document_extraction.PubMedFetcher") as mock_fetcher_class:
+        with patch("app.api.document_extraction_routes.discovery.PubMedFetcher") as mock_fetcher_class:
             mock_fetcher = mock_fetcher_class.return_value
             mock_fetcher.bulk_fetch_articles = AsyncMock(
                 return_value=[MOCK_PREGABALIN_ARTICLE, MOCK_DULOXETINE_ARTICLE]
@@ -453,11 +439,9 @@ class TestPubMedBulkImport:
 
             # Mock trust level calculation
             with patch(
-                "app.api.document_extraction.infer_trust_level_from_pubmed_metadata"
+                "app.api.document_extraction_routes.discovery.infer_trust_level_from_pubmed_metadata"
             ) as mock_trust:
                 mock_trust.return_value = 0.75
-
-                from app.api.document_extraction import bulk_import_pubmed
 
                 # Act
                 request = PubMedBulkImportRequest(pmids=["17333346", "18059454"])
@@ -479,8 +463,6 @@ class TestPubMedBulkImport:
 
     async def test_bulk_import_no_pmids(self, db_session, test_user):
         """Test bulk import raises error with no PMIDs."""
-        from app.api.document_extraction import bulk_import_pubmed
-
         # Act & Assert
         request = PubMedBulkImportRequest(pmids=[])
 
@@ -492,8 +474,6 @@ class TestPubMedBulkImport:
 
     async def test_bulk_import_too_many_pmids(self, db_session, test_user):
         """Test bulk import rejects more than 100 PMIDs."""
-        from app.api.document_extraction import bulk_import_pubmed
-
         # Act & Assert
         request = PubMedBulkImportRequest(pmids=[str(i) for i in range(101)])  # 101 PMIDs
 
@@ -516,13 +496,13 @@ class TestUrlExtraction:
     async def test_extract_from_pubmed_url(self, db_session, mock_source, test_user):
         """Test extracting from a PubMed URL."""
         # Mock PubMed fetcher
-        with patch("app.api.document_extraction.PubMedFetcher") as mock_fetcher_class:
+        with patch("app.api.document_extraction_routes.document.PubMedFetcher") as mock_fetcher_class:
             mock_fetcher = mock_fetcher_class.return_value
             mock_fetcher.extract_pmid_from_url = MagicMock(return_value="17333346")
             mock_fetcher.fetch_by_pmid = AsyncMock(return_value=MOCK_PREGABALIN_ARTICLE)
 
             # Mock extraction service
-            with patch("app.api.document_extraction.ExtractionService") as mock_extraction_class:
+            with patch("app.api.document_extraction_routes.document.ExtractionService") as mock_extraction_class:
                 mock_extraction = mock_extraction_class.return_value
                 mock_extraction.extract_batch_with_validation_results = AsyncMock(
                     return_value=(
@@ -561,12 +541,10 @@ class TestUrlExtraction:
 
                     # Mock entity linking service
                     with patch(
-                        "app.api.document_extraction.EntityLinkingService"
+                        "app.api.document_extraction_routes.document.EntityLinkingService"
                     ) as mock_linking_class:
                         mock_linking = mock_linking_class.return_value
                         mock_linking.find_entity_matches = AsyncMock(return_value=[])
-
-                        from app.api.document_extraction import extract_from_url
 
                         # Act
                         request = UrlExtractionRequest(
@@ -596,22 +574,22 @@ def test_calculate_relevance():
     # All entities mentioned
     text = "Pregabalin and Duloxetine are used to treat Fibromyalgia pain."
     entities = ["Pregabalin", "Duloxetine", "Fibromyalgia"]
-    assert _calculate_relevance(text, entities) == 1.0
+    assert calculate_relevance(text, entities) == 1.0
 
     # Partial matches
     text = "Pregabalin is effective for treating neuropathic pain."
     entities = ["Pregabalin", "Duloxetine", "Fibromyalgia"]
-    assert _calculate_relevance(text, entities) == pytest.approx(0.333, abs=0.01)
+    assert calculate_relevance(text, entities) == pytest.approx(0.333, abs=0.01)
 
     # No matches
     text = "Exercise and cognitive behavioral therapy are helpful."
     entities = ["Pregabalin", "Duloxetine"]
-    assert _calculate_relevance(text, entities) == 0.0
+    assert calculate_relevance(text, entities) == 0.0
 
     # Case insensitive
     text = "PREGABALIN and FIBROMYALGIA"
     entities = ["Pregabalin", "Fibromyalgia"]
-    assert _calculate_relevance(text, entities) == 1.0
+    assert calculate_relevance(text, entities) == 1.0
 
     # Empty entities list
-    assert _calculate_relevance("Some text", []) == 0.0
+    assert calculate_relevance("Some text", []) == 0.0

@@ -26,6 +26,7 @@ import {
 import { updateProfile, deactivateAccount, deleteAccount } from "../api/auth";
 import { useAuthContext } from "../auth/AuthContext";
 import { useNotification } from "../notifications/NotificationContext";
+import { useAsyncAction } from "../hooks/useAsyncAction";
 
 export function SettingsView() {
   const { t } = useTranslation();
@@ -34,12 +35,13 @@ export function SettingsView() {
   const { user, logout } = useAuthContext();
 
   const [email, setEmail] = useState(user?.email || "");
+  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deleteLoading, setDeleteLoading] = useState(false);
   const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false);
-  const [deactivateLoading, setDeactivateLoading] = useState(false);
+  const { isRunning: loading, run: runProfileUpdate } = useAsyncAction(setError);
+  const { isRunning: deleteLoading, run: runDeleteAccount } = useAsyncAction(setError);
+  const { isRunning: deactivateLoading, run: runDeactivateAccount } = useAsyncAction(setError);
 
   // Redirect to login if not authenticated
   if (!user) {
@@ -63,9 +65,7 @@ export function SettingsView() {
       return;
     }
 
-    setLoading(true);
-
-    try {
+    const result = await runProfileUpdate(async () => {
       await updateProfile({ email });
       setSuccess(t("settings.email_updated", "Email address updated successfully"));
 
@@ -73,42 +73,38 @@ export function SettingsView() {
       setTimeout(() => {
         setSuccess(null);
       }, 5000);
-    } catch (e: any) {
-      showError(e);
-    } finally {
-      setLoading(false);
+    }, t("common.error", "An error occurred"));
+
+    if (!result.ok) {
+      return;
     }
   };
 
   const handleDeactivateAccount = async () => {
-    setDeactivateLoading(true);
-
-    try {
+    const result = await runDeactivateAccount(async () => {
       await deactivateAccount();
 
       // Logout and redirect
       logout();
       navigate("/account");
-    } catch (e: any) {
-      showError(e);
+    }, t("common.error", "An error occurred"));
+
+    if (!result.ok) {
       setDeactivateDialogOpen(false);
-      setDeactivateLoading(false);
     }
   };
 
   const handleDeleteAccount = async () => {
-    setDeleteLoading(true);
-
-    try {
+    const result = await runDeleteAccount(async () => {
       await deleteAccount();
 
       // Logout and redirect
       logout();
       navigate("/account");
-    } catch (e: any) {
-      showError(e);
+    }, t("common.error", "An error occurred"));
+
+    if (!result.ok) {
       setDeleteDialogOpen(false);
-      setDeleteLoading(false);
     }
   };
 

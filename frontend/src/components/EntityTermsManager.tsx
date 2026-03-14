@@ -46,7 +46,7 @@ import CancelIcon from "@mui/icons-material/Cancel";
 import TranslateIcon from "@mui/icons-material/Translate";
 
 import { useNotification } from "../notifications/NotificationContext";
-import { parseError } from "../utils/errorHandler";
+import { usePageErrorHandler } from "../hooks/usePageErrorHandler";
 import {
   listEntityTerms,
   createEntityTerm,
@@ -85,6 +85,7 @@ export function EntityTermsManager({
 }: EntityTermsManagerProps) {
   const { t } = useTranslation();
   const { showError } = useNotification();
+  const handlePageError = usePageErrorHandler();
 
   const [terms, setTerms] = useState<EntityTermRead[]>([]);
   const [loading, setLoading] = useState(false);
@@ -115,9 +116,8 @@ export function EntityTermsManager({
       setTerms(data);
     } catch (err) {
       console.error("Failed to load terms:", err);
-      const parsedError = parseError(err, "Failed to load terms");
+      const parsedError = handlePageError(err, "Failed to load terms");
       setError(parsedError.userMessage);
-      showError(err);
     } finally {
       setLoading(false);
     }
@@ -183,9 +183,8 @@ export function EntityTermsManager({
       handleCancel();
     } catch (err: any) {
       console.error("Failed to save term:", err);
-      const parsedError = parseError(err, "Failed to save term");
+      const parsedError = handlePageError(err, "Failed to save term");
       setError(parsedError.userMessage);
-      showError(err);
     } finally {
       setLoading(false);
     }
@@ -208,9 +207,8 @@ export function EntityTermsManager({
       setTermToDelete(null);
     } catch (err) {
       console.error("Failed to delete term:", err);
-      const parsedError = parseError(err, "Failed to delete term");
+      const parsedError = handlePageError(err, "Failed to delete term");
       setError(parsedError.userMessage);
-      showError(err);
     } finally {
       setLoading(false);
     }

@@ -402,9 +402,33 @@ describe('CreateRelationView', () => {
       renderWithProviders();
 
       await waitFor(() => {
+        const sourceSelect = screen.getByLabelText(/source/i);
+        fireEvent.mouseDown(sourceSelect);
+      });
+
+      await waitFor(() => {
+        fireEvent.click(screen.getByText('Study on Aspirin'));
+      });
+
+      await waitFor(() => {
         const kindInput = screen.getByLabelText(/relation kind/i);
         fireEvent.change(kindInput, { target: { value: 'effect' } });
       });
+
+      const addRoleButton = screen.getByRole('button', { name: /add role/i });
+      fireEvent.click(addRoleButton);
+
+      await waitFor(() => {
+        const entitySelect = screen.getByLabelText(/entity/i);
+        fireEvent.mouseDown(entitySelect);
+      });
+
+      await waitFor(() => {
+        fireEvent.click(screen.getByText('Aspirin'));
+      });
+
+      const roleTypeInput = screen.getByLabelText(/role/i);
+      fireEvent.change(roleTypeInput, { target: { value: 'drug' } });
 
       const submitButton = screen.getByRole('button', { name: /create/i });
       fireEvent.click(submitButton);
@@ -421,9 +445,33 @@ describe('CreateRelationView', () => {
       renderWithProviders();
 
       await waitFor(() => {
+        const sourceSelect = screen.getByLabelText(/source/i);
+        fireEvent.mouseDown(sourceSelect);
+      });
+
+      await waitFor(() => {
+        fireEvent.click(screen.getByText('Study on Aspirin'));
+      });
+
+      await waitFor(() => {
         const kindInput = screen.getByLabelText(/relation kind/i);
         fireEvent.change(kindInput, { target: { value: 'effect' } });
       });
+
+      const addRoleButton = screen.getByRole('button', { name: /add role/i });
+      fireEvent.click(addRoleButton);
+
+      await waitFor(() => {
+        const entitySelect = screen.getByLabelText(/entity/i);
+        fireEvent.mouseDown(entitySelect);
+      });
+
+      await waitFor(() => {
+        fireEvent.click(screen.getByText('Aspirin'));
+      });
+
+      const roleTypeInput = screen.getByLabelText(/role/i);
+      fireEvent.change(roleTypeInput, { target: { value: 'drug' } });
 
       const submitButton = screen.getByRole('button', { name: /create/i });
       fireEvent.click(submitButton);
@@ -441,9 +489,33 @@ describe('CreateRelationView', () => {
       renderWithProviders();
 
       await waitFor(() => {
+        const sourceSelect = screen.getByLabelText(/source/i);
+        fireEvent.mouseDown(sourceSelect);
+      });
+
+      await waitFor(() => {
+        fireEvent.click(screen.getByText('Study on Aspirin'));
+      });
+
+      await waitFor(() => {
         const kindInput = screen.getByLabelText(/relation kind/i);
         fireEvent.change(kindInput, { target: { value: 'effect' } });
       });
+
+      const addRoleButton = screen.getByRole('button', { name: /add role/i });
+      fireEvent.click(addRoleButton);
+
+      await waitFor(() => {
+        const entitySelect = screen.getByLabelText(/entity/i);
+        fireEvent.mouseDown(entitySelect);
+      });
+
+      await waitFor(() => {
+        fireEvent.click(screen.getByText('Aspirin'));
+      });
+
+      const roleTypeInput = screen.getByLabelText(/role/i);
+      fireEvent.change(roleTypeInput, { target: { value: 'drug' } });
 
       const submitButton = screen.getByRole('button', { name: /create/i });
       fireEvent.click(submitButton);

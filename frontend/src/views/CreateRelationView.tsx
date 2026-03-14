@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useNotification } from "../notifications/NotificationContext";
 
 import {
   Typography,
@@ -20,6 +19,8 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { listEntities } from "../api/entities";
 import { listSources } from "../api/sources";
 import { createRelation, RoleWrite } from "../api/relations";
+import { useAsyncAction } from "../hooks/useAsyncAction";
+import { useValidationMessage } from "../hooks/useValidationMessage";
 
 type EntityOption = {
   id: string;
@@ -31,9 +32,10 @@ type SourceOption = {
   title?: string;
 };
 
+type ValidationField = "source" | "kind" | "roles";
+
 export function CreateRelationView() {
   const { t } = useTranslation();
-  const { showError } = useNotification();
   const [searchParams] = useSearchParams();
 
   const [entities, setEntities] = useState<EntityOption[]>([]);
@@ -44,10 +46,16 @@ export function CreateRelationView() {
   const [direction, setDirection] = useState("");
   const [confidence, setConfidence] = useState(0.5);
   const [roles, setRoles] = useState<RoleWrite[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    setValidationMessage,
+    clearValidationMessage: clearError,
+    getFieldError,
+    hasFieldError,
+  } = useValidationMessage<ValidationField>();
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const { isRunning: submitting, run } = useAsyncAction(setSubmitError);
   // Load entities & sources
   useEffect(() => {
     setLoading(true);
@@ -92,9 +100,36 @@ export function CreateRelationView() {
   };
 
   const submit = async () => {
-    setError(null);
-    setSubmitting(true);
-    try {
+    clearError();
+    setSubmitError(null);
+
+    if (!sourceId) {
+      setValidationMessage(t("relation.validation.source_required", "Please select a source"), "source");
+      return;
+    }
+
+    if (!kind.trim()) {
+      setValidationMessage(t("relation.validation.kind_required", "Please enter a relation kind"), "kind");
+      return;
+    }
+
+    if (roles.length === 0) {
+      setValidationMessage(t("relation.validation.role_required", "Please add at least one role"), "roles");
+      return;
+    }
+
+    if (roles.some((role) => !role.entity_id.trim() || !role.role_type.trim())) {
+      setValidationMessage(
+        t(
+          "relation.validation.role_fields_required",
+          "Each role must include both an entity and a role type"
+        ),
+        "roles"
+      );
+      return;
+    }
+
+    const result = await run(async () => {
       await createRelation({
         source_id: sourceId,
         kind,
@@ -109,11 +144,10 @@ export function CreateRelationView() {
       setDirection("");
       setConfidence(0.5);
       setRoles([]);
-    } catch (e: any) {
-      setError(e?.message ?? t("common.error", "Something went wrong"));
-      showError(e);
-    } finally {
-      setSubmitting(false);
+    }, t("common.error", "Something went wrong"));
+
+    if (!result.ok) {
+      return;
     }
   };
 
@@ -137,8 +171,13 @@ export function CreateRelationView() {
           select
           label={t("relation.source", "Source")}
           value={sourceId}
-          onChange={(e) => setSourceId(e.target.value)}
+          onChange={(e) => {
+            setSourceId(e.target.value);
+            clearError("source");
+          }}
           fullWidth
+          error={hasFieldError("source")}
+          helperText={getFieldError("source") ?? " "}
         >
           {sources.map((s) => (
             <MenuItem key={s.id} value={s.id}>
@@ -151,8 +190,13 @@ export function CreateRelationView() {
         <TextField
           label={t("relation.kind", "Relation kind")}
           value={kind}
-          onChange={(e) => setKind(e.target.value)}
+          onChange={(e) => {
+            setKind(e.target.value);
+            clearError("kind");
+          }}
           fullWidth
+          error={hasFieldError("kind")}
+          helperText={getFieldError("kind") ?? " "}
         />
 
         <TextField
@@ -178,15 +222,22 @@ export function CreateRelationView() {
           {t("relation.roles", "Roles")}
         </Typography>
 
+        {hasFieldError("roles") && (
+          <Typography color="error" variant="body2">
+            {getFieldError("roles")}
+          </Typography>
+        )}
+
         {roles.map((role, index) => (
           <Stack direction="row" spacing={2} key={index}>
             <TextField
               select
               label={t("relation.entity", "Entity")}
               value={role.entity_id}
-              onChange={(e) =>
-                updateRole(index, { entity_id: e.target.value })
-              }
+              onChange={(e) => {
+                updateRole(index, { entity_id: e.target.value });
+                clearError("roles");
+              }}
               sx={{ flex: 2 }}
             >
               {entities.map((e) => (
@@ -199,9 +250,10 @@ export function CreateRelationView() {
             <TextField
               label={t("relation.role_type", "Role")}
               value={role.role_type}
-              onChange={(e) =>
-                updateRole(index, { role_type: e.target.value })
-              }
+              onChange={(e) => {
+                updateRole(index, { role_type: e.target.value });
+                clearError("roles");
+              }}
               sx={{ flex: 2 }}
             />
 
@@ -219,8 +271,8 @@ export function CreateRelationView() {
           {t("relation.add_role", "Add role")}
         </Button>
 
-        {error && (
-          <Typography color="error">{error}</Typography>
+        {submitError && (
+          <Typography color="error">{submitError}</Typography>
         )}
 
         <Button

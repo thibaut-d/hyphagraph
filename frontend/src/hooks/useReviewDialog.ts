@@ -5,6 +5,7 @@ import {
   type ReviewDecision,
 } from "../api/extractionReview";
 import { useNotification } from "../notifications/NotificationContext";
+import { usePageErrorHandler } from "./usePageErrorHandler";
 
 /**
  * Hook for managing review dialog state and submission.
@@ -29,6 +30,7 @@ export interface UseReviewDialogReturn {
 
 export function useReviewDialog(): UseReviewDialogReturn {
   const { showError, showSuccess } = useNotification();
+  const handlePageError = usePageErrorHandler();
   const [isOpen, setIsOpen] = useState(false);
   const [notes, setNotes] = useState("");
   const [decision, setDecision] = useState<"approve" | "reject">("approve");
@@ -65,12 +67,12 @@ export function useReviewDialog(): UseReviewDialogReturn {
           onSuccess();
         }
       } catch (err) {
-        showError(err);
+        handlePageError(err, "Failed to submit review");
       } finally {
         setIsSubmitting(false);
       }
     },
-    [decision, notes, showError, showSuccess, closeDialog]
+    [closeDialog, decision, handlePageError, notes, showSuccess]
   );
 
   const submitBatchReview = useCallback(
@@ -99,12 +101,12 @@ export function useReviewDialog(): UseReviewDialogReturn {
           onSuccess();
         }
       } catch (err) {
-        showError(err);
+        handlePageError(err, "Failed to submit batch review");
       } finally {
         setIsSubmitting(false);
       }
     },
-    [decision, notes, showError, showSuccess, closeDialog]
+    [closeDialog, decision, handlePageError, notes, showError, showSuccess]
   );
 
   return {

@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { EntityRead } from "../types/entity";
 import { getEntity } from "../api/entities";
-import { useNotification } from "../notifications/NotificationContext";
-import { parseError, ParsedAppError } from "../utils/errorHandler";
+import { ParsedAppError } from "../utils/errorHandler";
+import { usePageErrorHandler } from "./usePageErrorHandler";
 
 /**
  * Hook for fetching and managing entity data.
@@ -21,7 +21,7 @@ export interface UseEntityDataReturn {
 }
 
 export function useEntityData(entityId: string | undefined): UseEntityDataReturn {
-  const { showError } = useNotification();
+  const handlePageError = usePageErrorHandler();
   const [entity, setEntity] = useState<EntityRead | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -50,13 +50,12 @@ export function useEntityData(entityId: string | undefined): UseEntityDataReturn
         return;
       }
 
-      const parsedError = parseError(err, "Failed to load entity");
+      const parsedError = handlePageError(err, "Failed to load entity");
       const nextError =
         err instanceof Error ? err : new ParsedAppError(parsedError);
 
       setEntity(null);
       setError(nextError);
-      showError(err);
     } finally {
       if (requestId === requestIdRef.current) {
         setLoading(false);

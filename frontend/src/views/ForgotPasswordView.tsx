@@ -11,30 +11,40 @@ import {
 } from "@mui/material";
 
 import { requestPasswordReset } from "../api/auth";
-import { useNotification } from "../notifications/NotificationContext";
+import { useAsyncAction } from "../hooks/useAsyncAction";
+import { useValidationMessage } from "../hooks/useValidationMessage";
+
+type ValidationField = "email";
 
 export function ForgotPasswordView() {
   const { t } = useTranslation();
-  const { showError } = useNotification();
   const [email, setEmail] = useState("");
   const [success, setSuccess] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const {
+    setValidationMessage,
+    clearValidationMessage: clearError,
+    getFieldError,
+    hasFieldError,
+  } = useValidationMessage<ValidationField>();
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const { isRunning: loading, run } = useAsyncAction((message) => setSubmitError(message ?? ""));
 
   const handleSubmit = async () => {
-    setError("");
+    clearError();
     setSuccess(false);
-    setLoading(true);
-
-    try {
-      await requestPasswordReset(email);
+    setSubmitError(null);
+    if (!email.trim()) {
+      setValidationMessage(t("forgot_password.email_required", "Email is required"), "email");
+      return;
+    }
+    const result = await run(async () => {
+      await requestPasswordReset(email.trim());
       setSuccess(true);
       setEmail("");
-    } catch (e: any) {
-      setError(e?.message ?? t("forgot_password.error", "Failed to send reset link"));
-      showError(e);
-    } finally {
-      setLoading(false);
+    }, t("forgot_password.error", "Failed to send reset link"));
+
+    if (!result.ok) {
+      return;
     }
   };
 
@@ -61,15 +71,20 @@ export function ForgotPasswordView() {
           </Alert>
         )}
 
-        {error && <Alert severity="error">{error}</Alert>}
+        {submitError && <Alert severity="error">{submitError}</Alert>}
 
         <TextField
           label={t("forgot_password.email", "Email")}
           type="email"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            clearError("email");
+          }}
           disabled={loading || success}
           fullWidth
+          error={hasFieldError("email")}
+          helperText={getFieldError("email") ?? " "}
         />
 
         <Button

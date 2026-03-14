@@ -1,4 +1,11 @@
 import { apiFetch } from "./client";
+import {
+  appendArrayParam,
+  appendOptionalNumber,
+  appendOptionalParam,
+  buildQueryString,
+  createSearchParams,
+} from "./queryString";
 import type { SourceRead, SourceWrite } from "../types/source";
 import type { JsonObject } from "../types/json";
 
@@ -52,50 +59,20 @@ export function extractMetadataFromUrl(url: string): Promise<SourceMetadataSugge
 }
 
 export function listSources(filters?: SourceFilters): Promise<PaginatedResponse<SourceRead>> {
-  const params = new URLSearchParams();
+  const params = createSearchParams((query) => {
+    appendArrayParam(query, "kind", filters?.kind);
+    appendOptionalNumber(query, "year_min", filters?.year_min);
+    appendOptionalNumber(query, "year_max", filters?.year_max);
+    appendOptionalNumber(query, "trust_level_min", filters?.trust_level_min);
+    appendOptionalNumber(query, "trust_level_max", filters?.trust_level_max);
+    appendOptionalParam(query, "search", filters?.search);
+    appendArrayParam(query, "domain", filters?.domain);
+    appendArrayParam(query, "role", filters?.role);
+    appendOptionalNumber(query, "limit", filters?.limit);
+    appendOptionalNumber(query, "offset", filters?.offset);
+  });
 
-  if (filters?.kind) {
-    filters.kind.forEach(k => params.append('kind', k));
-  }
-
-  if (filters?.year_min !== undefined) {
-    params.append('year_min', filters.year_min.toString());
-  }
-
-  if (filters?.year_max !== undefined) {
-    params.append('year_max', filters.year_max.toString());
-  }
-
-  if (filters?.trust_level_min !== undefined) {
-    params.append('trust_level_min', filters.trust_level_min.toString());
-  }
-
-  if (filters?.trust_level_max !== undefined) {
-    params.append('trust_level_max', filters.trust_level_max.toString());
-  }
-
-  if (filters?.search) {
-    params.append('search', filters.search);
-  }
-
-  if (filters?.domain) {
-    filters.domain.forEach(d => params.append('domain', d));
-  }
-
-  if (filters?.role) {
-    filters.role.forEach(r => params.append('role', r));
-  }
-
-  if (filters?.limit !== undefined) {
-    params.append('limit', filters.limit.toString());
-  }
-
-  if (filters?.offset !== undefined) {
-    params.append('offset', filters.offset.toString());
-  }
-
-  const queryString = params.toString();
-  return apiFetch(`/sources${queryString ? `?${queryString}` : ''}`);
+  return apiFetch(`/sources${buildQueryString(params)}`);
 }
 
 export function getSource(id: string): Promise<SourceRead> {

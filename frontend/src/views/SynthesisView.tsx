@@ -15,46 +15,23 @@
  * Navigation: Entity Detail → View Synthesis → This View
  */
 
-import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useNotification } from "../notifications/NotificationContext";
 import {
-  Typography,
-  Paper,
-  Stack,
-  CircularProgress,
   Alert,
-  Box,
-  Breadcrumbs,
-  Link,
-  Card,
-  CardContent,
-  Chip,
-  Button,
-  Grid,
-  LinearProgress,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemText,
-  Divider,
+  CircularProgress,
+  Stack,
+  Typography,
 } from "@mui/material";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import WarningIcon from "@mui/icons-material/Warning";
-import ErrorIcon from "@mui/icons-material/Error";
 import InfoIcon from "@mui/icons-material/Info";
 
-import { getEntity, EntityRead } from "../api/entities";
-import { getInferenceForEntity } from "../api/inferences";
-import { InferenceRead } from "../types/inference";
+import { SynthesisFooterSection } from "../components/synthesis/SynthesisFooterSection";
+import { SynthesisHeaderSection } from "../components/synthesis/SynthesisHeaderSection";
+import { SynthesisQualitySection } from "../components/synthesis/SynthesisQualitySection";
+import { SynthesisRelationsSection } from "../components/synthesis/SynthesisRelationsSection";
+import { SynthesisStatsSection } from "../components/synthesis/SynthesisStatsSection";
 import { resolveLabel } from "../utils/i18nLabel";
-import { parseError } from "../utils/errorHandler";
+import { useEntityInferenceDetail } from "../hooks/useEntityInferenceDetail";
 
 /**
  * SynthesisView Component
@@ -69,44 +46,12 @@ import { parseError } from "../utils/errorHandler";
 export function SynthesisView() {
   const { id } = useParams<{ id: string }>();
   const { t, i18n } = useTranslation();
-  const { showError } = useNotification();
   const navigate = useNavigate();
-
-  const [entity, setEntity] = useState<EntityRead | null>(null);
-  const [inference, setInference] = useState<InferenceRead | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  // Fetch entity and inferences
-  useEffect(() => {
-    if (!id) {
-      setError("Missing entity ID");
-      showError(new Error("Missing entity ID"));
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    Promise.all([
-      getEntity(id),
-      getInferenceForEntity(id)
-    ])
-      .then(([entityData, inferenceData]) => {
-        setEntity(entityData);
-        setInference(inferenceData);
-      })
-      .catch((err) => {
-        console.error("Failed to load synthesis:", err);
-        const parsedError = parseError(err, "Failed to load synthesis");
-        setEntity(null);
-        setInference(null);
-        setError(parsedError.userMessage);
-        showError(err);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, [id, showError]);
+  const { data, error, loading } = useEntityInferenceDetail(id, "Failed to load synthesis");
+  const entity = data?.entity ?? null;
+  const inference = data?.inference ?? null;
+  const stats = inference?.stats;
+  const relationKindSummaries = inference?.relation_kind_summaries;
 
   // Loading state
   if (loading) {
@@ -133,7 +78,7 @@ export function SynthesisView() {
 
   // Calculate synthesis statistics
   const relationsByKind = inference?.relations_by_kind || {};
-  const totalRelations = Object.values(relationsByKind).reduce(
+  const totalRelations = stats?.total_relations ?? Object.values(relationsByKind).reduce(
     (sum, relations: any[]) => sum + relations.length,
     0
   );
@@ -165,272 +110,54 @@ export function SynthesisView() {
     });
   });
 
-  const averageConfidence = confidenceCount > 0 ? totalConfidence / confidenceCount : 0;
+  const averageConfidence = stats?.average_confidence ?? (
+    confidenceCount > 0 ? totalConfidence / confidenceCount : 0
+  );
+  const uniqueSourcesCount = stats?.unique_sources_count ?? uniqueSources.size;
+  const highConfidenceTotal = stats?.high_confidence_count ?? highConfidenceCount;
+  const lowConfidenceTotal = stats?.low_confidence_count ?? lowConfidenceCount;
+  const contradictionTotal = stats?.contradiction_count ?? contradictionCount;
+  const confidenceTotal = stats?.confidence_count ?? confidenceCount;
+  const relationTypeCount = stats?.relation_type_count ?? Object.keys(relationsByKind).length;
 
   const hasData = totalRelations > 0;
 
   return (
     <Stack spacing={3}>
-      {/* Breadcrumbs */}
-      <Breadcrumbs>
-        <Link component={RouterLink} to="/entities" underline="hover">
-          {t("menu.entities", "Entities")}
-        </Link>
-        <Link component={RouterLink} to={`/entities/${id}`} underline="hover">
-          {entityLabel}
-        </Link>
-        <Typography color="text.primary">
-          {t("synthesis.title", "Synthesis")}
-        </Typography>
-      </Breadcrumbs>
-
-      {/* Back button */}
-      <Box>
-        <Button
-          startIcon={<ArrowBackIcon />}
-          onClick={() => navigate(`/entities/${id}`)}
-          variant="outlined"
-          size="small"
-        >
-          {t("common.back", "Back to entity")}
-        </Button>
-      </Box>
-
-      {/* Header */}
-      <Paper sx={{ p: 3 }}>
-        <Stack spacing={2}>
-          <Typography variant="h4" component="h1">
-            {t("synthesis.header", "Knowledge Synthesis")}
-          </Typography>
-          <Typography variant="h6" color="text.secondary">
-            {entityLabel}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {t("synthesis.description",
-              "Comprehensive view of all computed knowledge about this entity, including consensus levels and evidence quality."
-            )}
-          </Typography>
-        </Stack>
-      </Paper>
+      <SynthesisHeaderSection
+        entityId={id}
+        entityLabel={entityLabel}
+        onBack={() => navigate(`/entities/${id}`)}
+      />
 
       {hasData ? (
         <>
-          {/* Statistics Overview */}
-          <Grid container spacing={2}>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card>
-                <CardContent>
-                  <Typography color="text.secondary" gutterBottom variant="body2">
-                    {t("synthesis.stats.relations", "Total Relations")}
-                  </Typography>
-                  <Typography variant="h4">
-                    {totalRelations}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
+          <SynthesisStatsSection
+            totalRelations={totalRelations}
+            uniqueSourcesCount={uniqueSourcesCount}
+            averageConfidence={averageConfidence}
+            relationTypeCount={relationTypeCount}
+          />
 
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card>
-                <CardContent>
-                  <Typography color="text.secondary" gutterBottom variant="body2">
-                    {t("synthesis.stats.sources", "Unique Sources")}
-                  </Typography>
-                  <Typography variant="h4">
-                    {uniqueSources.size}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
+          <SynthesisQualitySection
+            confidenceCount={confidenceTotal}
+            highConfidenceCount={highConfidenceTotal}
+            lowConfidenceCount={lowConfidenceTotal}
+            contradictionCount={contradictionTotal}
+          />
 
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card>
-                <CardContent>
-                  <Typography color="text.secondary" gutterBottom variant="body2">
-                    {t("synthesis.stats.confidence", "Avg. Confidence")}
-                  </Typography>
-                  <Typography variant="h4">
-                    {Math.round(averageConfidence * 100)}%
-                  </Typography>
-                  <LinearProgress
-                    variant="determinate"
-                    value={averageConfidence * 100}
-                    sx={{ mt: 1 }}
-                  />
-                </CardContent>
-              </Card>
-            </Grid>
+          <SynthesisRelationsSection
+            summaries={relationKindSummaries}
+            relationsByKind={relationsByKind}
+            onSelectKind={(kind) => navigate(`/entities/${id}/properties/${kind}`)}
+          />
 
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card>
-                <CardContent>
-                  <Typography color="text.secondary" gutterBottom variant="body2">
-                    {t("synthesis.stats.kinds", "Relation Types")}
-                  </Typography>
-                  <Typography variant="h4">
-                    {Object.keys(relationsByKind).length}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-
-          {/* Quality Indicators */}
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                {t("synthesis.quality.title", "Evidence Quality Overview")}
-              </Typography>
-              <Stack spacing={2}>
-                <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-                  <Chip
-                    icon={<CheckCircleIcon />}
-                    label={t("synthesis.quality.high", "High Confidence: {{count}}", { count: highConfidenceCount })}
-                    color="success"
-                  />
-                  <Chip
-                    icon={<InfoIcon />}
-                    label={t("synthesis.quality.total", "Total: {{count}}", { count: confidenceCount })}
-                    variant="outlined"
-                  />
-                  {lowConfidenceCount > 0 && (
-                    <Chip
-                      icon={<WarningIcon />}
-                      label={t("synthesis.quality.low", "Low Confidence: {{count}}", { count: lowConfidenceCount })}
-                      color="warning"
-                    />
-                  )}
-                  {contradictionCount > 0 && (
-                    <Chip
-                      icon={<ErrorIcon />}
-                      label={t("synthesis.quality.contradictions", "Contradictions: {{count}}", { count: contradictionCount })}
-                      color="error"
-                    />
-                  )}
-                </Box>
-              </Stack>
-            </CardContent>
-          </Card>
-
-          {/* Relations by Kind */}
-          <Box>
-            <Typography variant="h5" gutterBottom>
-              {t("synthesis.relations.title", "Relations by Type")}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" paragraph>
-              {t("synthesis.relations.description",
-                "Click any relation type to see details and explanation."
-              )}
-            </Typography>
-
-            <Stack spacing={1}>
-              {Object.entries(relationsByKind).map(([kind, relations]: [string, any]) => {
-                const relationArray = relations as any[];
-                const kindConfidence = relationArray.reduce(
-                  (sum, rel) => sum + (rel.confidence || 0),
-                  0
-                ) / relationArray.length;
-
-                return (
-                  <Accordion key={kind}>
-                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 2, width: "100%" }}>
-                        <Typography variant="subtitle1" sx={{ flexGrow: 1 }}>
-                          {kind}
-                        </Typography>
-                        <Chip
-                          label={`${relationArray.length} relation${relationArray.length !== 1 ? 's' : ''}`}
-                          size="small"
-                          variant="outlined"
-                        />
-                        <Chip
-                          label={`${Math.round(kindConfidence * 100)}% confidence`}
-                          size="small"
-                          color={kindConfidence > 0.7 ? "success" : kindConfidence > 0.4 ? "warning" : "error"}
-                        />
-                      </Box>
-                    </AccordionSummary>
-                    <AccordionDetails>
-                      <List dense>
-                        {relationArray.map((relation, index) => (
-                          <ListItem key={index} disablePadding>
-                            <ListItemButton
-                              onClick={() => navigate(`/entities/${id}/properties/${kind}`)}
-                            >
-                              <ListItemText
-                                primary={
-                                  <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-                                    <Typography variant="body2">
-                                      {relation.kind || kind}
-                                    </Typography>
-                                    {relation.direction && (
-                                      <Chip
-                                        label={relation.direction}
-                                        size="small"
-                                        color={relation.direction === "supports" ? "success" : "error"}
-                                      />
-                                    )}
-                                  </Box>
-                                }
-                                secondary={
-                                  relation.confidence !== undefined
-                                    ? t("synthesis.relation.confidence", "Confidence: {{value}}%", {
-                                        value: Math.round(relation.confidence * 100)
-                                      })
-                                    : undefined
-                                }
-                              />
-                            </ListItemButton>
-                          </ListItem>
-                        ))}
-                      </List>
-                    </AccordionDetails>
-                  </Accordion>
-                );
-              })}
-            </Stack>
-          </Box>
-
-          {/* Knowledge Gaps */}
-          {Object.keys(relationsByKind).length < 3 && (
-            <Card sx={{ borderColor: "warning.main", borderWidth: 1, borderStyle: "dashed" }}>
-              <CardContent>
-                <Stack spacing={2}>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <InfoIcon color="warning" />
-                    <Typography variant="h6" color="warning.main">
-                      {t("synthesis.gaps.title", "Knowledge Gaps Detected")}
-                    </Typography>
-                  </Box>
-                  <Typography variant="body2">
-                    {t("synthesis.gaps.description",
-                      "This entity has limited relation types. Consider adding more evidence or relations to improve knowledge coverage."
-                    )}
-                  </Typography>
-                </Stack>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Action Buttons */}
-          <Divider />
-          <Box sx={{ display: "flex", gap: 2, justifyContent: "center", flexWrap: "wrap" }}>
-            {contradictionCount > 0 && (
-              <Button
-                variant="contained"
-                color="error"
-                onClick={() => navigate(`/entities/${id}/disagreements`)}
-              >
-                {t("synthesis.view_disagreements", "View Disagreements ({{count}})", { count: contradictionCount })}
-              </Button>
-            )}
-            <Button
-              variant="outlined"
-              onClick={() => navigate(`/entities/${id}`)}
-            >
-              {t("synthesis.back_to_detail", "Back to Entity Detail")}
-            </Button>
-          </Box>
+          <SynthesisFooterSection
+            contradictionCount={contradictionTotal}
+            relationTypeCount={relationTypeCount}
+            onViewDisagreements={() => navigate(`/entities/${id}/disagreements`)}
+            onBackToDetail={() => navigate(`/entities/${id}`)}
+          />
         </>
       ) : (
         <Alert severity="info" icon={<InfoIcon />}>

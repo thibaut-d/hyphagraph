@@ -1,13 +1,17 @@
 from fastapi import APIRouter, Depends, Query, UploadFile, File
-from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 from typing import Optional, List
 import logging
 
-from app.database import get_db
+from app.api.service_dependencies import (
+    get_document_service,
+    get_metadata_extractor_factory,
+    get_source_service,
+)
 from app.schemas.source import SourceWrite, SourceRead, DocumentUploadResponse, SourceMetadataSuggestion
 from app.schemas.filters import SourceFilters, SourceFilterOptions
 from app.schemas.pagination import PaginatedResponse
+from app.services.metadata_extractors import MetadataExtractorFactory
 from app.services.source_service import SourceService
 from app.services.document_service import DocumentService
 from app.dependencies.auth import get_current_user
@@ -35,6 +39,7 @@ class UrlMetadataRequest(BaseModel):
 @router.post("/extract-metadata-from-url", response_model=SourceMetadataSuggestion)
 async def extract_metadata_from_url(
     request: UrlMetadataRequest,
+    factory: MetadataExtractorFactory = Depends(get_metadata_extractor_factory),
     user=Depends(get_current_user),
 ):
     """
@@ -61,10 +66,6 @@ async def extract_metadata_from_url(
     logger.info(f"Metadata extraction requested for URL: {request.url}")
 
     try:
-        # Use factory to select and execute appropriate extractor
-        from app.services.metadata_extractors import MetadataExtractorFactory
-
-        factory = MetadataExtractorFactory()
         return await factory.extract_metadata(request.url)
 
     except AppException:
@@ -82,7 +83,7 @@ async def extract_metadata_from_url(
 
 @router.get("/filter-options", response_model=SourceFilterOptions)
 async def get_source_filter_options(
-    db: AsyncSession = Depends(get_db),
+    service: SourceService = Depends(get_source_service),
 ):
     """
     Get available filter options for sources.
@@ -94,16 +95,14 @@ async def get_source_filter_options(
         - **kinds**: List of distinct source kinds
         - **year_range**: Minimum and maximum publication years [min, max]
     """
-    service = SourceService(db)
     return await service.get_filter_options()
 
 @router.post("/", response_model=SourceRead)
 async def create_source(
     payload: SourceWrite,
-    db: AsyncSession = Depends(get_db),
+    service: SourceService = Depends(get_source_service),
     user=Depends(get_current_user),
 ):
-    service = SourceService(db)
     return await service.create(payload)
 
 @router.get("/", response_model=PaginatedResponse[SourceRead])
@@ -118,7 +117,7 @@ async def list_sources(
     role: Optional[List[str]] = Query(None, description="Filter by role in graph (pillar/supporting/contradictory/single)"),
     limit: int = Query(50, description="Maximum number of results", ge=1, le=100),
     offset: int = Query(0, description="Number of results to skip", ge=0),
-    db: AsyncSession = Depends(get_db),
+    service: SourceService = Depends(get_source_service),
 ):
     """
     List sources with optional filters and pagination.
@@ -139,7 +138,6 @@ async def list_sources(
     - **limit**: Maximum number of results to return (default: 50, max: 100)
     - **offset**: Number of results to skip for pagination (default: 0)
     """
-    service = SourceService(db)
     filters = SourceFilters(
         kind=kind,
         year_min=year_min,
@@ -163,28 +161,25 @@ async def list_sources(
 @router.get("/{source_id}", response_model=SourceRead)
 async def get_source(
     source_id: UUID,
-    db: AsyncSession = Depends(get_db),
+    service: SourceService = Depends(get_source_service),
 ):
-    service = SourceService(db)
     return await service.get(source_id)
 
 @router.put("/{source_id}", response_model=SourceRead)
 async def update_source(
     source_id: UUID,
     payload: SourceWrite,
-    db: AsyncSession = Depends(get_db),
+    service: SourceService = Depends(get_source_service),
     user=Depends(get_current_user),
 ):
-    service = SourceService(db)
     return await service.update(source_id, payload, user_id=user.id if user else None)
 
 @router.delete("/{source_id}", status_code=204)
 async def delete_source(
     source_id: UUID,
-    db: AsyncSession = Depends(get_db),
+    service: SourceService = Depends(get_source_service),
     user=Depends(get_current_user),
 ):
-    service = SourceService(db)
     await service.delete(source_id)
     return None
 
@@ -193,7 +188,8 @@ async def delete_source(
 async def upload_document(
     source_id: UUID,
     file: UploadFile = File(...),
-    db: AsyncSession = Depends(get_db),
+    document_service: DocumentService = Depends(get_document_service),
+    source_service: SourceService = Depends(get_source_service),
     user=Depends(get_current_user),
 ):
     """
@@ -216,11 +212,9 @@ async def upload_document(
     logger.info(f"Document upload requested for source {source_id} by user {user.email}")
 
     # Extract text from document
-    document_service = DocumentService()
     extraction_result = await document_service.extract_text_from_file(file)
 
     # Store document content in source revision
-    source_service = SourceService(db)
     await source_service.add_document_to_source(
         source_id=source_id,
         document_text=extraction_result.text,

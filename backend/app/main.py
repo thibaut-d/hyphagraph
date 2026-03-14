@@ -3,12 +3,28 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api import (
+    admin,
+    auth,
+    document_extraction,
+    entities,
+    entity_terms,
+    explain,
+    export,
+    extraction,
+    extraction_review,
+    inferences,
+    relations,
+    relation_types,
+    search,
+    sources,
+    users,
+)
 from app.config import settings
-from app.api import sources, entities, relations, inferences, explain, search, extraction, document_extraction, relation_types, export, admin, extraction_review, entity_terms
 from app.database import AsyncSessionLocal
+from app.middleware.error_handler import register_error_handlers
 from app.startup import run_startup_tasks
 from app.utils.rate_limit import limiter
-from app.middleware.error_handler import register_error_handlers
 
 # Import all models to ensure SQLAlchemy discovers all tables and relationships
 # This prevents NoReferencedTableError during foreign key resolution
@@ -28,6 +44,18 @@ from app.models.refresh_token import RefreshToken
 from app.models.audit_log import AuditLog
 from app.models.relation_type import RelationType
 from app.models.staged_extraction import StagedExtraction
+
+
+def _load_test_helpers_router():
+    """
+    Load the testing-only helper router.
+
+    The router is only available in TESTING mode, so the import stays behind
+    this helper instead of leaking test-only modules into normal runtime startup.
+    """
+    from app.api import test_helpers
+
+    return test_helpers.router
 
 
 @asynccontextmanager
@@ -69,7 +97,6 @@ app.add_middleware(
 )
 
 # --- Routers (all under /api) ---
-from app.api import auth, users
 app.include_router(auth.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 app.include_router(sources.router, prefix="/api/sources", tags=["sources"])
@@ -88,8 +115,7 @@ app.include_router(extraction_review.router, prefix="/api")
 
 # --- Test Helpers (only in testing mode) ---
 if settings.TESTING:
-    from app.api import test_helpers
-    app.include_router(test_helpers.router, prefix="/api")
+    app.include_router(_load_test_helpers_router(), prefix="/api")
 
 # --- Healthcheck ---
 @app.get("/health", tags=["health"])

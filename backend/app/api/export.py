@@ -5,10 +5,9 @@ Provides data export functionality in multiple formats.
 """
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
-from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Literal
 
-from app.database import get_db
+from app.api.service_dependencies import get_export_service, get_typedb_export_service
 from app.services.export_service import ExportService
 from app.services.typedb_export_service import TypeDBExportService
 from app.dependencies.auth import get_current_user
@@ -22,7 +21,7 @@ router = APIRouter(tags=["export"])
 async def export_entities(
     format: Literal["json", "csv", "rdf"] = Query("json", description="Export format"),
     include_metadata: bool = Query(True, description="Include creation dates and provenance"),
-    db: AsyncSession = Depends(get_db),
+    service: ExportService = Depends(get_export_service),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -35,7 +34,6 @@ async def export_entities(
 
     Returns a downloadable file.
     """
-    service = ExportService(db)
     content = await service.export_entities(format, include_metadata)
 
     # Set appropriate content type and filename
@@ -64,7 +62,7 @@ async def export_entities(
 async def export_relations(
     format: Literal["json", "csv", "rdf"] = Query("json", description="Export format"),
     include_metadata: bool = Query(True, description="Include creation dates and provenance"),
-    db: AsyncSession = Depends(get_db),
+    service: ExportService = Depends(get_export_service),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -77,7 +75,6 @@ async def export_relations(
 
     Returns a downloadable file.
     """
-    service = ExportService(db)
     content = await service.export_relations(format, include_metadata)
 
     content_types = {
@@ -104,7 +101,7 @@ async def export_relations(
 @router.get("/full-graph")
 async def export_full_graph(
     include_metadata: bool = Query(True, description="Include creation dates and provenance"),
-    db: AsyncSession = Depends(get_db),
+    service: ExportService = Depends(get_export_service),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -120,7 +117,6 @@ async def export_full_graph(
 
     This export can be reimported into another HyphaGraph instance.
     """
-    service = ExportService(db)
     content = await service.export_full_graph("json", include_metadata)
 
     return Response(
@@ -134,7 +130,7 @@ async def export_full_graph(
 
 @router.get("/typedb-schema")
 async def export_typedb_schema(
-    db: AsyncSession = Depends(get_db),
+    service: TypeDBExportService = Depends(get_typedb_export_service),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -143,7 +139,6 @@ async def export_typedb_schema(
     Returns schema definition for importing into TypeDB.
     Includes entity types, relation types with semantic roles.
     """
-    service = TypeDBExportService(db)
     schema = await service.export_schema()
     
     return Response(
@@ -158,7 +153,7 @@ async def export_typedb_schema(
 @router.get("/typedb-data")
 async def export_typedb_data(
     limit: int = Query(None, description="Limit entities/relations exported"),
-    db: AsyncSession = Depends(get_db),
+    service: TypeDBExportService = Depends(get_typedb_export_service),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -166,7 +161,6 @@ async def export_typedb_data(
     
     Returns data in TypeQL format for importing into TypeDB.
     """
-    service = TypeDBExportService(db)
     data = await service.export_data(limit=limit)
     
     return Response(
@@ -180,7 +174,7 @@ async def export_typedb_data(
 
 @router.get("/typedb-full")
 async def export_typedb_full(
-    db: AsyncSession = Depends(get_db),
+    service: TypeDBExportService = Depends(get_typedb_export_service),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -188,8 +182,6 @@ async def export_typedb_full(
     
     Returns both schema and data for complete TypeDB setup.
     """
-    service = TypeDBExportService(db)
     result = await service.export_full()
     
     return result
-

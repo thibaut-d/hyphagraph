@@ -27,6 +27,7 @@ from app.schemas.auth import (
 from app.services.user_service import UserService
 from app.dependencies.auth import get_current_user
 from app.utils.rate_limit import limiter
+from app.utils.email import send_password_reset_email, send_verification_email
 from app.utils.audit import (
     log_registration,
     log_login_attempt,
@@ -78,8 +79,6 @@ async def register(
         ValidationException: If email already registered
         HTTPException 429: If rate limit exceeded
     """
-    from app.utils.email import send_verification_email
-
     try:
         user = await user_service.create(payload)
 
@@ -478,8 +477,6 @@ async def resend_verification_email(
         ValidationException: If user already verified
         HTTPException 429: If rate limit exceeded
     """
-    from app.utils.email import send_verification_email
-
     # Get user by email
     user = await user_service.get_by_email(payload.email)
     if not user:
@@ -535,8 +532,6 @@ async def request_password_reset(
     Raises:
         HTTPException 429: If rate limit exceeded
     """
-    from app.utils.email import send_password_reset_email
-
     # Request reset token (returns None if user doesn't exist)
     token = await user_service.request_password_reset(payload.email)
 

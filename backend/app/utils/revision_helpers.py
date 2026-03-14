@@ -7,8 +7,9 @@ Provides common patterns for:
 - Managing is_current flags
 """
 from uuid import UUID
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from typing import TypeVar, Type, Generic, Any
 
 # Generic type for revision models
@@ -35,8 +36,6 @@ async def get_current_revision(
     Returns:
         Current revision or None if not found
     """
-    from sqlalchemy.orm import selectinload
-
     stmt = (
         select(revision_class)
         .where(

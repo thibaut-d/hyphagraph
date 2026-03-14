@@ -7,11 +7,12 @@ Provides:
 - Get statistics
 - Suggest new type (avoid duplicates)
 """
+import json
+
 from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field
 
-from app.database import get_db
+from app.api.service_dependencies import get_relation_type_service
 from app.services.relation_type_service import RelationTypeService
 from app.dependencies.auth import get_current_user
 from app.models.user import User
@@ -67,7 +68,7 @@ class SuggestNewTypeResponse(BaseModel):
 @router.get("/", response_model=list[RelationTypeRead])
 async def list_relation_types(
     active_only: bool = True,
-    db: AsyncSession = Depends(get_db),
+    service: RelationTypeService = Depends(get_relation_type_service),
 ):
     """
     Get all relation types.
@@ -78,9 +79,6 @@ async def list_relation_types(
     - UI dropdowns (create/edit relation forms)
     - Analytics (usage statistics)
     """
-    import json
-
-    service = RelationTypeService(db)
     types = await service.get_all_active()
 
     return [
@@ -101,7 +99,7 @@ async def list_relation_types(
 @router.post("/", response_model=RelationTypeRead)
 async def create_relation_type(
     payload: RelationTypeCreate,
-    db: AsyncSession = Depends(get_db),
+    service: RelationTypeService = Depends(get_relation_type_service),
     user: User = Depends(get_current_user),
 ):
     """
@@ -116,8 +114,6 @@ async def create_relation_type(
             details="You must be a superuser to create new relation types"
         )
 
-    service = RelationTypeService(db)
-
     try:
         new_type = await service.create_relation_type(
             type_id=payload.type_id,
@@ -128,8 +124,6 @@ async def create_relation_type(
             category=payload.category,
             is_system=False
         )
-
-        import json
 
         return RelationTypeRead(
             type_id=new_type.type_id,
@@ -153,7 +147,7 @@ async def create_relation_type(
 @router.post("/suggest", response_model=SuggestNewTypeResponse)
 async def suggest_new_type(
     request: SuggestNewTypeRequest,
-    db: AsyncSession = Depends(get_db),
+    service: RelationTypeService = Depends(get_relation_type_service),
     user: User = Depends(get_current_user),
 ):
     """
@@ -163,7 +157,6 @@ async def suggest_new_type(
     that doesn't fit existing types, check if it's truly new or
     similar to an existing type.
     """
-    service = RelationTypeService(db)
     suggestion = await service.suggest_new_type(
         request.proposed_type,
         request.context
@@ -173,7 +166,7 @@ async def suggest_new_type(
 
 @router.get("/statistics")
 async def get_statistics(
-    db: AsyncSession = Depends(get_db),
+    service: RelationTypeService = Depends(get_relation_type_service),
 ):
     """
     Get relation type usage statistics.
@@ -184,14 +177,13 @@ async def get_statistics(
     - Usage counts
     - Distribution by category
     """
-    service = RelationTypeService(db)
     stats = await service.get_statistics()
     return stats
 
 
 @router.get("/for-llm-prompt")
 async def get_for_llm_prompt(
-    db: AsyncSession = Depends(get_db),
+    service: RelationTypeService = Depends(get_relation_type_service),
 ):
     """
     Get formatted relation type list for LLM prompts.
@@ -199,6 +191,5 @@ async def get_for_llm_prompt(
     Returns a formatted string ready to be inserted into LLM prompts.
     This ensures LLM always uses the current, approved relation types.
     """
-    service = RelationTypeService(db)
     prompt_text = await service.get_for_llm_prompt()
     return {"prompt_text": prompt_text}

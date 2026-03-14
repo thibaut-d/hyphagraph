@@ -4,8 +4,10 @@ PubMed metadata extractor.
 Extracts structured metadata from PubMed article URLs using NCBI E-utilities API.
 """
 import logging
+
 from app.schemas.source import SourceMetadataSuggestion
 from app.services.pubmed_fetcher import PubMedFetcher
+from app.utils.errors import ValidationException
 from app.utils.source_quality import infer_trust_level_from_pubmed_metadata
 
 logger = logging.getLogger(__name__)
@@ -52,7 +54,6 @@ class PubMedMetadataExtractor:
         # Extract PMID from URL
         pmid = self.pubmed_fetcher.extract_pmid_from_url(url)
         if not pmid:
-            from app.utils.errors import ValidationException
             raise ValidationException(
                 message="Invalid PubMed URL",
                 field="url",

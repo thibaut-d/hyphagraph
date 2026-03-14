@@ -8,7 +8,7 @@
  * Enables ≤2 click traceability: Entity → Explain → Source
  */
 
-import { useEffect, useState } from "react";
+import { useCallback } from "react";
 import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -33,7 +33,8 @@ import InfoIcon from "@mui/icons-material/Info";
 import { getExplanation, ExplanationRead } from "../api/explanations";
 import { EvidenceTrace } from "../components/EvidenceTrace";
 import { useNotification } from "../notifications/NotificationContext";
-import { parseError } from "../utils/errorHandler";
+import { useAsyncResource } from "../hooks/useAsyncResource";
+import { usePageErrorHandler } from "../hooks/usePageErrorHandler";
 
 
 export function ExplanationView() {
@@ -41,36 +42,34 @@ export function ExplanationView() {
   const { t } = useTranslation();
   const { showError } = useNotification();
   const navigate = useNavigate();
+  const handlePageError = usePageErrorHandler();
 
-  const [explanation, setExplanation] = useState<ExplanationRead | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
+  const loadExplanation = useCallback(async (): Promise<ExplanationRead> => {
     if (!entityId || !roleType) {
-      const message = "Missing entity ID or role type";
-      setError(message);
-      showError(message);
-      setLoading(false);
-      return;
+      throw new Error("Missing entity ID or role type");
     }
 
-    setLoading(true);
-    setError(null);
-    getExplanation(entityId, roleType)
-      .then((data) => {
-        setExplanation(data);
-      })
-      .catch((err) => {
-        console.error("Failed to load explanation:", err);
-        const parsedError = parseError(err, "Failed to load explanation");
-        setError(parsedError.userMessage);
-        showError(err);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+    return getExplanation(entityId, roleType);
   }, [entityId, roleType]);
+
+  const {
+    data: explanation,
+    loading,
+    error,
+  } = useAsyncResource<ExplanationRead>({
+    enabled: true,
+    deps: [entityId, roleType],
+    load: loadExplanation,
+    onError: (err) => {
+      if (!entityId || !roleType) {
+        const message = "Missing entity ID or role type";
+        showError(message);
+        return message;
+      }
+
+      return handlePageError(err, "Failed to load explanation").userMessage;
+    },
+  });
 
   // Loading state
   if (loading) {

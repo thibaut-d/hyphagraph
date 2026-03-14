@@ -20,6 +20,7 @@ import { getSource, updateSource, SourceWrite } from "../api/sources";
 import { SourceRead } from "../types/source";
 import { invalidateSourceFilterCache } from "../utils/cacheUtils";
 import { useNotification } from "../notifications/NotificationContext";
+import { useAsyncAction } from "../hooks/useAsyncAction";
 
 const SOURCE_KINDS = [
   "article",
@@ -50,7 +51,7 @@ export function EditSourceView() {
   const [summaryFr, setSummaryFr] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const { isRunning: saving, run: runSave } = useAsyncAction(setError);
 
   useEffect(() => {
     if (!id) return;
@@ -89,9 +90,7 @@ export function EditSourceView() {
 
     if (!id) return;
 
-    setSaving(true);
-
-    try {
+    const result = await runSave(async () => {
       const summary: Record<string, string> = {};
       if (summaryEn.trim()) summary.en = summaryEn.trim();
       if (summaryFr.trim()) summary.fr = summaryFr.trim();
@@ -119,10 +118,10 @@ export function EditSourceView() {
 
       // Navigate back to the source detail page
       navigate(`/sources/${id}`);
-    } catch (e: any) {
-      setError(e?.message ?? t("common.error", "An error occurred"));
-      showError(e);
-      setSaving(false);
+    }, t("common.error", "An error occurred"));
+
+    if (!result.ok) {
+      return;
     }
   };
 

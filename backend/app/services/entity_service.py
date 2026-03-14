@@ -1,3 +1,5 @@
+import json
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
@@ -9,6 +11,7 @@ from app.schemas.filters import EntityFilters, EntityFilterOptions, UICategoryOp
 from app.repositories.entity_repo import EntityRepository
 from app.models.entity import Entity
 from app.models.entity_revision import EntityRevision
+from app.models.ui_category import UiCategory
 from app.mappers.entity_mapper import (
     entity_revision_from_write,
     entity_to_read,
@@ -20,10 +23,15 @@ from app.utils.errors import AppException, EntityNotFoundException, ValidationEx
 
 
 class EntityService:
-    def __init__(self, db: AsyncSession):
+    def __init__(
+        self,
+        db: AsyncSession,
+        derived_properties_service: DerivedPropertiesService | None = None,
+    ):
         self.db = db
         self.repo = EntityRepository(db)
         self.query_builder = EntityQueryBuilder(db)
+        self.derived_properties_service = derived_properties_service or DerivedPropertiesService(db)
 
     async def create(self, payload: EntityWrite, user_id: UUID | None = None) -> EntityRead:
         """
@@ -210,8 +218,6 @@ class EntityService:
         Returns:
             EntityFilterOptions with available ui_categories and advanced options
         """
-        from app.models.ui_category import UiCategory
-
         # Get all UI categories with their i18n labels
         category_query = select(UiCategory.id, UiCategory.labels).order_by(UiCategory.order)
         category_result = await self.db.execute(category_query)
@@ -223,25 +229,21 @@ class EntityService:
         ]
 
         # Get advanced filter options using derived properties service
-        derived_service = DerivedPropertiesService(self.db)
-
         # Get clinical effects (relation types)
-        import json as json_module
-
-        clinical_effects_data = await derived_service.get_all_clinical_effects()
+        clinical_effects_data = await self.derived_properties_service.get_all_clinical_effects()
         clinical_effects = [
             ClinicalEffectOption(
                 type_id=effect["type_id"],
-                label=json_module.loads(effect["label"]) if isinstance(effect["label"], str) else effect["label"]
+                label=json.loads(effect["label"]) if isinstance(effect["label"], str) else effect["label"]
             )
             for effect in clinical_effects_data
         ] if clinical_effects_data else None
 
         # Get evidence quality range
-        evidence_quality_range = await derived_service.get_evidence_quality_range()
+        evidence_quality_range = await self.derived_properties_service.get_evidence_quality_range()
 
         # Get year range from sources that have relations with entities
-        year_range = await derived_service.get_entity_year_range()
+        year_range = await self.derived_properties_service.get_entity_year_range()
 
         return EntityFilterOptions(
             ui_categories=ui_categories,

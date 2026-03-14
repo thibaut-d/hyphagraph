@@ -21,14 +21,13 @@ import {
 } from "@mui/material";
 
 import { search, SearchResult, SearchResultType } from "../api/search";
-import { useNotification } from "../notifications/NotificationContext";
-import { parseError } from "../utils/errorHandler";
+import { usePageErrorHandler } from "../hooks/usePageErrorHandler";
 
 const RESULTS_PER_PAGE = 20;
 
 export function SearchView() {
   const { t } = useTranslation();
-  const { showError } = useNotification();
+  const handlePageError = usePageErrorHandler();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const initialQuery = searchParams.get("q") || "";
@@ -74,9 +73,8 @@ export function SearchView() {
         setRelationCount(response.relation_count);
       } catch (err) {
         console.error("Search failed:", err);
-        const parsedError = parseError(err, "Failed to perform search. Please try again.");
+        const parsedError = handlePageError(err, "Failed to perform search. Please try again.");
         setError(parsedError.userMessage);
-        showError(err);
         setResults([]);
         setTotal(0);
         setEntityCount(0);
@@ -86,7 +84,7 @@ export function SearchView() {
         setLoading(false);
       }
     },
-    []
+    [handlePageError]
   );
 
   // Search when query changes

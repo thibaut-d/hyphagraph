@@ -1,13 +1,10 @@
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 from typing import Optional
-import json
 
-from app.database import get_db
-from app.schemas.inference import InferenceRead
+from app.api.inference_dependencies import get_inference_service, parse_scope_filter
+from app.schemas.inference import InferenceDetailRead, InferenceRead
 from app.services.inference_service import InferenceService
-from app.utils.errors import ValidationException
 
 router = APIRouter()
 
@@ -19,7 +16,7 @@ async def infer_entity(
         None,
         description='Scope filter as JSON string. Example: {"population": "adults", "condition": "chronic_pain"}',
     ),
-    db: AsyncSession = Depends(get_db),
+    service: InferenceService = Depends(get_inference_service),
 ):
     """
     Compute inferences for an entity, optionally filtered by scope.
@@ -43,24 +40,19 @@ async def infer_entity(
         GET /inferences/entity/{id}?scope={"population":"adults","condition":"chronic_pain"}
             → Only relations for adults with chronic pain
     """
-    service = InferenceService(db)
-
-    # Parse scope filter if provided
-    scope_filter = None
-    if scope:
-        try:
-            scope_filter = json.loads(scope)
-            if not isinstance(scope_filter, dict):
-                raise ValidationException(
-                    message="Invalid scope parameter",
-                    field="scope",
-                    details="Scope must be a JSON object"
-                )
-        except json.JSONDecodeError as e:
-            raise ValidationException(
-                message="Invalid JSON in scope parameter",
-                field="scope",
-                details=str(e)
-            )
-
+    scope_filter = parse_scope_filter(scope)
     return await service.infer_for_entity(entity_id, scope_filter=scope_filter)
+
+
+@router.get("/entity/{entity_id}/detail", response_model=InferenceDetailRead)
+async def infer_entity_detail(
+    entity_id: UUID,
+    scope: Optional[str] = Query(
+        None,
+        description='Scope filter as JSON string. Example: {"population": "adults", "condition": "chronic_pain"}',
+    ),
+    service: InferenceService = Depends(get_inference_service),
+):
+    """Get a screen-oriented inference detail payload for evidence and synthesis views."""
+    scope_filter = parse_scope_filter(scope)
+    return await service.get_detail_for_entity(entity_id, scope_filter=scope_filter)

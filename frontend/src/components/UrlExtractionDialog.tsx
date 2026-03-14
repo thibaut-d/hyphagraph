@@ -18,8 +18,10 @@ import {
   CircularProgress,
 } from "@mui/material";
 import { Link as LinkIcon, CheckCircle as CheckCircleIcon } from "@mui/icons-material";
-import { useNotification } from "../notifications/NotificationContext";
-import { parseError } from "../utils/errorHandler";
+import { useAsyncAction } from "../hooks/useAsyncAction";
+import { useValidationMessage } from "../hooks/useValidationMessage";
+
+type ValidationField = "url";
 
 interface UrlExtractionDialogProps {
   open: boolean;
@@ -47,8 +49,14 @@ export function UrlExtractionDialog({
   defaultUrl,
 }: UrlExtractionDialogProps) {
   const [url, setUrl] = useState(defaultUrl || "");
-  const [error, setError] = useState<string | null>(null);
-  const { showError } = useNotification();
+  const {
+    setValidationMessage,
+    clearValidationMessage: clearError,
+    getFieldError,
+    hasFieldError,
+  } = useValidationMessage<ValidationField>();
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const { run } = useAsyncAction(setSubmitError);
 
   // Update URL when defaultUrl changes or dialog opens
   React.useEffect(() => {
@@ -56,9 +64,9 @@ export function UrlExtractionDialog({
       setUrl(defaultUrl);
     }
     if (open) {
-      setError(null);
+      clearError();
     }
-  }, [open, defaultUrl]);
+  }, [open, defaultUrl, clearError]);
   const isPubMedUrl = (urlString: string): boolean => {
     try {
       const urlObj = new URL(urlString);
@@ -82,31 +90,34 @@ export function UrlExtractionDialog({
 
   const handleSubmit = async () => {
     if (!url.trim()) {
-      setError("Please enter a URL");
-      showError("Please enter a URL");
+      setValidationMessage("Please enter a URL", "url");
       return;
     }
 
     if (!validateUrl(url)) {
-      setError("Please enter a valid URL (e.g., https://pubmed.ncbi.nlm.nih.gov/...)");
-      showError("Please enter a valid URL (e.g., https://pubmed.ncbi.nlm.nih.gov/...)");
+      setValidationMessage(
+        "Please enter a valid URL (e.g., https://pubmed.ncbi.nlm.nih.gov/...)",
+        "url"
+      );
       return;
     }
 
-    setError(null);
-    try {
+    clearError();
+    setSubmitError(null);
+    const result = await run(async () => {
       await onSubmit(url);
       setUrl("");
-    } catch (err) {
-      const parsedError = parseError(err, "Failed to extract from URL");
-      setError(parsedError.userMessage);
+    }, "Failed to extract from URL");
+
+    if (!result.ok) {
+      return;
     }
   };
 
   const handleClose = () => {
     if (!loading) {
       setUrl("");
-      setError(null);
+      clearError();
       onClose();
     }
   };
@@ -141,19 +152,19 @@ export function UrlExtractionDialog({
             value={url}
             onChange={(e) => {
               setUrl(e.target.value);
-              if (error) {
-                setError(null);
-              }
+              clearError("url");
             }}
             disabled={loading}
-            error={Boolean(error)}
-            helperText={error || urlType}
+            error={hasFieldError("url")}
+            helperText={getFieldError("url") || urlType}
             onKeyPress={(e) => {
               if (e.key === "Enter" && !loading) {
                 handleSubmit();
               }
             }}
           />
+
+          {submitError && <Alert severity="error">{submitError}</Alert>}
 
           {loading && (
             <Alert severity="info" sx={{ alignItems: "center" }}>

@@ -23,6 +23,19 @@ from app.utils.errors import (
 logger = logging.getLogger(__name__)
 
 
+def _load_pmc_fetcher():
+    """
+    Load the optional PMC fetcher lazily.
+
+    PMC enrichment is a secondary enhancement step on top of PubMed metadata.
+    Keeping this behind a dedicated loader makes the optional dependency
+    explicit without hiding the late binding inside the request flow.
+    """
+    from app.services.pmc_fetcher import PMCFetcher
+
+    return PMCFetcher
+
+
 @dataclass
 class PubMedArticle:
     """PubMed article data extracted from E-utilities API."""
@@ -127,8 +140,7 @@ class PubMedFetcher:
                 # Try to enrich with PMC full text if available (unless skipped)
                 if not skip_pmc_enrichment:
                     try:
-                        from app.services.pmc_fetcher import PMCFetcher
-                        pmc_fetcher = PMCFetcher()
+                        pmc_fetcher = _load_pmc_fetcher()()
                         pmc_article = await pmc_fetcher.fetch_by_pmid(pmid)
 
                         if pmc_article:

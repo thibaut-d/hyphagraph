@@ -21,6 +21,8 @@ from app.models.relation_revision import RelationRevision
 from app.models.relation_role_revision import RelationRoleRevision
 from app.models.source import Source
 from app.models.source_revision import SourceRevision
+from app.services.relation_type_service import RelationTypeService
+from app.services.semantic_role_service import SemanticRoleService
 
 
 logger = logging.getLogger(__name__)
@@ -53,8 +55,15 @@ def _extract_summary_text(summary: dict[str, object] | str | None) -> str:
 class TypeDBExportService:
     """Service for exporting knowledge graph to TypeDB TypeQL format."""
 
-    def __init__(self, db: AsyncSession):
+    def __init__(
+        self,
+        db: AsyncSession,
+        relation_type_service: RelationTypeService | None = None,
+        semantic_role_service: SemanticRoleService | None = None,
+    ):
         self.db = db
+        self.relation_type_service = relation_type_service or RelationTypeService(db)
+        self.semantic_role_service = semantic_role_service or SemanticRoleService(db)
 
     async def export_schema(self) -> str:
         """
@@ -97,14 +106,10 @@ class TypeDBExportService:
         ]
 
         # Get relation types from database
-        from app.services.relation_type_service import RelationTypeService
-        rel_service = RelationTypeService(self.db)
-        relation_types = await rel_service.get_all_active()
+        relation_types = await self.relation_type_service.get_all_active()
 
         # Get semantic role types
-        from app.services.semantic_role_service import SemanticRoleService
-        role_service = SemanticRoleService(self.db)
-        semantic_roles = await role_service.get_all_active()
+        semantic_roles = await self.semantic_role_service.get_all_active()
 
         # For each relation type, create TypeDB relation with dynamic roles
         for rel_type in relation_types:
