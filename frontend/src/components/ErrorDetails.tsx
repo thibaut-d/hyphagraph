@@ -192,7 +192,7 @@ export function ErrorDetails({
 export function useErrorDetails() {
   const [currentError, setCurrentError] = useState<ParsedError | null>(null);
 
-  const showErrorDetails = (error: any) => {
+  const showErrorDetails = (error: ParsedError | unknown) => {
     const parsed =
       error && typeof error === "object" && "code" in error
         ? (error as ParsedError)

@@ -18,6 +18,7 @@ import DataObjectIcon from "@mui/icons-material/DataObject";
 import TableChartIcon from "@mui/icons-material/TableChart";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
 import { useNotification } from "../notifications/NotificationContext";
+import { downloadExportFile } from "../api/export";
 
 interface ExportMenuProps {
   exportType: "entities" | "relations" | "full-graph";
@@ -34,6 +35,7 @@ export function ExportMenu({
   buttonText = "Export",
   size = "small",
 }: ExportMenuProps) {
+  const { showError } = useNotification();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [exporting, setExporting] = useState(false);
   const open = Boolean(anchorEl);
@@ -51,46 +53,7 @@ export function ExportMenu({
     handleClose();
 
     try {
-      // Get authentication token
-      const token = localStorage.getItem("auth_token");
-
-      if (!token) {
-        showError(new Error("Please login to export data"));
-        return;
-      }
-
-      // Build export URL
-      const baseUrl = `/api/export/${exportType}`;
-      const url = exportType === "full-graph"
-        ? baseUrl
-        : `${baseUrl}?format=${format}`;
-
-      // Fetch export
-      const response = await fetch(url, {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Export failed: ${response.statusText}`);
-      }
-
-      // Get filename from Content-Disposition header
-      const disposition = response.headers.get("Content-Disposition");
-      const filenameMatch = disposition?.match(/filename="(.+)"/);
-      const filename = filenameMatch?.[1] || `${exportType}-export.${format}`;
-
-      // Download file
-      const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = downloadUrl;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(downloadUrl);
+      await downloadExportFile(exportType, format);
 
       if (onExport) {
         onExport(format);

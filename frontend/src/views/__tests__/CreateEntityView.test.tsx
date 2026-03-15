@@ -148,6 +148,20 @@ describe('CreateEntityView', () => {
     });
   });
 
+  it('shows a user-facing error when category options fail to load', async () => {
+    vi.mocked(entityApi.getEntityFilterOptions).mockRejectedValue(
+      new Error('Category bootstrap failed')
+    );
+
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Failed to load entity category options')
+      ).toBeInTheDocument();
+    });
+  });
+
   it('submits form with selected UI category', async () => {
     const mockEntity = {
       id: '123',

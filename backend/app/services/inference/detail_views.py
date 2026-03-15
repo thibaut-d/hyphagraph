@@ -10,6 +10,8 @@ from app.schemas.inference import (
     InferenceStatsRead,
     RelationKindSummaryRead,
 )
+from app.schemas.relation import RelationRead
+from app.schemas.source import SourceRead
 from app.services.source_service import SourceService
 
 
@@ -62,7 +64,10 @@ async def build_inference_detail_read(
     )
 
 
-async def _load_sources(source_service: SourceService, relations: list) -> dict[str, object]:
+async def _load_sources(
+    source_service: SourceService,
+    relations: list[RelationRead],
+) -> dict[str, SourceRead]:
     source_ids = sorted({str(relation.source_id) for relation in relations if relation.source_id})
     if not source_ids:
         return {}
@@ -72,14 +77,17 @@ async def _load_sources(source_service: SourceService, relations: list) -> dict[
         return_exceptions=True,
     )
 
-    source_map: dict[str, object] = {}
+    source_map: dict[str, SourceRead] = {}
     for source_id, result in zip(source_ids, results, strict=False):
         if not isinstance(result, Exception):
             source_map[source_id] = result
     return source_map
 
 
-def _build_relation_kind_summary(kind: str, relations: list) -> RelationKindSummaryRead:
+def _build_relation_kind_summary(
+    kind: str,
+    relations: list[RelationRead],
+) -> RelationKindSummaryRead:
     confidence_values = [relation.confidence or 0.0 for relation in relations]
     supporting_count = sum(1 for relation in relations if (relation.direction or "") == "supports")
     contradicting_count = sum(1 for relation in relations if (relation.direction or "") == "contradicts")
@@ -97,7 +105,11 @@ def _build_relation_kind_summary(kind: str, relations: list) -> RelationKindSumm
     )
 
 
-def _build_disagreement_group(kind: str, relations: list, source_map: dict[str, object]) -> DisagreementGroupRead:
+def _build_disagreement_group(
+    kind: str,
+    relations: list[RelationRead],
+    source_map: dict[str, SourceRead],
+) -> DisagreementGroupRead:
     supporting = [
         EvidenceItemRead(**relation.model_dump(), source=source_map.get(str(relation.source_id)))
         for relation in relations
@@ -119,7 +131,7 @@ def _build_disagreement_group(kind: str, relations: list, source_map: dict[str, 
 
 
 def _build_inference_stats(
-    relations: list,
+    relations: list[RelationRead],
     relation_kind_summaries: list[RelationKindSummaryRead],
 ) -> InferenceStatsRead:
     confidence_values = [relation.confidence for relation in relations if relation.confidence is not None]

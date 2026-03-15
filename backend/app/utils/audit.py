@@ -5,12 +5,12 @@ Provides functions to log authentication events, password changes,
 and other security-critical operations.
 """
 import logging
-from typing import Any
 from uuid import UUID
 from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.audit_log import AuditLog
+from app.schemas.common_types import ContextObject
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ async def log_audit_event(
     user_email: str | None = None,
     ip_address: str | None = None,
     user_agent: str | None = None,
-    details: dict[str, Any] | None = None,
+    details: ContextObject | None = None,
     error_message: str | None = None,
 ) -> None:
     """
@@ -98,10 +98,18 @@ async def log_audit_event(
         db.add(audit_log)
         await db.commit()
 
-    except Exception as e:
+    except Exception:
         # Log the error but don't raise - we don't want audit logging
         # failures to break the application
-        logger.error(f"Failed to log audit event: {e}")
+        logger.exception(
+            "Failed to log audit event",
+            extra={
+                "event_type": event_type,
+                "event_status": event_status,
+                "audit_user_id": str(user_id) if user_id else None,
+                "audit_user_email": user_email,
+            },
+        )
         await db.rollback()
 
 

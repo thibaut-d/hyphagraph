@@ -6,8 +6,10 @@ including source chain, confidence breakdown, and contradictions.
 """
 
 from pydantic import BaseModel, ConfigDict, Field
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 from uuid import UUID
+
+from app.schemas.common_types import ScopeFilter
 
 
 class SourceContribution(BaseModel):
@@ -27,7 +29,7 @@ class SourceContribution(BaseModel):
     relation_kind: str
     relation_direction: str
     relation_confidence: float
-    relation_scope: Optional[Dict[str, Any]] = None
+    relation_scope: Optional[ScopeFilter] = None
 
     # Contribution analysis
     role_weight: Optional[float] = Field(
@@ -116,7 +118,7 @@ class ExplanationRead(BaseModel):
         default_factory=list,
         description="Full source chain with provenance information",
     )
-    scope_filter: Optional[Dict[str, Any]] = Field(
+    scope_filter: Optional[ScopeFilter] = Field(
         None,
         description="Scope filter applied to this explanation",
     )

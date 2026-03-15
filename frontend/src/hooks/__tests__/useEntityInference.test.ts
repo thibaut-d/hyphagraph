@@ -109,4 +109,22 @@ describe("useEntityInference", () => {
     expect(result.current.error?.message).toBe("Inference refresh failed");
     expect(showError).toHaveBeenCalledWith(expect.any(Error));
   });
+
+  it("surfaces degraded source loading when some source lookups fail", async () => {
+    vi.mocked(getInferenceForEntity).mockResolvedValue(initialInference);
+    vi.mocked(getSource).mockRejectedValue(new Error("Source load failed"));
+
+    const { result } = renderHook(() => useEntityInference("entity-1"));
+
+    await waitFor(() => {
+      expect(result.current.inference).toEqual(initialInference);
+      expect(result.current.loadingSources).toBe(false);
+    });
+
+    expect(result.current.sources).toEqual({});
+    expect(result.current.sourceWarning?.message).toMatch(
+      /Some source details could not be loaded/
+    );
+    expect(result.current.error).toBeNull();
+  });
 });

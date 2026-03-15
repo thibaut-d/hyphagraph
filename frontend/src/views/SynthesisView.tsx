@@ -30,6 +30,7 @@ import { SynthesisHeaderSection } from "../components/synthesis/SynthesisHeaderS
 import { SynthesisQualitySection } from "../components/synthesis/SynthesisQualitySection";
 import { SynthesisRelationsSection } from "../components/synthesis/SynthesisRelationsSection";
 import { SynthesisStatsSection } from "../components/synthesis/SynthesisStatsSection";
+import type { RelationRead } from "../types/relation";
 import { resolveLabel } from "../utils/i18nLabel";
 import { useEntityInferenceDetail } from "../hooks/useEntityInferenceDetail";
 
@@ -78,14 +79,15 @@ export function SynthesisView() {
 
   // Calculate synthesis statistics
   const relationsByKind = inference?.relations_by_kind || {};
+  const relationGroups = Object.values(relationsByKind) as RelationRead[][];
   const totalRelations = stats?.total_relations ?? Object.values(relationsByKind).reduce(
-    (sum, relations: any[]) => sum + relations.length,
+    (sum, relations) => sum + relations.length,
     0
   );
 
   // Count unique sources
   const uniqueSources = new Set<string>();
-  Object.values(relationsByKind).forEach((relations: any[]) => {
+  relationGroups.forEach((relations) => {
     relations.forEach(rel => {
       if (rel.source_id) uniqueSources.add(rel.source_id);
     });
@@ -98,7 +100,7 @@ export function SynthesisView() {
   let lowConfidenceCount = 0;
   let contradictionCount = 0;
 
-  Object.values(relationsByKind).forEach((relations: any[]) => {
+  relationGroups.forEach((relations) => {
     relations.forEach(rel => {
       if (rel.confidence !== undefined && rel.confidence !== null) {
         totalConfidence += rel.confidence;

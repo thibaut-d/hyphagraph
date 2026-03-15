@@ -4,6 +4,7 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.mappers.relation_mapper import relation_to_read
+from app.models.relation import Relation
 from app.schemas.relation import RelationRead
 
 from .read_models import resolve_entity_slugs
@@ -63,7 +64,7 @@ def _build_role_evidence(relation: RelationRead, role_type: str) -> Optional[Rol
 
 async def build_role_evidence_views(
     db: AsyncSession,
-    relations,
+    relations: list[Relation],
 ) -> dict[str, list[RoleEvidenceRead]]:
     entity_ids = set()
     for relation in relations:

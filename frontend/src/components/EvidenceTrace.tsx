@@ -10,6 +10,7 @@
 
 import { useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   Table,
   TableBody,
@@ -40,6 +41,7 @@ interface EvidenceTraceProps {
 
 
 export function EvidenceTrace({ sourceChain }: EvidenceTraceProps) {
+  const { t } = useTranslation();
   const [sortField, setSortField] = useState<SortField>("contribution");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
 
@@ -83,7 +85,7 @@ export function EvidenceTrace({ sourceChain }: EvidenceTraceProps) {
   if (sourceChain.length === 0) {
     return (
       <Typography color="text.secondary">
-        No source evidence available.
+        {t("evidence_trace.empty", "No source evidence available.")}
       </Typography>
     );
   }
@@ -94,13 +96,13 @@ export function EvidenceTrace({ sourceChain }: EvidenceTraceProps) {
         <TableHead>
           <TableRow>
             <TableCell>
-              <strong>Source</strong>
+              <strong>{t("evidence_trace.columns.source", "Source")}</strong>
             </TableCell>
             <TableCell>
-              <strong>Kind</strong>
+              <strong>{t("evidence_trace.columns.kind", "Kind")}</strong>
             </TableCell>
             <TableCell>
-              <strong>Direction</strong>
+              <strong>{t("evidence_trace.columns.direction", "Direction")}</strong>
             </TableCell>
             <TableCell>
               <TableSortLabel
@@ -108,7 +110,7 @@ export function EvidenceTrace({ sourceChain }: EvidenceTraceProps) {
                 direction={sortField === "confidence" ? sortOrder : "asc"}
                 onClick={() => handleSort("confidence")}
               >
-                <strong>Confidence</strong>
+                <strong>{t("evidence_trace.columns.confidence", "Confidence")}</strong>
               </TableSortLabel>
             </TableCell>
             <TableCell>
@@ -117,7 +119,7 @@ export function EvidenceTrace({ sourceChain }: EvidenceTraceProps) {
                 direction={sortField === "contribution" ? sortOrder : "asc"}
                 onClick={() => handleSort("contribution")}
               >
-                <strong>Contribution</strong>
+                <strong>{t("evidence_trace.columns.contribution", "Contribution")}</strong>
               </TableSortLabel>
             </TableCell>
             <TableCell>
@@ -126,7 +128,7 @@ export function EvidenceTrace({ sourceChain }: EvidenceTraceProps) {
                 direction={sortField === "trust" ? sortOrder : "asc"}
                 onClick={() => handleSort("trust")}
               >
-                <strong>Trust</strong>
+                <strong>{t("evidence_trace.columns.trust", "Trust")}</strong>
               </TableSortLabel>
             </TableCell>
             <TableCell>
@@ -135,7 +137,7 @@ export function EvidenceTrace({ sourceChain }: EvidenceTraceProps) {
                 direction={sortField === "year" ? sortOrder : "asc"}
                 onClick={() => handleSort("year")}
               >
-                <strong>Year</strong>
+                <strong>{t("evidence_trace.columns.year", "Year")}</strong>
               </TableSortLabel>
             </TableCell>
           </TableRow>
@@ -174,14 +176,14 @@ export function EvidenceTrace({ sourceChain }: EvidenceTraceProps) {
                     <>
                       <CheckCircleIcon fontSize="small" color="success" />
                       <Typography variant="body2" color="success.main">
-                        Supports
+                        {t("evidence_trace.direction.supports", "Supports")}
                       </Typography>
                     </>
                   ) : (
                     <>
                       <CancelIcon fontSize="small" color="error" />
                       <Typography variant="body2" color="error.main">
-                        Contradicts
+                        {t("evidence_trace.direction.contradicts", "Contradicts")}
                       </Typography>
                     </>
                   )}
@@ -204,13 +206,13 @@ export function EvidenceTrace({ sourceChain }: EvidenceTraceProps) {
                 <Typography variant="body2">
                   {source.source_trust !== null && source.source_trust !== undefined
                     ? source.source_trust.toFixed(2)
-                    : "N/A"}
+                    : t("common.not_available", "N/A")}
                 </Typography>
               </TableCell>
 
               <TableCell>
                 <Typography variant="body2">
-                  {source.source_year || "N/A"}
+                  {source.source_year || t("common.not_available", "N/A")}
                 </Typography>
               </TableCell>
             </TableRow>

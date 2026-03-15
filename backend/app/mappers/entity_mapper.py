@@ -1,13 +1,21 @@
 import json
 
-from typing import Any
+from typing import TypedDict
 from uuid import UUID
 from app.models.entity import Entity
 from app.models.entity_revision import EntityRevision
 from app.schemas.entity import EntityWrite, EntityRead, EntityRevisionRead
 
 
-def entity_revision_from_write(payload: EntityWrite, entity_id: UUID | None = None) -> dict[str, Any]:
+class EntityRevisionPayload(TypedDict, total=False):
+    slug: str
+    summary: dict[str, str] | None
+    ui_category_id: UUID | None
+    created_with_llm: str | None
+    created_by_user_id: UUID | None
+
+
+def entity_revision_from_write(payload: EntityWrite) -> EntityRevisionPayload:
     """
     Convert EntityWrite payload to EntityRevision data dict.
 

@@ -17,12 +17,14 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { createEntity, EntityWrite, getEntityFilterOptions, EntityFilterOptions } from "../api/entities";
 import { useAsyncAction } from "../hooks/useAsyncAction";
 import { useValidationMessage } from "../hooks/useValidationMessage";
+import { useNotification } from "../notifications/NotificationContext";
 
 type ValidationField = "slug";
 
 export function CreateEntityView() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const { showError } = useNotification();
 
   const [slug, setSlug] = useState("");
   const [summaryEn, setSummaryEn] = useState("");
@@ -40,8 +42,17 @@ export function CreateEntityView() {
 
   // Fetch UI category options
   useEffect(() => {
-    getEntityFilterOptions().then(setFilterOptions).catch(console.error);
-  }, []);
+    getEntityFilterOptions()
+      .then(setFilterOptions)
+      .catch((error) => {
+        const message = t(
+          "create_entity.filter_options_error",
+          "Failed to load entity category options"
+        );
+        setSubmitError(message);
+        showError(error);
+      });
+  }, [showError, t]);
 
   // Extract category options with current language labels
   const categoryOptions = useMemo(() => {

@@ -1,5 +1,5 @@
 from uuid import UUID
-from typing import Any, Optional
+from typing import Optional
 from app.schemas.base import Schema
 from app.schemas.relation import RelationRead
 from app.schemas.source import SourceRead

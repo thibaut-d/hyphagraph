@@ -1,6 +1,6 @@
 """Thin coordinator for unified search across entities, sources, and relations."""
 
-from typing import List, Optional, Tuple
+from typing import Optional
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,7 +33,7 @@ class SearchService:
 
     async def search(
         self, filters: SearchFilters
-    ) -> Tuple[List[SearchResult], int, int, int, int]:
+    ) -> tuple[list[SearchResult], int, int, int, int]:
         """
         Perform unified search across multiple tables.
 
@@ -43,7 +43,7 @@ class SearchService:
         Returns:
             Tuple of (results, total_count, entity_count, source_count, relation_count)
         """
-        results: List[SearchResult] = []
+        results: list[SearchResult] = []
         entity_count = 0
         source_count = 0
         relation_count = 0
@@ -98,7 +98,7 @@ class SearchService:
 
     async def get_suggestions(
         self, request: SearchSuggestionRequest
-    ) -> List[SearchSuggestion]:
+    ) -> list[SearchSuggestion]:
         """
         Get autocomplete suggestions for search queries.
 
@@ -111,7 +111,7 @@ class SearchService:
         Returns:
             List of suggestions with labels and metadata
         """
-        suggestions: List[SearchSuggestion] = []
+        suggestions: list[SearchSuggestion] = []
         query_lower = request.query.lower()
         search_types = request.types or ["entity", "source"]
 

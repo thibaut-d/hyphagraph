@@ -2,17 +2,22 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { verifyEmail } from "../api/auth";
 import { useNotification } from "../notifications/NotificationContext";
+import { parseError } from "../utils/errorHandler";
 
 export default function VerifyEmailView() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get("token");
+  const { showError } = useNotification();
 
   const [loading, setLoading] = useState(true);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     if (!token) {
-      showError(new Error("Invalid or missing verification token"));
+      const message = "Invalid or missing verification token";
+      showError(new Error(message));
+      setError(message);
       setLoading(false);
       return;
     }
@@ -27,17 +32,18 @@ export default function VerifyEmailView() {
         setTimeout(() => {
           navigate("/account");
         }, 3000);
-      } catch (err: any) {
-        setError(
-          err.message ||
-            "Failed to verify email. The link may have expired."
+      } catch (err: unknown) {
+        const parsedError = parseError(
+          err,
+          "Failed to verify email. The link may have expired.",
         );
+        setError(parsedError.userMessage);
         setLoading(false);
       }
     };
 
     verify();
-  }, [token, navigate]);
+  }, [token, navigate, showError]);
 
   if (loading) {
     return (

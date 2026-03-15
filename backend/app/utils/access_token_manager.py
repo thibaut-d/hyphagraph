@@ -5,6 +5,7 @@ Uses python-jose for JWT encoding/decoding.
 """
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+from uuid import uuid4
 from jose import JWTError, jwt
 from app.config import settings
 
@@ -57,7 +58,13 @@ class AccessTokenManager:
         else:
             expire = datetime.now(timezone.utc) + timedelta(minutes=self.expire_minutes)
 
-        to_encode.update({"exp": expire})
+        to_encode.update(
+            {
+                "exp": expire,
+                "iat": datetime.now(timezone.utc),
+                "jti": str(uuid4()),
+            }
+        )
 
         # Encode JWT
         encoded_jwt = jwt.encode(

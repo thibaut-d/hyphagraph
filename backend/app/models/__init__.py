@@ -12,6 +12,7 @@ from app.models.audit_log import AuditLog
 
 # Core data models
 from app.models.entity import Entity
+from app.models.entity_merge_record import EntityMergeRecord
 from app.models.entity_revision import EntityRevision
 from app.models.entity_term import EntityTerm
 from app.models.ui_category import UiCategory
@@ -37,6 +38,7 @@ __all__ = [
     "RefreshToken",
     "AuditLog",
     "Entity",
+    "EntityMergeRecord",
     "EntityRevision",
     "EntityTerm",
     "UiCategory",

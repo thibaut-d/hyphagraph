@@ -76,6 +76,17 @@ function getDirectionChip(direction: string, t: (key: string, fallback: string) 
   }
 }
 
+function formatRoleTypeLabel(
+  roleType: string,
+  t: (key: string, fallbackOrOptions?: string | { defaultValue?: string }) => string,
+): string {
+  const defaultLabel = roleType
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+  return t(`evidence.roles.${roleType}`, { defaultValue: defaultLabel });
+}
+
 export function EvidenceTableSection({
   entityId,
   entityLabel,
@@ -168,10 +179,12 @@ export function EvidenceTableSection({
                     {relation.roles.map((role, index) => (
                       <Box key={index} sx={{ display: "flex", gap: 0.5, alignItems: "center" }}>
                         <Typography variant="caption" color="text.secondary">
-                          {role.role_type}:
+                          {formatRoleTypeLabel(role.role_type, t)}:
                         </Typography>
                         <Link component={RouterLink} to={`/entities/${role.entity_id}`} variant="caption" underline="hover">
-                          {role.entity_id === entityId ? entityLabel : role.entity_id}
+                          {role.entity_id === entityId
+                            ? entityLabel
+                            : role.entity_slug || role.entity_id}
                         </Link>
                       </Box>
                     ))}
@@ -200,7 +213,7 @@ export function EvidenceTableSection({
                     </Box>
                   ) : (
                     <Link component={RouterLink} to={`/sources/${relation.source_id}`} variant="body2">
-                      View Source
+                      {t("evidence.table.view_source", "View Source")}
                     </Link>
                   )}
                 </TableCell>

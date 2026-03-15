@@ -5,12 +5,12 @@ Provides high-level functions for extracting entities, relations, and claims
 from text using the LLM integration with built-in hallucination validation.
 """
 import logging
-from typing import Any
 
 from app.llm.client import get_llm_provider
 from app.utils.confidence_filter import filter_by_confidence
 from app.llm.prompts import (
     MEDICAL_KNOWLEDGE_SYSTEM_PROMPT,
+    RelationPromptEntity,
     format_entity_extraction_prompt,
     format_relation_extraction_prompt,
     format_claim_extraction_prompt,
@@ -186,8 +186,8 @@ class ExtractionService:
     async def extract_relations(
         self,
         text: str,
-        entities: list[ExtractedEntity] | list[dict[str, Any]],
-        min_confidence: str | None = None
+        entities: list[ExtractedEntity] | list[RelationPromptEntity],
+        min_confidence: str | None = None,
     ) -> list[ExtractedRelation]:
         """
         Extract relations between entities from text.
@@ -206,13 +206,13 @@ class ExtractionService:
         logger.info(f"Extracting relations from text with {len(entities)} entities")
 
         # Convert ExtractedEntity to dict if needed
-        entities_dict = []
+        entities_dict: list[RelationPromptEntity] = []
         for e in entities:
             if isinstance(e, ExtractedEntity):
                 entities_dict.append({
                     "slug": e.slug,
                     "summary": e.summary,
-                    "category": e.category
+                    "category": e.category,
                 })
             else:
                 entities_dict.append(e)

@@ -23,7 +23,7 @@ export interface SourceContribution {
   relation_kind: string;
   relation_direction: string;
   relation_confidence: number;
-  relation_scope?: Record<string, any> | null;
+  relation_scope?: ScopeFilter | null;
 
   role_weight?: number | null;
   contribution_percentage: number;
@@ -55,7 +55,7 @@ export interface ExplanationRead {
   confidence_factors: ConfidenceFactor[];
   contradictions?: ContradictionDetail;
   source_chain: SourceContribution[];
-  scope_filter?: Record<string, any> | null;
+  scope_filter?: ScopeFilter | null;
 }
 
 

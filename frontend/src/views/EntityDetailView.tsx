@@ -22,7 +22,14 @@ export function EntityDetailView() {
 
   // Custom hooks
   const { entity, loading, error } = useEntityData(id);
-  const { inference, sources, loadingSources, error: inferenceError, loadInference } = useEntityInference(id);
+  const {
+    inference,
+    sources,
+    loadingSources,
+    error: inferenceError,
+    sourceWarning,
+    loadInference,
+  } = useEntityInference(id);
   const {
     scopeFilter,
     newFilterKey,
@@ -113,6 +120,11 @@ export function EntityDetailView() {
       {inferenceError && (
         <Alert severity="error">
           {inferenceError.message || t("common.error", "An error occurred")}
+        </Alert>
+      )}
+      {sourceWarning && (
+        <Alert severity="warning">
+          {sourceWarning.message}
         </Alert>
       )}
 

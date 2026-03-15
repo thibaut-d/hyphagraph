@@ -40,11 +40,12 @@ describe("EvidenceView table", () => {
       expect(screen.getByText("Clinical Trial A")).toBeInTheDocument();
       expect(screen.getByText("Observational Study B")).toBeInTheDocument();
       expect(screen.getByText("Meta-Analysis C")).toBeInTheDocument();
-      expect(screen.getAllByText(/agent:/)).toHaveLength(3);
+      expect(screen.getAllByText(/Agent:/)).toHaveLength(3);
     });
 
-    expect(screen.getByText(/patient:/)).toBeInTheDocument();
-    expect(screen.getByText(/outcome:/)).toBeInTheDocument();
+    expect(screen.getByText(/Patient:/)).toBeInTheDocument();
+    expect(screen.getByText(/Outcome:/)).toBeInTheDocument();
+    expect(screen.getByText("nausea")).toBeInTheDocument();
     expect(screen.getByText(/Smith, J., Doe, A./)).toBeInTheDocument();
     expect(screen.getByText(/Johnson, K./)).toBeInTheDocument();
     expect(screen.getByText(/Brown, L., White, M. et al./)).toBeInTheDocument();

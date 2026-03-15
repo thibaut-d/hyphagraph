@@ -71,7 +71,7 @@ export function EvidenceView() {
   } = useEntityInferenceDetail(id, "Failed to load evidence");
   const entity = data?.entity ?? null;
   const inference = data?.inference ?? null;
-  const fallbackRelations = useEvidenceRelations(
+  const { relations: fallbackRelations, sourceLoadFailures } = useEvidenceRelations(
     id,
     roleType,
     inference?.evidence_items ? null : inference,
@@ -169,6 +169,17 @@ export function EvidenceView() {
         onSort={handleSort}
         resolveNotes={resolveRelationNotes}
       />
+
+      {sourceLoadFailures.length > 0 && (
+        <Alert severity="warning">
+          <Typography variant="body2">
+            {t(
+              "evidence.partial_source_warning",
+              "Some source details could not be loaded. The evidence rows are still shown, but some source metadata may be missing."
+            )}
+          </Typography>
+        </Alert>
+      )}
 
       <Alert severity="info">
         <Typography variant="body2">

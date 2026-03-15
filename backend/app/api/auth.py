@@ -206,7 +206,8 @@ async def get_current_user_info(
 async def refresh_access_token(
     request: Request,
     payload: RefreshTokenRequest,
-    user_service: UserService = Depends(get_user_service)
+    user_service: UserService = Depends(get_user_service),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Refresh access token using a valid refresh token.
@@ -228,8 +229,30 @@ async def refresh_access_token(
         UnauthorizedException: If refresh token is invalid, expired, or revoked
         HTTPException 429: If rate limit exceeded
     """
-    access_token = await user_service.refresh_access_token(payload.refresh_token)
-    return Token(access_token=access_token, token_type="bearer")
+    try:
+        access_token, user = await user_service.refresh_access_token_with_user(
+            payload.refresh_token
+        )
+
+        await log_token_refresh(
+            db=db,
+            request=request,
+            user_id=user.id,
+            user_email=user.email,
+            success=True,
+        )
+        return Token(access_token=access_token, token_type="bearer")
+
+    except AppException as e:
+        await log_token_refresh(
+            db=db,
+            request=request,
+            user_id=None,
+            user_email=None,
+            success=False,
+            error_message=str(e.error_detail.message),
+        )
+        raise
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)

@@ -2,8 +2,12 @@
  * ActiveFilters - Display active filters as chips.
  */
 
-import { Stack, Chip, Typography } from '@mui/material';
-import type { FilterState, FilterConfig } from '../../types/filters';
+import { Stack, Chip, Typography } from "@mui/material";
+import type {
+  FilterConfig,
+  FilterState,
+  FilterValue,
+} from "../../types/filters";
 
 export interface ActiveFiltersProps {
   /** Current filter state */
@@ -27,7 +31,7 @@ export function ActiveFilters({ filters, configs, onDelete }: ActiveFiltersProps
   };
 
   // Format filter value for display
-  const formatFilterValue = (key: string, value: any): string => {
+  const formatFilterValue = (key: string, value: FilterValue): string => {
     const config = configs.find((c) => c.id === key);
 
     if (Array.isArray(value)) {
@@ -35,8 +39,14 @@ export function ActiveFilters({ filters, configs, onDelete }: ActiveFiltersProps
       return value.length === 1 ? value[0] : `${value.length} selected`;
     }
 
-    if (config?.type === 'range' || config?.type === 'yearRange') {
-      const [min, max] = value as [number, number];
+    if (
+      (config?.type === "range" || config?.type === "yearRange") &&
+      Array.isArray(value) &&
+      value.length === 2 &&
+      typeof value[0] === "number" &&
+      typeof value[1] === "number"
+    ) {
+      const [min, max] = value;
       const formatter = config.formatValue || ((v: number) => String(v));
       return `${formatter(min)} - ${formatter(max)}`;
     }
@@ -45,7 +55,7 @@ export function ActiveFilters({ filters, configs, onDelete }: ActiveFiltersProps
   };
 
   const activeFilters = Object.entries(filters).filter(([_, value]) => {
-    if (value === undefined || value === null || value === '') return false;
+    if (value === undefined || value === null || value === "") return false;
     if (Array.isArray(value) && value.length === 0) return false;
     return true;
   });

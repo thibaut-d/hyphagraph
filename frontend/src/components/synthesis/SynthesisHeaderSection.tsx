@@ -52,7 +52,7 @@ export function SynthesisHeaderSection({
       <Paper sx={{ p: 3 }}>
         <Stack spacing={2}>
           <Typography variant="h4" component="h1">
-            {t("synthesis.header", "Knowledge Synthesis")}
+            {t("synthesis.header", "Evidence Synthesis")}
           </Typography>
           <Typography variant="h6" color="text.secondary">
             {entityLabel}
@@ -60,7 +60,7 @@ export function SynthesisHeaderSection({
           <Typography variant="body2" color="text.secondary">
             {t(
               "synthesis.description",
-              "Comprehensive view of all computed knowledge about this entity, including consensus levels and evidence quality."
+              "Computed overview of the evidence linked to this entity, including confidence, disagreement, and source-backed relation quality."
             )}
           </Typography>
         </Stack>

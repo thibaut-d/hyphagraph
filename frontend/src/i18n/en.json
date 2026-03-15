@@ -18,7 +18,20 @@
     "not_found": "Not found",
     "error": "An error occurred",
     "back_to_entity": "Back to Entity",
-    "no_data": "No data"
+    "no_data": "No data",
+    "not_available": "N/A"
+  },
+  "scope_filter": {
+    "title": "Scope Filter",
+    "active_count": " ({{count}} active)",
+    "active_filters": "Active Filters:",
+    "add_filter": "Add Filter:",
+    "attribute_label": "Attribute",
+    "attribute_placeholder": "e.g., population",
+    "value_label": "Value",
+    "value_placeholder": "e.g., adults",
+    "add_button": "Add",
+    "help_text": "Filter inferences by scope attributes like population, condition, dosage, etc. Only relations matching all filter criteria will be included in the inference."
   },
   "notifications": {
     "network_error": "Network error. Please check your connection.",
@@ -254,6 +267,22 @@
     "source_evidence": "Source Evidence",
     "source_evidence_desc": "Click on any source to view its full details",
     "scope_filter": "Applied Scope Filter"
+  },
+  "evidence_trace": {
+    "empty": "No source evidence available.",
+    "columns": {
+      "source": "Source",
+      "kind": "Kind",
+      "direction": "Direction",
+      "confidence": "Confidence",
+      "contribution": "Contribution",
+      "trust": "Trust",
+      "year": "Year"
+    },
+    "direction": {
+      "supports": "Supports",
+      "contradicts": "Contradicts"
+    }
   },
   "filters": {
     "title": "Filters",

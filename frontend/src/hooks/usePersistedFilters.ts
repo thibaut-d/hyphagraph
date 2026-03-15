@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import type { FilterState } from '../types/filters';
+import type { FilterState, FilterValue } from '../types/filters';
 import { getActiveFilterCount } from '../utils/filterUtils';
 
 export interface UsePersistedFiltersReturn {
@@ -14,7 +14,7 @@ export interface UsePersistedFiltersReturn {
   filters: FilterState;
 
   /** Set a specific filter value */
-  setFilter: (key: string, value: any) => void;
+  setFilter: (key: string, value: FilterValue) => void;
 
   /** Clear a specific filter */
   clearFilter: (key: string) => void;
@@ -65,7 +65,7 @@ function saveFiltersToStorage(storageKey: string, filters: FilterState): void {
  * @param value - Filter value to check
  * @returns true if value is empty
  */
-function isEmptyFilterValue(value: any): boolean {
+function isEmptyFilterValue(value: FilterValue): boolean {
   if (value === undefined || value === null || value === '') {
     return true;
   }
@@ -92,7 +92,7 @@ export function usePersistedFilters(storageKey: string): UsePersistedFiltersRetu
     saveFiltersToStorage(storageKey, filters);
   }, [storageKey, filters]);
 
-  const setFilter = useCallback((key: string, value: any) => {
+  const setFilter = useCallback((key: string, value: FilterValue) => {
     setFilters((prev) => {
       // Remove filter if value is empty
       if (isEmptyFilterValue(value)) {

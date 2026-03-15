@@ -1,9 +1,10 @@
 """Explainability service for computed inferences."""
 
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.schemas.common_types import ScopeFilter
 from app.services.inference_service import InferenceService
 from app.services.source_service import SourceService
 from app.schemas.inference import InferenceRead, RoleInference
@@ -40,7 +41,7 @@ class ExplanationService:
         self,
         entity_id: UUID,
         role_type: str,
-        scope_filter: Optional[Dict[str, Any]] = None,
+        scope_filter: Optional[ScopeFilter] = None,
     ) -> ExplanationRead:
         """
         Generate comprehensive explanation for a role inference.
@@ -131,7 +132,7 @@ class ExplanationService:
         - "Based on 2 sources, this shows a weak negative effect (score: -0.25)
           with moderate confidence (65%). No contradictions detected."
         """
-        num_sources = len(contributing_evidence)
+        num_sources = self._count_unique_sources(contributing_evidence)
         score = role_inference.score
         confidence = role_inference.confidence
         disagreement = role_inference.disagreement
@@ -200,7 +201,10 @@ class ExplanationService:
             ConfidenceFactor(
                 factor="Coverage",
                 value=coverage,
-                explanation=f"Total information coverage from {len(contributing_evidence)} sources",
+                explanation=(
+                    "Total information coverage from "
+                    f"{self._count_unique_sources(contributing_evidence)} unique sources"
+                ),
             )
         )
 
@@ -226,8 +230,14 @@ class ExplanationService:
 
         # Trust levels (if available) - fetch from source objects
         trust_levels = []
+        seen_source_ids: set[UUID] = set()
         for evidence in contributing_evidence:
-            source = await self.source_service.get(evidence.relation.source_id)
+            source_id = evidence.relation.source_id
+            if source_id in seen_source_ids:
+                continue
+            seen_source_ids.add(source_id)
+
+            source = await self.source_service.get(source_id)
             if source and source.trust_level is not None:
                 trust_levels.append(source.trust_level)
 
@@ -237,11 +247,17 @@ class ExplanationService:
                 ConfidenceFactor(
                     factor="Average Source Trust",
                     value=avg_trust,
-                    explanation=f"Average trust level across {len(trust_levels)} rated sources",
+                    explanation=f"Average trust level across {len(trust_levels)} unique rated sources",
                 )
             )
 
         return factors
+
+    def _count_unique_sources(
+        self,
+        contributing_evidence: List[RoleEvidenceRead],
+    ) -> int:
+        return len({evidence.relation.source_id for evidence in contributing_evidence})
 
     async def _build_source_chain(
         self,

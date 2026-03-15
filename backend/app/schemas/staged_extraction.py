@@ -170,6 +170,16 @@ class BatchReviewResponse(BaseModel):
     )
 
 
+class AutoCommitResponse(BaseModel):
+    """Response from manually triggering auto-commit."""
+
+    status: Literal["success"]
+    auto_committed: int
+    failed: int = 0
+    total_eligible: int = 0
+    message: str | None = None
+
+
 class AutoCommitConfigRequest(BaseModel):
     """Request to configure auto-commit behavior."""
 

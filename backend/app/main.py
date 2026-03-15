@@ -29,6 +29,7 @@ from app.utils.rate_limit import limiter
 # Import all models to ensure SQLAlchemy discovers all tables and relationships
 # This prevents NoReferencedTableError during foreign key resolution
 from app.models.entity import Entity
+from app.models.entity_merge_record import EntityMergeRecord
 from app.models.source import Source
 from app.models.relation import Relation
 from app.models.user import User

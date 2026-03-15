@@ -12,15 +12,15 @@ class Settings(BaseSettings):
     DATABASE_URL: str
 
     # Security / Authentication
-    SECRET_KEY: str = "change-me"  # MUST be set in production via environment variable
+    SECRET_KEY: str
     ALGORITHM: str = "HS256"  # JWT signing algorithm
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30  # JWT token expiration (30 minutes)
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7  # Refresh token expiration (7 days)
     BCRYPT_ROUNDS: int = 12  # Bcrypt cost factor (10=fast for dev/test, 12=secure for prod)
 
-    # Admin User (created automatically on startup)
-    ADMIN_EMAIL: str = "admin@example.com"
-    ADMIN_PASSWORD: str = "changeme123"
+    # Admin bootstrap credentials (used only by explicit bootstrap/setup flows)
+    ADMIN_EMAIL: str | None = None
+    ADMIN_PASSWORD: str | None = None
 
     # Rate Limiting
     RATE_LIMIT_ENABLED: bool = True  # Enable/disable rate limiting globally

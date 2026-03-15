@@ -5,7 +5,7 @@
  */
 
 import { useState, useMemo } from 'react';
-import type { FilterState } from '../types/filters';
+import type { FilterState, FilterValue } from '../types/filters';
 import { getActiveFilterCount } from '../utils/filterUtils';
 
 export interface UseFilterDrawerReturn {
@@ -22,7 +22,7 @@ export interface UseFilterDrawerReturn {
   filters: FilterState;
 
   /** Set a specific filter value */
-  setFilter: (key: string, value: any) => void;
+  setFilter: (key: string, value: FilterValue) => void;
 
   /** Clear a specific filter */
   clearFilter: (key: string) => void;
@@ -46,7 +46,7 @@ export function useFilterDrawer(): UseFilterDrawerReturn {
   const openDrawer = () => setIsOpen(true);
   const closeDrawer = () => setIsOpen(false);
 
-  const setFilter = (key: string, value: any) => {
+  const setFilter = (key: string, value: FilterValue) => {
     setFilters((prev) => ({
       ...prev,
       [key]: value,

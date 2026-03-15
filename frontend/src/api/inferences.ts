@@ -2,8 +2,10 @@ import { apiFetch } from "./client";
 import { InferenceDetailRead, InferenceRead } from "../types/inference";
 import { appendOptionalJson, buildQueryString, createSearchParams } from "./queryString";
 
+export type ScopeFilterValue = string | number | boolean;
+
 export interface ScopeFilter {
-  [key: string]: string | number | boolean;
+  [key: string]: ScopeFilterValue;
 }
 
 export function getInferenceForEntity(

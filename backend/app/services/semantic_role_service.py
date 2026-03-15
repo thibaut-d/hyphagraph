@@ -6,10 +6,20 @@ Provides:
 - Prompt generation for LLM
 - Validation and suggestions
 """
-from typing import Any
+from typing import TypedDict
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text
 import json as json_module
+
+from app.schemas.common_types import I18nText
+
+
+class SemanticRoleTypeRecord(TypedDict):
+    role_type: str
+    label: I18nText
+    description: str
+    category: str | None
+    examples: str | None
 
 
 class SemanticRoleService:
@@ -18,7 +28,7 @@ class SemanticRoleService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_all_active(self) -> list[dict[str, Any]]:
+    async def get_all_active(self) -> list[SemanticRoleTypeRecord]:
         """Get all active semantic role types."""
         stmt = text("""
             SELECT role_type, label::text, description, category, examples
@@ -28,7 +38,7 @@ class SemanticRoleService:
         """)
 
         result = await self.db.execute(stmt)
-        roles = []
+        roles: list[SemanticRoleTypeRecord] = []
 
         for row in result:
             # Parse label JSON safely
@@ -38,14 +48,14 @@ class SemanticRoleService:
                     label = json_module.loads(label)
                 except json_module.JSONDecodeError:
                     # If parsing fails, use the raw string
-                    label = {'en': label}
+                    label = {"en": label}
 
             roles.append({
-                'role_type': row[0],
-                'label': label,
-                'description': row[2],
-                'category': row[3],
-                'examples': row[4]
+                "role_type": row[0],
+                "label": label,
+                "description": row[2],
+                "category": row[3],
+                "examples": row[4],
             })
 
         return roles
@@ -63,9 +73,9 @@ class SemanticRoleService:
         ]
 
         # Group by category
-        categories = {}
+        categories: dict[str, list[SemanticRoleTypeRecord]] = {}
         for role in roles:
-            cat = role['category'] or 'other'
+            cat = role["category"] or "other"
             if cat not in categories:
                 categories[cat] = []
             categories[cat].append(role)
@@ -75,7 +85,7 @@ class SemanticRoleService:
             prompt_lines.append(f"\n{category.upper()} ROLES:")
             for role in cat_roles:
                 prompt_lines.append(f"   - {role['role_type']}: {role['description']}")
-                if role['examples']:
+                if role["examples"]:
                     prompt_lines.append(f"     Example: {role['examples']}")
 
         prompt_lines.append("")
@@ -92,8 +102,8 @@ class SemanticRoleService:
         label: dict[str, str],
         description: str,
         category: str | None = None,
-        examples: str | None = None
-    ) -> dict[str, Any]:
+        examples: str | None = None,
+    ) -> SemanticRoleTypeRecord:
         """
         Create a new semantic role type.
 

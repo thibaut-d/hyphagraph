@@ -25,6 +25,7 @@ import ThumbDownIcon from "@mui/icons-material/ThumbDown";
 import ThumbUpIcon from "@mui/icons-material/ThumbUp";
 
 import type { DisagreementGroupRead } from "../../types/inference";
+import type { RelationRead } from "../../types/relation";
 
 export type DisagreementGroup = DisagreementGroupRead;
 
@@ -81,7 +82,7 @@ function EvidenceTable({
                     </TableCell>
                     <TableCell>
                       <Link component={RouterLink} to={`/sources/${relation.source_id}`} variant="body2">
-                        View Source
+                        {t("disagreements.table.view_source", "View Source")}
                       </Link>
                     </TableCell>
                   </TableRow>
@@ -122,12 +123,35 @@ export function DisagreementsGroupsSection({
           <Accordion key={index} defaultExpanded={index === 0}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Box sx={{ display: "flex", alignItems: "center", gap: 2, width: "100%" }}>
-                  <Typography variant="h6" sx={{ flexGrow: 1 }}>
+                <Typography variant="h6" sx={{ flexGrow: 1 }}>
                   {group.kind}
-                  </Typography>
-                <Chip icon={<ThumbUpIcon />} label={`${group.supporting.length} supporting`} color="success" size="small" />
-                <Chip icon={<ThumbDownIcon />} label={`${group.contradicting.length} contradicting`} color="error" size="small" />
-                <Chip label={`${Math.round(group.confidence * 100)}% confidence`} size="small" variant="outlined" />
+                </Typography>
+                <Chip
+                  icon={<ThumbUpIcon />}
+                  label={t("disagreements.group.supporting_count", {
+                    defaultValue: "{{count}} supporting",
+                    count: group.supporting.length,
+                  })}
+                  color="success"
+                  size="small"
+                />
+                <Chip
+                  icon={<ThumbDownIcon />}
+                  label={t("disagreements.group.contradicting_count", {
+                    defaultValue: "{{count}} contradicting",
+                    count: group.contradicting.length,
+                  })}
+                  color="error"
+                  size="small"
+                />
+                <Chip
+                  label={t("disagreements.group.confidence", {
+                    defaultValue: "{{value}}% confidence",
+                    value: Math.round(group.confidence * 100),
+                  })}
+                  size="small"
+                  variant="outlined"
+                />
               </Box>
             </AccordionSummary>
             <AccordionDetails>

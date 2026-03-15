@@ -16,10 +16,19 @@ export interface FilterOption {
   label: string;
 }
 
+export type FilterValue =
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | FilterValue[]
+  | { [key: string]: FilterValue };
+
 /**
  * Filter configuration defining behavior and display
  */
-export interface FilterConfig<T = any> {
+export interface FilterConfig<TItem = unknown, TValue extends FilterValue = FilterValue> {
   /** Unique identifier for this filter */
   id: string;
 
@@ -30,7 +39,7 @@ export interface FilterConfig<T = any> {
   label: string;
 
   /** Predicate function to test if item matches filter value */
-  filterFn: (item: T, filterValue: any) => boolean;
+  filterFn: (item: TItem, filterValue: TValue) => boolean;
 
   /** Options for checkbox filters */
   options?: FilterOption[];
@@ -53,7 +62,7 @@ export interface FilterConfig<T = any> {
  * Key = filter ID, Value = filter value (type depends on filter type)
  */
 export interface FilterState {
-  [filterKey: string]: any;
+  [filterKey: string]: FilterValue;
 }
 
 /**

@@ -13,7 +13,7 @@ from httpx import AsyncClient, ASGITransport
 
 from app.main import app
 from app.models.user import User
-from app.schemas.auth import UserRegister
+from app.utils.errors import UnauthorizedException
 
 
 @pytest.fixture
@@ -246,11 +246,21 @@ class TestRefreshToken:
     async def test_refresh_token_success(self):
         """Successfully refresh access token."""
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            with patch("app.api.auth.UserService") as mock_service_class:
+            with patch("app.api.auth.UserService") as mock_service_class, \
+                 patch("app.api.auth.log_token_refresh", new_callable=AsyncMock) as mock_log_refresh:
                 mock_service = AsyncMock()
                 mock_service_class.return_value = mock_service
 
-                mock_service.refresh_access_token.return_value = "new_access_token"
+                user = User(
+                    id=uuid4(),
+                    email="refresh@example.com",
+                    hashed_password="$2b$12$hashed_password_here",
+                    is_active=True,
+                    is_superuser=False,
+                    is_verified=True,
+                    created_at=datetime.now(timezone.utc),
+                )
+                mock_service.refresh_access_token_with_user.return_value = ("new_access_token", user)
 
                 response = await client.post(
                     "/api/auth/refresh",
@@ -261,19 +271,23 @@ class TestRefreshToken:
                 data = response.json()
                 assert data["access_token"] == "new_access_token"
                 assert data["token_type"] == "bearer"
+                mock_log_refresh.assert_awaited_once()
+                assert mock_log_refresh.await_args.kwargs["success"] is True
+                assert mock_log_refresh.await_args.kwargs["user_id"] == user.id
+                assert mock_log_refresh.await_args.kwargs["user_email"] == user.email
 
     @pytest.mark.asyncio
     async def test_refresh_token_invalid(self):
         """Refresh with invalid token should fail."""
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            with patch("app.api.auth.UserService") as mock_service_class:
+            with patch("app.api.auth.UserService") as mock_service_class, \
+                 patch("app.api.auth.log_token_refresh", new_callable=AsyncMock) as mock_log_refresh:
                 mock_service = AsyncMock()
                 mock_service_class.return_value = mock_service
 
-                from fastapi import HTTPException
-                mock_service.refresh_access_token.side_effect = HTTPException(
-                    status_code=401,
-                    detail="Invalid refresh token"
+                mock_service.refresh_access_token_with_user.side_effect = UnauthorizedException(
+                    message="Invalid or expired refresh token",
+                    details="The provided refresh token is invalid, expired, or has been revoked",
                 )
 
                 response = await client.post(
@@ -282,6 +296,9 @@ class TestRefreshToken:
                 )
 
                 assert response.status_code == status.HTTP_401_UNAUTHORIZED
+                mock_log_refresh.assert_awaited_once()
+                assert mock_log_refresh.await_args.kwargs["success"] is False
+                assert mock_log_refresh.await_args.kwargs["error_message"] == "Invalid or expired refresh token"
 
 
 class TestLogout:

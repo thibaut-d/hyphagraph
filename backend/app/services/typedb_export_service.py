@@ -21,6 +21,7 @@ from app.models.relation_revision import RelationRevision
 from app.models.relation_role_revision import RelationRoleRevision
 from app.models.source import Source
 from app.models.source_revision import SourceRevision
+from app.schemas.typedb_export import TypeDBExportBundle
 from app.services.relation_type_service import RelationTypeService
 from app.services.semantic_role_service import SemanticRoleService
 
@@ -257,7 +258,7 @@ class TypeDBExportService:
 
         return "\n".join(lines)
 
-    async def export_full(self) -> dict:
+    async def export_full(self) -> TypeDBExportBundle:
         """
         Generate complete TypeDB export (schema + data).
 
@@ -267,10 +268,10 @@ class TypeDBExportService:
         schema = await self.export_schema()
         data = await self.export_data()
 
-        return {
-            'schema': schema,
-            'data': data,
-            'format': 'typeql',
-            'database': 'typedb',
-            'version': '3.0'
-        }
+        return TypeDBExportBundle(
+            schema_text=schema,
+            data=data,
+            format="typeql",
+            database="typedb",
+            version="3.0",
+        )

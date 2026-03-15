@@ -365,14 +365,18 @@ class UserService:
             raise
 
     async def refresh_access_token(self, refresh_token: str) -> str:
+        access_token, _ = await self.refresh_access_token_with_user(refresh_token)
+        return access_token
+
+    async def refresh_access_token_with_user(self, refresh_token: str) -> tuple[str, User]:
         """
-        Refresh access token using refresh token.
+        Refresh access token using refresh token and return the user for audit context.
 
         Args:
             refresh_token: Plain refresh token
 
         Returns:
-            New access token
+            Tuple of (new access token, authenticated user)
 
         Raises:
             UnauthorizedException: If refresh token invalid or expired
@@ -408,7 +412,7 @@ class UserService:
         # Create new access token
         access_token = create_access_token(data={"sub": str(user.id)})
 
-        return access_token
+        return access_token, user
 
     async def revoke_refresh_token(self, user_id: UUID, refresh_token: str) -> None:
         """

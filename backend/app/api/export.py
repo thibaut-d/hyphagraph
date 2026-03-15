@@ -12,6 +12,7 @@ from app.services.export_service import ExportService
 from app.services.typedb_export_service import TypeDBExportService
 from app.dependencies.auth import get_current_user
 from app.models.user import User
+from app.schemas.typedb_export import TypeDBExportBundle
 
 
 router = APIRouter(tags=["export"])
@@ -172,7 +173,7 @@ async def export_typedb_data(
     )
 
 
-@router.get("/typedb-full")
+@router.get("/typedb-full", response_model=TypeDBExportBundle)
 async def export_typedb_full(
     service: TypeDBExportService = Depends(get_typedb_export_service),
     current_user: User = Depends(get_current_user),

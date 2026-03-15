@@ -1,4 +1,4 @@
-from typing import Any
+from typing import TypedDict
 from uuid import UUID
 from app.models.relation import Relation
 from app.models.relation_revision import RelationRevision
@@ -11,7 +11,17 @@ from app.schemas.relation import (
 )
 
 
-def relation_revision_from_write(payload: RelationWrite) -> dict[str, Any]:
+class RelationRevisionPayload(TypedDict, total=False):
+    kind: str | None
+    direction: str | None
+    confidence: float | None
+    scope: dict[str, object] | None
+    notes: dict[str, str] | None
+    created_with_llm: str | None
+    created_by_user_id: UUID | None
+
+
+def relation_revision_from_write(payload: RelationWrite) -> RelationRevisionPayload:
     """
     Convert RelationWrite payload to RelationRevision data dict.
 
@@ -31,7 +41,7 @@ def relation_revision_from_write(payload: RelationWrite) -> dict[str, Any]:
 def relation_to_read(
     relation: Relation,
     current_revision: RelationRevision,
-    entity_slug_map: dict[UUID, str] = None
+    entity_slug_map: dict[UUID, str] | None = None,
 ) -> RelationRead:
     """
     ORM → Read

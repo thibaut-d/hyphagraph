@@ -7,8 +7,10 @@ Defines structured schemas for:
 - Claim extraction
 - Entity linking
 """
-from typing import Literal, Any
+from typing import Literal
 from pydantic import BaseModel, Field
+
+from app.schemas.common_types import JsonObject, JsonValue
 
 
 # =============================================================================
@@ -271,7 +273,9 @@ class EntityLinkingResponse(BaseModel):
 # Helper Functions for Validation
 # =============================================================================
 
-def validate_entity_extraction(data: dict[str, Any]) -> EntityExtractionResponse:
+def validate_entity_extraction(
+    data: JsonObject | list[JsonValue],
+) -> EntityExtractionResponse:
     """
     Validate and parse entity extraction response from LLM.
 
@@ -291,7 +295,9 @@ def validate_entity_extraction(data: dict[str, Any]) -> EntityExtractionResponse
     return EntityExtractionResponse.model_validate(data)
 
 
-def validate_relation_extraction(data: dict[str, Any]) -> RelationExtractionResponse:
+def validate_relation_extraction(
+    data: JsonObject | list[JsonValue],
+) -> RelationExtractionResponse:
     """Validate and parse relation extraction response from LLM."""
     if isinstance(data, list):
         data = {"relations": data}
@@ -299,7 +305,7 @@ def validate_relation_extraction(data: dict[str, Any]) -> RelationExtractionResp
     return RelationExtractionResponse.model_validate(data)
 
 
-def validate_claim_extraction(data: dict[str, Any]) -> ClaimExtractionResponse:
+def validate_claim_extraction(data: JsonObject | list[JsonValue]) -> ClaimExtractionResponse:
     """Validate and parse claim extraction response from LLM."""
     if isinstance(data, list):
         data = {"claims": data}
@@ -307,7 +313,7 @@ def validate_claim_extraction(data: dict[str, Any]) -> ClaimExtractionResponse:
     return ClaimExtractionResponse.model_validate(data)
 
 
-def validate_batch_extraction(data: dict[str, Any]) -> BatchExtractionResponse:
+def validate_batch_extraction(data: JsonObject) -> BatchExtractionResponse:
     """Validate and parse batch extraction response from LLM."""
     # Convert old subject/object format to new roles format for backward compatibility
     if "relations" in data:
@@ -338,8 +344,11 @@ def validate_batch_extraction(data: dict[str, Any]) -> BatchExtractionResponse:
     return BatchExtractionResponse.model_validate(data)
 
 
-def validate_entity_linking(data: dict[str, Any]) -> EntityLinkingResponse:
+def validate_entity_linking(data: JsonObject) -> EntityLinkingResponse:
     """Validate and parse entity linking response from LLM."""
+    if isinstance(data, list):
+        raise TypeError("Entity linking response must be a JSON object")
+
     # Handle case where LLM returns links directly instead of {"links": {...}}
     if not isinstance(data, dict) or "links" not in data:
         data = {"links": data}

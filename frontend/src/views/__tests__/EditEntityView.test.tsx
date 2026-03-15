@@ -92,6 +92,7 @@ describe('EditEntityView', () => {
 
   it('displays loading state initially', () => {
     vi.mocked(entityApi.getEntity).mockImplementation(() => new Promise(() => {}));
+    vi.mocked(entityApi.getEntityFilterOptions).mockImplementation(() => new Promise(() => {}));
 
     renderEditView();
 
@@ -116,6 +117,20 @@ describe('EditEntityView', () => {
     // Wait for entity to load and category picker to render
     await waitFor(() => {
       expect(screen.getByLabelText(/category/i)).toBeInTheDocument();
+    });
+  });
+
+  it('shows a user-facing error when category options fail to load', async () => {
+    vi.mocked(entityApi.getEntityFilterOptions).mockRejectedValue(
+      new Error('Category bootstrap failed')
+    );
+
+    renderEditView();
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Failed to load entity category options')
+      ).toBeInTheDocument();
     });
   });
 

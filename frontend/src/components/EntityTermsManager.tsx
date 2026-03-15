@@ -181,7 +181,7 @@ export function EntityTermsManager({
 
       await loadTerms();
       handleCancel();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to save term:", err);
       const parsedError = handlePageError(err, "Failed to save term");
       setError(parsedError.userMessage);

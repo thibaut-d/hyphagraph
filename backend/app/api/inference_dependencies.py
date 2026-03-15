@@ -1,17 +1,16 @@
 import json
-from typing import Any
 
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.schemas.common_types import ScopeFilter
 from app.services.explanation_service import ExplanationService
 from app.services.inference_service import InferenceService
 from app.services.source_service import SourceService
 from app.utils.errors import ValidationException
 
-
-def parse_scope_filter(scope: str | None) -> dict[str, Any] | None:
+def parse_scope_filter(scope: str | None) -> ScopeFilter | None:
     """Parse a JSON scope query parameter into a dict."""
     if not scope:
         return None
@@ -30,6 +29,23 @@ def parse_scope_filter(scope: str | None) -> dict[str, Any] | None:
             message="Scope must be a JSON object",
             field="scope",
             details="Scope must be a JSON object",
+        )
+
+    if not all(isinstance(key, str) for key in scope_filter):
+        raise ValidationException(
+            message="Scope keys must be strings",
+            field="scope",
+            details="Scope keys must be strings",
+        )
+
+    if not all(
+        isinstance(value, (str, int, float, bool)) or value is None
+        for value in scope_filter.values()
+    ):
+        raise ValidationException(
+            message="Scope values must be JSON scalars",
+            field="scope",
+            details="Scope values must be strings, numbers, booleans, or null",
         )
 
     return scope_filter

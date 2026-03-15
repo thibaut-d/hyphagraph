@@ -80,6 +80,7 @@ from app.config import settings
 from app.models.user import User  # noqa: F401
 from app.models.refresh_token import RefreshToken  # noqa: F401
 from app.models.entity import Entity  # noqa: F401
+from app.models.entity_merge_record import EntityMergeRecord  # noqa: F401
 from app.models.entity_revision import EntityRevision  # noqa: F401
 from app.models.entity_term import EntityTerm  # noqa: F401
 from app.models.ui_category import UiCategory  # noqa: F401

@@ -6,10 +6,12 @@ This module provides:
 - Custom exception classes with error codes
 - Error code registry for frontend consumption
 """
-from typing import Any, Optional
+from typing import Optional
 from enum import Enum
 from pydantic import BaseModel
 from fastapi import HTTPException, status
+
+from app.schemas.common_types import ContextObject
 
 
 class ErrorCode(str, Enum):
@@ -90,7 +92,7 @@ class ErrorDetail(BaseModel):
     message: str
     details: Optional[str] = None
     field: Optional[str] = None
-    context: Optional[dict[str, Any]] = None
+    context: Optional[ContextObject] = None
 
 
 class ErrorResponse(BaseModel):
@@ -125,7 +127,7 @@ class AppException(HTTPException):
         message: str,
         details: Optional[str] = None,
         field: Optional[str] = None,
-        context: Optional[dict[str, Any]] = None,
+        context: Optional[ContextObject] = None,
     ):
         error_detail = ErrorDetail(
             code=error_code,
@@ -223,7 +225,7 @@ class ValidationException(AppException):
         message: str,
         field: Optional[str] = None,
         details: Optional[str] = None,
-        context: Optional[dict[str, Any]] = None,
+        context: Optional[ContextObject] = None,
     ):
         super().__init__(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -233,3 +235,6 @@ class ValidationException(AppException):
             details=details,
             context=context,
         )
+
+
+ErrorDetail.model_rebuild()

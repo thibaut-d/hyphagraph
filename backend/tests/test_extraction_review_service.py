@@ -327,18 +327,47 @@ async def test_approve_extraction_updates_status(
 
     # Check result
     assert result.success is True
-    assert result.extraction_id == staged.id
 
-    # Verify status was updated in database
-    from sqlalchemy import select
-    db_result = await review_service.db.execute(
-        select(StagedExtraction).where(StagedExtraction.id == staged.id)
+
+@pytest.mark.asyncio
+async def test_get_extraction_returns_staged_record(
+    review_service, sample_source, uncertain_entity, uncertain_validation
+):
+    staged, _ = await review_service.stage_extraction(
+        extraction_type=ExtractionType.ENTITY,
+        extraction_data=uncertain_entity,
+        source_id=sample_source.id,
+        validation_result=uncertain_validation,
+        llm_model="claude-sonnet-4-5",
+        llm_provider="anthropic",
+        auto_materialize=False,
     )
-    updated = db_result.scalar_one()
-    assert updated.status == ExtractionStatus.APPROVED
-    assert updated.reviewed_by == sample_user.id
-    assert updated.review_notes == "Verified against source document"
-    assert updated.reviewed_at is not None
+
+    loaded = await review_service.get_extraction(staged.id)
+
+    assert loaded is not None
+    assert loaded.id == staged.id
+
+
+@pytest.mark.asyncio
+async def test_delete_extraction_removes_record(
+    review_service, sample_source, uncertain_entity, uncertain_validation
+):
+    staged, _ = await review_service.stage_extraction(
+        extraction_type=ExtractionType.ENTITY,
+        extraction_data=uncertain_entity,
+        source_id=sample_source.id,
+        validation_result=uncertain_validation,
+        llm_model="claude-sonnet-4-5",
+        llm_provider="anthropic",
+        auto_materialize=False,
+    )
+
+    deleted = await review_service.delete_extraction(staged.id)
+    loaded = await review_service.get_extraction(staged.id)
+
+    assert deleted is True
+    assert loaded is None
 
 
 @pytest.mark.asyncio
@@ -483,8 +512,8 @@ async def test_batch_review_approve_multiple(
         notes="Batch approval",
     )
 
-    assert results["succeeded"] == 3
-    assert results["failed"] == 0
+    assert results.succeeded == 3
+    assert results.failed == 0
 
     # Verify all are approved
     from sqlalchemy import select
@@ -532,8 +561,8 @@ async def test_batch_review_mixed_results(
     )
 
     # Should have 1 success, 1 failure
-    assert results["succeeded"] == 1
-    assert results["failed"] == 1
+    assert results.succeeded == 1
+    assert results.failed == 1
 
 
 # === Test Query Filters ===

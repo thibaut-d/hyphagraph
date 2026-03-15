@@ -11,7 +11,6 @@ Used by document extraction workflows where all extraction types
 are needed from a single text source.
 """
 import logging
-from typing import Any
 
 from app.llm.client import get_llm_provider
 from app.llm.prompts import (
@@ -22,6 +21,7 @@ from app.llm.schemas import (
     ExtractedEntity,
     ExtractedRelation,
     ExtractedClaim,
+    BatchExtractionResponse,
     validate_batch_extraction,
 )
 from app.services.extraction_validation_service import (
@@ -220,7 +220,7 @@ class BatchExtractionOrchestrator:
 
         return entities, relations, claims, entity_results, relation_results, claim_results
 
-    async def _call_llm_for_batch(self, text: str) -> Any:
+    async def _call_llm_for_batch(self, text: str) -> BatchExtractionResponse:
         """
         Call LLM with batch prompt and return validated response.
 

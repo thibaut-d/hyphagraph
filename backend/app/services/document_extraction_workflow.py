@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Callable, Protocol, TypeAlias
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.llm.schemas import ExtractedClaim, ExtractedEntity, ExtractedRelation
 from app.models.entity_revision import EntityRevision
 from app.models.source import Source
 from app.models.source_revision import SourceRevision
@@ -16,11 +17,15 @@ from app.schemas.source import DocumentExtractionPreview, EntityLinkMatch, SaveE
 from app.schemas.source import SourceWrite
 from app.services.batch_extraction_orchestrator import BatchExtractionOrchestrator
 from app.services.bulk_creation_service import BulkCreationService
+from app.services.entity_linking_service import EntityLinkMatch as ExistingEntityLinkMatch
 from app.services.entity_linking_service import EntityLinkingService
 from app.services.extraction_service import ExtractionService
+from app.services.extraction_validation_service import ValidationResult
 from app.services.extraction_review_service import ExtractionReviewService
+from app.services.pubmed_fetcher import PubMedArticle
 from app.services.pubmed_fetcher import PubMedFetcher
 from app.services.source_service import SourceService
+from app.services.url_fetcher import UrlFetchResult
 from app.services.url_fetcher import UrlFetcher
 from app.utils.errors import SourceNotFoundException, ValidationException
 
@@ -28,14 +33,176 @@ from app.utils.errors import SourceNotFoundException, ValidationException
 logger = logging.getLogger(__name__)
 
 
+ExtractedBatchResult: TypeAlias = tuple[
+    list[ExtractedEntity],
+    list[ExtractedRelation],
+    list[ExtractedClaim],
+    list[ValidationResult],
+    list[ValidationResult],
+    list[ValidationResult],
+]
+
+
+class SourceServiceProtocol(Protocol):
+    async def add_document_to_source(
+        self,
+        *,
+        source_id: UUID,
+        document_text: str,
+        document_format: str,
+        document_file_name: str,
+        user_id: UUID | None,
+    ) -> None: ...
+
+    async def create(self, payload: SourceWrite, user_id: UUID | None = None) -> Source: ...
+
+
+class SourceServiceFactory(Protocol):
+    def __call__(self, db: AsyncSession) -> SourceServiceProtocol: ...
+
+
+class BatchExtractionOrchestratorProtocol(Protocol):
+    async def extract_batch_with_validation_results(
+        self,
+        *,
+        text: str,
+        min_confidence: str | None = None,
+        min_evidence_strength: str | None = None,
+    ) -> ExtractedBatchResult: ...
+
+
+class BatchExtractionOrchestratorFactory(Protocol):
+    def __call__(
+        self,
+        *,
+        db: AsyncSession,
+        enable_validation: bool,
+        validation_level: str,
+    ) -> BatchExtractionOrchestratorProtocol: ...
+
+
+class ExtractionServiceProtocol(Protocol):
+    async def extract_batch_with_validation_results(self, text: str) -> ExtractedBatchResult: ...
+
+
+class ExtractionServiceFactory(Protocol):
+    def __call__(self, db: AsyncSession) -> ExtractionServiceProtocol: ...
+
+
+class ReviewStagedItemProtocol(Protocol):
+    status: str
+    validation_score: float | None
+
+
+class ExtractionReviewServiceProtocol(Protocol):
+    async def stage_batch(
+        self,
+        *,
+        entities: list[tuple[ExtractedEntity, ValidationResult]],
+        relations: list[tuple[ExtractedRelation, ValidationResult]],
+        claims: list[tuple[ExtractedClaim, ValidationResult]],
+        source_id: UUID,
+        llm_model: str | None = None,
+        llm_provider: str | None = None,
+    ) -> list[ReviewStagedItemProtocol]: ...
+
+
+class ExtractionReviewServiceFactory(Protocol):
+    def __call__(
+        self,
+        *,
+        db: AsyncSession,
+        auto_commit_enabled: bool,
+        auto_commit_threshold: float,
+        require_no_flags_for_auto_commit: bool,
+    ) -> ExtractionReviewServiceProtocol: ...
+
+
+class EntityLinkingServiceProtocol(Protocol):
+    async def find_entity_matches(
+        self,
+        extracted_entities: list[ExtractedEntity],
+    ) -> list[ExistingEntityLinkMatch]: ...
+
+
+class EntityLinkingServiceFactory(Protocol):
+    def __call__(self, db: AsyncSession) -> EntityLinkingServiceProtocol: ...
+
+
+class BulkCreationServiceProtocol(Protocol):
+    async def bulk_create_entities(
+        self,
+        *,
+        entities: list[ExtractedEntity],
+        source_id: UUID,
+        user_id: UUID | None,
+    ) -> dict[str, UUID]: ...
+
+    async def bulk_create_relations(
+        self,
+        *,
+        relations: list[ExtractedRelation],
+        entity_mapping: dict[str, UUID],
+        source_id: UUID,
+        user_id: UUID | None,
+    ) -> list[UUID]: ...
+
+
+class BulkCreationServiceFactory(Protocol):
+    def __call__(self, db: AsyncSession) -> BulkCreationServiceProtocol: ...
+
+
+class PubMedFetcherProtocol(Protocol):
+    def extract_pmid_from_url(self, url: str) -> str | None: ...
+
+    async def fetch_by_pmid(self, pmid: str, skip_pmc_enrichment: bool = False) -> PubMedArticle: ...
+
+    async def bulk_fetch_articles(
+        self,
+        pmids: list[str],
+        skip_pmc_enrichment: bool = False,
+    ) -> list[PubMedArticle]: ...
+
+    async def search_pubmed(
+        self,
+        *,
+        query: str,
+        max_results: int,
+        retstart: int = 0,
+    ) -> tuple[list[str], int]: ...
+
+
+class PubMedFetcherFactory(Protocol):
+    def __call__(self) -> PubMedFetcherProtocol: ...
+
+
+class UrlFetcherProtocol(Protocol):
+    async def fetch_url(self, url: str, max_length: int | None = None) -> UrlFetchResult: ...
+
+
+class UrlFetcherFactory(Protocol):
+    def __call__(self) -> UrlFetcherProtocol: ...
+
+
+class TrustLevelResolver(Protocol):
+    def __call__(
+        self,
+        *,
+        title: str,
+        journal: str | None,
+        year: int | None,
+        abstract: str | None,
+    ) -> float: ...
+
+
 @dataclass
 class ExtractedBatch:
-    entities: list[Any]
-    relations: list[Any]
-    claims: list[Any]
-    entity_results: list[Any]
-    relation_results: list[Any]
-    claim_results: list[Any]
+    entities: list[ExtractedEntity]
+    relations: list[ExtractedRelation]
+    claims: list[ExtractedClaim]
+    entity_results: list[ValidationResult]
+    relation_results: list[ValidationResult]
+    claim_results: list[ValidationResult]
 
 
 @dataclass
@@ -56,7 +223,7 @@ class FetchedDocument:
 class PubMedBulkSearchSummary:
     query: str
     total_results: int
-    results: list[Any]
+    results: list[PubMedArticle]
     retrieved_count: int
 
 
@@ -130,7 +297,7 @@ async def store_document_in_source(
     document_format: str,
     file_name: str,
     user_id: UUID | None,
-    source_service_factory: Callable[[AsyncSession], Any] = SourceService,
+    source_service_factory: SourceServiceFactory = SourceService,
 ) -> None:
     source_service = source_service_factory(db)
     await source_service.add_document_to_source(
@@ -146,7 +313,7 @@ async def run_validated_extraction(
     db: AsyncSession,
     *,
     text: str,
-    orchestrator_factory: Callable[..., Any] = BatchExtractionOrchestrator,
+    orchestrator_factory: BatchExtractionOrchestratorFactory = BatchExtractionOrchestrator,
 ) -> ExtractedBatch:
     orchestrator = orchestrator_factory(
         db=db,
@@ -179,7 +346,7 @@ async def stage_review_batch(
     *,
     source_id: UUID,
     extracted_batch: ExtractedBatch,
-    review_service_factory: Callable[..., Any] = ExtractionReviewService,
+    review_service_factory: ExtractionReviewServiceFactory = ExtractionReviewService,
 ) -> ReviewSummary:
     review_service = review_service_factory(
         db=db,
@@ -213,8 +380,8 @@ async def stage_review_batch(
 async def build_link_suggestions(
     db: AsyncSession,
     *,
-    entities: list[Any],
-    linking_service_factory: Callable[[AsyncSession], Any] = EntityLinkingService,
+    entities: list[ExtractedEntity],
+    linking_service_factory: EntityLinkingServiceFactory = EntityLinkingService,
 ) -> list[EntityLinkMatch]:
     linking_service = linking_service_factory(db)
     matches = await linking_service.find_entity_matches(entities)
@@ -235,9 +402,9 @@ async def build_extraction_preview(
     *,
     source_id: UUID,
     text: str,
-    orchestrator_factory: Callable[..., Any] = BatchExtractionOrchestrator,
-    review_service_factory: Callable[..., Any] = ExtractionReviewService,
-    linking_service_factory: Callable[[AsyncSession], Any] = EntityLinkingService,
+    orchestrator_factory: BatchExtractionOrchestratorFactory = BatchExtractionOrchestrator,
+    review_service_factory: ExtractionReviewServiceFactory = ExtractionReviewService,
+    linking_service_factory: EntityLinkingServiceFactory = EntityLinkingService,
 ) -> DocumentExtractionPreview:
     extracted_batch = await run_validated_extraction(
         db,
@@ -274,9 +441,9 @@ async def build_extraction_preview_with_service(
     *,
     source_id: UUID,
     text: str,
-    extraction_service_factory: Callable[[AsyncSession], Any] = ExtractionService,
-    review_service_factory: Callable[..., Any] = ExtractionReviewService,
-    linking_service_factory: Callable[[AsyncSession], Any] = EntityLinkingService,
+    extraction_service_factory: ExtractionServiceFactory = ExtractionService,
+    review_service_factory: ExtractionReviewServiceFactory = ExtractionReviewService,
+    linking_service_factory: EntityLinkingServiceFactory = EntityLinkingService,
 ) -> DocumentExtractionPreview:
     extraction_service = extraction_service_factory(db)
     (
@@ -326,8 +493,8 @@ async def fetch_document_from_url(
     *,
     source_id: UUID,
     url: str,
-    pubmed_fetcher_factory: Callable[[], Any] = PubMedFetcher,
-    url_fetcher_factory: Callable[[], Any] = UrlFetcher,
+    pubmed_fetcher_factory: PubMedFetcherFactory = PubMedFetcher,
+    url_fetcher_factory: UrlFetcherFactory = UrlFetcher,
 ) -> FetchedDocument:
     pubmed_fetcher = pubmed_fetcher_factory()
     pmid = pubmed_fetcher.extract_pmid_from_url(url)
@@ -356,7 +523,7 @@ async def _update_source_revision_from_pubmed(
     db: AsyncSession,
     *,
     source_id: UUID,
-    article: Any,
+    article: PubMedArticle,
 ) -> None:
     stmt = select(SourceRevision).where(
         SourceRevision.source_id == source_id,
@@ -388,7 +555,7 @@ async def save_extraction_to_graph(
     source_id: UUID,
     request: SaveExtractionRequest,
     user_id: UUID | None,
-    bulk_creation_service_factory: Callable[[AsyncSession], Any] = BulkCreationService,
+    bulk_creation_service_factory: BulkCreationServiceFactory = BulkCreationService,
 ) -> SaveExtractionResult:
     await ensure_source_exists(db, source_id)
 
@@ -428,10 +595,10 @@ async def save_extraction_to_graph(
 async def create_source_from_pubmed_article(
     db: AsyncSession,
     *,
-    article: Any,
+    article: PubMedArticle,
     user_id: UUID | None,
     trust_level: float,
-    source_service_factory: Callable[[AsyncSession], Any] = SourceService,
+    source_service_factory: SourceServiceFactory = SourceService,
 ) -> UUID:
     source_service = source_service_factory(db)
     source_data = SourceWrite(
@@ -489,9 +656,9 @@ async def bulk_search_pubmed_articles(
     *,
     request_query: str,
     max_results: int,
-    pubmed_fetcher_factory: Callable[[], Any] = PubMedFetcher,
+    pubmed_fetcher_factory: PubMedFetcherFactory = PubMedFetcher,
     testing_mode: bool = settings.TESTING,
-    build_test_articles: Callable[[str, int], list[Any]] | None = None,
+    build_test_articles: Callable[[str, int], list[PubMedArticle]] | None = None,
 ) -> PubMedBulkSearchSummary:
     if testing_mode and build_test_articles is not None:
         articles = build_test_articles(request_query, max_results)
@@ -530,11 +697,11 @@ async def bulk_import_pubmed_articles(
     *,
     pmids: list[str],
     user_id: UUID | None,
-    pubmed_fetcher_factory: Callable[[], Any] = PubMedFetcher,
+    pubmed_fetcher_factory: PubMedFetcherFactory = PubMedFetcher,
     testing_mode: bool = settings.TESTING,
-    build_test_articles_for_pmids: Callable[[list[str]], list[Any]] | None = None,
-    trust_level_resolver: Callable[..., float],
-    source_service_factory: Callable[[AsyncSession], Any] = SourceService,
+    build_test_articles_for_pmids: Callable[[list[str]], list[PubMedArticle]] | None = None,
+    trust_level_resolver: TrustLevelResolver,
+    source_service_factory: SourceServiceFactory = SourceService,
 ) -> PubMedImportSummary:
     if testing_mode and build_test_articles_for_pmids is not None:
         articles = build_test_articles_for_pmids(pmids)
@@ -582,8 +749,8 @@ async def run_smart_discovery(
     max_results: int,
     min_quality: float,
     databases: list[str],
-    pubmed_fetcher_factory: Callable[[], Any] = PubMedFetcher,
-    trust_level_resolver: Callable[..., float],
+    pubmed_fetcher_factory: PubMedFetcherFactory = PubMedFetcher,
+    trust_level_resolver: TrustLevelResolver,
 ) -> SmartDiscoverySummary:
     entity_query_clauses: list[str] = []
     entity_relevance_terms: list[str] = []
@@ -637,8 +804,8 @@ async def _run_pubmed_smart_discovery(
     entity_relevance_terms: list[str],
     max_results: int,
     min_quality: float,
-    pubmed_fetcher_factory: Callable[[], Any],
-    trust_level_resolver: Callable[..., float],
+    pubmed_fetcher_factory: PubMedFetcherFactory,
+    trust_level_resolver: TrustLevelResolver,
 ) -> list[SmartDiscoveryItem]:
     pubmed_fetcher = pubmed_fetcher_factory()
     batch_size = 50

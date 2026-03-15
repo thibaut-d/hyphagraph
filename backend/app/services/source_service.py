@@ -367,10 +367,10 @@ class SourceService:
         user_id: UUID | None = None
     ) -> None:
         """
-        Add document content to a source's current revision.
+        Add document content to a source by creating a new current revision.
 
-        Updates the current revision to include document text, format, and metadata.
-        This allows storing uploaded PDF/text content for future re-extraction.
+        The previous current revision remains immutable history. The new revision
+        copies the existing source metadata and appends the uploaded document data.
 
         Args:
             source_id: The source to update
@@ -390,13 +390,12 @@ class SourceService:
                     source_id=str(source_id)
                 )
 
-            # Get current revision
-            current_revision_query = select(SourceRevision).where(
-                SourceRevision.source_id == source_id,
-                SourceRevision.is_current == True
+            current_revision = await get_current_revision(
+                db=self.db,
+                revision_class=SourceRevision,
+                parent_id_field="source_id",
+                parent_id=source_id,
             )
-            result = await self.db.execute(current_revision_query)
-            current_revision = result.scalar_one_or_none()
 
             if not current_revision:
                 raise SourceNotFoundException(
@@ -404,15 +403,32 @@ class SourceService:
                     details="No current revision found for source"
                 )
 
-            # Update document fields
-            current_revision.document_text = document_text
-            current_revision.document_format = document_format
-            current_revision.document_file_name = document_file_name
-            current_revision.document_extracted_at = datetime.now(timezone.utc)
+            revision_data = {
+                "kind": current_revision.kind,
+                "title": current_revision.title,
+                "authors": current_revision.authors,
+                "year": current_revision.year,
+                "origin": current_revision.origin,
+                "url": current_revision.url,
+                "trust_level": current_revision.trust_level,
+                "summary": current_revision.summary,
+                "source_metadata": current_revision.source_metadata,
+                "created_with_llm": current_revision.created_with_llm,
+                "created_by_user_id": user_id or current_revision.created_by_user_id,
+                "document_text": document_text,
+                "document_format": document_format,
+                "document_file_name": document_file_name,
+                "document_extracted_at": datetime.now(timezone.utc),
+            }
 
-            # If user_id provided, update created_by_user_id
-            if user_id and not current_revision.created_by_user_id:
-                current_revision.created_by_user_id = user_id
+            await create_new_revision(
+                db=self.db,
+                revision_class=SourceRevision,
+                parent_id_field="source_id",
+                parent_id=source.id,
+                revision_data=revision_data,
+                set_as_current=True,
+            )
 
             await self.db.commit()
 

@@ -16,7 +16,10 @@ export interface EntityDetailFilterValues {
 
 interface EntityDetailFiltersProps {
   filters: EntityDetailFilterValues;
-  onFilterChange: (key: string, value: any) => void;
+  onFilterChange: <K extends keyof EntityDetailFilterValues>(
+    key: K,
+    value: EntityDetailFilterValues[K],
+  ) => void;
   sources: SourceRead[];
 }
 

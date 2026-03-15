@@ -1,8 +1,8 @@
 """
-Application startup tasks.
+Application startup and bootstrap tasks.
 
-Handles initialization tasks that should run when the application starts,
-such as creating the default admin user and system source.
+Startup tasks run automatically when the app launches and must stay non-privileged.
+Bootstrap tasks are explicit setup operations used for test resets or initial environment setup.
 """
 import logging
 from uuid import UUID, uuid4
@@ -20,22 +20,25 @@ from app.schemas.auth import UserRegister
 logger = logging.getLogger(__name__)
 
 
-async def create_admin_user(db: AsyncSession) -> None:
+async def bootstrap_admin_user(db: AsyncSession) -> None:
     """
-    Create default admin user from environment variables if it doesn't exist.
+    Create default admin user from configured bootstrap credentials if it doesn't exist.
 
-    Checks if a user with ADMIN_EMAIL already exists. If not, creates
-    a new superuser with the credentials from settings.
+    This is an explicit bootstrap operation and must not run automatically at app startup.
 
     This function is idempotent - it's safe to call multiple times.
 
     Args:
         db: Database session
     """
+    if not settings.ADMIN_EMAIL or not settings.ADMIN_PASSWORD:
+        raise RuntimeError(
+            "ADMIN_EMAIL and ADMIN_PASSWORD must be configured for admin bootstrap"
+        )
+
     user_service = UserService(db)
 
     try:
-        # Check if admin user already exists
         existing_admin = await user_service.get_by_email(settings.ADMIN_EMAIL)
 
         if existing_admin:
@@ -51,7 +54,7 @@ async def create_admin_user(db: AsyncSession) -> None:
             return
 
         # Create admin user
-        logger.info(f"Creating admin user: {settings.ADMIN_EMAIL}")
+        logger.info(f"Bootstrapping admin user: {settings.ADMIN_EMAIL}")
 
         # Use the service to create the user
         admin_data = UserRegister(
@@ -68,14 +71,13 @@ async def create_admin_user(db: AsyncSession) -> None:
         user.is_superuser = True
         await db.commit()
 
-        logger.info(f"Admin user created successfully: {settings.ADMIN_EMAIL}")
-        logger.warning("IMPORTANT: Change the default admin password in production!")
+        logger.info(f"Admin user bootstrapped successfully: {settings.ADMIN_EMAIL}")
+        logger.warning("Bootstrap admin credentials should be rotated outside test environments.")
 
     except Exception as e:
-        logger.error(f"Failed to create admin user: {e}")
+        logger.error(f"Failed to bootstrap admin user: {e}")
         await db.rollback()
-        # Don't raise - we don't want to prevent app startup if admin creation fails
-        # The admin can be created manually or via migrations
+        raise
 
 
 async def create_system_source(db: AsyncSession) -> None:
@@ -148,14 +150,27 @@ async def create_system_source(db: AsyncSession) -> None:
 
 async def run_startup_tasks(db: AsyncSession) -> None:
     """
-    Run all startup tasks.
+    Run non-privileged automatic startup tasks.
 
     Args:
         db: Database session
     """
     logger.info("Running startup tasks...")
-
-    await create_admin_user(db)
     await create_system_source(db)
-
     logger.info("Startup tasks completed")
+
+
+async def run_bootstrap_tasks(db: AsyncSession) -> None:
+    """
+    Run explicit bootstrap/setup tasks.
+
+    This path is intended for test reset helpers or manual environment bootstrap,
+    not for normal application startup.
+
+    Args:
+        db: Database session
+    """
+    logger.info("Running bootstrap tasks...")
+    await create_system_source(db)
+    await bootstrap_admin_user(db)
+    logger.info("Bootstrap tasks completed")

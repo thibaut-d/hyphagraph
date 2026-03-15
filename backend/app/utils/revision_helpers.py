@@ -7,13 +7,14 @@ Provides common patterns for:
 - Managing is_current flags
 """
 from uuid import UUID
+from collections.abc import Mapping
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from typing import TypeVar, Type, Generic, Any
+from typing import TypeVar, Type
 
 # Generic type for revision models
-TRevision = TypeVar('TRevision')
+TRevision = TypeVar("TRevision")
 
 
 async def get_current_revision(
@@ -58,7 +59,7 @@ async def create_new_revision(
     revision_class: Type[TRevision],
     parent_id_field: str,
     parent_id: UUID,
-    revision_data: dict[str, Any],
+    revision_data: Mapping[str, object],
     set_as_current: bool = True,
 ) -> TRevision:
     """
@@ -86,10 +87,11 @@ async def create_new_revision(
         )
 
     # Create new revision
-    revision_data[parent_id_field] = parent_id
-    revision_data['is_current'] = set_as_current
+    revision_values = dict(revision_data)
+    revision_values[parent_id_field] = parent_id
+    revision_values["is_current"] = set_as_current
 
-    revision = revision_class(**revision_data)
+    revision = revision_class(**revision_values)
     db.add(revision)
     await db.flush()
 

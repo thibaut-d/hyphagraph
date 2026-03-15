@@ -10,17 +10,24 @@ export interface EnrichedRelation extends RelationRead {
   source?: SourceRead;
 }
 
+export interface UseEvidenceRelationsResult {
+  relations: EnrichedRelation[];
+  sourceLoadFailures: string[];
+}
+
 export function useEvidenceRelations(
   entityId: string | undefined,
   roleType: string | undefined,
   inference: InferenceRead | null | undefined,
-): EnrichedRelation[] {
+): UseEvidenceRelationsResult {
   const handlePageError = usePageErrorHandler();
   const [relations, setRelations] = useState<EnrichedRelation[]>([]);
+  const [sourceLoadFailures, setSourceLoadFailures] = useState<string[]>([]);
 
   useEffect(() => {
     if (!entityId || !inference) {
       setRelations([]);
+      setSourceLoadFailures([]);
       return;
     }
 
@@ -47,14 +54,17 @@ export function useEvidenceRelations(
 
         if (isMounted) {
           setRelations(filteredRelations);
+          setSourceLoadFailures([]);
         }
 
+        const failedSourceIds: string[] = [];
         const enrichedRelations = await Promise.all(
           filteredRelations.map(async (relation) => {
             try {
               const source = await getSource(relation.source_id);
               return { ...relation, source };
             } catch {
+              failedSourceIds.push(relation.source_id);
               return relation;
             }
           }),
@@ -62,10 +72,12 @@ export function useEvidenceRelations(
 
         if (isMounted) {
           setRelations(enrichedRelations);
+          setSourceLoadFailures(Array.from(new Set(failedSourceIds)));
         }
       } catch (error) {
         if (isMounted) {
           setRelations([]);
+          setSourceLoadFailures([]);
           handlePageError(error, "Failed to load evidence");
         }
       }
@@ -78,5 +90,5 @@ export function useEvidenceRelations(
     };
   }, [entityId, handlePageError, inference, roleType]);
 
-  return relations;
+  return { relations, sourceLoadFailures };
 }

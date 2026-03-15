@@ -27,6 +27,7 @@ import ThumbUpIcon from "@mui/icons-material/ThumbUp";
 
 import { resolveLabel } from "../utils/i18nLabel";
 import { useEntityInferenceDetail } from "../hooks/useEntityInferenceDetail";
+import type { RelationRead } from "../types/relation";
 import { DisagreementsFooterSection } from "../components/disagreements/DisagreementsFooterSection";
 import {
   DisagreementGroup,
@@ -85,22 +86,22 @@ export function DisagreementsView() {
     : [];
 
   if (disagreementGroups.length === 0 && inference && inference.relations_by_kind) {
-    Object.entries(inference.relations_by_kind).forEach(([roleType, roleRelations]: [string, any]) => {
-      const relationArray = roleRelations as any[];
+    Object.entries(inference.relations_by_kind).forEach(([roleType, relationArray]) => {
+      const typedRelations = relationArray as RelationRead[];
 
-      const supporting = relationArray.filter(rel =>
+      const supporting = typedRelations.filter(rel =>
         rel.direction === "supports" || !rel.direction
       );
-      const contradicting = relationArray.filter(rel =>
+      const contradicting = typedRelations.filter(rel =>
         rel.direction === "contradicts"
       );
 
       // Only include if there are contradictions
       if (contradicting.length > 0) {
-        const totalConfidence = relationArray.reduce(
+        const totalConfidence = typedRelations.reduce(
           (sum, rel) => sum + (rel.confidence || 0),
           0
-        ) / relationArray.length;
+        ) / typedRelations.length;
 
         disagreementGroups.push({
           kind: roleType,
@@ -146,11 +147,11 @@ export function DisagreementsView() {
       ) : (
         <Alert severity="success" icon={<ThumbUpIcon />}>
           <Typography variant="body1" gutterBottom>
-            {t("disagreements.no_data.title", "No contradictions detected")}
+            {t("disagreements.no_data.title", "No contradictory evidence is currently surfaced")}
           </Typography>
           <Typography variant="body2">
             {t("disagreements.no_data.description",
-              "All available evidence for this entity is consistent. This suggests strong consensus, though limited evidence diversity may also explain the lack of contradictions."
+              "No conflicting evidence is currently shown for this entity. This may reflect agreement in the available sources, or simply limited coverage in the current evidence base."
             )}
           </Typography>
         </Alert>

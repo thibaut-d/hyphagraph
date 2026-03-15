@@ -39,8 +39,17 @@ export function EditEntityView() {
 
   // Fetch UI category options
   useEffect(() => {
-    getEntityFilterOptions().then(setFilterOptions).catch(console.error);
-  }, []);
+    getEntityFilterOptions()
+      .then(setFilterOptions)
+      .catch((err) => {
+        const message = t(
+          "edit_entity.filter_options_error",
+          "Failed to load entity category options"
+        );
+        setError(message);
+        showError(err);
+      });
+  }, [showError, t]);
 
   // Extract category options with current language labels
   const categoryOptions = useMemo(() => {
@@ -69,7 +78,7 @@ export function EditEntityView() {
         showError(err);
       })
       .finally(() => setLoading(false));
-  }, [id, t]);
+  }, [id, showError]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

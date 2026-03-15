@@ -2,24 +2,39 @@ import React, { useState } from "react";
 import { resendVerificationEmail } from "../api/auth";
 import { Link } from "react-router-dom";
 import { useNotification } from "../notifications/NotificationContext";
+import { parseError } from "../utils/errorHandler";
 
 export default function ResendVerificationView() {
+  const { showError } = useNotification();
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();    setLoading(true);
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
 
     try {
       await resendVerificationEmail(email);
       setSubmitted(true);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const parsedError = parseError(
+        err,
+        "Failed to resend verification email.",
+      );
+
       // Handle specific errors
-      if (err.message?.includes("already verified")) {
-        showError(new Error("This email address is already verified. You can log in now."));
-      } else if (err.message?.includes("not found")) {
-        showError(new Error("No account found with this email address."));
+      if (parsedError.userMessage.includes("already verified")) {
+        const message = "This email address is already verified. You can log in now.";
+        setError(message);
+        showError(new Error(message));
+      } else if (parsedError.userMessage.includes("not found")) {
+        const message = "No account found with this email address.";
+        setError(message);
+        showError(new Error(message));
       } else {
+        setError(parsedError.userMessage);
         showError(err);
       }
     } finally {

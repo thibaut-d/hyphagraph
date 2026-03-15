@@ -5,7 +5,8 @@ Defines the contract that all LLM provider implementations must follow.
 """
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any
+
+from app.schemas.common_types import JsonObject, JsonValue
 
 
 class LLMError(Exception):
@@ -27,7 +28,7 @@ class LLMResponse:
     content: str
     model: str
     usage: dict[str, int]
-    metadata: dict[str, Any] | None = None
+    metadata: dict[str, JsonValue] | None = None
 
 
 class LLMProvider(ABC):
@@ -45,7 +46,7 @@ class LLMProvider(ABC):
         system_prompt: str | None = None,
         temperature: float = 0.3,
         max_tokens: int = 2000,
-        **kwargs: Any,
+        **kwargs: JsonValue,
     ) -> LLMResponse:
         """
         Generate a completion from the LLM.
@@ -72,8 +73,8 @@ class LLMProvider(ABC):
         system_prompt: str | None = None,
         temperature: float = 0.3,
         max_tokens: int = 2000,
-        **kwargs: Any,
-    ) -> dict[str, Any]:
+        **kwargs: JsonValue,
+    ) -> JsonObject:
         """
         Generate a structured JSON response from the LLM.
 

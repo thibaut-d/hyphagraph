@@ -228,6 +228,40 @@ class TestNaturalLanguageSummary:
         # Assert
         assert "3 sources" in result.summary.lower()
 
+    async def test_summary_counts_unique_sources_not_evidence_rows(self, db_session):
+        """Test summary counts unique sources rather than multiple evidence rows from one source."""
+        entity_service = EntityService(db_session)
+        source_service = SourceService(db_session)
+        relation_service = RelationService(db_session)
+        explanation_service = ExplanationService(db_session)
+
+        entity = await entity_service.create(
+            EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"], kind="drug")
+        )
+        source = await source_service.create(
+            SourceWrite(
+                kind="study",
+                title="Repeated Source",
+                url="https://example.com/repeated",
+            )
+        )
+
+        for kind in ("effect", "outcome"):
+            await relation_service.create(
+                RelationWrite(
+                    source_id=str(source.id),
+                    kind=kind,
+                    confidence=0.8,
+                    direction="supports",
+                    roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
+                )
+            )
+
+        result = await explanation_service.explain_inference(entity.id, "drug")
+
+        assert "1 source" in result.summary.lower()
+        assert "2 sources" not in result.summary.lower()
+
     async def test_summary_confidence_level(self, db_session):
         """Test summary includes confidence level description."""
         # Arrange

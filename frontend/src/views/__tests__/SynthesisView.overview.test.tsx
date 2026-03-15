@@ -19,11 +19,30 @@ describe("SynthesisView overview", () => {
     renderSynthesisView();
 
     await waitFor(() => {
-      expect(screen.getByText("Knowledge Synthesis")).toBeInTheDocument();
+      expect(screen.getByText("Evidence Synthesis")).toBeInTheDocument();
       expect(screen.getAllByText("Paracetamol").length).toBeGreaterThan(0);
       expect(screen.getByText("Entities")).toBeInTheDocument();
       expect(screen.getByText("Synthesis")).toBeInTheDocument();
       expect(screen.getByText("Back to entity")).toBeInTheDocument();
+    });
+  });
+
+  it("surfaces contradiction counts in relation summaries", async () => {
+    mockSuccessfulSynthesisData(
+      createMockInference({
+        relations_by_kind: {
+          treats: [
+            createMockRelation({ id: "rel-1", direction: "supports", source_id: "source-1" }),
+            createMockRelation({ id: "rel-2", direction: "contradicts", source_id: "source-2" }),
+          ],
+        },
+      })
+    );
+
+    renderSynthesisView();
+
+    await waitFor(() => {
+      expect(screen.getByText("1 contradiction")).toBeInTheDocument();
     });
   });
 

@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories.relation_repo import RelationRepository
 from app.repositories.computed_relation_repo import ComputedRelationRepository
+from app.schemas.common_types import ScopeFilter
 from app.schemas.inference import InferenceDetailRead, InferenceRead, RoleInference
 from app.utils.hashing import compute_scope_hash
 from app.config import settings
@@ -41,7 +42,7 @@ class InferenceService:
     async def _list_filtered_relations(
         self,
         entity_id: UUID,
-        scope_filter: Optional[dict] = None,
+        scope_filter: Optional[ScopeFilter] = None,
     ):
         relations = await self.repo.list_by_entity(entity_id)
         if scope_filter:
@@ -51,8 +52,8 @@ class InferenceService:
     async def infer_for_entity(
         self,
         entity_id: UUID,
-        scope_filter: Optional[dict] = None,
-        use_cache: bool = True
+        scope_filter: Optional[ScopeFilter] = None,
+        use_cache: bool = True,
     ) -> InferenceRead:
         """
         Compute inferences for an entity, optionally filtered by scope.
@@ -108,7 +109,7 @@ class InferenceService:
     async def list_role_evidence(
         self,
         entity_id: UUID,
-        scope_filter: Optional[dict] = None,
+        scope_filter: Optional[ScopeFilter] = None,
     ) -> dict[str, list[RoleEvidenceRead]]:
         relations = await self._list_filtered_relations(entity_id, scope_filter)
         return await build_role_evidence_views(self.db, relations)
@@ -116,7 +117,7 @@ class InferenceService:
     async def get_detail_for_entity(
         self,
         entity_id: UUID,
-        scope_filter: Optional[dict] = None,
+        scope_filter: Optional[ScopeFilter] = None,
         use_cache: bool = True,
     ) -> InferenceDetailRead:
         inference = await self.infer_for_entity(
@@ -129,7 +130,12 @@ class InferenceService:
             source_service=self.source_service,
         )
 
-    def _compute_role_inferences(self, relations, entity_slug_map: dict = None, current_entity_id: UUID = None) -> list:
+    def _compute_role_inferences(
+        self,
+        relations,
+        entity_slug_map: dict | None = None,
+        current_entity_id: UUID | None = None,
+    ) -> list:
         return compute_role_inferences(relations, current_entity_id)
 
     # ============================================================
@@ -229,7 +235,7 @@ class InferenceService:
         """
         return compute_disagreement_metric(relations_data, role)
 
-    def _matches_scope(self, relation, scope_filter: dict) -> bool:
+    def _matches_scope(self, relation, scope_filter: ScopeFilter) -> bool:
         """
         Check if a relation matches the given scope filter.
 
@@ -262,7 +268,7 @@ class InferenceService:
         self,
         entity_id: UUID,
         cached_computed: "ComputedRelation",
-        scope_filter: Optional[dict]
+        scope_filter: Optional[ScopeFilter],
     ) -> InferenceRead:
         """
         Convert a cached ComputedRelation back to InferenceRead format.
@@ -286,8 +292,8 @@ class InferenceService:
     async def _cache_computed_inference(
         self,
         entity_id: UUID,
-        scope_filter: Optional[dict],
-        role_inferences: list
+        scope_filter: Optional[ScopeFilter],
+        role_inferences: list,
     ) -> None:
         """
         Store computed inference in cache as a computed relation.

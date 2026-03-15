@@ -5,12 +5,12 @@ Provides integration with OpenAI's Chat Completions API.
 """
 import json
 import logging
-from typing import Any
 
 from openai import AsyncOpenAI, OpenAIError
 
 from app.config import settings
 from app.llm.base import LLMProvider, LLMResponse, LLMError
+from app.schemas.common_types import JsonObject, JsonValue
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ class OpenAIProvider(LLMProvider):
         system_prompt: str | None = None,
         temperature: float | None = None,
         max_tokens: int = 2000,
-        **kwargs: Any,
+        **kwargs: JsonValue,
     ) -> LLMResponse:
         """
         Generate a completion using OpenAI Chat Completions API.
@@ -140,8 +140,8 @@ class OpenAIProvider(LLMProvider):
         system_prompt: str | None = None,
         temperature: float | None = None,
         max_tokens: int = 2000,
-        **kwargs: Any,
-    ) -> dict[str, Any]:
+        **kwargs: JsonValue,
+    ) -> JsonObject:
         """
         Generate a structured JSON response using OpenAI's JSON mode.
 
@@ -183,6 +183,8 @@ class OpenAIProvider(LLMProvider):
         # Parse JSON
         try:
             result = json.loads(response.content)
+            if not isinstance(result, dict):
+                raise LLMError("Invalid JSON in response: expected a JSON object")
             logger.info(f"Successfully parsed JSON response from OpenAI")
             return result
         except json.JSONDecodeError as e:

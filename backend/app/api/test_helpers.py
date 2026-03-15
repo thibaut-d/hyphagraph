@@ -12,7 +12,7 @@ from sqlalchemy import text
 
 from app.database import get_db
 from app.config import settings
-from app.startup import run_startup_tasks
+from app.startup import run_bootstrap_tasks
 
 router = APIRouter(prefix="/test", tags=["test-helpers"])
 
@@ -69,9 +69,9 @@ async def reset_database(db: AsyncSession = Depends(get_db)):
 
         await db.commit()
 
-        # Restore baseline startup data so E2E can immediately authenticate
+        # Restore baseline bootstrap data so E2E can immediately authenticate
         # and rely on system-owned records after a reset.
-        await run_startup_tasks(db)
+        await run_bootstrap_tasks(db)
 
         return {
             "message": f"Successfully truncated {len(tables)} tables",

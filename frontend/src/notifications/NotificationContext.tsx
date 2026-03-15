@@ -29,7 +29,7 @@ interface NotificationOptions {
 
 interface NotificationContextValue {
   showSuccess: (message: string, options?: NotificationOptions) => void;
-  showError: (messageOrError: string | Error | any, options?: NotificationOptions) => void;
+  showError: (messageOrError: string | Error | unknown, options?: NotificationOptions) => void;
   showInfo: (message: string, options?: NotificationOptions) => void;
   showWarning: (message: string, options?: NotificationOptions) => void;
   dismiss: () => void;
@@ -107,7 +107,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   );
 
   const showError = useCallback(
-    (messageOrError: string | Error | any, options?: NotificationOptions) => {
+    (messageOrError: string | Error | unknown, options?: NotificationOptions) => {
       // If it's not a string, parse it as an error
       if (typeof messageOrError !== "string") {
         const parsedError = parseError(messageOrError);

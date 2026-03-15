@@ -288,6 +288,35 @@ describe("DisagreementsView", () => {
     });
   });
 
+  it("uses neutral empty-state wording when no contradictions are present", async () => {
+    vi.spyOn(entitiesApi, "getEntity").mockResolvedValue(mockEntity);
+    vi.spyOn(inferencesApi, "getInferenceDetailForEntity").mockResolvedValue(
+      createMockInference({
+        relations_by_kind: {
+          therapeutic_use: [createMockRelation({ direction: "supports" })],
+        },
+        disagreement_groups: [],
+      })
+    );
+
+    render(
+      <BrowserRouter>
+        <DisagreementsView />
+      </BrowserRouter>
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("No contradictory evidence is currently surfaced")
+      ).toBeInTheDocument();
+    });
+
+    expect(
+      screen.getByText(/No conflicting evidence is currently shown for this entity/i)
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/strong consensus/i)).not.toBeInTheDocument();
+  });
+
   describe("Disagreement groups", () => {
     it("displays disagreement groups in accordions", async () => {
       const inference = createMockInference({
@@ -452,11 +481,13 @@ describe("DisagreementsView", () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText("No contradictions detected")).toBeInTheDocument();
+        expect(
+          screen.getByText("No contradictory evidence is currently surfaced")
+        ).toBeInTheDocument();
       });
 
       expect(
-        screen.getByText(/All available evidence for this entity is consistent/i)
+        screen.getByText(/No conflicting evidence is currently shown for this entity/i)
       ).toBeInTheDocument();
     });
 
@@ -479,7 +510,9 @@ describe("DisagreementsView", () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText("No contradictions detected")).toBeInTheDocument();
+        expect(
+          screen.getByText("No contradictory evidence is currently surfaced")
+        ).toBeInTheDocument();
       });
 
       expect(screen.queryByText("Contradictions by Relation Type")).not.toBeInTheDocument();

@@ -2,6 +2,7 @@ import {
   parseError,
   formatErrorForLogging,
   toParsedAppError,
+  type ParsedAppError,
 } from "../utils/errorHandler";
 import {
   clearStoredAuthTokens,
@@ -89,12 +90,61 @@ function toHeaderRecord(headers?: HeadersInit): Record<string, string> {
   return { ...headers };
 }
 
+function buildRequestHeaders(
+  options: RequestInit,
+  token: string | null,
+  includeJsonContentType: boolean,
+): Record<string, string> {
+  const headers: Record<string, string> = {
+    ...toHeaderRecord(options.headers),
+  };
+
+  if (includeJsonContentType && !("Content-Type" in headers)) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  return headers;
+}
+
 async function parseSuccessResponse<T>(response: Response): Promise<T> {
   if (response.status === 204) {
     return undefined as T;
   }
 
   return response.json() as Promise<T>;
+}
+
+interface BackendErrorEnvelope {
+  error?: unknown;
+  detail?: unknown;
+}
+
+function extractBackendErrorPayload(payload: unknown): unknown {
+  if (payload && typeof payload === "object") {
+    const envelope = payload as BackendErrorEnvelope;
+    return envelope.error ?? envelope.detail ?? payload;
+  }
+
+  return payload;
+}
+
+async function parseFailureResponse(
+  response: Response,
+  fallbackMessage: string,
+): Promise<ParsedAppError> {
+  try {
+    const payload: unknown = await response.json();
+    return toParsedAppError(
+      extractBackendErrorPayload(payload),
+      fallbackMessage,
+    );
+  } catch {
+    return toParsedAppError(response, fallbackMessage);
+  }
 }
 
 async function refreshToken(): Promise<string | null> {
@@ -142,16 +192,32 @@ export async function apiFetch<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
+  return apiRequest<T>(path, options, true);
+}
+
+export async function apiFetchFormData<T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
+  return apiRequest<T>(path, options, false);
+}
+
+export async function apiFetchBlob(
+  path: string,
+  options: RequestInit = {},
+): Promise<Response> {
+  const response = await apiRequest<Response>(path, options, true, true);
+  return response;
+}
+
+async function apiRequest<T>(
+  path: string,
+  options: RequestInit,
+  includeJsonContentType: boolean,
+  returnRawResponse = false,
+): Promise<T> {
   const token = localStorage.getItem("auth_token");
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...toHeaderRecord(options.headers),
-  };
-
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
+  const headers = buildRequestHeaders(options, token, includeJsonContentType);
 
   let res: Response;
   try {
@@ -170,18 +236,10 @@ export async function apiFetch<T>(
   if (res.status === 401 && token) {
     // Don't retry for auth endpoints (login, register, refresh, logout)
     if (path.startsWith("/auth/")) {
-      let errorData: any;
-      try {
-        errorData = await res.json();
-      } catch {
-        const parsedAppError = toParsedAppError(res, "Authentication failed");
-        console.error(formatErrorForLogging(parsedAppError));
-        throw parsedAppError;
-      }
-
-      // Parse backend error response
-      const backendError = errorData.error || errorData.detail || errorData;
-      const parsedAppError = toParsedAppError(backendError, "Authentication failed");
+      const parsedAppError = await parseFailureResponse(
+        res,
+        "Authentication failed",
+      );
       console.error(formatErrorForLogging(parsedAppError));
       throw parsedAppError;
     }
@@ -217,21 +275,16 @@ export async function apiFetch<T>(
             })
               .then(async (retryRes) => {
                 if (!retryRes.ok) {
-                  let errorData: any;
-                  try {
-                    errorData = await retryRes.json();
-                  } catch {
-                    const parsedAppError = toParsedAppError(retryRes, "API request failed");
-                    console.error(formatErrorForLogging(parsedAppError));
-                    throw parsedAppError;
-                  }
-
-                  const backendError = errorData.error || errorData.detail || errorData;
-                  const parsedAppError = toParsedAppError(backendError, "API request failed");
+                  const parsedAppError = await parseFailureResponse(
+                    retryRes,
+                    "API request failed",
+                  );
                   console.error(formatErrorForLogging(parsedAppError));
                   throw parsedAppError;
                 }
-                return parseSuccessResponse<T>(retryRes);
+                return returnRawResponse
+                  ? (retryRes as T)
+                  : parseSuccessResponse<T>(retryRes);
               })
               .then(resolve)
               .catch(reject);
@@ -273,41 +326,26 @@ export async function apiFetch<T>(
     });
 
     if (!retryRes.ok) {
-      let errorData: any;
-      try {
-        errorData = await retryRes.json();
-      } catch {
-        const parsedAppError = toParsedAppError(retryRes, "API request failed");
-        console.error(formatErrorForLogging(parsedAppError));
-        throw parsedAppError;
-      }
-
-      const backendError = errorData.error || errorData.detail || errorData;
-      const parsedAppError = toParsedAppError(backendError, "API request failed");
+      const parsedAppError = await parseFailureResponse(
+        retryRes,
+        "API request failed",
+      );
       console.error(formatErrorForLogging(parsedAppError));
       throw parsedAppError;
     }
 
-    return parseSuccessResponse<T>(retryRes);
+    return returnRawResponse ? (retryRes as T) : parseSuccessResponse<T>(retryRes);
   }
 
   // Handle non-401 errors
   if (!res.ok) {
-    let errorData: any;
-    try {
-      errorData = await res.json();
-    } catch {
-      const parsedAppError = toParsedAppError(res, "API request failed");
-      console.error(formatErrorForLogging(parsedAppError));
-      throw parsedAppError;
-    }
-
-    // Backend sends errors in { error: { code, message, details, ... } } format
-    const backendError = errorData.error || errorData.detail || errorData;
-    const parsedAppError = toParsedAppError(backendError, "API request failed");
+    const parsedAppError = await parseFailureResponse(
+      res,
+      "API request failed",
+    );
     console.error(formatErrorForLogging(parsedAppError));
     throw parsedAppError;
   }
 
-  return parseSuccessResponse<T>(res);
+  return returnRawResponse ? (res as T) : parseSuccessResponse<T>(res);
 }

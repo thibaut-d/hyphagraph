@@ -33,7 +33,13 @@ async def test_export_entities_uses_export_service_dependency() -> None:
 async def test_export_typedb_full_uses_typedb_service_dependency() -> None:
     class StubTypeDBExportService:
         async def export_full(self):
-            return {"schema": "define test", "data": "insert test"}
+            return {
+                "schema": "define test",
+                "data": "insert test",
+                "format": "typeql",
+                "database": "typedb",
+                "version": "3.0",
+            }
 
     app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(email="test@example.com")
     app.dependency_overrides[get_typedb_export_service] = lambda: StubTypeDBExportService()
@@ -44,4 +50,10 @@ async def test_export_typedb_full_uses_typedb_service_dependency() -> None:
         app.dependency_overrides.clear()
 
     assert response.status_code == 200
-    assert response.json() == {"schema": "define test", "data": "insert test"}
+    assert response.json() == {
+        "schema": "define test",
+        "data": "insert test",
+        "format": "typeql",
+        "database": "typedb",
+        "version": "3.0",
+    }

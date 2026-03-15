@@ -3,29 +3,13 @@
  *
  * Handles document upload, extraction, entity linking, and saving to graph.
  */
-import { apiFetch } from "./client";
+import { apiFetch, apiFetchFormData } from "./client";
 import type {
   DocumentUploadResponse,
   DocumentExtractionPreview,
   SaveExtractionRequest,
   SaveExtractionResult,
 } from "../types/extraction";
-
-const API_BASE_URL = (import.meta.env.VITE_API_URL ?? "/api").replace(/\/$/, "");
-
-function getAuthHeader(): HeadersInit {
-  const token = localStorage.getItem("auth_token");
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
-async function getErrorMessage(response: Response, fallback: string): Promise<string> {
-  try {
-    const error = await response.json();
-    return error.detail || fallback;
-  } catch {
-    return fallback;
-  }
-}
 
 /**
  * Upload a document (PDF or TXT) to a source.
@@ -43,17 +27,13 @@ export async function uploadDocument(
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await fetch(`${API_BASE_URL}/sources/${sourceId}/upload-document`, {
-    method: "POST",
-    headers: getAuthHeader(),
-    body: formData,
-  });
-
-  if (!response.ok) {
-    throw new Error(await getErrorMessage(response, "Failed to upload document"));
-  }
-
-  return response.json();
+  return apiFetchFormData<DocumentUploadResponse>(
+    `/sources/${sourceId}/upload-document`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
 }
 
 /**
@@ -101,17 +81,13 @@ export async function uploadAndExtract(
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await fetch(`${API_BASE_URL}/sources/${sourceId}/upload-and-extract`, {
-    method: "POST",
-    headers: getAuthHeader(),
-    body: formData,
-  });
-
-  if (!response.ok) {
-    throw new Error(await getErrorMessage(response, "Failed to upload and extract"));
-  }
-
-  return response.json();
+  return apiFetchFormData<DocumentExtractionPreview>(
+    `/sources/${sourceId}/upload-and-extract`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
 }
 
 /**

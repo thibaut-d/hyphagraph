@@ -1,10 +1,25 @@
-from typing import Any
+from typing import TypedDict
+from uuid import UUID
 from app.models.source import Source
 from app.models.source_revision import SourceRevision
 from app.schemas.source import SourceWrite, SourceRead, SourceRevisionRead
 
 
-def source_revision_from_write(payload: SourceWrite) -> dict[str, Any]:
+class SourceRevisionPayload(TypedDict, total=False):
+    kind: str
+    title: str
+    authors: list[str] | None
+    year: int | None
+    origin: str | None
+    url: str
+    trust_level: float | None
+    summary: dict[str, str] | None
+    source_metadata: dict[str, object] | None
+    created_with_llm: str | None
+    created_by_user_id: UUID | None
+
+
+def source_revision_from_write(payload: SourceWrite) -> SourceRevisionPayload:
     """
     Convert SourceWrite payload to SourceRevision data dict.
 
@@ -24,7 +39,10 @@ def source_revision_from_write(payload: SourceWrite) -> dict[str, Any]:
     }
 
 
-def source_to_read(source: Source, current_revision: SourceRevision = None) -> SourceRead:
+def source_to_read(
+    source: Source,
+    current_revision: SourceRevision | None = None,
+) -> SourceRead:
     """
     ORM → Read
 

@@ -20,6 +20,12 @@ vi.mock("react-i18next", () => ({
         const count = params?.count ?? 0;
         return `${count} evidence items`;
       }
+      if (params?.defaultValue) {
+        let result = params.defaultValue;
+        return result.replace(/\{\{(\w+)\}\}/g, (_: string, match: string) =>
+          String(params[match] ?? "")
+        );
+      }
       if (params && typeof params === "object") {
         return key.replace(/\{\{(\w+)\}\}/g, (_, match) => params[match] || "");
       }
@@ -52,8 +58,8 @@ export const mockRelations: RelationRead[] = [
     direction: "supports",
     confidence: 0.8,
     roles: [
-      { entity_id: "entity-1", role_type: "agent" },
-      { entity_id: "entity-1", role_type: "patient" },
+      { entity_id: "entity-1", role_type: "agent", entity_slug: "paracetamol" },
+      { entity_id: "entity-1", role_type: "patient", entity_slug: "paracetamol" },
     ],
     notes: "Strong evidence",
   },
@@ -64,8 +70,8 @@ export const mockRelations: RelationRead[] = [
     direction: "contradicts",
     confidence: 0.6,
     roles: [
-      { entity_id: "entity-1", role_type: "agent" },
-      { entity_id: "entity-3", role_type: "outcome" },
+      { entity_id: "entity-1", role_type: "agent", entity_slug: "paracetamol" },
+      { entity_id: "entity-3", role_type: "outcome", entity_slug: "nausea" },
     ],
   },
   {
@@ -74,7 +80,7 @@ export const mockRelations: RelationRead[] = [
     kind: "treats",
     direction: "supports",
     confidence: 0.9,
-    roles: [{ entity_id: "entity-1", role_type: "agent" }],
+    roles: [{ entity_id: "entity-1", role_type: "agent", entity_slug: "paracetamol" }],
   },
 ];
 

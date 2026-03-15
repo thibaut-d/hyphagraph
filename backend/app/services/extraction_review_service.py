@@ -18,6 +18,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.staged_extraction import StagedExtraction, ExtractionStatus, ExtractionType
 from app.llm.schemas import ExtractedEntity, ExtractedRelation, ExtractedClaim
 from app.schemas.staged_extraction import (
+    AutoCommitResponse,
+    BatchReviewResponse,
     StagedExtractionRead,
     StagedExtractionFilters,
     ReviewStats,
@@ -310,13 +312,28 @@ class ExtractionReviewService:
         logger.info(f"Rejected extraction {extraction_id}")
         return True
 
+    async def get_extraction(self, extraction_id: UUID) -> StagedExtraction | None:
+        """Load a single staged extraction by ID."""
+        return await load_staged_extraction(self.db, extraction_id)
+
+    async def delete_extraction(self, extraction_id: UUID) -> bool:
+        """Delete a staged extraction by ID."""
+        staged = await load_staged_extraction(self.db, extraction_id)
+        if not staged:
+            return False
+
+        await self.db.delete(staged)
+        await self.db.commit()
+        logger.info(f"Deleted staged extraction {extraction_id}")
+        return True
+
     async def batch_review(
         self,
         extraction_ids: list[UUID],
         decision: str,  # "approve" or "reject"
         reviewer_id: UUID,
         notes: str | None = None,
-    ) -> dict:
+    ) -> BatchReviewResponse:
         """
         Review multiple extractions at once.
 
@@ -358,14 +375,14 @@ class ExtractionReviewService:
                 logger.error(f"Failed to review extraction {extraction_id}: {e}")
                 failed.append(extraction_id)
 
-        return {
-            "total_requested": len(extraction_ids),
-            "succeeded": succeeded,
-            "failed": len(failed),
-            "failed_ids": failed,
-            "materialized_entities": materialized_entities,
-            "materialized_relations": materialized_relations,
-        }
+        return BatchReviewResponse(
+            total_requested=len(extraction_ids),
+            succeeded=succeeded,
+            failed=len(failed),
+            failed_ids=failed,
+            materialized_entities=materialized_entities,
+            materialized_relations=materialized_relations,
+        )
 
     # =========================================================================
     # Materialization
@@ -524,15 +541,19 @@ class ExtractionReviewService:
 
         return True
 
-    async def auto_commit_eligible_extractions(self) -> dict:
+    async def auto_commit_eligible_extractions(self) -> AutoCommitResponse:
         """
         Automatically commit all eligible pending extractions.
 
         Returns:
-            Dict with counts of auto-committed extractions
+            Counts of auto-committed extractions
         """
         if not self.auto_commit_enabled:
-            return {"auto_committed": 0, "message": "Auto-commit is disabled"}
+            return AutoCommitResponse(
+                status="success",
+                auto_committed=0,
+                message="Auto-commit is disabled",
+            )
 
         # Find eligible pending extractions
         result = await self.db.execute(
@@ -543,7 +564,11 @@ class ExtractionReviewService:
         eligible = result.scalars().all()
 
         if not eligible:
-            return {"auto_committed": 0, "message": "No eligible extractions found"}
+            return AutoCommitResponse(
+                status="success",
+                auto_committed=0,
+                message="No eligible extractions found",
+            )
 
         # Auto-approve and materialize
         materialized_count = 0
@@ -577,8 +602,9 @@ class ExtractionReviewService:
             f"({failed_count} failed)"
         )
 
-        return {
-            "auto_committed": materialized_count,
-            "failed": failed_count,
-            "total_eligible": len(eligible),
-        }
+        return AutoCommitResponse(
+            status="success",
+            auto_committed=materialized_count,
+            failed=failed_count,
+            total_eligible=len(eligible),
+        )

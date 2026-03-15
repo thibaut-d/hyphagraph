@@ -5,20 +5,17 @@ Provides human-in-the-loop review interface for staged LLM extractions.
 """
 import logging
 from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
 from app.api.service_dependencies import get_extraction_review_service
-from app.database import get_db
 from app.dependencies.auth import get_current_user, get_current_active_superuser
-from app.models.staged_extraction import StagedExtraction
 from app.models.user import User
 from app.schemas.staged_extraction import (
     StagedExtractionRead,
     StagedExtractionListResponse,
     ReviewDecisionRequest,
     BatchReviewRequest,
+    AutoCommitResponse,
     BatchReviewResponse,
     ReviewStats,
     AutoCommitConfigRequest,
@@ -88,16 +85,13 @@ async def get_review_stats(
 @router.get("/{extraction_id}", response_model=StagedExtractionRead)
 async def get_extraction(
     extraction_id: UUID,
-    db: AsyncSession = Depends(get_db),
+    service: ExtractionReviewService = Depends(get_extraction_review_service),
     current_user: User = Depends(get_current_user),
 ):
     """
     Get details of a specific staged extraction.
     """
-    result = await db.execute(
-        select(StagedExtraction).where(StagedExtraction.id == extraction_id)
-    )
-    extraction = result.scalar_one_or_none()
+    extraction = await service.get_extraction(extraction_id)
 
     if not extraction:
         raise AppException(
@@ -175,14 +169,14 @@ async def batch_review_extractions(
         notes=request.notes,
     )
 
-    return BatchReviewResponse(**result)
+    return result
 
 
 # =============================================================================
 # Auto-Commit Management
 # =============================================================================
 
-@router.post("/auto-commit", response_model=dict)
+@router.post("/auto-commit", response_model=AutoCommitResponse)
 async def trigger_auto_commit(
     service: ExtractionReviewService = Depends(get_extraction_review_service),
     current_user: User = Depends(get_current_active_superuser),
@@ -193,12 +187,7 @@ async def trigger_auto_commit(
     Admin only. This will approve and materialize all high-confidence extractions
     that meet auto-commit criteria.
     """
-    result = await service.auto_commit_eligible_extractions()
-
-    return {
-        "status": "success",
-        **result,
-    }
+    return await service.auto_commit_eligible_extractions()
 
 
 # =============================================================================
@@ -242,7 +231,7 @@ async def list_all_extractions(
 @router.delete("/{extraction_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_staged_extraction(
     extraction_id: UUID,
-    db: AsyncSession = Depends(get_db),
+    service: ExtractionReviewService = Depends(get_extraction_review_service),
     current_user: User = Depends(get_current_active_superuser),
 ):
     """
@@ -250,12 +239,8 @@ async def delete_staged_extraction(
 
     Admin only. Useful for removing erroneous or duplicate extractions.
     """
-    result = await db.execute(
-        select(StagedExtraction).where(StagedExtraction.id == extraction_id)
-    )
-    extraction = result.scalar_one_or_none()
-
-    if not extraction:
+    deleted = await service.delete_extraction(extraction_id)
+    if not deleted:
         raise AppException(
             status_code=404,
             error_code=ErrorCode.NOT_FOUND,
@@ -264,8 +249,4 @@ async def delete_staged_extraction(
             context={"extraction_id": str(extraction_id)}
         )
 
-    await db.delete(extraction)
-    await db.commit()
-
-    logger.info(f"Deleted staged extraction {extraction_id}")
     return None

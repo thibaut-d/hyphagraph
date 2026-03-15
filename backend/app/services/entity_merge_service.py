@@ -9,13 +9,15 @@ Provides:
 import logging
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete, func
+from sqlalchemy import select, update, func
 from difflib import SequenceMatcher
 
 from app.models.entity import Entity
+from app.models.entity_merge_record import EntityMergeRecord
 from app.models.entity_revision import EntityRevision
 from app.models.entity_term import EntityTerm
 from app.models.relation_role_revision import RelationRoleRevision
+from app.schemas.entity_merge import AutoMergeAction, EntityMergeResult
 
 
 logger = logging.getLogger(__name__)
@@ -89,8 +91,9 @@ class EntityMergeService:
         self,
         source_entity_id: UUID,
         target_entity_id: UUID,
-        preserve_source_slug_as_term: bool = True
-    ) -> dict:
+        preserve_source_slug_as_term: bool = True,
+        merged_by_user_id: UUID | None = None,
+    ) -> EntityMergeResult:
         """
         Merge source entity into target entity.
 
@@ -123,8 +126,8 @@ class EntityMergeService:
         if target_entity_id not in entities_map:
             raise ValueError(f"Target entity {target_entity_id} not found")
 
-        source_entity, source_revision = entities_map[source_entity_id]
-        target_entity, target_revision = entities_map[target_entity_id]
+        _, source_revision = entities_map[source_entity_id]
+        _, target_revision = entities_map[target_entity_id]
 
         logger.info(
             f"Merging entity '{source_revision.slug}' into '{target_revision.slug}'"
@@ -165,8 +168,17 @@ class EntityMergeService:
 
                 logger.info(f"Added term '{source_revision.slug}' to entity '{target_revision.slug}'")
 
+        merge_record = EntityMergeRecord(
+            source_entity_id=source_entity_id,
+            target_entity_id=target_entity_id,
+            merged_by_user_id=merged_by_user_id,
+            source_slug=source_revision.slug,
+            target_slug=target_revision.slug,
+        )
+        self.db.add(merge_record)
+
         # Mark source entity as merged (by setting is_current = False on revision)
-        # This effectively soft-deletes the entity without removing the data
+        # The explicit merge record preserves the provenance of this state change.
         await self.db.execute(
             update(EntityRevision)
             .where(EntityRevision.entity_id == source_entity_id)
@@ -180,17 +192,18 @@ class EntityMergeService:
             f"source entity marked as merged"
         )
 
-        return {
-            'source_slug': source_revision.slug,
-            'target_slug': target_revision.slug,
-            'relations_moved': relations_count,
-            'term_added': preserve_source_slug_as_term,
-        }
+        return EntityMergeResult(
+            source_slug=source_revision.slug,
+            target_slug=target_revision.slug,
+            relations_moved=relations_count or 0,
+            term_added=preserve_source_slug_as_term,
+            merge_recorded=True,
+        )
 
     async def auto_merge_obvious_duplicates(
         self,
         dry_run: bool = True
-    ) -> list[dict]:
+    ) -> list[AutoMergeAction]:
         """
         Automatically merge obvious duplicates.
 
@@ -206,7 +219,7 @@ class EntityMergeService:
             List of merge actions (performed or suggested)
         """
         duplicates = await self.find_potential_duplicates(similarity_threshold=0.9)
-        merge_actions = []
+        merge_actions: list[AutoMergeAction] = []
 
         for source_id, target_id, similarity in duplicates:
             # Get slugs
@@ -226,20 +239,20 @@ class EntityMergeService:
             # Determine which to keep (prefer shorter, simpler slug)
             if len(source_rev.slug) > len(target_rev.slug):
                 # Keep target (shorter slug)
-                action = {
-                    'source_slug': source_rev.slug,
-                    'target_slug': target_rev.slug,
-                    'similarity': similarity,
-                    'action': 'merge',
-                }
+                action = AutoMergeAction(
+                    source_slug=source_rev.slug,
+                    target_slug=target_rev.slug,
+                    similarity=similarity,
+                    action="merge",
+                )
             else:
                 # Keep source (shorter slug)
-                action = {
-                    'source_slug': target_rev.slug,
-                    'target_slug': source_rev.slug,
-                    'similarity': similarity,
-                    'action': 'merge',
-                }
+                action = AutoMergeAction(
+                    source_slug=target_rev.slug,
+                    target_slug=source_rev.slug,
+                    similarity=similarity,
+                    action="merge",
+                )
 
             if not dry_run:
                 # Perform merge
@@ -248,7 +261,7 @@ class EntityMergeService:
                 else:
                     result = await self.merge_entities(target_id, source_id)
 
-                action['result'] = result
+                action.result = result
 
             merge_actions.append(action)
 

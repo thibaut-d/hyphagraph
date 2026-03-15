@@ -80,7 +80,7 @@ export interface ErrorDetail {
   message: string;
   details?: string;
   field?: string;
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
 }
 
 /**
@@ -100,10 +100,10 @@ export interface ParsedError {
   field?: string;
 
   /** Additional context data */
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
 
   /** Original error for logging */
-  originalError?: any;
+  originalError?: unknown;
 
   /** HTTP status code if applicable */
   statusCode?: number;
@@ -118,8 +118,8 @@ export class ParsedAppError extends Error implements ParsedError {
   developerMessage: string;
   code: ErrorCode;
   field?: string;
-  context?: Record<string, any>;
-  originalError?: any;
+  context?: Record<string, unknown>;
+  originalError?: unknown;
   statusCode?: number;
 
   constructor(parsedError: ParsedError) {
@@ -135,6 +135,52 @@ export class ParsedAppError extends Error implements ParsedError {
   }
 }
 
+interface ValidationIssue {
+  loc?: unknown[];
+  msg?: string;
+}
+
+interface BackendErrorPayload {
+  code: string;
+  message: string;
+  details?: string;
+  field?: string;
+  context?: Record<string, unknown>;
+}
+
+interface HttpLikeError {
+  status: number;
+  statusText: string;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isValidationIssueArray(value: unknown): value is ValidationIssue[] {
+  return Array.isArray(value);
+}
+
+function isBackendErrorPayload(value: unknown): value is BackendErrorPayload {
+  return isRecord(value) && typeof value.code === "string" && typeof value.message === "string";
+}
+
+function isHttpLikeError(value: unknown): value is HttpLikeError {
+  return isRecord(value) && typeof value.status === "number" && typeof value.statusText === "string";
+}
+
+function getValidationField(issue: ValidationIssue): string | undefined {
+  if (!Array.isArray(issue.loc)) {
+    return undefined;
+  }
+
+  const path = issue.loc.filter(
+    (segment): segment is string | number =>
+      typeof segment === "string" || typeof segment === "number",
+  );
+  return path.length > 0 ? path.join(".") : undefined;
+}
+
 /**
  * Parse an error from any source into a standardized format.
  *
@@ -148,11 +194,11 @@ export class ParsedAppError extends Error implements ParsedError {
  * @param fallbackMessage - Message to use if error cannot be parsed
  */
 export function parseError(
-  error: any,
+  error: unknown,
   fallbackMessage: string = "An unexpected error occurred",
 ): ParsedError {
   // If already a ParsedError, return it
-  if (error && typeof error === "object" && "userMessage" in error && "code" in error) {
+  if (isRecord(error) && "userMessage" in error && "code" in error) {
     return error as ParsedError;
   }
 
@@ -161,22 +207,24 @@ export function parseError(
     // Check if the error message is a JSON string (from apiFetch)
     try {
       const parsed = JSON.parse(error.message);
-      if (parsed && typeof parsed === "object") {
+      if (isRecord(parsed) || isValidationIssueArray(parsed)) {
         // Backend validation error format
-        if (Array.isArray(parsed)) {
+        if (isValidationIssueArray(parsed)) {
           const firstError = parsed[0];
+          const field = firstError ? getValidationField(firstError) : undefined;
+          const message = firstError?.msg ?? fallbackMessage;
           return {
-            userMessage: `Invalid ${firstError.loc?.join(".")}: ${firstError.msg}`,
+            userMessage: field ? `Invalid ${field}: ${message}` : message,
             developerMessage: JSON.stringify(parsed, null, 2),
             code: ErrorCode.VALIDATION_ERROR,
-            field: firstError.loc?.join("."),
+            field,
             context: { validation_errors: parsed },
             originalError: error,
           };
         }
 
         // Backend error detail format
-        if (parsed.code && parsed.message) {
+        if (isBackendErrorPayload(parsed)) {
           return {
             userMessage: parsed.message,
             developerMessage: parsed.details || parsed.message,
@@ -215,8 +263,8 @@ export function parseError(
   }
 
   // Handle Response objects
-  if (error && typeof error === "object" && "status" in error && "statusText" in error) {
-    const statusCode = error.status as number;
+  if (isHttpLikeError(error)) {
+    const statusCode = error.status;
     let code = ErrorCode.UNKNOWN_ERROR;
     let userMessage = fallbackMessage;
 
@@ -247,8 +295,8 @@ export function parseError(
   }
 
   // Handle plain objects with error structure
-  if (error && typeof error === "object") {
-    if ("code" in error && "message" in error) {
+  if (isRecord(error)) {
+    if (isBackendErrorPayload(error)) {
       return {
         userMessage: error.message,
         developerMessage: error.details || error.message,
@@ -259,7 +307,7 @@ export function parseError(
       };
     }
 
-    if ("message" in error) {
+    if (typeof error.message === "string") {
       return {
         userMessage: error.message,
         developerMessage: JSON.stringify(error, null, 2),
@@ -289,7 +337,7 @@ export function parseError(
 }
 
 export function toParsedAppError(
-  error: any,
+  error: unknown,
   fallbackMessage: string = "An unexpected error occurred",
 ): ParsedAppError {
   if (error instanceof ParsedAppError) {

@@ -17,6 +17,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.relation_type import RelationType
+from app.schemas.relation_type import RelationTypeStatisticsRead, SuggestNewTypeResponse, relation_type_to_read
 
 
 class RelationTypeService:
@@ -166,7 +167,7 @@ class RelationTypeService:
         self,
         proposed_type: str,
         context: str
-    ) -> dict:
+    ) -> SuggestNewTypeResponse:
         """
         Suggest whether a new relation type should be added.
 
@@ -178,19 +179,22 @@ class RelationTypeService:
         similar = await self.find_similar(proposed_type, context)
 
         if similar:
-            return {
-                'similar_existing': similar.type_id,
-                'should_add': False,
-                'reason': f"Similar type '{similar.type_id}' already exists. Consider using it or adding '{proposed_type}' as an alias."
-            }
+            return SuggestNewTypeResponse(
+                similar_existing=similar.type_id,
+                should_add=False,
+                reason=(
+                    f"Similar type '{similar.type_id}' already exists. Consider using it "
+                    f"or adding '{proposed_type}' as an alias."
+                ),
+            )
 
-        return {
-            'similar_existing': None,
-            'should_add': True,
-            'reason': f"No similar type found. '{proposed_type}' can be added as a new relation type."
-        }
+        return SuggestNewTypeResponse(
+            similar_existing=None,
+            should_add=True,
+            reason=f"No similar type found. '{proposed_type}' can be added as a new relation type.",
+        )
 
-    async def get_statistics(self) -> dict:
+    async def get_statistics(self) -> RelationTypeStatisticsRead:
         """Get relation type usage statistics."""
         all_types = await self.get_all_active()
 
@@ -207,11 +211,13 @@ class RelationTypeService:
                 categories[cat] = 0
             categories[cat] += 1
 
-        return {
-            'total_types': total_types,
-            'system_types': system_types,
-            'user_types': user_types,
-            'total_usage': total_usage,
-            'by_category': categories,
-            'most_used': sorted(all_types, key=lambda t: t.usage_count, reverse=True)[:10]
-        }
+        most_used = sorted(all_types, key=lambda relation_type: relation_type.usage_count, reverse=True)[:10]
+
+        return RelationTypeStatisticsRead(
+            total_types=total_types,
+            system_types=system_types,
+            user_types=user_types,
+            total_usage=total_usage,
+            by_category=categories,
+            most_used=[relation_type_to_read(relation_type) for relation_type in most_used],
+        )

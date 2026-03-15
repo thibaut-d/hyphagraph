@@ -6,7 +6,7 @@ Note: The endpoints are only registered when TESTING=True at app startup,
 so we test the endpoint functions directly rather than via HTTP client.
 """
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 from sqlalchemy import text
 from fastapi import HTTPException
 
@@ -72,7 +72,8 @@ class TestTestHelpers:
         mock_db.commit = AsyncMock()
 
         # Act
-        result = await reset_database(db=mock_db)
+        with patch("app.api.test_helpers.run_bootstrap_tasks", new_callable=AsyncMock) as mock_bootstrap:
+            result = await reset_database(db=mock_db)
 
         # Assert
         assert result["tables_truncated"] == 3
@@ -88,6 +89,7 @@ class TestTestHelpers:
         assert "TRUNCATE TABLE sources" in sql_commands
         assert "TRUNCATE TABLE relations" in sql_commands
         assert "SET session_replication_role = 'origin'" in sql_commands
+        mock_bootstrap.assert_awaited_once_with(mock_db)
 
     @pytest.mark.asyncio
     async def test_reset_database_handles_empty_database(self):

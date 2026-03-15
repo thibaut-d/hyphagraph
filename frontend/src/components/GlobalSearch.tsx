@@ -1,8 +1,9 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   TextField,
   Autocomplete,
+  type AutocompleteInputChangeReason,
   Box,
   Typography,
   Chip,
@@ -13,7 +14,6 @@ import {
 import SearchIcon from "@mui/icons-material/Search";
 import { getSuggestions, SearchSuggestion } from "../api/search";
 import { useDebounce } from "../hooks/useDebounce";
-import { useNotification } from "../notifications/NotificationContext";
 
 /**
  * GlobalSearch component for the main navigation header.
@@ -68,11 +68,15 @@ export function GlobalSearch() {
         setOpen(false);
       }
     },
-    [navigate]
+    [navigate],
   );
 
   const handleInputChange = useCallback(
-    (_event: any, newValue: string, reason: string) => {
+    (
+      _event: React.SyntheticEvent,
+      newValue: string,
+      reason: AutocompleteInputChangeReason,
+    ) => {
       if (reason === "input") {
         setInputValue(newValue);
         setOpen(true);
@@ -82,7 +86,7 @@ export function GlobalSearch() {
         setOpen(false);
       }
     },
-    []
+    [],
   );
 
   const handleKeyDown = useCallback(
@@ -95,7 +99,7 @@ export function GlobalSearch() {
         navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
       }
     },
-    [inputValue, navigate]
+    [inputValue, navigate],
   );
 
   return (

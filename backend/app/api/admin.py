@@ -8,11 +8,11 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from uuid import UUID
-from pydantic import BaseModel, EmailStr
 
 from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.models.user import User
+from app.schemas.admin import UserListItemRead, UserStatsRead, UserUpdate
 from app.services.user_service import UserService
 from app.utils.errors import AppException, ErrorCode, ForbiddenException, ValidationException
 
@@ -35,39 +35,10 @@ def require_superuser(current_user: User = Depends(get_current_user)) -> User:
 
 
 # =============================================================================
-# Schemas
-# =============================================================================
-
-class UserUpdate(BaseModel):
-    """Schema for updating user from admin panel."""
-    is_active: bool | None = None
-    is_superuser: bool | None = None
-    is_verified: bool | None = None
-
-
-class UserStats(BaseModel):
-    """User statistics for admin dashboard."""
-    total_users: int
-    active_users: int
-    superusers: int
-    verified_users: int
-
-
-class UserListItem(BaseModel):
-    """User item for admin list."""
-    id: str
-    email: str
-    is_active: bool
-    is_superuser: bool
-    is_verified: bool
-    created_at: str
-
-
-# =============================================================================
 # Endpoints
 # =============================================================================
 
-@router.get("/stats", response_model=UserStats)
+@router.get("/stats", response_model=UserStatsRead)
 async def get_user_statistics(
     db: AsyncSession = Depends(get_db),
     _admin: User = Depends(require_superuser),
@@ -95,7 +66,7 @@ async def get_user_statistics(
         select(func.count()).select_from(User).where(User.is_verified == True)
     )
 
-    return UserStats(
+    return UserStatsRead(
         total_users=total or 0,
         active_users=active or 0,
         superusers=supers or 0,
@@ -103,7 +74,7 @@ async def get_user_statistics(
     )
 
 
-@router.get("/users", response_model=list[UserListItem])
+@router.get("/users", response_model=list[UserListItemRead])
 async def list_users(
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
@@ -132,7 +103,7 @@ async def list_users(
     ]
 
 
-@router.get("/users/{user_id}", response_model=UserListItem)
+@router.get("/users/{user_id}", response_model=UserListItemRead)
 async def get_user(
     user_id: UUID,
     db: AsyncSession = Depends(get_db),
@@ -152,7 +123,7 @@ async def get_user(
             context={"user_id": str(user_id)}
         )
 
-    return UserListItem(
+    return UserListItemRead(
         id=str(user.id),
         email=user.email,
         is_active=user.is_active,
@@ -162,7 +133,7 @@ async def get_user(
     )
 
 
-@router.put("/users/{user_id}", response_model=UserListItem)
+@router.put("/users/{user_id}", response_model=UserListItemRead)
 async def update_user(
     user_id: UUID,
     updates: UserUpdate,
@@ -224,7 +195,7 @@ async def update_user(
     await db.commit()
     await db.refresh(user)
 
-    return UserListItem(
+    return UserListItemRead(
         id=str(user.id),
         email=user.email,
         is_active=user.is_active,

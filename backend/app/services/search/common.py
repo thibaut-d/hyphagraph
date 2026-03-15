@@ -1,25 +1,33 @@
 from collections.abc import Awaitable, Callable, Sequence
-from typing import Any, TypeVar
+from typing import Protocol, TypeVar
 
 from sqlalchemy import String, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement, Select
 
 ResultT = TypeVar("ResultT")
+RowT = TypeVar("RowT")
 
 
-def json_text_contains(column: Any, query_lower: str) -> ColumnElement[bool]:
+class SupportsStringValues(Protocol):
+    def values(self) -> object: ...
+
+
+def json_text_contains(column: object, query_lower: str) -> ColumnElement[bool]:
     return func.lower(func.cast(column, String)).contains(query_lower)
 
 
-def text_contains(column: Any, query_lower: str) -> ColumnElement[bool]:
+def text_contains(column: object, query_lower: str) -> ColumnElement[bool]:
     return func.lower(column).contains(query_lower)
 
 
-def build_snippet(value: Any, max_length: int = 150) -> str | None:
+def build_snippet(
+    value: SupportsStringValues | str | None,
+    max_length: int = 150,
+) -> str | None:
     text: str | None = None
 
-    if isinstance(value, dict):
+    if value is not None and hasattr(value, "values"):
         text = next((item for item in value.values() if isinstance(item, str)), None)
     elif isinstance(value, str):
         text = value
@@ -33,12 +41,12 @@ def build_snippet(value: Any, max_length: int = 150) -> str | None:
 async def execute_ranked_query(
     db: AsyncSession,
     *,
-    base_query: Select[Any],
-    relevance_score: ColumnElement[Any],
-    order_by: Sequence[ColumnElement[Any]],
+    base_query: Select[tuple[RowT]],
+    relevance_score: ColumnElement[float],
+    order_by: Sequence[ColumnElement[object]],
     limit: int,
     offset: int,
-    map_row: Callable[[Any], Awaitable[ResultT] | ResultT],
+    map_row: Callable[[RowT], Awaitable[ResultT] | ResultT],
 ) -> tuple[list[ResultT], int]:
     count_stmt = select(func.count()).select_from(base_query.subquery())
     count_result = await db.execute(count_stmt)
