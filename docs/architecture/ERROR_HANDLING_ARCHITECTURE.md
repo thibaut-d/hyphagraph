@@ -829,13 +829,13 @@ try {
 
 ## Appendix
 
-### Complete Error Code Reference
+### Error Handling Reference
 
-See `docs/development/ERROR_HANDLING_QUICK_REFERENCE.md` for the complete list of error codes and usage examples.
+See `docs/development/ERROR_HANDLING.md` for the canonical contract and `docs/development/ERROR_HANDLING_QUICK_REFERENCE.md` for the operating summary.
 
 ### Testing Error Handling
 
-See `docs/development/TESTING_GUIDE.md` for error handling test patterns and examples.
+Validate status, error code, message, and affected frontend behavior in the focused test suites for the changed path.
 
 ### Error Handling Checklist
 

@@ -48,7 +48,7 @@ A complete unified error handling system that ensures **all errors are clearly e
 - Updated `frontend/src/notifications/NotificationContext.tsx` - Error object handling
 
 ### Documentation
-- `docs/development/ERROR_HANDLING.md` - Complete usage guide and examples
+- `docs/development/ERROR_HANDLING.md` - Canonical error-handling contract
 
 ## 🚀 Usage Examples
 
@@ -249,9 +249,4 @@ To fully adopt the system:
 
 ## 📖 Documentation
 
-See `docs/development/ERROR_HANDLING.md` for:
-- Complete error code reference
-- Detailed usage examples
-- Testing guidelines
-- Migration guide
-- Best practices
+See `docs/development/ERROR_HANDLING.md` for the canonical contract and `docs/development/ERROR_HANDLING_QUICK_REFERENCE.md` for the short operating summary.

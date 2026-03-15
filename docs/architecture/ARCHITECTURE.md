@@ -173,17 +173,9 @@ We do NOT use FastAPI Users or similar frameworks because:
 
 ### Authorization Strategy
 
-Explicit Python functions, no RBAC frameworks:
+Authorization stays explicit in Python code. Avoid decorator-heavy or framework-managed permission systems.
 
-```python
-def can_create_entity(user: User) -> bool:
-    return user.is_active
-
-def can_edit_relation(user: User, relation: Relation) -> bool:
-    return user.is_active and (user.is_superuser or relation.created_by_user_id == user.id)
-```
-
-See `docs/development/CODE_GUIDE.md` for full auth patterns.
+See `docs/development/CODE_GUIDE.md` for the operating rules.
 
 ---
 
