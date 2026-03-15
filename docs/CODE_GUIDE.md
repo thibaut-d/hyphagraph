@@ -97,5 +97,5 @@ Avoid:
 ## Temporary and support artifacts
 
 - Put temporary reports and experiments in `.temp/`.
-- Keep agent workflow files in `.ai/`.
+- Keep agent workflow files in `docs/` and `AGENTS.md`.
 - Do not scatter scratch files into backend, frontend, or docs directories.

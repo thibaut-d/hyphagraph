@@ -2,7 +2,7 @@
 
 The canonical AI-agent workflow now lives in:
 
-- `.ai/AI.md`
+- `AGENTS.md`
 
 Use that file as the session entrypoint.
 
@@ -15,8 +15,8 @@ This document remains as a concise statement of intent:
 
 For the current agent workflow, commands, planning rules, and audit entrypoints, use:
 
-- `.ai/AI.md`
-- `.ai/CODE_GUIDE.md`
-- `.ai/TODO.md`
-- `.ai/AUDITS.md`
-- `.ai/commands/`
+- `AGENTS.md`
+- `docs/CODE_GUIDE.md`
+- `docs/TODO.md`
+- `docs/AUDITS.md`
+- `docs/commands/`

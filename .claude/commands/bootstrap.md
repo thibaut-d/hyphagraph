@@ -1,3 +1,3 @@
-Read `.ai/AI.md`, then follow `.ai/commands/bootstrap.md`.
+Read `AGENTS.md`, then follow `docs/commands/bootstrap.md`.
 
-Use `.ai/` as the canonical agent guidance directory for this repository.
+Use `AGENTS.md` and `docs/` as the canonical agent guidance entrypoints for this repository.

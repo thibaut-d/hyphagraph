@@ -47,6 +47,6 @@ At minimum, review:
 
 ## How to use this file
 
-- For a quick audit prompt, use `.ai/commands/audit.md`.
+- For a quick audit prompt, use `docs/commands/audit.md`.
 - For detailed checklists, severity framing, and search commands, use `audit.md`.
 - When the audit produces durable follow-up work, record it in `TODO.md`.

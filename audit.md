@@ -1,6 +1,6 @@
 # Code Audits
 
-Targeted audits to enforce the principles from [AI.md](/home/thibaut/code/hyphagraph/AI.md), [docs/development/CODE_GUIDE.md](/home/thibaut/code/hyphagraph/docs/development/CODE_GUIDE.md), and the core architecture documents. Run them regularly, especially before releases, after large refactors, and before AI-assisted edits to backend inference, extraction, or frontend synthesis surfaces.
+Targeted audits to enforce the principles from [AGENTS.md](/home/thibaut/code/hyphagraph/AGENTS.md), [docs/development/CODE_GUIDE.md](/home/thibaut/code/hyphagraph/docs/development/CODE_GUIDE.md), and the core architecture documents. Run them regularly, especially before releases, after large refactors, and before AI-assisted edits to backend inference, extraction, or frontend synthesis surfaces.
 
 **Output**: each audit saves findings to `.temp/<audit_name>_report.md` with a score, violation list (severity + file + fix), metrics, and previous score for regression tracking.
 
@@ -277,7 +277,7 @@ rg "dict\\b|list\\b" backend/app | head
 
 ## 10. Function Size & Modularity
 
-> AI.md: readability first, keep top-level code simple, hide complexity in subsystems.
+> AGENTS.md: readability first, keep top-level code simple, hide complexity in subsystems.
 
 **Scope**: backend services, API route modules, frontend views/components/hooks.
 
@@ -348,7 +348,7 @@ rg "document_extraction\\.py|compat|shim|re-export" backend/app backend/tests fr
 
 ## 13. Dead Code & Compatibility Shims
 
-> AI.md: remove duplication and keep modules focused.
+> AGENTS.md: remove duplication and keep modules focused.
 
 **Scope**: entire repository, with extra attention to refactoring surfaces called out in `TODO.md`.
 
@@ -372,7 +372,7 @@ rg "shim|re-export|backward compat|compatibility" backend/app backend/tests fron
 
 ## 14. AI Edit Safety
 
-> AI.md: audit readability and architecture before completion.
+> AGENTS.md: audit readability and architecture before completion.
 > VIBE: no hidden side effects, no non-obvious shortcuts.
 
 **Scope**: high-churn and high-risk modules across backend and frontend.
@@ -398,7 +398,7 @@ rg "TODO.md|Refactor Needed|maintainability" .
 
 > Routing rules: AI context files must stay synchronized with the codebase.
 
-**Scope**: `AI.md`, `TODO.md`, `docs/ai/`, `docs/architecture/`, `docs/development/`, `frontend/src/i18n/`.
+**Scope**: `AGENTS.md`, `TODO.md`, `docs/ai/`, `docs/architecture/`, `docs/development/`, `frontend/src/i18n/`.
 
 **Checks**:
 - [ ] `TODO.md` reflects current active work and completed refactors accurately
@@ -409,7 +409,7 @@ rg "TODO.md|Refactor Needed|maintainability" .
 
 **How to search**:
 ```bash
-rg "TODO.md|AI_CONTEXT|ARCHITECTURE|document_extraction|service_dependencies" docs AI.md
+rg "TODO.md|AI_CONTEXT|ARCHITECTURE|document_extraction|service_dependencies" docs AGENTS.md
 rg "t\\(" frontend/src
 rg "\"[^\"]+[A-Za-z][^\"]*\"" frontend/src/views frontend/src/components | head
 ```

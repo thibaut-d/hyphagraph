@@ -28,7 +28,7 @@ Canonical detailed references remain in:
   Workflow, code standards, and testing guides.
 - `docs/product/`
   UX principles, roadmap, and product-facing constraints.
-- `.ai/`
+- `AGENTS.md` and `docs/`
   AI-agent entrypoint, coding guidance, commands, and audit summaries.
 - `.temp/`
   Temporary audit reports, scratch outputs, and experiment artifacts.

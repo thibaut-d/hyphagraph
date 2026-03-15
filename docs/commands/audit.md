@@ -4,7 +4,7 @@ Use this command to evaluate a repository area against HyphaGraph's architecture
 
 ## Steps
 
-1. Read `.ai/AUDITS.md`.
+1. Read `docs/AUDITS.md`.
 2. Read `audit.md` if you need the detailed repository-specific checklist.
 3. Define the audit scope explicitly.
 4. Run only the most relevant audit categories for that scope.
