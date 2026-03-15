@@ -35,11 +35,11 @@ Use these detailed references by task:
 
 | Task | Read |
 |------|---------------|
-| Backend API or services | `docs/ARCHITECTURE.md`, `docs/CODE_GUIDE.md`, `docs/ai/AI_CONTEXT_BACKEND.md` |
-| Frontend views or components | `docs/ARCHITECTURE.md`, `docs/CODE_GUIDE.md`, `docs/ai/AI_CONTEXT_FRONTEND.md`, `docs/product/UX.md` |
-| Database or schema changes | `docs/ARCHITECTURE.md`, `docs/architecture/DATABASE_SCHEMA.md`, `docs/ai/AI_CONTEXT_BACKEND.md` |
-| Inference or explanation changes | `docs/ARCHITECTURE.md`, `docs/architecture/COMPUTED_RELATIONS.md`, `docs/ai/AI_CONTEXT_ARCHITECTURE.md` |
-| Authentication or authorization | `docs/CODE_GUIDE.md`, `docs/architecture/ARCHITECTURE.md`, `docs/ai/AI_CONTEXT_BACKEND.md` |
+| Backend API or services | `docs/ARCHITECTURE.md`, `docs/CODE_GUIDE.md`, relevant files in `backend/app/` and `backend/tests/` |
+| Frontend views or components | `docs/ARCHITECTURE.md`, `docs/CODE_GUIDE.md`, `docs/product/UX.md`, relevant files in `frontend/src/` |
+| Database or schema changes | `docs/ARCHITECTURE.md`, `docs/architecture/DATABASE_SCHEMA.md`, relevant files in `backend/app/models/` and `backend/alembic/` |
+| Inference or explanation changes | `docs/ARCHITECTURE.md`, `docs/architecture/COMPUTED_RELATIONS.md`, relevant files in `backend/app/services/`, `backend/app/schemas/`, and affected UI surfaces |
+| Authentication or authorization | `docs/CODE_GUIDE.md`, `docs/architecture/ARCHITECTURE.md`, relevant files in `backend/app/utils/`, `backend/app/api/`, and `backend/tests/` |
 | E2E changes | `docs/CODE_GUIDE.md`, `docs/development/E2E_TESTING_GUIDE.md`, `e2e/README.md` |
 | Audit or review work | `docs/AUDITS.md`, `audit.md`, `TODO.md` |
 

@@ -5,8 +5,6 @@ This file defines the AI-agent coding defaults for HyphaGraph.
 Canonical detailed references remain in:
 - `docs/development/CODE_GUIDE.md`
 - `docs/development/DEV_WORKFLOW.md`
-- `docs/ai/AI_CONTEXT_BACKEND.md`
-- `docs/ai/AI_CONTEXT_FRONTEND.md`
 
 ## Core principles
 
@@ -93,6 +91,10 @@ Avoid:
 - Backend changes usually need pytest coverage for success and failure paths.
 - Frontend changes usually need loading, error, empty, and contradiction-visible states covered when relevant.
 - If you cannot run a needed test, say so clearly.
+
+Backend test patterns live in `backend/tests/README.md`.
+
+Frontend test patterns live in `frontend/tests/README.md`.
 
 ## Temporary and support artifacts
 

@@ -37,4 +37,4 @@ Tests configured via `vitest.config.ts`:
 - AAA pattern: Arrange / Act / Assert
 - Cover both success and error paths
 
-For detailed testing patterns and examples, see `docs/ai/AI_CONTEXT_FRONTEND.md`.
+Use nearby tests as the primary pattern reference.

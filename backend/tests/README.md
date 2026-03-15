@@ -43,4 +43,4 @@ Tests configured via `pytest.ini`:
 - Test both success and error paths
 - Use `app.dependency_overrides[get_db]` for DB mocking in endpoint tests
 
-For detailed testing patterns and examples, see `docs/ai/AI_CONTEXT_BACKEND.md`.
+Use nearby tests as the primary pattern reference.

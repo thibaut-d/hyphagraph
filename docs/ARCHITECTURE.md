@@ -1,6 +1,6 @@
 # Architecture Guide
 
-This file is the AI-oriented map of the HyphaGraph repository.
+This file is the shared map of the HyphaGraph repository for both humans and agents.
 
 Use it to answer:
 - where code belongs
@@ -12,7 +12,6 @@ Canonical detailed references remain in:
 - `docs/architecture/ARCHITECTURE.md`
 - `docs/architecture/DATABASE_SCHEMA.md`
 - `docs/architecture/COMPUTED_RELATIONS.md`
-- `docs/ai/AI_CONTEXT_*.md`
 
 ## Repository shape
 
@@ -32,6 +31,39 @@ Canonical detailed references remain in:
   AI-agent entrypoint, coding guidance, commands, and audit summaries.
 - `.temp/`
   Temporary audit reports, scratch outputs, and experiment artifacts.
+
+## What to open
+
+Use the shared docs first, then the owning code.
+
+| Task | Open |
+|------|------|
+| Backend API or services | `docs/CODE_GUIDE.md`, relevant files in `backend/app/api/`, `backend/app/services/`, `backend/app/schemas/`, `backend/tests/` |
+| Frontend views or components | `docs/CODE_GUIDE.md`, `docs/product/UX.md`, relevant files in `frontend/src/views/`, `frontend/src/components/`, `frontend/src/hooks/`, `frontend/src/api/` |
+| Database or schema changes | `docs/architecture/DATABASE_SCHEMA.md`, relevant files in `backend/app/models/`, `backend/alembic/`, `backend/tests/` |
+| Inference or explanation changes | `docs/architecture/COMPUTED_RELATIONS.md`, relevant files in `backend/app/services/`, `backend/app/schemas/`, `frontend/src/views/`, `frontend/src/components/` |
+| Authentication or authorization | `docs/development/CODE_GUIDE.md`, relevant files in `backend/app/utils/`, `backend/app/api/`, `backend/tests/` |
+| E2E work | `docs/development/E2E_TESTING_GUIDE.md`, relevant files in `e2e/tests/`, `e2e/fixtures/`, `e2e/playwright.config.ts` |
+
+## Backend shape
+
+- `backend/app/api/`: request validation, auth, response shaping
+- `backend/app/services/`: domain logic and orchestration
+- `backend/app/repositories/`: persistence queries
+- `backend/app/schemas/`: I/O contracts
+- `backend/app/models/`: ORM models
+- `backend/app/utils/`: focused helpers
+- `backend/tests/`: backend behavior coverage
+
+## Frontend shape
+
+- `frontend/src/api/`: shared network clients
+- `frontend/src/views/`: route-level screens
+- `frontend/src/components/`: reusable UI building blocks
+- `frontend/src/hooks/`: reusable stateful logic
+- `frontend/src/types/`: frontend contract types
+- `frontend/src/i18n/`: user-visible strings
+- `frontend/tests/` and `frontend/src/**/__tests__/`: frontend behavior coverage
 
 ## Ownership and boundaries
 

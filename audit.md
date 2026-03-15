@@ -398,7 +398,7 @@ rg "TODO.md|Refactor Needed|maintainability" .
 
 > Routing rules: AI context files must stay synchronized with the codebase.
 
-**Scope**: `AGENTS.md`, `TODO.md`, `docs/ai/`, `docs/architecture/`, `docs/development/`, `frontend/src/i18n/`.
+**Scope**: `AGENTS.md`, `TODO.md`, `docs/architecture/`, `docs/development/`, `frontend/src/i18n/`.
 
 **Checks**:
 - [ ] `TODO.md` reflects current active work and completed refactors accurately

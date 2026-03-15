@@ -43,7 +43,7 @@ We do NOT use FastAPI Users, Auth0, Clerk, or complex RBAC frameworks.
 - **Dependency**: `get_current_user` extracts and validates JWT
 - **Permissions**: Explicit Python functions in `utils/permissions.py`
 
-See `docs/ai/AI_CONTEXT_BACKEND.md` for code patterns.
+Use `docs/ARCHITECTURE.md` and the owning backend modules for concrete patterns.
 
 ### What NOT to do
 
