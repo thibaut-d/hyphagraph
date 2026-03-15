@@ -1,0 +1,247 @@
+from __future__ import annotations
+
+from fastapi import Request, status
+
+from app.config import settings
+from app.models.user import User
+from app.schemas.auth import (
+    ChangePassword,
+    RefreshTokenRequest,
+    RequestPasswordReset,
+    ResendVerificationEmail,
+    ResetPassword,
+    Token,
+    TokenPair,
+    UserRead,
+    UserRegister,
+    UserUpdate,
+    VerifyEmail,
+)
+from app.utils.errors import AppException, ErrorCode, ValidationException
+
+
+async def register_user(
+    request: Request,
+    payload: UserRegister,
+    user_service,
+    db,
+    *,
+    send_verification_email,
+    log_registration,
+) -> UserRead:
+    try:
+        user = await user_service.create(payload)
+        if settings.EMAIL_VERIFICATION_REQUIRED:
+            token = await user_service.create_verification_token(user.id)
+            if settings.EMAIL_ENABLED:
+                await send_verification_email(user.email, token)
+
+        await log_registration(
+            db=db,
+            request=request,
+            email=payload.email,
+            success=True,
+            user_id=user.id,
+        )
+        return user
+    except AppException as error:
+        await log_registration(
+            db=db,
+            request=request,
+            email=payload.email,
+            success=False,
+            error_message=str(error.error_detail.message),
+        )
+        raise
+
+
+async def login_user(
+    request: Request,
+    email: str,
+    password: str,
+    user_service,
+    db,
+    *,
+    log_login_attempt,
+) -> TokenPair:
+    try:
+        user = await user_service.authenticate(email, password)
+        access_token, refresh_token = await user_service.create_refresh_token(user.id)
+        await log_login_attempt(
+            db=db,
+            request=request,
+            email=email,
+            success=True,
+            user_id=user.id,
+        )
+        return TokenPair(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_type="bearer",
+        )
+    except AppException as error:
+        await log_login_attempt(
+            db=db,
+            request=request,
+            email=email,
+            success=False,
+            error_message=str(error.error_detail.message),
+        )
+        raise
+
+
+def read_current_user(current_user: User) -> UserRead:
+    return UserRead(
+        id=current_user.id,
+        email=current_user.email,
+        is_active=current_user.is_active,
+        is_superuser=current_user.is_superuser,
+        is_verified=current_user.is_verified,
+        created_at=current_user.created_at,
+    )
+
+
+async def refresh_user_token(
+    request: Request,
+    payload: RefreshTokenRequest,
+    user_service,
+    db,
+    *,
+    log_token_refresh,
+) -> Token:
+    try:
+        access_token, user = await user_service.refresh_access_token_with_user(payload.refresh_token)
+        await log_token_refresh(
+            db=db,
+            request=request,
+            user_id=user.id,
+            user_email=user.email,
+            success=True,
+        )
+        return Token(access_token=access_token, token_type="bearer")
+    except AppException as error:
+        await log_token_refresh(
+            db=db,
+            request=request,
+            user_id=None,
+            user_email=None,
+            success=False,
+            error_message=str(error.error_detail.message),
+        )
+        raise
+
+
+async def logout_user(payload: RefreshTokenRequest, current_user: User, user_service) -> None:
+    await user_service.revoke_refresh_token(current_user.id, payload.refresh_token)
+    return None
+
+
+async def change_current_password(
+    request: Request,
+    payload: ChangePassword,
+    current_user: User,
+    user_service,
+    db,
+    *,
+    log_password_change,
+) -> None:
+    try:
+        await user_service.change_password(
+            current_user.id,
+            payload.current_password,
+            payload.new_password,
+        )
+        await log_password_change(
+            db=db,
+            request=request,
+            user_id=current_user.id,
+            user_email=current_user.email,
+            success=True,
+        )
+        return None
+    except AppException as error:
+        await log_password_change(
+            db=db,
+            request=request,
+            user_id=current_user.id,
+            user_email=current_user.email,
+            success=False,
+            error_message=str(error.error_detail.message),
+        )
+        raise
+
+
+async def update_current_profile(payload: UserUpdate, current_user: User, user_service) -> UserRead:
+    return await user_service.update(current_user.id, payload)
+
+
+async def deactivate_current_account(current_user: User, user_service) -> None:
+    await user_service.deactivate(current_user.id)
+    return None
+
+
+async def delete_current_account(
+    request: Request,
+    current_user: User,
+    user_service,
+    db,
+    *,
+    log_account_deletion,
+) -> None:
+    await log_account_deletion(
+        db=db,
+        request=request,
+        user_id=current_user.id,
+        user_email=current_user.email,
+    )
+    await user_service.delete(current_user.id)
+    return None
+
+
+async def verify_user_email_address(payload: VerifyEmail, user_service) -> UserRead:
+    return await user_service.verify_email(payload.token)
+
+
+async def resend_verification(
+    payload: ResendVerificationEmail,
+    user_service,
+    db,
+    *,
+    send_verification_email,
+) -> None:
+    user = await user_service.get_by_email(payload.email)
+    if not user:
+        raise AppException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            error_code=ErrorCode.USER_NOT_FOUND,
+            message="User not found",
+            details=f"No user found with email '{payload.email}'",
+            context={"email": payload.email},
+        )
+
+    if user.is_verified:
+        raise ValidationException(
+            message="Email already verified",
+            details="This email address has already been verified",
+        )
+
+    token = await user_service.create_verification_token(user.id)
+    if settings.EMAIL_ENABLED:
+        await send_verification_email(user.email, token)
+    return None
+
+
+async def request_reset(
+    payload: RequestPasswordReset,
+    user_service,
+    *,
+    send_password_reset_email,
+) -> None:
+    token = await user_service.request_password_reset(payload.email)
+    if token and settings.EMAIL_ENABLED:
+        await send_password_reset_email(payload.email, token)
+    return None
+
+
+async def reset_user_password(payload: ResetPassword, user_service) -> UserRead:
+    return await user_service.reset_password(payload.token, payload.new_password)

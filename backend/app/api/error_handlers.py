@@ -5,16 +5,21 @@ Provides consistent error handling across API endpoints.
 """
 import logging
 from functools import wraps
-from typing import Callable, Any
+from collections.abc import Awaitable, Callable
+from typing import ParamSpec, TypeVar
 
 from fastapi import status
 
 from app.utils.errors import AppException, ErrorCode
 
 logger = logging.getLogger(__name__)
+Params = ParamSpec("Params")
+ReturnT = TypeVar("ReturnT")
 
 
-def handle_extraction_errors(func: Callable) -> Callable:
+def handle_extraction_errors(
+    func: Callable[Params, Awaitable[ReturnT]],
+) -> Callable[Params, Awaitable[ReturnT]]:
     """
     Decorator to handle extraction errors consistently.
 
@@ -37,7 +42,7 @@ def handle_extraction_errors(func: Callable) -> Callable:
         Wrapped function with error handling
     """
     @wraps(func)
-    async def wrapper(*args: Any, **kwargs: Any) -> Any:
+    async def wrapper(*args: Params.args, **kwargs: Params.kwargs) -> ReturnT:
         try:
             return await func(*args, **kwargs)
         except AppException:

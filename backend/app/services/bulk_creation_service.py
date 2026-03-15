@@ -16,6 +16,7 @@ from app.models.relation import Relation
 from app.models.relation_revision import RelationRevision
 from app.models.relation_role_revision import RelationRoleRevision
 from app.llm.schemas import ExtractedEntity, ExtractedRelation
+from app.schemas.common_types import SlugEntityMap
 from app.utils.revision_helpers import create_new_revision
 from app.config import settings
 
@@ -43,7 +44,7 @@ class BulkCreationService:
         entities: list[ExtractedEntity],
         source_id: UUID,
         user_id: UUID | None = None
-    ) -> dict[str, UUID]:
+    ) -> SlugEntityMap:
         """
         Bulk create entities with their first revisions.
 
@@ -61,7 +62,7 @@ class BulkCreationService:
         Raises:
             Exception: On database errors other than duplicate slugs
         """
-        entity_mapping = {}
+        entity_mapping: SlugEntityMap = {}
         warnings = []
 
         # Process entities one at a time with individual transactions
@@ -138,7 +139,7 @@ class BulkCreationService:
     async def bulk_create_relations(
         self,
         relations: list[ExtractedRelation],
-        entity_mapping: dict[str, UUID],
+        entity_mapping: SlugEntityMap,
         source_id: UUID,
         user_id: UUID | None = None
     ) -> list[UUID]:

@@ -5,15 +5,16 @@ Provides entity disambiguation and deduplication by finding matches
 in the existing knowledge graph based on slugs and synonyms.
 """
 import logging
-from uuid import UUID
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
 from dataclasses import dataclass
+from uuid import UUID
+from sqlalchemy import select, and_
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity import Entity
 from app.models.entity_revision import EntityRevision
 from app.models.entity_term import EntityTerm
 from app.llm.schemas import ExtractedEntity
+from app.schemas.common_types import SlugEntityMap
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,18 @@ class EntityLinkMatch:
     matched_entity_slug: str | None
     confidence: float  # 0.0 - 1.0
     match_type: str  # "exact", "synonym", "similar", "none"
+
+
+@dataclass(frozen=True)
+class ExactSlugMatch:
+    entity_id: UUID
+    slug: str
+
+
+@dataclass(frozen=True)
+class SynonymMatch:
+    entity_id: UUID
+    entity_slug: str
 
 
 class EntityLinkingService:
@@ -77,8 +90,8 @@ class EntityLinkingService:
             if exact_match:
                 matches.append(EntityLinkMatch(
                     extracted_slug=extracted.slug,
-                    matched_entity_id=exact_match["entity_id"],
-                    matched_entity_slug=exact_match["slug"],
+                    matched_entity_id=exact_match.entity_id,
+                    matched_entity_slug=exact_match.slug,
                     confidence=1.0,
                     match_type="exact"
                 ))
@@ -90,8 +103,8 @@ class EntityLinkingService:
             if synonym_match:
                 matches.append(EntityLinkMatch(
                     extracted_slug=extracted.slug,
-                    matched_entity_id=synonym_match["entity_id"],
-                    matched_entity_slug=synonym_match["entity_slug"],
+                    matched_entity_id=synonym_match.entity_id,
+                    matched_entity_slug=synonym_match.entity_slug,
                     confidence=0.8,
                     match_type="synonym"
                 ))
@@ -114,7 +127,7 @@ class EntityLinkingService:
 
         return matches
 
-    async def _find_exact_slug_match(self, slug: str) -> dict | None:
+    async def _find_exact_slug_match(self, slug: str) -> ExactSlugMatch | None:
         """
         Find entity with exact slug match in current revisions.
 
@@ -122,7 +135,7 @@ class EntityLinkingService:
             slug: Entity slug to search for
 
         Returns:
-            Dict with entity_id and slug if found, None otherwise
+            Exact slug match if found, None otherwise
         """
         stmt = (
             select(Entity.id, EntityRevision.slug)
@@ -140,14 +153,11 @@ class EntityLinkingService:
         row = result.first()
 
         if row:
-            return {
-                "entity_id": row[0],
-                "slug": row[1]
-            }
+            return ExactSlugMatch(entity_id=row[0], slug=row[1])
 
         return None
 
-    async def _find_synonym_match(self, term: str) -> dict | None:
+    async def _find_synonym_match(self, term: str) -> SynonymMatch | None:
         """
         Find entity with matching term in entity_terms table.
 
@@ -155,7 +165,7 @@ class EntityLinkingService:
             term: Term to search for in entity synonyms
 
         Returns:
-            Dict with entity_id and entity_slug if found, None otherwise
+            Synonym match if found, None otherwise
         """
         # Find entity_term matching the term
         stmt = (
@@ -178,10 +188,7 @@ class EntityLinkingService:
         row = result.first()
 
         if row:
-            return {
-                "entity_id": row[0],
-                "entity_slug": row[1]
-            }
+            return SynonymMatch(entity_id=row[0], entity_slug=row[1])
 
         return None
 
@@ -189,7 +196,7 @@ class EntityLinkingService:
         self,
         matches: list[EntityLinkMatch],
         threshold: float = 0.8
-    ) -> dict[str, UUID]:
+    ) -> SlugEntityMap:
         """
         Filter matches above confidence threshold for auto-linking.
 
@@ -200,7 +207,7 @@ class EntityLinkingService:
         Returns:
             Dict mapping extracted_slug -> existing entity_id for auto-linkable matches
         """
-        auto_links = {}
+        auto_links: SlugEntityMap = {}
 
         for match in matches:
             if match.confidence >= threshold and match.matched_entity_id:

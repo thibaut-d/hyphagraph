@@ -5,7 +5,7 @@ These schemas define the structure of search requests and responses
 for entities, sources, and relations.
 """
 
-from typing import Optional, List, Literal, Any
+from typing import Optional, List, Literal
 from pydantic import BaseModel, Field
 from uuid import UUID
 

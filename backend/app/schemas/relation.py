@@ -1,7 +1,8 @@
 from uuid import UUID
-from typing import List, Optional, Any
+from typing import List, Optional
 from datetime import datetime
 from app.schemas.base import Schema
+from app.schemas.common_types import I18nText, ScopeFilter
 
 
 class RoleRevisionWrite(Schema):
@@ -29,8 +30,8 @@ class RelationWrite(Schema):
     kind: Optional[str] = None
     direction: Optional[str] = None
     confidence: Optional[float] = None
-    scope: Optional[dict[str, Any]] = None  # Contextual qualifiers
-    notes: Optional[dict[str, str]] = None  # i18n: {"en": "...", "fr": "..."}
+    scope: Optional[ScopeFilter] = None  # Contextual qualifiers
+    notes: Optional[I18nText] = None  # i18n: {"en": "...", "fr": "..."}
     roles: List[RoleRevisionWrite]
     created_with_llm: Optional[str] = None
 
@@ -42,8 +43,8 @@ class RelationRevisionRead(Schema):
     kind: Optional[str] = None
     direction: Optional[str] = None
     confidence: Optional[float] = None
-    scope: Optional[dict[str, Any]] = None
-    notes: Optional[dict[str, str]] = None
+    scope: Optional[ScopeFilter] = None
+    notes: Optional[I18nText] = None
     created_with_llm: Optional[str] = None
     created_by_user_id: Optional[UUID] = None
     created_at: datetime
@@ -65,8 +66,8 @@ class RelationRead(Schema):
     kind: Optional[str] = None
     direction: Optional[str] = None
     confidence: Optional[float] = None
-    scope: Optional[dict[str, Any]] = None
-    notes: Optional[dict[str, str]] = None
+    scope: Optional[ScopeFilter] = None
+    notes: Optional[I18nText] = None
     roles: List[RoleRevisionRead]
 
 

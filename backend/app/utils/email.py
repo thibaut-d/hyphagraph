@@ -8,7 +8,6 @@ import logging
 import secrets
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from typing import Any
 
 import aiosmtplib
 

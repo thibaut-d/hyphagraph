@@ -24,7 +24,9 @@ Progress update:
 - Completed: duplicate frontend `SourceRead` definition collapsed into the canonical `frontend/src/types/source.ts`.
 - Completed: stable response contracts in `relation_type_service`, `typedb_export_service`, extraction review auto-commit paths, and `entity_merge_service` now use named schemas.
 - Completed: targeted backend/frontend tests added or updated for the new contracts and all affected suites are green.
-- Remaining: finish the remaining stable raw dict cleanup in the broader backend orchestration helpers, then continue the broader `dict[str, Any]` review.
+- Completed: broader backend orchestration helpers now use named internal records and shared typed aliases for entity-link lookups and slug-to-entity mappings instead of raw dict payloads.
+- Completed: focused backend coverage added for the entity-linking typed wrappers and the document-extraction workflow contract boundary.
+- Status: Audit 8 is complete. Remaining broad `dict[str, Any]` work now belongs under the narrower type-coverage follow-up in Audit 9 rather than typed-contract discipline.
 
 ### Audit 9: Type Coverage
 
@@ -45,7 +47,8 @@ Progress update:
 - Completed: tightened the search helper/coordinator signatures in `backend/app/services/search/common.py` and `backend/app/services/search_service.py`, then re-verified the dedicated search suite.
 - Completed: introduced shared JSON/context aliases in `backend/app/schemas/common_types.py` and used them to type the LLM provider boundary (`backend/app/llm/base.py`, `backend/app/llm/openai_provider.py`, `backend/app/llm/schemas.py`) plus helper contracts in prompt/extraction/semantic-role/audit/error modules without falling back to `Any`.
 - Completed: replaced the remaining extraction-helper `Any` seams in `backend/app/llm/prompts.py`, `backend/app/services/extraction_service.py`, `backend/app/services/batch_extraction_orchestrator.py`, `backend/app/services/semantic_role_service.py`, `backend/app/utils/audit.py`, and `backend/app/utils/errors.py`, then re-verified extraction/auth/error/audit paths.
-- Remaining: continue shrinking the remaining broader backend helper signatures in schemas/services (`relation.py`, `source.py`, residual search/inference helpers, and any leftover typed wrapper gaps) before moving the center of gravity to Audit 10 modularity work.
+- Completed: replaced the remaining schema-level `Any` contracts in `backend/app/schemas/relation.py`, `backend/app/schemas/source.py`, and `backend/app/schemas/search.py`, and tightened `backend/app/api/error_handlers.py` / `backend/app/utils/email.py` to eliminate the last non-comment backend runtime `Any` seams outside models.
+- Remaining: Audit 9 is now largely reduced to minor residual helper nits; the next meaningful work should shift toward Audit 10 modularity splits unless a new type-surface regression appears.
 
 ### Audit 10: Function Size & Modularity
 
@@ -54,6 +57,16 @@ Progress update:
 3. Extract shorter decision/persistence helpers from `backend/app/services/extraction_review_service.py` and `backend/app/services/extraction_validation_service.py`.
 4. Continue decomposing `CreateSourceView`, `EntitiesView`, `ReviewQueueView`, `SourcesView`, `PubMedImportView`, and `AdminView` into thin views plus hooks/sections.
 5. Add regression tests around the refactored boundaries before moving on to the next modularity pass.
+
+Progress update:
+- Completed: extracted the PubMed/discovery workflow family from `backend/app/services/document_extraction_workflow.py` into `backend/app/services/document_extraction_discovery.py`, keeping the original import surface intact while removing a substantial block of search/import/discovery responsibility from the oversized workflow module.
+- Completed: extracted the preview/save/document-fetch workflow family from `backend/app/services/document_extraction_workflow.py` into `backend/app/services/document_extraction_processing.py`, with `document_extraction_workflow.py` reduced to a thin compatibility/export surface.
+- Completed: re-verified the document extraction/discovery/source/explain regression slices after the split.
+- Completed: re-verified the document extraction workflow and document route regression slices after the processing split.
+- Completed: split auth route logic into `backend/app/api/auth_handlers.py` and reduced `backend/app/api/auth.py` to thin endpoint wiring while preserving the existing patch/import surface.
+- Completed: split `backend/app/services/user_service.py` into focused account/token/verification modules under `backend/app/services/user/`, keeping `UserService` as a stable facade for callers and tests.
+- Completed: re-verified auth endpoint, user-service, and refresh-token regression slices after the split.
+- Remaining: Audit 10 should now move to `extraction_review_service.py` / `extraction_validation_service.py` or the large frontend view decompositions, unless we decide to retire compatibility facades earlier under the later shim audit.
 
 ### Audit 11: Side Effects & Coupling
 

@@ -1,9 +1,10 @@
 from uuid import UUID
-from typing import Optional, List, Any
+from typing import Optional, List
 from datetime import datetime
 from pydantic import field_validator
 from app.schemas.base import Schema
 from app.llm.schemas import ExtractedEntity, ExtractedRelation
+from app.schemas.common_types import I18nText, JsonObject
 
 
 class SourceWrite(Schema):
@@ -19,17 +20,17 @@ class SourceWrite(Schema):
     origin: Optional[str] = None
     url: str
     trust_level: Optional[float] = None
-    summary: Optional[dict[str, str]] = None  # i18n: {"en": "...", "fr": "..."}
-    source_metadata: Optional[dict[str, Any]] = None  # doi, pubmed_id, etc.
+    summary: Optional[I18nText] = None  # i18n: {"en": "...", "fr": "..."}
+    source_metadata: Optional[JsonObject] = None  # doi, pubmed_id, etc.
     created_with_llm: Optional[str] = None
 
     @field_validator('authors', 'summary', 'source_metadata', mode='before')
     @classmethod
-    def convert_null_string_to_none(cls, v: Any) -> Any:
+    def convert_null_string_to_none(cls, value: object) -> object:
         """Convert string 'null' to None for JSON fields."""
-        if v == 'null' or v == 'undefined':
+        if value == 'null' or value == 'undefined':
             return None
-        return v
+        return value
 
 
 class SourceRevisionRead(Schema):
@@ -43,8 +44,8 @@ class SourceRevisionRead(Schema):
     origin: Optional[str] = None
     url: str
     trust_level: Optional[float] = None
-    summary: Optional[dict[str, str]] = None
-    source_metadata: Optional[dict[str, Any]] = None
+    summary: Optional[I18nText] = None
+    source_metadata: Optional[JsonObject] = None
     created_with_llm: Optional[str] = None
     created_by_user_id: Optional[UUID] = None
     created_at: datetime
@@ -68,8 +69,8 @@ class SourceRead(Schema):
     origin: Optional[str] = None
     url: str
     trust_level: Optional[float] = None
-    summary: Optional[dict[str, str]] = None
-    source_metadata: Optional[dict[str, Any]] = None
+    summary: Optional[I18nText] = None
+    source_metadata: Optional[JsonObject] = None
 
 
 class SourceWithHistory(SourceRead):
@@ -96,7 +97,7 @@ class SourceMetadataSuggestion(Schema):
     trust_level: Optional[float] = None  # Calculated quality score (0.0-1.0)
     summary_en: Optional[str] = None
     summary_fr: Optional[str] = None
-    source_metadata: Optional[dict[str, Any]] = None  # pmid, doi, etc.
+    source_metadata: Optional[JsonObject] = None  # pmid, doi, etc.
 
 
 # =============================================================================
