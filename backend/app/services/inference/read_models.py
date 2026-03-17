@@ -184,6 +184,10 @@ async def cache_computed_inference(
     scope_filter: Optional[dict],
     role_inferences: list[RoleInference],
 ) -> None:
+    # Guard: SYSTEM_SOURCE_ID must be configured for inference results to be persisted.
+    # Without it, computed relations cannot be attributed to the system source, so caching
+    # is skipped entirely. In development/test environments without this setting, inference
+    # will re-run on every request and results will NOT accumulate in the database.
     if not settings.SYSTEM_SOURCE_ID:
         return
 
