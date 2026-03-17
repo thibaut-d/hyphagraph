@@ -1,25 +1,20 @@
 import { useState } from "react";
-import { Link as RouterLink } from "react-router-dom";
 import { useReviewQueue } from "../hooks/useReviewQueue";
 import { useSelection } from "../hooks/useSelection";
 import { useReviewDialog } from "../hooks/useReviewDialog";
-import type { StagedExtractionRead } from "../api/extractionReview";
+import { ExtractionCard } from "../components/extraction/ExtractionCard";
 
 import {
   Typography,
   List,
-  ListItem,
-  ListItemText,
   Paper,
   Box,
   Button,
   Stack,
   CircularProgress,
-  Chip,
   Card,
   CardContent,
   Grid,
-  Checkbox,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -29,38 +24,11 @@ import {
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import WarningIcon from "@mui/icons-material/Warning";
-import VerifiedIcon from "@mui/icons-material/Verified";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import SelectAllIcon from "@mui/icons-material/SelectAll";
 import DeselectIcon from "@mui/icons-material/Deselect";
 
 const PAGE_SIZE = 20;
-
-function getExtractionTitle(extraction: StagedExtractionRead): string {
-  switch (extraction.extraction_type) {
-    case "entity":
-      return extraction.extraction_data.slug;
-    case "relation":
-      return extraction.extraction_data.relation_type;
-    case "claim":
-      return extraction.extraction_data.claim_text;
-  }
-}
-
-function getExtractionSummary(extraction: StagedExtractionRead): string {
-  switch (extraction.extraction_type) {
-    case "entity":
-      return extraction.extraction_data.summary;
-    case "relation":
-      return extraction.extraction_data.notes || "No notes";
-    case "claim":
-      return extraction.extraction_data.claim_text;
-  }
-}
-
-function getExtractionTextSpan(extraction: StagedExtractionRead): string {
-  return extraction.extraction_data.text_span;
-}
 
 export function ReviewQueueView() {
 
@@ -123,26 +91,6 @@ export function ReviewQueueView() {
   const openBatchReviewDialog = (decision: "approve" | "reject") => {
     setReviewDecision(decision);
     openReviewDialog(decision);
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "auto_verified": return "success";
-      case "approved": return "success";
-      case "pending": return "warning";
-      case "rejected": return "error";
-      default: return "default";
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "auto_verified": return <VerifiedIcon fontSize="small" />;
-      case "approved": return <CheckCircleIcon fontSize="small" />;
-      case "pending": return <WarningIcon fontSize="small" />;
-      case "rejected": return <CancelIcon fontSize="small" />;
-      default: return undefined;
-    }
   };
 
   return (
@@ -296,102 +244,14 @@ export function ReviewQueueView() {
         ) : (
           <List>
             {extractions.map((extraction) => (
-              <Paper key={extraction.id} sx={{ mb: 2 }}>
-                <ListItem>
-                  <Checkbox
-                    checked={selectedIds.has(extraction.id)}
-                    onChange={() => toggleSelection(extraction.id)}
-                  />
-                  <ListItemText
-                    primary={
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <Typography variant="h6">
-                          {getExtractionTitle(extraction)}
-                        </Typography>
-                        <Chip
-                          label={extraction.extraction_type}
-                          size="small"
-                          color="primary"
-                          variant="outlined"
-                        />
-                        <Chip
-                          label={extraction.status}
-                          size="small"
-                          color={getStatusColor(extraction.status)}
-                          icon={getStatusIcon(extraction.status)}
-                        />
-                        <Chip
-                          label={`Score: ${(extraction.validation_score * 100).toFixed(0)}%`}
-                          size="small"
-                          color={extraction.validation_score >= 0.9 ? "success" : "warning"}
-                        />
-                        {extraction.validation_flags.length > 0 && (
-                          <Chip
-                            label={`${extraction.validation_flags.length} flags`}
-                            size="small"
-                            color="warning"
-                            icon={<WarningIcon />}
-                          />
-                        )}
-                      </Stack>
-                    }
-                    secondary={
-                      <Stack spacing={1} sx={{ mt: 1 }}>
-                        <Typography variant="body2">
-                          {getExtractionSummary(extraction)}
-                        </Typography>
-                        {extraction.validation_flags.length > 0 && (
-                          <Box>
-                            <Typography variant="caption" color="text.secondary">
-                              Validation issues:
-                            </Typography>
-                            {extraction.validation_flags.map((flag, idx) => (
-                              <Chip
-                                key={idx}
-                                label={flag}
-                                size="small"
-                                sx={{ ml: 0.5, mt: 0.5 }}
-                              />
-                            ))}
-                          </Box>
-                        )}
-                        <Typography variant="caption" color="text.secondary">
-                          Text span: "{getExtractionTextSpan(extraction)}"
-                        </Typography>
-                        <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-                          <Button
-                            size="small"
-                            variant="contained"
-                            color="success"
-                            startIcon={<CheckCircleIcon />}
-                            onClick={() => handleSingleReview(extraction.id, "approve")}
-                          >
-                            Approve
-                          </Button>
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            color="error"
-                            startIcon={<CancelIcon />}
-                            onClick={() => handleSingleReview(extraction.id, "reject")}
-                          >
-                            Reject
-                          </Button>
-                          {extraction.materialized_entity_id && (
-                            <Button
-                              size="small"
-                              component={RouterLink}
-                              to={`/entities/${extraction.materialized_entity_id}`}
-                            >
-                              View Entity
-                            </Button>
-                          )}
-                        </Stack>
-                      </Stack>
-                    }
-                  />
-                </ListItem>
-              </Paper>
+              <ExtractionCard
+                key={extraction.id}
+                extraction={extraction}
+                isSelected={selectedIds.has(extraction.id)}
+                onToggleSelect={() => toggleSelection(extraction.id)}
+                onApprove={() => handleSingleReview(extraction.id, "approve")}
+                onReject={() => handleSingleReview(extraction.id, "reject")}
+              />
             ))}
           </List>
         )}

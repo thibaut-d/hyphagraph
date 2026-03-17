@@ -27,13 +27,6 @@ import {
   Grid,
   Card,
   CardContent,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Switch,
-  FormControlLabel,
   Alert,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
@@ -44,6 +37,8 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import EmailIcon from "@mui/icons-material/Email";
 import { apiFetch } from "../api/client";
 import { usePageErrorHandler } from "../hooks/usePageErrorHandler";
+import { AdminEditDialog } from "../components/admin/AdminEditDialog";
+import { AdminDeleteDialog } from "../components/admin/AdminDeleteDialog";
 
 interface UserStats {
   total_users: number;
@@ -301,81 +296,25 @@ export function AdminView() {
         </TableContainer>
       </Paper>
 
-      {/* Edit Dialog */}
-      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)}>
-        <DialogTitle>Edit User</DialogTitle>
-        <DialogContent>
-          {selectedUser && (
-            <Stack spacing={2} sx={{ mt: 1 }}>
-              <Typography variant="body2" color="text.secondary">
-                {selectedUser.email}
-              </Typography>
+      <AdminEditDialog
+        open={editDialogOpen}
+        user={selectedUser}
+        isActive={editIsActive}
+        isSuperuser={editIsSuperuser}
+        isVerified={editIsVerified}
+        onIsActiveChange={setEditIsActive}
+        onIsSuperuserChange={setEditIsSuperuser}
+        onIsVerifiedChange={setEditIsVerified}
+        onSave={handleSaveEdit}
+        onClose={() => setEditDialogOpen(false)}
+      />
 
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={editIsActive}
-                    onChange={(e) => setEditIsActive(e.target.checked)}
-                  />
-                }
-                label="Active"
-              />
-
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={editIsSuperuser}
-                    onChange={(e) => setEditIsSuperuser(e.target.checked)}
-                  />
-                }
-                label="Superuser"
-              />
-
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={editIsVerified}
-                    onChange={(e) => setEditIsVerified(e.target.checked)}
-                  />
-                }
-                label="Email Verified"
-              />
-            </Stack>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleSaveEdit} variant="contained">
-            Save Changes
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
-        <DialogTitle>Delete User</DialogTitle>
-        <DialogContent>
-          {selectedUser && (
-            <>
-              <Typography>
-                Are you sure you want to delete this user?
-              </Typography>
-              <Typography variant="body2" sx={{ mt: 2, fontWeight: 600 }}>
-                {selectedUser.email}
-              </Typography>
-              <Alert severity="warning" sx={{ mt: 2 }}>
-                This action cannot be undone. All user data will be permanently deleted.
-              </Alert>
-            </>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleConfirmDelete} color="error" variant="contained">
-            Delete User
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <AdminDeleteDialog
+        open={deleteDialogOpen}
+        user={selectedUser}
+        onConfirm={handleConfirmDelete}
+        onClose={() => setDeleteDialogOpen(false)}
+      />
     </Stack>
   );
 }

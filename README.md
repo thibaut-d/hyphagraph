@@ -92,8 +92,8 @@ See [Roadmap](docs/product/ROADMAP.md) for current status and planned work.
 
 | Document | Description |
 |----------|-------------|
-| [Project Overview](PROJECT_OVERVIEW.md) | Vision, philosophy, and scientific motivation |
-| [Contributing](CONTRIBUTING.md) | Development setup, standards, and workflow |
+| [Project Overview](docs/PROJECT_OVERVIEW.md) | Vision, philosophy, and scientific motivation |
+| [Contributing](docs/CONTRIBUTING.md) | Development setup, standards, and workflow |
 | [Architecture](docs/architecture/ARCHITECTURE.md) | System architecture and invariants |
 | [Database Schema](docs/architecture/DATABASE_SCHEMA.md) | Canonical data model |
 | [Computed Relations](docs/architecture/COMPUTED_RELATIONS.md) | Inference mathematical model |

@@ -1,6 +1,6 @@
 # Current Work
 
-**Last updated**: 2026-03-15
+**Last updated**: 2026-03-17
 
 ## In Progress
 
@@ -66,7 +66,8 @@ Progress update:
 - Completed: split auth route logic into `backend/app/api/auth_handlers.py` and reduced `backend/app/api/auth.py` to thin endpoint wiring while preserving the existing patch/import surface.
 - Completed: split `backend/app/services/user_service.py` into focused account/token/verification modules under `backend/app/services/user/`, keeping `UserService` as a stable facade for callers and tests.
 - Completed: re-verified auth endpoint, user-service, and refresh-token regression slices after the split.
-- Remaining: Audit 10 should now move to `extraction_review_service.py` / `extraction_validation_service.py` or the large frontend view decompositions, unless we decide to retire compatibility facades earlier under the later shim audit.
+- Completed: extracted staging helpers (`create_staged_extraction`) into `extraction_review/staging.py` and auto-commit decision/execution (`check_auto_commit_eligible`, `run_auto_commit`) into `extraction_review/auto_commit.py`; `ExtractionReviewService` is now a thin facade. Extracted `TextSpanValidator` (pure text-matching logic) into `extraction_text_span_validator.py`; `ExtractionValidationService` is now a thin orchestrator. All 51 affected tests green.
+- Remaining: Audit 10 should now move to the large frontend view decompositions (`CreateSourceView`, `EntitiesView`, `ReviewQueueView`, `SourcesView`, `PubMedImportView`, `AdminView`), unless we decide to retire compatibility facades earlier under the later shim audit.
 
 ### Audit 11: Side Effects & Coupling
 

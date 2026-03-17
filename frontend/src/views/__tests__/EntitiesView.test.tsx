@@ -36,6 +36,11 @@ vi.mock('../../components/ScrollToTop', () => ({
   ScrollToTop: () => <div data-testid="scroll-to-top">Scroll to Top</div>,
 }));
 
+// Mock ExportMenu to avoid NotificationProvider dependency
+vi.mock('../../components/ExportMenu', () => ({
+  ExportMenu: () => <div data-testid="export-menu">Export</div>,
+}));
+
 // Mock hooks
 vi.mock('../../hooks/useFilterDrawer', () => ({
   useFilterDrawer: () => ({

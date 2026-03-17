@@ -4,9 +4,9 @@ This file is the concise audit entrypoint for HyphaGraph.
 
 The detailed repository-specific audit playbook remains in:
 
-- `audit.md`
+- `docs/audit.md`
 
-Use this file to choose the right audit quickly, then use `audit.md` when you need the full checklist and search patterns.
+Use this file to choose the right audit quickly, then use `docs/audit.md` when you need the full checklist and search patterns.
 
 ## Severity levels
 
@@ -48,5 +48,5 @@ At minimum, review:
 ## How to use this file
 
 - For a quick audit prompt, use `docs/commands/audit.md`.
-- For detailed checklists, severity framing, and search commands, use `audit.md`.
+- For detailed checklists, severity framing, and search commands, use `docs/audit.md`.
 - When the audit produces durable follow-up work, record it in `TODO.md`.

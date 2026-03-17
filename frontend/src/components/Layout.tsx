@@ -12,42 +12,24 @@ import {
   Container,
   IconButton,
   Tooltip,
-  Drawer,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemText,
-  ListItemIcon,
-  Divider,
   useMediaQuery,
   useTheme,
-  Menu,
-  MenuItem,
-  Collapse,
-  Dialog,
-  DialogContent,
-  DialogTitle,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
-import CloseIcon from "@mui/icons-material/Close";
-import LanguageIcon from "@mui/icons-material/Language";
+import SearchIcon from "@mui/icons-material/Search";
 import HomeIcon from "@mui/icons-material/Home";
 import CategoryIcon from "@mui/icons-material/Category";
 import LibraryBooksIcon from "@mui/icons-material/LibraryBooks";
-import SearchIcon from "@mui/icons-material/Search";
 import RateReviewIcon from "@mui/icons-material/RateReview";
-import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
-import ExpandLessIcon from "@mui/icons-material/ExpandLess";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 
 import { ProfileMenu } from "./ProfileMenu";
-import { GlobalSearch } from "./GlobalSearch";
+import { LanguageSwitch } from "./layout/LanguageSwitch";
+import { DesktopNavigation } from "./layout/DesktopNavigation";
+import { MobileDrawer } from "./layout/MobileDrawer";
+import { MobileSearchDialog } from "./layout/MobileSearchDialog";
 import { useAuthContext } from "../auth/AuthContext";
 import { getEntityFilterOptions } from "../api/entities";
 import type { UICategoryOption } from "../api/entities";
-import { useNotification } from "../notifications/NotificationContext";
-
 const menuItems = [
   { key: "menu.home", path: "/", icon: HomeIcon },
   { key: "menu.entities", path: "/entities", icon: CategoryIcon },
@@ -60,7 +42,6 @@ export function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { showError } = useNotification();
   const { user } = useAuthContext();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -71,8 +52,6 @@ export function Layout() {
 
   // Entities dropdown state
   const [categories, setCategories] = useState<UICategoryOption[]>([]);
-  const [entitiesMenuAnchor, setEntitiesMenuAnchor] = useState<null | HTMLElement>(null);
-  const [mobileEntitiesExpanded, setMobileEntitiesExpanded] = useState(false);
 
   // Fetch UI categories for Entities dropdown
   useEffect(() => {
@@ -92,17 +71,12 @@ export function Layout() {
     setMobileSearchOpen(false);
   }, [location.pathname]);
 
-  const toggleLanguage = () => {
-    i18n.changeLanguage(i18n.language === "en" ? "fr" : "en");
-  };
-
-  const handleMobileMenuOpen = () => {
-    setMobileMenuOpen(true);
-  };
-
-  const handleMobileMenuClose = () => {
-    setMobileMenuOpen(false);
-  };
+  // Transform categories for sub-components
+  const transformedCategories = categories.map((cat) => ({
+    id: cat.id,
+    value: cat.id,
+    label: cat.label[i18n.language as 'en' | 'fr'] || cat.label.en || cat.id,
+  }));
 
   return (
     <>
@@ -112,7 +86,7 @@ export function Layout() {
           <IconButton
             color="inherit"
             aria-label="open menu"
-            onClick={handleMobileMenuOpen}
+            onClick={() => setMobileMenuOpen(true)}
             sx={{ display: { xs: 'flex', md: 'none' } }}
           >
             <MenuIcon />
@@ -134,98 +108,12 @@ export function Layout() {
           </Typography>
 
           {/* Desktop: Main menu (md+ only) */}
-          <Box sx={{
-            display: { xs: 'none', md: 'flex' },
-            alignItems: "center",
-            gap: 2,
-            flexGrow: 1
-          }}>
-            {menuItems
-              .filter(item => !item.requiresAuth || user)
-              .map((item) => {
-                const isActive =
-                  location.pathname === item.path ||
-                  (item.path !== "/" && location.pathname.startsWith(item.path));
-
-                // Special case for Entities menu with dropdown
-                if (item.path === "/entities" && categories.length > 0) {
-                  return (
-                    <Button
-                      key={item.path}
-                      color="inherit"
-                      endIcon={<ArrowDropDownIcon />}
-                      onClick={(e) => setEntitiesMenuAnchor(e.currentTarget)}
-                      sx={{
-                        fontWeight: isActive ? "bold" : "normal",
-                        textDecoration: isActive ? "underline" : "none",
-                      }}
-                    >
-                      {t(item.key)}
-                    </Button>
-                  );
-                }
-
-                return (
-                  <Button
-                    key={item.path}
-                    component={RouterLink}
-                    to={item.path}
-                    color="inherit"
-                    sx={{
-                      fontWeight: isActive ? "bold" : "normal",
-                      textDecoration: isActive ? "underline" : "none",
-                    }}
-                  >
-                    {t(item.key)}
-                  </Button>
-                );
-              })}
-
-            {/* Desktop: Global Search */}
-            <Box sx={{ ml: "auto" }}>
-              <GlobalSearch />
-            </Box>
-          </Box>
-
-          {/* Desktop: Entities dropdown menu */}
-          <Menu
-            anchorEl={entitiesMenuAnchor}
-            open={Boolean(entitiesMenuAnchor)}
-            onClose={() => setEntitiesMenuAnchor(null)}
-            anchorOrigin={{
-              vertical: 'bottom',
-              horizontal: 'left',
-            }}
-            transformOrigin={{
-              vertical: 'top',
-              horizontal: 'left',
-            }}
-          >
-            <MenuItem
-              onClick={() => {
-                setEntitiesMenuAnchor(null);
-                navigate('/entities');
-              }}
-              sx={{ fontWeight: 600 }}
-            >
-              {t("menu.all_entities", "All Entities")}
-            </MenuItem>
-            <Divider />
-            {categories.map((category) => {
-              const label = category.label[i18n.language] || category.label.en || category.id;
-              return (
-                <MenuItem
-                  key={category.id}
-                  onClick={() => {
-                    setEntitiesMenuAnchor(null);
-                    navigate(`/entities?ui_category_id=${category.id}`);
-                  }}
-                >
-                  {label}
-                </MenuItem>
-              );
-            })}
-          </Menu>
+          <DesktopNavigation
+            menuItems={menuItems}
+            categories={transformedCategories}
+            user={user}
+            onNavigate={navigate}
+          />
 
           {/* Spacer for mobile (pushes icons to right) */}
           <Box sx={{ flexGrow: 1, display: { xs: 'block', md: 'none' } }} />
@@ -243,15 +131,7 @@ export function Layout() {
           </Tooltip>
 
           {/* Language switch */}
-          <Tooltip title={t("common.change_language", "Change language")}>
-            <IconButton
-              color="inherit"
-              onClick={toggleLanguage}
-              size={isMobile ? 'small' : 'medium'}
-            >
-              <LanguageIcon />
-            </IconButton>
-          </Tooltip>
+          <LanguageSwitch />
 
           {/* Profile menu or login button */}
           {user ? (
@@ -272,205 +152,19 @@ export function Layout() {
       </AppBar>
 
       {/* Mobile: Navigation Drawer */}
-      <Drawer
-        anchor="left"
+      <MobileDrawer
         open={mobileMenuOpen}
-        onClose={handleMobileMenuClose}
-        sx={{
-          display: { xs: 'block', md: 'none' },
-          '& .MuiDrawer-paper': {
-            width: 280,
-          },
-        }}
-      >
-        {/* Drawer Header */}
-        <Box sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          p: 2,
-          borderBottom: 1,
-          borderColor: 'divider',
-        }}>
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            {t("menu.navigation", "Navigation")}
-          </Typography>
-          <IconButton onClick={handleMobileMenuClose} size="small">
-            <CloseIcon />
-          </IconButton>
-        </Box>
-
-        {/* Navigation Links */}
-        <List>
-          {menuItems
-            .filter(item => !item.requiresAuth || user)
-            .map((item) => {
-              const Icon = item.icon;
-              const isActive =
-                location.pathname === item.path ||
-                (item.path !== "/" && location.pathname.startsWith(item.path));
-
-              // Special case for Entities menu with expandable categories
-              if (item.path === "/entities" && categories.length > 0) {
-              return (
-                <Box key={item.path}>
-                  <ListItem disablePadding>
-                    <ListItemButton
-                      onClick={() => setMobileEntitiesExpanded(!mobileEntitiesExpanded)}
-                      selected={isActive}
-                      sx={{
-                        py: 1.5,
-                        '&.Mui-selected': {
-                          backgroundColor: 'action.selected',
-                          '&:hover': {
-                            backgroundColor: 'action.hover',
-                          },
-                        },
-                      }}
-                    >
-                      <ListItemIcon>
-                        <Icon color={isActive ? 'primary' : 'inherit'} />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={t(item.key)}
-                        primaryTypographyProps={{
-                          fontWeight: isActive ? 600 : 400,
-                        }}
-                      />
-                      {mobileEntitiesExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                    </ListItemButton>
-                  </ListItem>
-                  <Collapse in={mobileEntitiesExpanded} timeout="auto" unmountOnExit>
-                    <List component="div" disablePadding>
-                      <ListItemButton
-                        component={RouterLink}
-                        to="/entities"
-                        onClick={handleMobileMenuClose}
-                        sx={{ pl: 4, py: 1 }}
-                      >
-                        <ListItemIcon>
-                          <FiberManualRecordIcon fontSize="small" />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={t("menu.all_entities", "All Entities")}
-                          primaryTypographyProps={{ fontWeight: 600 }}
-                        />
-                      </ListItemButton>
-                      {categories.map((category) => {
-                        const label = category.label[i18n.language as 'en' | 'fr'] || category.label.en;
-                        return (
-                          <ListItemButton
-                            key={category.id}
-                            component={RouterLink}
-                            to={`/entities?ui_category_id=${category.id}`}
-                            onClick={handleMobileMenuClose}
-                            sx={{ pl: 4, py: 1 }}
-                          >
-                            <ListItemIcon>
-                              <FiberManualRecordIcon fontSize="small" />
-                            </ListItemIcon>
-                            <ListItemText primary={label} />
-                          </ListItemButton>
-                        );
-                      })}
-                    </List>
-                  </Collapse>
-                </Box>
-              );
-            }
-
-            return (
-              <ListItem key={item.path} disablePadding>
-                <ListItemButton
-                  component={RouterLink}
-                  to={item.path}
-                  onClick={handleMobileMenuClose}
-                  selected={isActive}
-                  sx={{
-                    py: 1.5,
-                    '&.Mui-selected': {
-                      backgroundColor: 'action.selected',
-                      '&:hover': {
-                        backgroundColor: 'action.hover',
-                      },
-                    },
-                  }}
-                >
-                  <ListItemIcon>
-                    <Icon color={isActive ? 'primary' : 'inherit'} />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={t(item.key)}
-                    primaryTypographyProps={{
-                      fontWeight: isActive ? 600 : 400,
-                    }}
-                  />
-                </ListItemButton>
-              </ListItem>
-            );
-          })}
-        </List>
-
-        <Divider />
-
-        {/* Mobile: Additional Options */}
-        <List>
-          <ListItem disablePadding>
-            <ListItemButton onClick={() => {
-              toggleLanguage();
-              handleMobileMenuClose();
-            }}>
-              <ListItemIcon>
-                <LanguageIcon />
-              </ListItemIcon>
-              <ListItemText
-                primary={t("common.change_language", "Change language")}
-                secondary={i18n.language === 'en' ? 'Français' : 'English'}
-              />
-            </ListItemButton>
-          </ListItem>
-        </List>
-
-        {/* User info in drawer (if logged in) */}
-        {user && (
-          <>
-            <Divider />
-            <Box sx={{ p: 2, mt: 'auto' }}>
-              <Typography variant="caption" color="text.secondary">
-                {t("profile.signed_in_as", "Signed in as")}
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                {user.email}
-              </Typography>
-            </Box>
-          </>
-        )}
-      </Drawer>
+        onClose={() => setMobileMenuOpen(false)}
+        menuItems={menuItems}
+        categories={transformedCategories}
+        user={user}
+      />
 
       {/* Mobile: Search Dialog */}
-      <Dialog
+      <MobileSearchDialog
         open={mobileSearchOpen}
         onClose={() => setMobileSearchOpen(false)}
-        maxWidth="sm"
-        fullWidth
-        sx={{ display: { xs: 'block', md: 'none' } }}
-      >
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          {t("common.search", "Search")}
-          <IconButton
-            onClick={() => setMobileSearchOpen(false)}
-            size="small"
-            edge="end"
-          >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 1 }}>
-            <GlobalSearch />
-          </Box>
-        </DialogContent>
-      </Dialog>
+      />
 
       {/* Content */}
       <Container

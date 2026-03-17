@@ -41,7 +41,7 @@ Use these detailed references by task:
 | Inference or explanation changes | `docs/ARCHITECTURE.md`, `docs/architecture/COMPUTED_RELATIONS.md`, relevant files in `backend/app/services/`, `backend/app/schemas/`, and affected UI surfaces |
 | Authentication or authorization | `docs/CODE_GUIDE.md`, `docs/architecture/ARCHITECTURE.md`, relevant files in `backend/app/utils/`, `backend/app/api/`, and `backend/tests/` |
 | E2E changes | `docs/CODE_GUIDE.md`, `docs/development/E2E_TESTING_GUIDE.md`, `e2e/README.md` |
-| Audit or review work | `docs/AUDITS.md`, `audit.md`, `TODO.md` |
+| Audit or review work | `docs/AUDITS.md`, `docs/audit.md`, `TODO.md` |
 
 Command workflows:
 

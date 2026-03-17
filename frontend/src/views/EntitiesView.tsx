@@ -26,43 +26,12 @@ import { FilterDrawer, FilterSection, CheckboxFilter, SearchFilter, RangeFilter 
 import { ScrollToTop } from "../components/ScrollToTop";
 import { ExportMenu } from "../components/ExportMenu";
 import { useFilterDrawer } from "../hooks/useFilterDrawer";
+import { useFilterOptionsCache } from "../hooks/useFilterOptionsCache";
 import { usePersistedFilters } from "../hooks/usePersistedFilters";
 import { useDebounce } from "../hooks/useDebounce";
 import { useInfiniteScroll } from "../hooks/useInfiniteScroll";
 
 const PAGE_SIZE = 50;
-const FILTER_OPTIONS_CACHE_KEY = 'entity-filter-options-cache';
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-interface CachedFilterOptions {
-  data: EntityFilterOptions;
-  timestamp: number;
-}
-
-function getCachedFilterOptions(): EntityFilterOptions | null {
-  const cached = localStorage.getItem(FILTER_OPTIONS_CACHE_KEY);
-  if (!cached) return null;
-
-  try {
-    const { data, timestamp }: CachedFilterOptions = JSON.parse(cached);
-    if (Date.now() - timestamp > CACHE_TTL) {
-      localStorage.removeItem(FILTER_OPTIONS_CACHE_KEY);
-      return null;
-    }
-    return data;
-  } catch {
-    localStorage.removeItem(FILTER_OPTIONS_CACHE_KEY);
-    return null;
-  }
-}
-
-function setCachedFilterOptions(options: EntityFilterOptions) {
-  const cached: CachedFilterOptions = {
-    data: options,
-    timestamp: Date.now()
-  };
-  localStorage.setItem(FILTER_OPTIONS_CACHE_KEY, JSON.stringify(cached));
-}
 
 export function EntitiesView() {
   const { t, i18n } = useTranslation();
@@ -71,7 +40,10 @@ export function EntitiesView() {
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [offset, setOffset] = useState(0);
-  const [filterOptions, setFilterOptions] = useState<EntityFilterOptions | null>(null);
+  const filterOptions = useFilterOptionsCache<EntityFilterOptions>(
+    'entity-filter-options-cache',
+    getEntityFilterOptions,
+  );
 
   // Filter state with localStorage persistence
   const {
@@ -90,19 +62,6 @@ export function EntitiesView() {
 
   // Debounce search to reduce server load during typing
   const debouncedSearch = useDebounce(filters.search, 300);
-
-  // Fetch filter options once with caching
-  useEffect(() => {
-    const cached = getCachedFilterOptions();
-    if (cached) {
-      setFilterOptions(cached);
-    } else {
-      getEntityFilterOptions().then(options => {
-        setFilterOptions(options);
-        setCachedFilterOptions(options);
-      });
-    }
-  }, []);
 
   // Extract category options with current language labels
   const categoryOptions = useMemo(() => {
