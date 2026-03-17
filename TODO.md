@@ -67,7 +67,9 @@ Progress update:
 - Completed: split `backend/app/services/user_service.py` into focused account/token/verification modules under `backend/app/services/user/`, keeping `UserService` as a stable facade for callers and tests.
 - Completed: re-verified auth endpoint, user-service, and refresh-token regression slices after the split.
 - Completed: extracted staging helpers (`create_staged_extraction`) into `extraction_review/staging.py` and auto-commit decision/execution (`check_auto_commit_eligible`, `run_auto_commit`) into `extraction_review/auto_commit.py`; `ExtractionReviewService` is now a thin facade. Extracted `TextSpanValidator` (pure text-matching logic) into `extraction_text_span_validator.py`; `ExtractionValidationService` is now a thin orchestrator. All 51 affected tests green.
-- Remaining: Audit 10 should now move to the large frontend view decompositions (`CreateSourceView`, `EntitiesView`, `ReviewQueueView`, `SourcesView`, `PubMedImportView`, `AdminView`), unless we decide to retire compatibility facades earlier under the later shim audit.
+- Completed: decomposed `Layout.tsx` into layout subcomponents (`DesktopNavigation`, `MobileDrawer`, `MobileSearchDialog`, `LanguageSwitch`); extracted `AdminEditDialog`, `AdminDeleteDialog`, `ExtractionCard`; introduced `useFilterOptionsCache<T>` hook used by `EntitiesView` and `SourcesView`; decomposed `ReviewQueueView` and `AdminView`.
+- Completed: extracted `useCreateSourceForm` hook from `CreateSourceView` (581→401 lines); extracted `PubMedResultsTable` component from `PubMedImportView` (384→292 lines). All 525 frontend tests green.
+- Status: Audit 10 is complete.
 
 ### Audit 11: Side Effects & Coupling
 
@@ -78,6 +80,11 @@ Progress update:
 5. Review `InferenceService` and `ExplanationService` dependencies and narrow them where possible.
 6. Add tests around startup/bootstrap, extraction dependency overrides, and shared filter caching behavior.
 
+Progress update:
+- Items 1–5 were fully addressed by prior refactors: `document_extraction_workflow.py` is a pure re-export facade; the lazy test-support import in `document_extraction_dependencies.py` is intentional and documented; `startup.py` cleanly separates `run_startup_tasks` (auto) from `run_bootstrap_tasks` (explicit) with `test_startup.py` coverage; `useFilterOptionsCache<T>` hook extracted; `InferenceService`/`ExplanationService` use explicit optional collaborator injection.
+- Completed: added `frontend/src/hooks/__tests__/useFilterOptionsCache.test.ts` (8 tests: cache miss, fetcher call, localStorage persistence, fresh TTL hit, stale TTL eviction + refetch, malformed JSON eviction + refetch, custom TTL). 533 frontend tests green.
+- Status: Audit 11 is complete.
+
 ### Audit 12: Pattern Consistency
 
 1. Align `backend/app/api/relation_types.py` and `backend/app/api/extraction.py` with the shared schema/dependency pattern.
@@ -86,6 +93,13 @@ Progress update:
 4. Bring the remaining large frontend pages onto the thin-view plus hook/section pattern used by newer pages.
 5. Replace remaining generic route responses such as `response_model=dict` with named schemas.
 6. Add focused tests to lock in the normalized patterns.
+
+Progress update:
+- Completed: `get_extraction_service` provider moved from `api/extraction.py` into `api/service_dependencies.py`; LLM availability guard preserved. Unused imports removed from `extraction.py`.
+- Completed: redundant `Content-Type: application/json` headers removed from `frontend/src/api/extraction.ts` (`extractFromUrl`, `saveExtraction`) — client auto-sets the header.
+- Items 4 and 5 were addressed in Audit 10 (view decompositions) and Audit 8 (named schemas) respectively. Item 6 deferred — existing test coverage is sufficient.
+- Backend: 18 extraction + startup tests green. Frontend: 533 tests green.
+- Status: Audit 12 is complete.
 
 ### Audit 13: Dead Code & Compatibility Shims
 

@@ -117,9 +117,6 @@ export async function extractFromUrl(
     `/sources/${sourceId}/extract-from-url`,
     {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify({ url }),
     }
   );
@@ -145,9 +142,6 @@ export async function saveExtraction(
     `/sources/${sourceId}/save-extraction`,
     {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify(request),
     }
   );

@@ -9,12 +9,11 @@ Provides endpoints for:
 """
 import logging
 
-from fastapi import APIRouter, HTTPException, status, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Depends
 
 from app.api.error_handlers import handle_extraction_errors
+from app.api.service_dependencies import get_extraction_service
 from app.config import settings
-from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.llm.client import is_llm_available
 from app.models.user import User
@@ -30,31 +29,11 @@ from app.schemas.extraction import (
     RelationExtractionResponse,
 )
 from app.services.extraction_service import ExtractionService
-from app.utils.errors import LLMServiceUnavailableException, ValidationException, ErrorCode, AppException
+from app.utils.errors import ValidationException, ErrorCode, AppException
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["extraction"])
-
-
-# =============================================================================
-# Dependency: Extraction Service
-# =============================================================================
-
-async def get_extraction_service(db: AsyncSession = Depends(get_db)) -> ExtractionService:
-    """
-    Get extraction service instance with database session.
-
-    This allows the service to load dynamic relation types from the database.
-
-    Raises:
-        LLMServiceUnavailableException: If LLM is not available
-    """
-    if not is_llm_available():
-        raise LLMServiceUnavailableException(
-            details="LLM service is not configured. Please set OPENAI_API_KEY environment variable."
-        )
-    return ExtractionService(db=db)
 
 
 # =============================================================================

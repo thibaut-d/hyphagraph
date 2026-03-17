@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useNavigate, Link as RouterLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -20,18 +19,11 @@ import {
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import LinkIcon from "@mui/icons-material/Link";
-import EditIcon from "@mui/icons-material/Edit";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import SearchIcon from "@mui/icons-material/Search";
 
-import { createSource, SourceWrite, extractMetadataFromUrl } from "../api/sources";
-import { invalidateSourceFilterCache } from "../utils/cacheUtils";
-import { useAsyncAction } from "../hooks/useAsyncAction";
-import { useValidationMessage } from "../hooks/useValidationMessage";
-import type { JsonObject } from "../types/json";
-
-type ValidationField = "title" | "url";
+import { useCreateSourceForm } from "../hooks/useCreateSourceForm";
 
 const SOURCE_KINDS = [
   "article",
@@ -44,166 +36,34 @@ const SOURCE_KINDS = [
   "other",
 ];
 
-/**
- * Get quality badge for trust level (OCEBM/GRADE standard)
- */
-function _getQualityBadge(value: number): {
-  label: string;
-  color: "success" | "info" | "warning" | "error";
-  description: string;
-} {
-  if (value >= 0.9)
-    return {
-      label: "Very High Quality",
-      color: "success",
-      description: "Systematic Review / Meta-analysis (GRADE ⊕⊕⊕⊕)",
-    };
-  if (value >= 0.75)
-    return {
-      label: "High Quality",
-      color: "success",
-      description: "RCT / Cohort Study (GRADE ⊕⊕⊕⊕ or ⊕⊕⊕◯)",
-    };
-  if (value >= 0.65)
-    return {
-      label: "Moderate Quality",
-      color: "info",
-      description: "Case-Control Study (GRADE ⊕⊕⊕◯)",
-    };
-  if (value >= 0.5)
-    return {
-      label: "Low Quality",
-      color: "warning",
-      description: "Case Series / Observational (GRADE ⊕⊕◯◯)",
-    };
-  if (value >= 0.3)
-    return {
-      label: "Very Low Quality",
-      color: "warning",
-      description: "Case Report / Expert Opinion (GRADE ⊕◯◯◯)",
-    };
-  return {
-    label: "Anecdotal",
-    color: "error",
-    description: "Anecdotal evidence / Opinion",
-  };
-}
-
 export function CreateSourceView() {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
-  // Form state
-  const [kind, setKind] = useState("article");
-  const [title, setTitle] = useState("");
-  const [url, setUrl] = useState("");
-  const [authors, setAuthors] = useState("");
-  const [year, setYear] = useState("");
-  const [origin, setOrigin] = useState("");
-  const [trustLevel, setTrustLevel] = useState("0.5");
-  const [summaryEn, setSummaryEn] = useState("");
-  const [summaryFr, setSummaryFr] = useState("");
-  const [sourceMetadata, setSourceMetadata] = useState<JsonObject | null>(null);
   const {
-    setValidationMessage,
-    clearValidationMessage: clearError,
+    kind, setKind,
+    title, setTitle,
+    url, setUrl,
+    authors, setAuthors,
+    year, setYear,
+    origin, setOrigin,
+    trustLevel, setTrustLevel,
+    summaryEn, setSummaryEn,
+    summaryFr, setSummaryFr,
+    sourceMetadata,
     getFieldError,
     hasFieldError,
-  } = useValidationMessage<ValidationField>();
-  const [submitError, setSubmitError] = useState<string | null>(null);
-
-  // UI state
-  const [extractError, setExtractError] = useState<string | null>(null);
-  const [autofilled, setAutofilled] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const { isRunning: extracting, run: runMetadataExtraction } = useAsyncAction(setExtractError);
-  const { isRunning: loading, run: runCreateSource } = useAsyncAction(setSubmitError);
-
-  const handleExtractMetadata = async () => {
-    if (!url.trim()) {
-      setExtractError(t("create_source.url_required", "URL is required"));
-      return;
-    }
-
-    setAutofilled(false);
-    const result = await runMetadataExtraction(async () => {
-      const metadata = await extractMetadataFromUrl(url.trim());
-
-      // Autofill form with extracted metadata
-      if (metadata.title) setTitle(metadata.title);
-      if (metadata.kind) setKind(metadata.kind);
-      if (metadata.authors && metadata.authors.length > 0) {
-        setAuthors(metadata.authors.join(", "));
-      }
-      if (metadata.year) setYear(metadata.year.toString());
-      if (metadata.origin) setOrigin(metadata.origin);
-      if (metadata.trust_level !== undefined && metadata.trust_level !== null) {
-        setTrustLevel(metadata.trust_level.toString());
-      }
-      if (metadata.summary_en) setSummaryEn(metadata.summary_en);
-      if (metadata.summary_fr) setSummaryFr(metadata.summary_fr);
-      if (metadata.source_metadata) setSourceMetadata(metadata.source_metadata);
-
-      setAutofilled(true);
-      setExtractError(null);
-    }, t("create_source.extract_error", "Failed to extract metadata from URL"));
-
-    if (!result.ok) {
-      return;
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    clearError();
-    setSubmitError(null);
-    if (!title.trim()) {
-      setValidationMessage(t("create_source.title_required", "Title is required"), "title");
-      return;
-    }
-
-    if (!url.trim()) {
-      setValidationMessage(t("create_source.url_required", "URL is required"), "url");
-      return;
-    }
-
-    const result = await runCreateSource(async () => {
-      const summary: Record<string, string> = {};
-      if (summaryEn.trim()) summary.en = summaryEn.trim();
-      if (summaryFr.trim()) summary.fr = summaryFr.trim();
-
-      const authorsList = authors
-        .split(",")
-        .map((a) => a.trim())
-        .filter((a) => a.length > 0);
-
-      const payload: SourceWrite = {
-        kind,
-        title: title.trim(),
-        url: url.trim(),
-        authors: authorsList.length > 0 ? authorsList : undefined,
-        year: year.trim() ? parseInt(year.trim(), 10) : undefined,
-        origin: origin.trim() || undefined,
-        trust_level: parseFloat(trustLevel),
-        summary: Object.keys(summary).length > 0 ? summary : undefined,
-        source_metadata: sourceMetadata || undefined,
-      };
-
-      const created = await createSource(payload);
-
-      // Invalidate filter options cache since we added a new source
-      invalidateSourceFilterCache();
-
-      // Navigate to the created source
-      navigate(`/sources/${created.id}`);
-    }, t("common.error", "An error occurred"));
-
-    if (!result.ok) {
-      return;
-    }
-  };
-
-  const qualityBadge = _getQualityBadge(parseFloat(trustLevel));
+    clearError,
+    autofilled,
+    showAdvanced, setShowAdvanced,
+    extracting,
+    loading,
+    extractError,
+    submitError,
+    qualityBadge,
+    handleExtractMetadata,
+    handleSubmit,
+  } = useCreateSourceForm();
 
   return (
     <Paper sx={{ p: { xs: 2, sm: 3, md: 4 }, maxWidth: 900, mx: "auto" }}>
@@ -236,10 +96,8 @@ export function CreateSourceView() {
           </Button>
         </Stack>
 
-        {/* Error message (form submission) */}
         {submitError && <Alert severity="error">{submitError}</Alert>}
 
-        {/* Main Form */}
         <form onSubmit={handleSubmit}>
           <Stack spacing={3}>
             {/* URL Field with Auto-Fill */}
@@ -267,10 +125,7 @@ export function CreateSourceView() {
                   }
                   sx={{
                     "& .MuiInputBase-root": autofilled
-                      ? {
-                          bgcolor: "success.50",
-                          borderColor: "success.main",
-                        }
+                      ? { bgcolor: "success.50", borderColor: "success.main" }
                       : {},
                   }}
                 />
@@ -287,7 +142,6 @@ export function CreateSourceView() {
                 </Button>
               </Box>
 
-              {/* Extraction Status */}
               {autofilled && (
                 <Alert severity="success" sx={{ mt: 1 }}>
                   <strong>{t("create_source.autofilled", "✓ Metadata extracted successfully!")}</strong>
@@ -304,7 +158,6 @@ export function CreateSourceView() {
                 </Alert>
               )}
 
-              {/* PubMed/DOI Badges */}
               {sourceMetadata?.pmid && (
                 <Box sx={{ mt: 1, display: "flex", gap: 1, flexWrap: "wrap" }}>
                   <Chip
@@ -327,14 +180,13 @@ export function CreateSourceView() {
               )}
             </Box>
 
-            {/* Required Fields Section */}
+            {/* Required Fields */}
             <Paper variant="outlined" sx={{ p: 2, bgcolor: "background.default" }}>
               <Stack spacing={2}>
                 <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
                   {t("create_source.required_fields", "Required Fields")}
                 </Typography>
 
-                {/* Title */}
                 <TextField
                   label={t("create_source.title_label", "Title") + " *"}
                   value={title}
@@ -348,15 +200,10 @@ export function CreateSourceView() {
                   error={hasFieldError("title")}
                   helperText={getFieldError("title") ?? " "}
                   sx={{
-                    "& .MuiInputBase-root": autofilled && title
-                      ? {
-                          bgcolor: "success.50",
-                        }
-                      : {},
+                    "& .MuiInputBase-root": autofilled && title ? { bgcolor: "success.50" } : {},
                   }}
                 />
 
-                {/* Kind & Year */}
                 <Grid container spacing={2}>
                   <Grid size={{ xs: 12, sm: 6 }}>
                     <TextField
@@ -369,9 +216,7 @@ export function CreateSourceView() {
                       fullWidth
                       sx={{
                         "& .MuiInputBase-root": autofilled && kind !== "article"
-                          ? {
-                              bgcolor: "success.50",
-                            }
+                          ? { bgcolor: "success.50" }
                           : {},
                       }}
                     >
@@ -393,11 +238,7 @@ export function CreateSourceView() {
                       type="number"
                       placeholder="2024"
                       sx={{
-                        "& .MuiInputBase-root": autofilled && year
-                          ? {
-                              bgcolor: "success.50",
-                            }
-                          : {},
+                        "& .MuiInputBase-root": autofilled && year ? { bgcolor: "success.50" } : {},
                       }}
                     />
                   </Grid>
@@ -405,14 +246,13 @@ export function CreateSourceView() {
               </Stack>
             </Paper>
 
-            {/* Optional Metadata Section */}
+            {/* Optional Metadata */}
             <Paper variant="outlined" sx={{ p: 2 }}>
               <Stack spacing={2}>
                 <Typography variant="subtitle2" color="text.secondary">
                   {t("create_source.optional_fields", "Additional Information (Optional)")}
                 </Typography>
 
-                {/* Authors */}
                 <TextField
                   label={t("create_source.authors", "Authors")}
                   value={authors}
@@ -420,20 +260,12 @@ export function CreateSourceView() {
                   disabled={loading}
                   fullWidth
                   placeholder="Smith J, Johnson A, Williams B"
-                  helperText={t(
-                    "create_source.authors_help",
-                    "Comma-separated list"
-                  )}
+                  helperText={t("create_source.authors_help", "Comma-separated list")}
                   sx={{
-                    "& .MuiInputBase-root": autofilled && authors
-                      ? {
-                          bgcolor: "success.50",
-                        }
-                      : {},
+                    "& .MuiInputBase-root": autofilled && authors ? { bgcolor: "success.50" } : {},
                   }}
                 />
 
-                {/* Origin (Journal/Publisher) */}
                 <TextField
                   label={t("create_source.origin", "Journal / Publisher")}
                   value={origin}
@@ -442,15 +274,11 @@ export function CreateSourceView() {
                   fullWidth
                   placeholder="Nature Medicine, Oxford University Press, etc."
                   sx={{
-                    "& .MuiInputBase-root": autofilled && origin
-                      ? {
-                          bgcolor: "success.50",
-                        }
-                      : {},
+                    "& .MuiInputBase-root": autofilled && origin ? { bgcolor: "success.50" } : {},
                   }}
                 />
 
-                {/* Quality Score with Visual Badge */}
+                {/* Quality Score */}
                 <Box>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 }}>
                     <TextField
@@ -463,9 +291,7 @@ export function CreateSourceView() {
                       sx={{
                         flex: 1,
                         "& .MuiInputBase-root": autofilled && parseFloat(trustLevel) !== 0.5
-                          ? {
-                              bgcolor: "success.50",
-                            }
+                          ? { bgcolor: "success.50" }
                           : {},
                       }}
                     />
@@ -511,7 +337,6 @@ export function CreateSourceView() {
                   </Collapse>
                 </Box>
 
-                {/* Summary Fields */}
                 <TextField
                   label={t("create_source.summary_en", "Summary (English)")}
                   value={summaryEn}
@@ -522,11 +347,7 @@ export function CreateSourceView() {
                   rows={3}
                   placeholder="Brief description or abstract..."
                   sx={{
-                    "& .MuiInputBase-root": autofilled && summaryEn
-                      ? {
-                          bgcolor: "success.50",
-                        }
-                      : {},
+                    "& .MuiInputBase-root": autofilled && summaryEn ? { bgcolor: "success.50" } : {},
                   }}
                 />
 
@@ -543,7 +364,7 @@ export function CreateSourceView() {
               </Stack>
             </Paper>
 
-            {/* Submit Actions */}
+            {/* Submit */}
             <Box sx={{ display: "flex", gap: 2, pt: 1 }}>
               <Button
                 variant="outlined"
@@ -566,7 +387,6 @@ export function CreateSourceView() {
               </Button>
             </Box>
 
-            {/* Helper Text */}
             <Typography variant="caption" color="text.secondary" sx={{ textAlign: "center", display: "block" }}>
               {t(
                 "create_source.next_step_hint",
