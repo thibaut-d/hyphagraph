@@ -1,12 +1,14 @@
 import React, { useState } from "react";
 import { requestPasswordReset } from "../api/auth";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAsyncAction } from "../hooks/useAsyncAction";
 import { useValidationMessage } from "../hooks/useValidationMessage";
 
 type ValidationField = "email";
 
 export default function RequestPasswordResetView() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const {
@@ -23,13 +25,13 @@ export default function RequestPasswordResetView() {
     clearError();
     setSubmitError(null);
     if (!email.trim()) {
-      setValidationMessage("Email address is required", "email");
+      setValidationMessage(t("forgot_password.email_required"), "email");
       return;
     }
     const result = await run(async () => {
       await requestPasswordReset(email.trim());
       setSubmitted(true);
-    }, "Failed to request password reset");
+    }, t("forgot_password.error"));
 
     if (!result.ok) {
       return;
@@ -49,11 +51,10 @@ export default function RequestPasswordResetView() {
           }}
         >
           <h2 style={{ margin: "0 0 10px 0", color: "#0369a1" }}>
-            Check Your Email
+            {t("forgot_password.check_email_title")}
           </h2>
           <p style={{ margin: 0, color: "#0c4a6e" }}>
-            If an account exists for <strong>{email}</strong>, you will receive
-            a password reset link shortly.
+            {t("forgot_password.check_email_message", { email })}
           </p>
           <p
             style={{
@@ -62,7 +63,7 @@ export default function RequestPasswordResetView() {
               color: "#0c4a6e",
             }}
           >
-            Please check your inbox and spam folder.
+            {t("forgot_password.check_spam")}
           </p>
         </div>
 
@@ -75,7 +76,7 @@ export default function RequestPasswordResetView() {
             textDecoration: "none",
           }}
         >
-          Back to Login
+          {t("forgot_password.back_to_login")}
         </Link>
       </div>
     );
@@ -83,10 +84,9 @@ export default function RequestPasswordResetView() {
 
   return (
     <div style={{ maxWidth: "400px", margin: "100px auto", padding: "20px" }}>
-      <h1 style={{ marginBottom: "10px" }}>Reset Password</h1>
+      <h1 style={{ marginBottom: "10px" }}>{t("forgot_password.title")}</h1>
       <p style={{ color: "#666", marginBottom: "30px" }}>
-        Enter your email address and we'll send you a link to reset your
-        password.
+        {t("forgot_password.subtitle")}
       </p>
 
       <form onSubmit={handleSubmit}>
@@ -98,7 +98,7 @@ export default function RequestPasswordResetView() {
               fontWeight: "500",
             }}
           >
-            Email Address
+            {t("forgot_password.email_label")}
           </label>
           <input
             type="email"
@@ -109,7 +109,7 @@ export default function RequestPasswordResetView() {
             }}
             required
             disabled={loading}
-            placeholder="your-email@example.com"
+            placeholder={t("forgot_password.email_placeholder")}
             style={{
               width: "100%",
               padding: "10px",
@@ -156,7 +156,7 @@ export default function RequestPasswordResetView() {
             cursor: loading ? "not-allowed" : "pointer",
           }}
         >
-          {loading ? "Sending..." : "Send Reset Link"}
+          {loading ? t("forgot_password.sending") : t("forgot_password.submit")}
         </button>
       </form>
 
@@ -174,7 +174,7 @@ export default function RequestPasswordResetView() {
             textDecoration: "none",
           }}
         >
-          Back to Login
+          {t("forgot_password.back_to_login")}
         </Link>
       </div>
     </div>

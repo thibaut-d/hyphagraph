@@ -1,3 +1,12 @@
+"""
+FastAPI dependency providers for all application services.
+
+Each factory function accepts a database session via Depends(get_db) and returns
+a fully-constructed service instance. Routes should declare dependencies using
+these providers rather than instantiating services directly.
+
+Boundary rule: service construction logic lives here; route handlers stay thin.
+"""
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,48 +28,59 @@ from app.utils.errors import LLMServiceUnavailableException
 
 
 def get_entity_service(db: AsyncSession = Depends(get_db)) -> EntityService:
+    """Return an EntityService bound to the current request's database session."""
     return EntityService(db)
 
 
 def get_entity_term_service(db: AsyncSession = Depends(get_db)) -> EntityTermService:
+    """Return an EntityTermService bound to the current request's database session."""
     return EntityTermService(db)
 
 
 def get_source_service(db: AsyncSession = Depends(get_db)) -> SourceService:
+    """Return a SourceService bound to the current request's database session."""
     return SourceService(db)
 
 
 def get_export_service(db: AsyncSession = Depends(get_db)) -> ExportService:
+    """Return an ExportService bound to the current request's database session."""
     return ExportService(db)
 
 
 def get_search_service(db: AsyncSession = Depends(get_db)) -> SearchService:
+    """Return a SearchService bound to the current request's database session."""
     return SearchService(db)
 
 
 def get_typedb_export_service(db: AsyncSession = Depends(get_db)) -> TypeDBExportService:
+    """Return a TypeDBExportService bound to the current request's database session."""
     return TypeDBExportService(db)
 
 
 def get_relation_service(db: AsyncSession = Depends(get_db)) -> RelationService:
+    """Return a RelationService bound to the current request's database session."""
     return RelationService(db)
 
 
 def get_relation_type_service(db: AsyncSession = Depends(get_db)) -> RelationTypeService:
+    """Return a RelationTypeService bound to the current request's database session."""
     return RelationTypeService(db)
 
 
 def get_extraction_review_service(
     db: AsyncSession = Depends(get_db),
 ) -> ExtractionReviewService:
+    """Return an ExtractionReviewService bound to the current request's database session."""
     return ExtractionReviewService(db)
 
 
 def get_document_service() -> DocumentService:
+    """Return a stateless DocumentService (no database session required)."""
     return DocumentService()
 
 
 def get_metadata_extractor_factory() -> MetadataExtractorFactory:
+    """Return a stateless MetadataExtractorFactory (no database session required)."""
     return MetadataExtractorFactory()
 
 

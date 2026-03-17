@@ -275,5 +275,34 @@
     "deselect_all": "Tout désélectionner",
     "min": "Min",
     "max": "Max"
+  },
+  "reset_password": {
+    "title": "Définir un nouveau mot de passe",
+    "subtitle": "Entrez votre nouveau mot de passe ci-dessous.",
+    "invalid_token": "Jeton de réinitialisation invalide ou manquant",
+    "error": "Échec de la réinitialisation du mot de passe. Le lien a peut-être expiré.",
+    "success_title": "Mot de passe réinitialisé avec succès !",
+    "success_message": "Votre mot de passe a été réinitialisé avec succès.",
+    "success_redirect": "Redirection vers la connexion...",
+    "go_to_login": "Aller à la connexion maintenant",
+    "new_password_placeholder": "Entrez le nouveau mot de passe (min 8 caractères)",
+    "confirm_password_placeholder": "Confirmez le nouveau mot de passe",
+    "resetting": "Réinitialisation...",
+    "submit": "Réinitialiser le mot de passe",
+    "back_to_login": "Retour à la connexion"
+  },
+  "forgot_password": {
+    "title": "Réinitialiser le mot de passe",
+    "subtitle": "Entrez votre adresse e-mail et nous vous enverrons un lien pour réinitialiser votre mot de passe.",
+    "email_required": "L'adresse e-mail est requise",
+    "error": "Échec de la demande de réinitialisation du mot de passe",
+    "check_email_title": "Vérifiez votre e-mail",
+    "check_email_message": "Si un compte existe pour {{email}}, vous recevrez un lien de réinitialisation sous peu.",
+    "check_spam": "Veuillez vérifier votre boîte de réception et votre dossier spam.",
+    "back_to_login": "Retour à la connexion",
+    "email_label": "Adresse e-mail",
+    "email_placeholder": "votre-email@exemple.com",
+    "sending": "Envoi en cours...",
+    "submit": "Envoyer le lien de réinitialisation"
   }
 }

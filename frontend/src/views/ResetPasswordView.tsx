@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { resetPassword } from "../api/auth";
 import { useNotification } from "../notifications/NotificationContext";
 import { useAsyncAction } from "../hooks/useAsyncAction";
@@ -8,6 +9,7 @@ import { useValidationMessage } from "../hooks/useValidationMessage";
 type ValidationField = "newPassword" | "confirmPassword";
 
 export default function ResetPasswordView() {
+  const { t } = useTranslation();
   const { showError } = useNotification();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -27,9 +29,9 @@ export default function ResetPasswordView() {
 
   useEffect(() => {
     if (!token) {
-      showError(new Error("Invalid or missing reset token"));
+      showError(new Error(t("reset_password.invalid_token")));
     }
-  }, [token, showError]);
+  }, [token, showError, t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,17 +40,17 @@ export default function ResetPasswordView() {
 
     // Validation
     if (newPassword.length < 8) {
-      setValidationMessage("Password must be at least 8 characters long", "newPassword");
+      setValidationMessage(t("change_password.password_too_short"), "newPassword");
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setValidationMessage("Passwords do not match", "confirmPassword");
+      setValidationMessage(t("change_password.passwords_dont_match"), "confirmPassword");
       return;
     }
 
     if (!token) {
-      showError(new Error("Invalid or missing reset token"));
+      showError(new Error(t("reset_password.invalid_token")));
       return;
     }
 
@@ -60,7 +62,7 @@ export default function ResetPasswordView() {
       setTimeout(() => {
         navigate("/account");
       }, 3000);
-    }, "Failed to reset password. The link may have expired.");
+    }, t("reset_password.error"));
 
     if (!result.ok) {
       return;
@@ -80,10 +82,10 @@ export default function ResetPasswordView() {
           }}
         >
           <h2 style={{ margin: "0 0 10px 0", color: "#15803d" }}>
-            Password Reset Successful!
+            {t("reset_password.success_title")}
           </h2>
           <p style={{ margin: 0, color: "#166534" }}>
-            Your password has been successfully reset.
+            {t("reset_password.success_message")}
           </p>
           <p
             style={{
@@ -92,7 +94,7 @@ export default function ResetPasswordView() {
               color: "#166534",
             }}
           >
-            Redirecting to login...
+            {t("reset_password.success_redirect")}
           </p>
         </div>
 
@@ -105,7 +107,7 @@ export default function ResetPasswordView() {
             textDecoration: "none",
           }}
         >
-          Go to Login Now
+          {t("reset_password.go_to_login")}
         </Link>
       </div>
     );
@@ -113,9 +115,9 @@ export default function ResetPasswordView() {
 
   return (
     <div style={{ maxWidth: "400px", margin: "100px auto", padding: "20px" }}>
-      <h1 style={{ marginBottom: "10px" }}>Set New Password</h1>
+      <h1 style={{ marginBottom: "10px" }}>{t("reset_password.title")}</h1>
       <p style={{ color: "#666", marginBottom: "30px" }}>
-        Enter your new password below.
+        {t("reset_password.subtitle")}
       </p>
 
       <form onSubmit={handleSubmit}>
@@ -127,7 +129,7 @@ export default function ResetPasswordView() {
               fontWeight: "500",
             }}
           >
-            New Password
+            {t("change_password.new_password")}
           </label>
           <input
             type="password"
@@ -138,7 +140,7 @@ export default function ResetPasswordView() {
             }}
             required
             disabled={isRunning || !token}
-            placeholder="Enter new password (min 8 characters)"
+            placeholder={t("reset_password.new_password_placeholder")}
             style={{
               width: "100%",
               padding: "10px",
@@ -163,7 +165,7 @@ export default function ResetPasswordView() {
               fontWeight: "500",
             }}
           >
-            Confirm Password
+            {t("change_password.confirm_password")}
           </label>
           <input
             type="password"
@@ -174,7 +176,7 @@ export default function ResetPasswordView() {
             }}
             required
             disabled={isRunning || !token}
-            placeholder="Confirm new password"
+            placeholder={t("reset_password.confirm_password_placeholder")}
             style={{
               width: "100%",
               padding: "10px",
@@ -221,7 +223,7 @@ export default function ResetPasswordView() {
             cursor: isRunning || !token ? "not-allowed" : "pointer",
           }}
         >
-          {isRunning ? "Resetting..." : "Reset Password"}
+          {isRunning ? t("reset_password.resetting") : t("reset_password.submit")}
         </button>
       </form>
 
@@ -239,7 +241,7 @@ export default function ResetPasswordView() {
             textDecoration: "none",
           }}
         >
-          Back to Login
+          {t("reset_password.back_to_login")}
         </Link>
       </div>
     </div>

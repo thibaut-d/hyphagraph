@@ -1,3 +1,14 @@
+"""
+Document extraction processing — orchestration helpers.
+
+Boundary rules:
+- This module owns the multi-step extraction workflow: load document text → run LLM
+  extraction → stage review items → build link suggestions → build preview → save to graph.
+- All heavy orchestration (LLM calls, bulk DB writes) is delegated to injected service
+  factories so individual steps remain unit-testable in isolation.
+- PubMed-specific metadata enrichment lives in _update_source_revision_from_pubmed and
+  is called transparently by fetch_document_from_url when a PubMed URL is detected.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -208,6 +219,12 @@ class FetchedDocument:
 
 
 async def load_source_document_text(db: AsyncSession, source_id: UUID) -> str:
+    """
+    Return the document text from the current revision of source_id.
+
+    Raises SourceNotFoundException if the source has no current revision.
+    Raises ValidationException if the revision has no uploaded document text.
+    """
     stmt = select(SourceRevision).where(
         SourceRevision.source_id == source_id,
         SourceRevision.is_current == True,
@@ -229,6 +246,11 @@ async def load_source_document_text(db: AsyncSession, source_id: UUID) -> str:
 
 
 async def ensure_source_exists(db: AsyncSession, source_id: UUID) -> Source:
+    """
+    Load and return the Source record for source_id.
+
+    Raises SourceNotFoundException if no matching source exists.
+    """
     stmt = select(Source).where(Source.id == source_id)
     result = await db.execute(stmt)
     source = result.scalar_one_or_none()
@@ -247,6 +269,12 @@ async def store_document_in_source(
     user_id: UUID | None,
     source_service_factory: SourceServiceFactory = SourceService,
 ) -> None:
+    """
+    Attach a document to an existing source by creating a new source revision.
+
+    Delegates to SourceService.add_document_to_source, creating a revision that
+    includes the supplied text, format, and file name.
+    """
     source_service = source_service_factory(db)
     await source_service.add_document_to_source(
         source_id=source_id,
@@ -263,6 +291,13 @@ async def run_validated_extraction(
     text: str,
     orchestrator_factory: BatchExtractionOrchestratorFactory = BatchExtractionOrchestrator,
 ) -> ExtractedBatch:
+    """
+    Run LLM extraction with moderate validation and return the raw ExtractedBatch.
+
+    Uses BatchExtractionOrchestrator with enable_validation=True and
+    min_confidence="medium". The orchestrator handles prompt construction,
+    LLM calls, and per-item validation scoring.
+    """
     orchestrator = orchestrator_factory(
         db=db,
         enable_validation=True,
@@ -296,6 +331,12 @@ async def stage_review_batch(
     extracted_batch: ExtractedBatch,
     review_service_factory: ExtractionReviewServiceFactory = ExtractionReviewService,
 ) -> ReviewSummary:
+    """
+    Stage all extracted items for human review and return a ReviewSummary.
+
+    Items scoring ≥ 0.9 with no flags are auto-verified; the rest enter
+    pending status for human review. Returns counts and average validation score.
+    """
     review_service = review_service_factory(
         db=db,
         auto_commit_enabled=True,
@@ -331,6 +372,12 @@ async def build_link_suggestions(
     entities: list[ExtractedEntity],
     linking_service_factory: EntityLinkingServiceFactory = EntityLinkingService,
 ) -> list[EntityLinkMatch]:
+    """
+    Find existing-entity matches for a list of extracted entities.
+
+    Returns EntityLinkMatch entries suitable for the DocumentExtractionPreview
+    so the frontend can offer link-vs-create decisions to the user.
+    """
     linking_service = linking_service_factory(db)
     matches = await linking_service.find_entity_matches(entities)
     return [
@@ -354,6 +401,12 @@ async def build_extraction_preview(
     review_service_factory: ExtractionReviewServiceFactory = ExtractionReviewService,
     linking_service_factory: EntityLinkingServiceFactory = EntityLinkingService,
 ) -> DocumentExtractionPreview:
+    """
+    Full extraction pipeline using BatchExtractionOrchestrator (validation built-in).
+
+    Runs extraction → stages review items → builds link suggestions, returning a
+    DocumentExtractionPreview for the frontend to display before saving.
+    """
     extracted_batch = await run_validated_extraction(
         db,
         text=text,
@@ -393,6 +446,13 @@ async def build_extraction_preview_with_service(
     review_service_factory: ExtractionReviewServiceFactory = ExtractionReviewService,
     linking_service_factory: EntityLinkingServiceFactory = EntityLinkingService,
 ) -> DocumentExtractionPreview:
+    """
+    Full extraction pipeline using ExtractionService (external validation path).
+
+    Alternative to build_extraction_preview for callers that already hold an
+    ExtractionService instance. Delegates validation to the service, then stages
+    review items and builds link suggestions.
+    """
     extraction_service = extraction_service_factory(db)
     (
         entities,
@@ -444,6 +504,13 @@ async def fetch_document_from_url(
     pubmed_fetcher_factory: PubMedFetcherFactory = PubMedFetcher,
     url_fetcher_factory: UrlFetcherFactory = UrlFetcher,
 ) -> FetchedDocument:
+    """
+    Fetch document text from a URL, with transparent PubMed handling.
+
+    If the URL contains a PubMed ID, fetches the article via PubMedFetcher and
+    backfills source metadata (PMID, DOI, authors, year, journal) onto the current
+    source revision. Otherwise falls back to generic URL fetching.
+    """
     pubmed_fetcher = pubmed_fetcher_factory()
     pmid = pubmed_fetcher.extract_pmid_from_url(url)
 
@@ -473,6 +540,13 @@ async def _update_source_revision_from_pubmed(
     source_id: UUID,
     article: PubMedArticle,
 ) -> None:
+    """
+    Enrich the current source revision with PubMed article metadata in-place.
+
+    Only updates fields that are not already populated (authors, year, origin).
+    Always sets PMID, DOI, and source="pubmed" in source_metadata. No-op if the
+    source has no current revision.
+    """
     stmt = select(SourceRevision).where(
         SourceRevision.source_id == source_id,
         SourceRevision.is_current == True,
@@ -505,6 +579,13 @@ async def save_extraction_to_graph(
     user_id: UUID | None,
     bulk_creation_service_factory: BulkCreationServiceFactory = BulkCreationService,
 ) -> SaveExtractionResult:
+    """
+    Materialise a user-confirmed extraction into the knowledge graph.
+
+    Creates new entities (entities_to_create), merges entity links (entity_links),
+    then creates all relations using the final entity mapping. Commits on success
+    and returns counts and IDs in SaveExtractionResult.
+    """
     await ensure_source_exists(db, source_id)
 
     bulk_service = bulk_creation_service_factory(db)

@@ -304,5 +304,34 @@
     "deselect_all": "Deselect All",
     "min": "Min",
     "max": "Max"
+  },
+  "reset_password": {
+    "title": "Set New Password",
+    "subtitle": "Enter your new password below.",
+    "invalid_token": "Invalid or missing reset token",
+    "error": "Failed to reset password. The link may have expired.",
+    "success_title": "Password Reset Successful!",
+    "success_message": "Your password has been successfully reset.",
+    "success_redirect": "Redirecting to login...",
+    "go_to_login": "Go to Login Now",
+    "new_password_placeholder": "Enter new password (min 8 characters)",
+    "confirm_password_placeholder": "Confirm new password",
+    "resetting": "Resetting...",
+    "submit": "Reset Password",
+    "back_to_login": "Back to Login"
+  },
+  "forgot_password": {
+    "title": "Reset Password",
+    "subtitle": "Enter your email address and we'll send you a link to reset your password.",
+    "email_required": "Email address is required",
+    "error": "Failed to request password reset",
+    "check_email_title": "Check Your Email",
+    "check_email_message": "If an account exists for {{email}}, you will receive a password reset link shortly.",
+    "check_spam": "Please check your inbox and spam folder.",
+    "back_to_login": "Back to Login",
+    "email_label": "Email Address",
+    "email_placeholder": "your-email@example.com",
+    "sending": "Sending...",
+    "submit": "Send Reset Link"
   }
 }

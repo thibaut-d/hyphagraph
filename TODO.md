@@ -129,6 +129,13 @@ Progress update:
 4. Add contract tests around extraction workflow payloads, inference cache semantics, and revision-dependent read-model behavior.
 5. Reassess the largest remaining files after those changes before allowing further structural edits in those areas.
 
+Progress update:
+- Completed: `__init__.py` added to all 5 top-level backend packages.
+- Completed: `SYSTEM_SOURCE_ID` silent-skip invariant documented inline in `inference/read_models.py`.
+- Completed: `test_revision_helpers.py` added — 5 focused tests for `is_current` single-current constraint.
+
+- Status: Audit 14 is complete.
+
 ### Audit 15: Documentation & i18n Completeness
 
 1. Move remaining hardcoded user-facing strings from reset-password, request-reset, PubMed import, review queue, extraction-preview, and smart-discovery flows into i18n catalogs.
@@ -136,6 +143,15 @@ Progress update:
 3. Add concise docstrings to the missing public functions/classes in service dependency modules, document extraction modules, inference helpers, search helpers, and extraction review helpers.
 4. Add short boundary docs for extraction workflow ownership, inference cache/read-model rules, and dependency-provider responsibilities.
 5. Add or update frontend tests to verify translated strings are used in the migrated flows.
+
+Progress update:
+- Completed: `reset_password.*` and `forgot_password.*` i18n sections added to en.json + fr.json.
+- Completed: `ResetPasswordView.tsx` and `RequestPasswordResetView.tsx` migrated to `useTranslation`.
+- Completed: Docstrings added to `service_dependencies.py` (module + 11 functions), `inference/math.py` (module + 5), `inference/read_models.py` (module + 6), `document_extraction_processing.py` (module + 11).
+- Deferred: ReviewQueueView, ExtractionPreview, errorHandler.ts i18n migration (~31 strings).
+- Deferred: Frontend tests for translated auth flows.
+
+- Status: Audit 15 is partially complete. Remaining: review_queue + extraction_preview i18n, errorHandler i18n, frontend tests.
 
 ## Audit Reports
 

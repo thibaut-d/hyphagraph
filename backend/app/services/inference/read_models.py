@@ -1,3 +1,14 @@
+"""
+Inference read-model builders.
+
+Boundary rules:
+- This module owns the assembly of InferenceRead responses from live relations and
+  cached computed-relation records.
+- Caching (cache_computed_inference) requires SYSTEM_SOURCE_ID to be configured;
+  without it the cache is silently skipped and inference re-runs on every request.
+- Slug resolution reads current EntityRevision rows; slugs reflect the latest revision
+  at query time and are not stored in the inference cache itself.
+"""
 from collections import defaultdict
 from uuid import UUID, uuid4
 from typing import Optional
@@ -24,6 +35,12 @@ async def resolve_entity_slugs(
     db: AsyncSession,
     entity_ids: set[UUID],
 ) -> dict[UUID, str]:
+    """
+    Fetch the current slug for each entity in entity_ids.
+
+    Returns a mapping of entity_id → slug using the is_current=True revision.
+    Missing or unknown entity IDs are omitted from the result.
+    """
     if not entity_ids:
         return {}
 
@@ -37,6 +54,11 @@ async def resolve_entity_slugs(
 
 
 def matches_scope(relation, scope_filter: dict) -> bool:
+    """
+    Return True if relation's current revision scope contains all scope_filter key-value pairs.
+
+    Relations without a current revision or without a scope field always return False.
+    """
     if not relation.revisions:
         return False
 
@@ -61,6 +83,12 @@ async def build_grouped_inference_read(
     relations,
     role_inferences: list[RoleInference],
 ) -> InferenceRead:
+    """
+    Assemble an InferenceRead from a list of live relations and pre-computed role inferences.
+
+    Resolves entity slugs for all role participants, groups relations by kind, and returns
+    the combined InferenceRead schema for the given entity.
+    """
     entity_ids: set[UUID] = set()
     for relation in relations:
         current_rev = next((revision for revision in relation.revisions if revision.is_current), None)
@@ -92,6 +120,13 @@ async def build_grouped_inference_read(
 
 
 def compute_role_inferences(relations, current_entity_id: UUID | None = None) -> list[RoleInference]:
+    """
+    Compute RoleInference entries by aggregating evidence across all supplied relations.
+
+    If current_entity_id is given, only role participants matching that entity are counted.
+    Direction ("positive"/"supports" → +1, "negative"/"contradicts" → -1) is used as
+    the contribution weight when computing per-role scores.
+    """
     grouped_by_role = defaultdict(list)
 
     for relation in relations:
@@ -149,6 +184,13 @@ async def convert_cached_to_inference_read(
     cached_computed,
     scope_filter: Optional[dict],
 ) -> InferenceRead:
+    """
+    Build an InferenceRead from a cached ComputedRelation record.
+
+    Reads role scores directly from the cached relation's role revisions, then
+    re-fetches live relations to populate relations_by_kind (scope-filtered if
+    scope_filter is provided). This avoids re-running the full inference math.
+    """
     role_inferences: list[RoleInference] = []
 
     if cached_computed.relation and cached_computed.relation.revisions:
@@ -184,6 +226,14 @@ async def cache_computed_inference(
     scope_filter: Optional[dict],
     role_inferences: list[RoleInference],
 ) -> None:
+    """
+    Persist a freshly computed inference result as a ComputedRelation record.
+
+    Creates a Relation + RelationRevision + RelationRoleRevision chain attributed to
+    SYSTEM_SOURCE_ID, then records a ComputedRelation row with the scope_hash and
+    model_version for future cache lookups. No-op if a matching cache entry already
+    exists or if SYSTEM_SOURCE_ID is not configured.
+    """
     # Guard: SYSTEM_SOURCE_ID must be configured for inference results to be persisted.
     # Without it, computed relations cannot be attributed to the system source, so caching
     # is skipped entirely. In development/test environments without this setting, inference
