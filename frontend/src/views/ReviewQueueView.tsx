@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useReviewQueue } from "../hooks/useReviewQueue";
 import { useSelection } from "../hooks/useSelection";
 import { useReviewDialog } from "../hooks/useReviewDialog";
@@ -31,6 +32,7 @@ import DeselectIcon from "@mui/icons-material/Deselect";
 const PAGE_SIZE = 20;
 
 export function ReviewQueueView() {
+  const { t } = useTranslation();
 
   // Filters state (kept in component for TextField binding)
   const [minScore, setMinScore] = useState<number | undefined>(undefined);
@@ -98,13 +100,13 @@ export function ReviewQueueView() {
       <Stack spacing={3}>
         {/* Header */}
         <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <Typography variant="h4">Review Queue</Typography>
+          <Typography variant="h4">{t("menu.review_queue")}</Typography>
           <Button
             startIcon={<RefreshIcon />}
             onClick={handleRefresh}
             disabled={isLoading}
           >
-            Refresh
+            {t("review_queue.refresh")}
           </Button>
         </Stack>
 
@@ -115,11 +117,11 @@ export function ReviewQueueView() {
               <Card>
                 <CardContent>
                   <Typography color="text.secondary" gutterBottom>
-                    Pending Review
+                    {t("review_queue.pending_review")}
                   </Typography>
                   <Typography variant="h4">{stats.total_pending}</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {stats.pending_entities} entities, {stats.pending_relations} relations
+                    {t("review_queue.pending_breakdown", { entities: stats.pending_entities, relations: stats.pending_relations })}
                   </Typography>
                 </CardContent>
               </Card>
@@ -128,7 +130,7 @@ export function ReviewQueueView() {
               <Card>
                 <CardContent>
                   <Typography color="text.secondary" gutterBottom>
-                    Auto-Verified
+                    {t("review_queue.auto_verified")}
                   </Typography>
                   <Typography variant="h4">{stats.total_auto_verified}</Typography>
                 </CardContent>
@@ -138,7 +140,7 @@ export function ReviewQueueView() {
               <Card>
                 <CardContent>
                   <Typography color="text.secondary" gutterBottom>
-                    Average Score
+                    {t("review_queue.average_score")}
                   </Typography>
                   <Typography variant="h4">
                     {(stats.avg_validation_score * 100).toFixed(0)}%
@@ -150,7 +152,7 @@ export function ReviewQueueView() {
               <Card>
                 <CardContent>
                   <Typography color="text.secondary" gutterBottom>
-                    Flagged
+                    {t("review_queue.flagged")}
                   </Typography>
                   <Typography variant="h4">{stats.flagged_count}</Typography>
                 </CardContent>
@@ -163,7 +165,7 @@ export function ReviewQueueView() {
         <Paper sx={{ p: 2 }}>
           <Stack direction="row" spacing={2} alignItems="center">
             <TextField
-              label="Min Validation Score"
+              label={t("review_queue.min_score_label")}
               type="number"
               size="small"
               value={minScore ?? ""}
@@ -176,7 +178,7 @@ export function ReviewQueueView() {
               onClick={() => setOnlyFlagged(!onlyFlagged)}
               startIcon={<WarningIcon />}
             >
-              Only Flagged
+              {t("review_queue.only_flagged")}
             </Button>
           </Stack>
         </Paper>
@@ -186,7 +188,7 @@ export function ReviewQueueView() {
           <Paper sx={{ p: 2, bgcolor: "action.selected" }}>
             <Stack direction="row" spacing={2} alignItems="center">
               <Typography>
-                {selectedCount} selected
+                {t("review_queue.selected_count", { count: selectedCount })}
               </Typography>
               <Button
                 variant="contained"
@@ -194,7 +196,7 @@ export function ReviewQueueView() {
                 startIcon={<CheckCircleIcon />}
                 onClick={() => openBatchReviewDialog("approve")}
               >
-                Approve Selected
+                {t("review_queue.approve_selected")}
               </Button>
               <Button
                 variant="contained"
@@ -202,13 +204,13 @@ export function ReviewQueueView() {
                 startIcon={<CancelIcon />}
                 onClick={() => openBatchReviewDialog("reject")}
               >
-                Reject Selected
+                {t("review_queue.reject_selected")}
               </Button>
               <Button
                 startIcon={<DeselectIcon />}
                 onClick={clearSelection}
               >
-                Deselect All
+                {t("review_queue.deselect_all")}
               </Button>
             </Stack>
           </Paper>
@@ -222,7 +224,7 @@ export function ReviewQueueView() {
               onClick={handleSelectAll}
               size="small"
             >
-              Select All
+              {t("review_queue.select_all")}
             </Button>
           </Stack>
         )}
@@ -235,10 +237,10 @@ export function ReviewQueueView() {
         ) : extractions.length === 0 ? (
           <Paper sx={{ p: 4, textAlign: "center" }}>
             <Typography variant="h6" color="text.secondary">
-              No pending extractions
+              {t("review_queue.no_pending_title")}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              All extractions have been reviewed!
+              {t("review_queue.no_pending_desc")}
             </Typography>
           </Paper>
         ) : (
@@ -260,7 +262,7 @@ export function ReviewQueueView() {
         {hasMore && !isLoading && extractions.length > 0 && (
           <Box sx={{ display: "flex", justifyContent: "center" }}>
             <Button onClick={loadMore} variant="outlined">
-              Load More
+              {t("common.load_more")}
             </Button>
           </Box>
         )}
@@ -269,11 +271,14 @@ export function ReviewQueueView() {
       {/* Batch Review Dialog */}
       <Dialog open={reviewDialogOpen} onClose={closeReviewDialog}>
         <DialogTitle>
-          {reviewDecision === "approve" ? "Approve" : "Reject"} {selectedCount} Extractions
+          {t("review_queue.dialog_title", {
+            action: reviewDecision === "approve" ? t("review_queue.dialog_action_approve") : t("review_queue.dialog_action_reject"),
+            count: selectedCount,
+          })}
         </DialogTitle>
         <DialogContent>
           <TextField
-            label="Review Notes (optional)"
+            label={t("review_queue.review_notes")}
             multiline
             rows={4}
             fullWidth
@@ -283,13 +288,15 @@ export function ReviewQueueView() {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={closeReviewDialog}>Cancel</Button>
+          <Button onClick={closeReviewDialog}>{t("common.cancel")}</Button>
           <Button
             onClick={handleBatchReview}
             variant="contained"
             color={reviewDecision === "approve" ? "success" : "error"}
           >
-            {reviewDecision === "approve" ? "Approve" : "Reject"} All
+            {t("review_queue.action_all", {
+              action: reviewDecision === "approve" ? t("review_queue.dialog_action_approve") : t("review_queue.dialog_action_reject"),
+            })}
           </Button>
         </DialogActions>
       </Dialog>

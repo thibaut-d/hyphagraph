@@ -5,6 +5,7 @@
  * user to review and approve entities/relations before saving to graph.
  */
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Box,
   Paper,
@@ -80,6 +81,7 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
     new Set(preview.relations.map(getRelationKey))
   );
 
+  const { t } = useTranslation();
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const handleSave = async () => {
@@ -111,7 +113,7 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
       const result = await saveExtraction(preview.source_id, request);
       onSaveComplete(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save extraction");
+      setError(err instanceof Error ? err.message : t("extraction_preview.save_error"));
     } finally {
       setSaving(false);
     }
@@ -157,16 +159,16 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
         <Box>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
             <CheckCircleIcon color="success" />
-            <Typography variant="h5">Extraction Complete!</Typography>
+            <Typography variant="h5">{t("extraction_preview.title")}</Typography>
           </Box>
           <Typography variant="body2" color="text.secondary">
             {allHighConfidence ? (
               <>
-                <strong>High-confidence extraction detected.</strong> All entities have exact or synonym matches.
-                You can quick-save or review details below.
+                <strong>{t("extraction_preview.high_confidence_bold")}</strong>{" "}
+                {t("extraction_preview.high_confidence_rest")}
               </>
             ) : (
-              <>Review extracted entities and relations before saving to the knowledge graph.</>
+              <>{t("extraction_preview.review_msg")}</>
             )}
           </Typography>
         </Box>
@@ -175,27 +177,27 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
         <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
           <Chip
             icon={<AddCircleIcon />}
-            label={`${stats.toCreate} new entities`}
+            label={t("extraction_preview.new_entities", { count: stats.toCreate })}
             color="success"
             variant="outlined"
           />
           <Chip
             icon={<LinkIcon />}
-            label={`${stats.toLink} linked entities`}
+            label={t("extraction_preview.linked_entities", { count: stats.toLink })}
             color="info"
             variant="outlined"
           />
           {stats.toSkip > 0 && (
             <Chip
               icon={<RemoveCircleIcon />}
-              label={`${stats.toSkip} skipped entities`}
+              label={t("extraction_preview.skipped_entities", { count: stats.toSkip })}
               color="warning"
               variant="outlined"
             />
           )}
           <Chip
             icon={<CheckCircleIcon />}
-            label={`${stats.relationsSelected} relations`}
+            label={t("extraction_preview.relations", { count: stats.relationsSelected })}
             color="primary"
             variant="outlined"
           />
@@ -210,7 +212,7 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 <ArticleIcon />
                 <Typography variant="h6">
-                  Extracted Text ({preview.extracted_text.length.toLocaleString()} characters)
+                  {t("extraction_preview.extracted_text", { count: preview.extracted_text.length.toLocaleString() })}
                 </Typography>
               </Box>
             </AccordionSummary>
@@ -236,7 +238,7 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
         {/* Entity Linking Suggestions */}
         <Box>
           <Typography variant="h6" gutterBottom>
-            Entities ({preview.entity_count})
+            {t("extraction_preview.entities_section", { count: preview.entity_count })}
           </Typography>
           <EntityLinkingSuggestions
             entities={preview.entities}
@@ -251,7 +253,7 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
         {/* Relations */}
         <Box>
           <Typography variant="h6" gutterBottom>
-            Relations ({preview.relation_count})
+            {t("extraction_preview.relations_section", { count: preview.relation_count })}
           </Typography>
           <ExtractedRelationsList
             relations={preview.relations}
@@ -269,7 +271,7 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
         {/* Help message when all entities are skipped */}
         {stats.toCreate === 0 && stats.toLink === 0 && !saving && (
           <Alert severity="info">
-            No entities selected. Please select at least one entity to create or link before saving.
+            {t("extraction_preview.no_entities_alert")}
           </Alert>
         )}
 
@@ -279,10 +281,10 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
             <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
               <Box>
                 <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                  All entities validated with high confidence
+                  {t("extraction_preview.all_validated")}
                 </Typography>
                 <Typography variant="caption">
-                  {stats.toCreate} new entities - {stats.toLink} linked entities - {stats.relationsSelected} relations
+                  {t("extraction_preview.quick_save_stats", { create: stats.toCreate, link: stats.toLink, relations: stats.relationsSelected })}
                 </Typography>
               </Box>
               <Button
@@ -294,7 +296,7 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
                 disabled={saving || !hasDecisions}
                 sx={{ minWidth: 180, fontWeight: 600 }}
               >
-                {saving ? "Saving..." : "Quick Save"}
+                {saving ? t("extraction_preview.saving") : t("extraction_preview.quick_save")}
               </Button>
             </Box>
           </Alert>
@@ -304,13 +306,13 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
         <Box sx={{ display: "flex", gap: 2, justifyContent: "space-between", alignItems: "center" }}>
           <Typography variant="caption" color="text.secondary" sx={{ flex: 1 }}>
             {hasDecisions
-              ? "Review entities and relations above, then save to add them to the knowledge graph."
-              : "All entities skipped. Adjust decisions above to enable saving."}
+              ? t("extraction_preview.review_guidance")
+              : t("extraction_preview.all_skipped")}
           </Typography>
           <Box sx={{ display: "flex", gap: 2 }}>
             {onCancel && (
               <Button onClick={onCancel} disabled={saving} variant="outlined">
-                Cancel
+                {t("common.cancel")}
               </Button>
             )}
             {!allHighConfidence && (
@@ -322,7 +324,7 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
                 disabled={saving || !hasDecisions}
                 sx={{ minWidth: 180 }}
               >
-                {saving ? "Saving..." : "Save to Graph"}
+                {saving ? t("extraction_preview.saving") : t("extraction_preview.save_to_graph")}
               </Button>
             )}
           </Box>

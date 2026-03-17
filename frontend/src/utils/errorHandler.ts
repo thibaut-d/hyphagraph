@@ -6,6 +6,7 @@
  * - User-friendly error messages with debugging information
  * - Integration with i18n for localized error messages
  */
+import i18n from "../i18n";
 
 /**
  * Error codes from the backend.
@@ -246,7 +247,7 @@ export function parseError(
       error.message.toLowerCase().includes("failed to fetch")
     ) {
       return {
-        userMessage: "Network error. Please check your connection.",
+        userMessage: i18n.t("notifications.network_error"),
         developerMessage: `Network request failed: ${error.message}`,
         code: ErrorCode.NETWORK_ERROR,
         originalError: error,
@@ -270,19 +271,19 @@ export function parseError(
 
     if (statusCode === 401) {
       code = ErrorCode.UNAUTHORIZED;
-      userMessage = "Unauthorized. Please log in.";
+      userMessage = i18n.t("notifications.http_401");
     } else if (statusCode === 403) {
       code = ErrorCode.FORBIDDEN;
-      userMessage = "You don't have permission to perform this action.";
+      userMessage = i18n.t("notifications.http_403");
     } else if (statusCode === 404) {
       code = ErrorCode.NOT_FOUND;
-      userMessage = "The requested resource was not found.";
+      userMessage = i18n.t("notifications.http_404");
     } else if (statusCode === 429) {
       code = ErrorCode.RATE_LIMIT_EXCEEDED;
-      userMessage = "Too many requests. Please try again later.";
+      userMessage = i18n.t("notifications.rate_limit");
     } else if (statusCode >= 500) {
       code = ErrorCode.INTERNAL_SERVER_ERROR;
-      userMessage = "Server error. Please try again later.";
+      userMessage = i18n.t("notifications.server_error");
     }
 
     return {
@@ -392,24 +393,24 @@ export function shouldShowErrorToUser(code: ErrorCode): boolean {
 export function getErrorTitle(code: ErrorCode): string {
   switch (code) {
     case ErrorCode.VALIDATION_ERROR:
-      return "Validation Error";
+      return i18n.t("notifications.error_title_validation");
     case ErrorCode.NOT_FOUND:
-      return "Not Found";
+      return i18n.t("notifications.error_title_not_found");
     case ErrorCode.UNAUTHORIZED:
-      return "Unauthorized";
+      return i18n.t("notifications.error_title_unauthorized");
     case ErrorCode.FORBIDDEN:
-      return "Forbidden";
+      return i18n.t("notifications.error_title_forbidden");
     case ErrorCode.NETWORK_ERROR:
-      return "Network Error";
+      return i18n.t("notifications.error_title_network");
     case ErrorCode.DATABASE_ERROR:
     case ErrorCode.DATABASE_CONNECTION_ERROR:
-      return "Database Error";
+      return i18n.t("notifications.error_title_database");
     case ErrorCode.LLM_SERVICE_UNAVAILABLE:
     case ErrorCode.LLM_API_ERROR:
-      return "AI Service Error";
+      return i18n.t("notifications.error_title_ai_service");
     case ErrorCode.INTERNAL_SERVER_ERROR:
-      return "Server Error";
+      return i18n.t("notifications.error_title_server");
     default:
-      return "Error";
+      return i18n.t("notifications.error_title_generic");
   }
 }

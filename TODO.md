@@ -148,10 +148,13 @@ Progress update:
 - Completed: `reset_password.*` and `forgot_password.*` i18n sections added to en.json + fr.json.
 - Completed: `ResetPasswordView.tsx` and `RequestPasswordResetView.tsx` migrated to `useTranslation`.
 - Completed: Docstrings added to `service_dependencies.py` (module + 11 functions), `inference/math.py` (module + 5), `inference/read_models.py` (module + 6), `document_extraction_processing.py` (module + 11).
-- Deferred: ReviewQueueView, ExtractionPreview, errorHandler.ts i18n migration (~31 strings).
-- Deferred: Frontend tests for translated auth flows.
+- Completed: `review_queue.*` and `extraction_preview.*` i18n sections added to en.json + fr.json (31 keys each language).
+- Completed: `ReviewQueueView.tsx` migrated to `useTranslation` (14 strings).
+- Completed: `ExtractionPreview.tsx` migrated to `useTranslation` (16 strings).
+- Completed: `errorHandler.ts` wired to `i18n.t()` for all HTTP error messages and error title strings (13 strings); 12 new keys added to `notifications.*` catalog.
+- Completed: Frontend tests for `ResetPasswordView` (8 tests) and `RequestPasswordResetView` (6 tests) verifying translated strings render via `t()`.
 
-- Status: Audit 15 is partially complete. Remaining: review_queue + extraction_preview i18n, errorHandler i18n, frontend tests.
+- Status: Audit 15 is complete.
 
 ## Audit Reports
 
