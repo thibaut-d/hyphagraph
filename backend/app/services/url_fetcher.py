@@ -12,7 +12,6 @@ from bs4 import BeautifulSoup
 from app.utils.errors import (
     AppException,
     ErrorCode,
-    ValidationException,
 )
 
 logger = logging.getLogger(__name__)

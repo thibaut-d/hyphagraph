@@ -13,7 +13,6 @@ from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.models.user import User
 from app.schemas.admin import UserListItemRead, UserStatsRead, UserUpdate
-from app.services.user_service import UserService
 from app.utils.errors import AppException, ErrorCode, ForbiddenException, ValidationException
 
 

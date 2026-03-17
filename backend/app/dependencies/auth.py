@@ -3,7 +3,7 @@ Authentication dependencies for FastAPI endpoints.
 
 Provides get_current_user dependency for protected endpoints.
 """
-from fastapi import Depends, status
+from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select

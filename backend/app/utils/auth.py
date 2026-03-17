@@ -9,9 +9,6 @@ Implementation is split into focused modules:
 
 All functions maintain the same interface for backwards compatibility.
 """
-from datetime import timedelta
-from typing import Optional
-
 # Re-export all public functions from focused modules
 from app.utils.password_hasher import (
     hash_password,

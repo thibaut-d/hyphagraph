@@ -13,10 +13,10 @@ Workflow:
 
 This provides async quality control without blocking knowledge extraction.
 """
-from sqlalchemy import Column, String, Text, Float, Boolean, ForeignKey, Integer, Enum as SQLEnum, JSON
+from sqlalchemy import String, Text, Float, Boolean, ForeignKey, Enum as SQLEnum, JSON
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from uuid import UUID as PyUUID, uuid4
+from uuid import UUID as PyUUID
 from typing import Any, TYPE_CHECKING
 import datetime
 import enum

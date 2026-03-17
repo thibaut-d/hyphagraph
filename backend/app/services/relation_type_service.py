@@ -13,7 +13,7 @@ import difflib
 import json
 from typing import List
 
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.relation_type import RelationType

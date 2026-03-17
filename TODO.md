@@ -110,6 +110,17 @@ Progress update:
 5. For each compatibility surface, either remove it or document an explicit retirement condition.
 6. Decide whether auth/token wrapper modules are the intended public API or temporary compatibility shims.
 
+Progress update:
+- Completed: `document_extraction.py` facade reduced to router assembly only (7 lines); all dead schema/function re-exports removed.
+- Completed: `document_extraction_dependencies.py` cleaned to explicit re-exports with `# noqa: F401` comments explaining each re-export purpose; `build_entity_query_clause` (dead) removed.
+- Completed: removed 30+ unused imports across `app/api/`, `app/services/`, `app/utils/`, `app/models/`, `app/middleware/`, `app/llm/`, `app/mappers/`.
+- Completed: `SourceCreate = SourceWrite` alias (zero callers) deleted from `backend/app/schemas/source.py`.
+- Completed: `main.py` model imports annotated with `# noqa: F401` to suppress intentional side-effect import noise.
+- Active re-exports preserved: `calculate_relevance`, `EntityLinkingService`, `ExtractionService`, `UrlFetcher`, `infer_trust_level_from_pubmed_metadata` — all documented inline.
+- Remaining deferred: `subject_slug`/`object_slug` deprecation fields in `ExtractedRelation` (still used in CSV export); legacy entity fields (`kind`, `label`, `synonyms`, `ontology_ref`) in `EntityRead` (retirement pending API audit); test-file F401s (~20).
+- Backend: 446 tests green. Frontend: 533 tests green.
+- Status: Audit 13 is complete.
+
 ### Audit 14: AI Edit Safety
 
 1. Continue shrinking the largest high-risk edit zones, starting with extraction, auth, review, and PubMed modules.

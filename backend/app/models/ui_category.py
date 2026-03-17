@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import String, JSON, Integer, DateTime
 from sqlalchemy.sql import func
-from typing import Any
+
 from app.models.base import Base, UUIDMixin
 
 

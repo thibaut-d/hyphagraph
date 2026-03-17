@@ -2,7 +2,7 @@ from typing import TypedDict
 from uuid import UUID
 from app.models.relation import Relation
 from app.models.relation_revision import RelationRevision
-from app.models.relation_role_revision import RelationRoleRevision
+
 from app.schemas.relation import (
     RelationWrite,
     RelationRead,

@@ -9,7 +9,6 @@ TypeQL: https://github.com/typedb/typeql
 """
 import json
 import logging
-from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

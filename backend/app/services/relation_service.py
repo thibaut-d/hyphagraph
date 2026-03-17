@@ -12,7 +12,7 @@ from app.mappers.relation_mapper import (
 )
 from app.services.validation_service import validate_relation
 from app.utils.revision_helpers import get_current_revision, create_new_revision
-from app.utils.errors import RelationNotFoundException, SourceNotFoundException, ValidationException, ErrorCode
+from app.utils.errors import RelationNotFoundException, ValidationException
 
 
 class RelationService:

@@ -5,8 +5,7 @@ This middleware catches all unhandled exceptions and converts them
 to standardized error responses.
 """
 import logging
-from typing import Callable
-from fastapi import Request, Response, status
+from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
@@ -16,7 +15,6 @@ from slowapi.errors import RateLimitExceeded
 from app.utils.errors import (
     ErrorCode,
     ErrorDetail,
-    ErrorResponse,
     AppException,
 )
 

@@ -14,7 +14,7 @@ from typing import List
 from app.models.entity_term import EntityTerm
 from app.models.entity import Entity
 from app.schemas.entity_term import EntityTermWrite, EntityTermRead
-from app.utils.errors import EntityNotFoundException, ValidationException, ErrorCode, AppException
+from app.utils.errors import EntityNotFoundException, ErrorCode, AppException
 
 
 class EntityTermService:

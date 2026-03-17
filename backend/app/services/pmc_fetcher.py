@@ -9,7 +9,6 @@ API Documentation: https://pmc.ncbi.nlm.nih.gov/tools/oa-service/
 """
 import logging
 import httpx
-import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)

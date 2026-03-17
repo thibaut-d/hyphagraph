@@ -9,7 +9,6 @@ Each function clearly states what permission it checks and why.
 from uuid import UUID
 
 from app.models.user import User
-from app.models.relation import Relation
 from app.utils.errors import ForbiddenException
 
 

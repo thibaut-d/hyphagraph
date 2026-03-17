@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.repositories.relation_repo import RelationRepository
 from app.repositories.computed_relation_repo import ComputedRelationRepository
 from app.schemas.common_types import ScopeFilter
-from app.schemas.inference import InferenceDetailRead, InferenceRead, RoleInference
+from app.schemas.inference import InferenceDetailRead, InferenceRead
 from app.utils.hashing import compute_scope_hash
 from app.config import settings
 from app.services.source_service import SourceService

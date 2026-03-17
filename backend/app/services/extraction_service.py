@@ -14,7 +14,6 @@ from app.llm.prompts import (
     format_entity_extraction_prompt,
     format_relation_extraction_prompt,
     format_claim_extraction_prompt,
-    format_batch_extraction_prompt,
 )
 from app.llm.schemas import (
     ExtractedEntity,
@@ -23,12 +22,10 @@ from app.llm.schemas import (
     validate_entity_extraction,
     validate_relation_extraction,
     validate_claim_extraction,
-    validate_batch_extraction,
 )
 from app.services.extraction_validation_service import (
     ExtractionValidationService,
     ValidationLevel,
-    ValidationResult,
 )
 from app.services.relation_type_service import RelationTypeService
 from app.services.semantic_role_service import SemanticRoleService

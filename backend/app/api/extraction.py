@@ -29,7 +29,6 @@ from app.schemas.extraction import (
     RelationExtractionResponse,
 )
 from app.services.extraction_service import ExtractionService
-from app.utils.errors import ValidationException, ErrorCode, AppException
 
 logger = logging.getLogger(__name__)
 

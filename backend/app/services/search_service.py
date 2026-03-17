@@ -1,6 +1,6 @@
 """Thin coordinator for unified search across entities, sources, and relations."""
 
-from typing import Optional
+
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession

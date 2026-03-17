@@ -28,23 +28,23 @@ from app.utils.rate_limit import limiter
 
 # Import all models to ensure SQLAlchemy discovers all tables and relationships
 # This prevents NoReferencedTableError during foreign key resolution
-from app.models.entity import Entity
-from app.models.entity_merge_record import EntityMergeRecord
-from app.models.source import Source
-from app.models.relation import Relation
-from app.models.user import User
-from app.models.entity_revision import EntityRevision
-from app.models.source_revision import SourceRevision
-from app.models.relation_revision import RelationRevision
-from app.models.ui_category import UiCategory
-from app.models.entity_term import EntityTerm
-from app.models.attribute import Attribute
-from app.models.relation_role_revision import RelationRoleRevision
-from app.models.computed_relation import ComputedRelation
-from app.models.refresh_token import RefreshToken
-from app.models.audit_log import AuditLog
-from app.models.relation_type import RelationType
-from app.models.staged_extraction import StagedExtraction
+from app.models.entity import Entity  # noqa: F401
+from app.models.entity_merge_record import EntityMergeRecord  # noqa: F401
+from app.models.source import Source  # noqa: F401
+from app.models.relation import Relation  # noqa: F401
+from app.models.user import User  # noqa: F401
+from app.models.entity_revision import EntityRevision  # noqa: F401
+from app.models.source_revision import SourceRevision  # noqa: F401
+from app.models.relation_revision import RelationRevision  # noqa: F401
+from app.models.ui_category import UiCategory  # noqa: F401
+from app.models.entity_term import EntityTerm  # noqa: F401
+from app.models.attribute import Attribute  # noqa: F401
+from app.models.relation_role_revision import RelationRoleRevision  # noqa: F401
+from app.models.computed_relation import ComputedRelation  # noqa: F401
+from app.models.refresh_token import RefreshToken  # noqa: F401
+from app.models.audit_log import AuditLog  # noqa: F401
+from app.models.relation_type import RelationType  # noqa: F401
+from app.models.staged_extraction import StagedExtraction  # noqa: F401
 
 
 def _load_test_helpers_router():

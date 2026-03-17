@@ -155,6 +155,3 @@ class SaveExtractionResult(Schema):
     created_relation_ids: List[UUID]
     warnings: List[str] = []
 
-
-# Backwards compatibility alias
-SourceCreate = SourceWrite

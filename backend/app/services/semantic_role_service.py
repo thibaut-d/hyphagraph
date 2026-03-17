@@ -8,7 +8,7 @@ Provides:
 """
 from typing import TypedDict
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, text
+from sqlalchemy import text
 import json as json_module
 
 from app.schemas.common_types import I18nText

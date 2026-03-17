@@ -18,7 +18,6 @@ from app.schemas.staged_extraction import (
     AutoCommitResponse,
     BatchReviewResponse,
     ReviewStats,
-    AutoCommitConfigRequest,
     MaterializationResult,
     StagedExtractionFilters,
 )

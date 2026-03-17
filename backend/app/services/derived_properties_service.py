@@ -11,18 +11,15 @@ Performance Note:
 """
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, case, distinct, and_, or_
+from sqlalchemy import select, func, case, distinct, and_
 from uuid import UUID
 from typing import List, Dict, Optional, Tuple
-from datetime import datetime, timedelta
 
-from app.models.entity import Entity
 from app.models.source import Source
 from app.models.relation import Relation
 from app.models.relation_revision import RelationRevision
 from app.models.relation_role_revision import RelationRoleRevision
 from app.models.source_revision import SourceRevision
-from app.models.computed_relation import ComputedRelation
 from app.models.relation_type import RelationType
 
 

@@ -5,7 +5,6 @@ Provides a convenient way to access the configured LLM provider
 throughout the application.
 """
 import logging
-from typing import cast
 
 from app.config import settings
 from app.llm.base import LLMProvider
