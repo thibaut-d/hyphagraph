@@ -30,40 +30,142 @@ No prior knowledge of graphs, databases, or formal logic is required.
 
 ---
 
-## Quick Start
+## Local Development
 
 ### Prerequisites
 
 - Docker + Docker Compose
-- Node.js >= 20
-- Python >= 3.12
+- Node.js >= 20 (for frontend dev outside Docker)
+- Python >= 3.12 + [uv](https://docs.astral.sh/uv/) (for backend dev outside Docker)
 
-### Setup
+### Start
 
 ```bash
-git clone https://github.com/your-org/hyphagraph.git
+git clone https://github.com/thibaut-d/hyphagraph.git
 cd hyphagraph
 cp .env.sample .env
 
-# Start services
-docker compose up --build -d
-
-# Initialize database (first run)
-docker compose exec api alembic upgrade head
+# Start the full stack (API, DB, frontend, Caddy)
+docker compose up -d
+# or: make up
 ```
+
+The API container applies migrations automatically on startup — no manual `alembic upgrade head` needed.
 
 ### Access
 
-- **Frontend**: http://localhost
-- **API docs**: http://localhost/api/docs
-- **Default admin**: `admin@example.com` / `changeme123`
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost |
+| API docs | http://localhost/api/docs |
+| Default admin | `admin@example.com` / `changeme123` |
+
+### Common commands
+
+```bash
+make logs          # tail all service logs
+make logs-api      # tail API logs only
+make api-shell     # shell inside the API container
+make db-shell      # psql inside the database container
+make db-dump       # dump database to ./backups/
+make down          # stop the stack
+make clean         # stop + remove volumes (data loss)
+```
+
+Run `make help` for the full list.
 
 ---
 
-## Screenshots
+## Running Tests
 
-<!-- TODO: Add screenshots of key views -->
-<!-- Entity detail, inference display, explanation trace, disagreements view -->
+### Backend (pytest)
+
+```bash
+# Inside the running container
+make api-tests
+
+# Or directly with uv (outside Docker, from backend/)
+cd backend
+uv run pytest
+uv run pytest -q --tb=short          # quiet output
+uv run pytest tests/test_foo.py -x   # stop on first failure
+```
+
+### Frontend (Vitest)
+
+```bash
+cd frontend
+npm test             # interactive watch mode
+npm test -- --run    # single run (CI mode)
+```
+
+### End-to-end (Playwright)
+
+See [E2E Testing Guide](docs/development/E2E_TESTING_GUIDE.md).
+
+---
+
+## Production Self-Hosting
+
+HyphaGraph is distributed as versioned Docker images via GitHub Container Registry. Each instance you operate (one per site) pulls those images and manages its own database.
+
+### Step 1 — Create your environment file
+
+```bash
+cp .env.prod.template .env
+```
+
+Edit `.env` and replace every `change-me-*` placeholder:
+
+| Variable | What to set |
+|----------|-------------|
+| `POSTGRES_PASSWORD` | Strong random password |
+| `SECRET_KEY` | Long random string |
+| `JWT_SECRET_KEY` | Long random string (different from above) |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Initial admin credentials |
+| `FRONTEND_URL` | Your public URL, e.g. `https://yoursite.com` |
+| `HYPHAGRAPH_VERSION` | Pin to a release tag, e.g. `1.2.0` |
+
+### Step 2 — Configure your domain
+
+Edit `deploy/caddy/Caddyfile.self-host` — replace `your-domain.com` with your actual domain:
+
+```
+yoursite.com {
+    handle /api/* {
+        reverse_proxy api:8000
+    }
+    handle {
+        reverse_proxy web:80
+    }
+}
+```
+
+Caddy obtains and renews TLS certificates from Let's Encrypt automatically. Ports 80 and 443 must be reachable from the internet.
+
+### Step 3 — Start
+
+```bash
+docker compose -f docker-compose.self-host.yml up -d
+```
+
+The API container runs `alembic upgrade head` before starting — migrations are applied automatically on every start (idempotent).
+
+### Updating
+
+```bash
+# Pull new images and restart
+docker compose -f docker-compose.self-host.yml pull
+docker compose -f docker-compose.self-host.yml up -d
+```
+
+To pin a specific version, set `HYPHAGRAPH_VERSION=1.2.0` in `.env`.
+
+### Logs
+
+```bash
+docker compose -f docker-compose.self-host.yml logs -f
+```
 
 ---
 
@@ -76,15 +178,7 @@ docker compose exec api alembic upgrade head
 | Frontend | React, TypeScript, Material UI |
 | Auth | Custom JWT (OAuth2 password flow) |
 | Testing | pytest, Vitest, Playwright |
-| Infrastructure | Docker Compose |
-
----
-
-## Project Status
-
-This repository is a **proof of concept** demonstrating conceptual soundness and architectural viability of hypergraph-based evidence reasoning.
-
-See [Roadmap](docs/product/ROADMAP.md) for current status and planned work.
+| Infrastructure | Docker Compose, Caddy |
 
 ---
 
