@@ -11,6 +11,8 @@ Boundary rules:
 """
 from __future__ import annotations
 
+import datetime
+import logging
 from dataclasses import dataclass
 from typing import Protocol, TypeAlias
 from uuid import UUID
@@ -22,6 +24,7 @@ from app.config import settings
 from app.llm.schemas import ExtractedClaim, ExtractedEntity, ExtractedRelation
 from app.models.source import Source
 from app.models.source_revision import SourceRevision
+from app.models.staged_extraction import ExtractionStatus, ExtractionType, StagedExtraction
 from app.schemas.common_types import SlugEntityMap
 from app.schemas.source import (
     DocumentExtractionPreview,
@@ -41,6 +44,8 @@ from app.services.pubmed_fetcher import PubMedArticle, PubMedFetcher
 from app.services.source_service import SourceService
 from app.services.url_fetcher import UrlFetchResult, UrlFetcher
 from app.utils.errors import SourceNotFoundException, ValidationException
+
+logger = logging.getLogger(__name__)
 
 
 ExtractedBatchResult: TypeAlias = tuple[
@@ -114,6 +119,7 @@ class ExtractionReviewServiceProtocol(Protocol):
         source_id: UUID,
         llm_model: str | None = None,
         llm_provider: str | None = None,
+        auto_materialize: bool = False,
     ) -> list[ReviewStagedItemProtocol]: ...
 
 
@@ -334,8 +340,10 @@ async def stage_review_batch(
     """
     Stage all extracted items for human review and return a ReviewSummary.
 
-    Items scoring ≥ 0.9 with no flags are auto-verified; the rest enter
-    pending status for human review. Returns counts and average validation score.
+    Items scoring ≥ 0.9 with no flags are marked auto_commit_eligible; the rest
+    are pending for human review. Items are NOT materialised into the knowledge
+    graph here — that happens in save_extraction_to_graph, which then calls
+    reconcile_staged_extractions to link the resulting IDs back.
     """
     review_service = review_service_factory(
         db=db,
@@ -351,6 +359,7 @@ async def stage_review_batch(
         source_id=source_id,
         llm_model=settings.OPENAI_MODEL,
         llm_provider="openai",
+        auto_materialize=False,
     )
 
     validation_scores = [
@@ -571,6 +580,86 @@ async def _update_source_revision_from_pubmed(
     await db.commit()
 
 
+def _relation_match_key(rel: ExtractedRelation) -> tuple:
+    """Deterministic key for matching relations: (type, frozenset of (slug, role) pairs)."""
+    return (rel.relation_type, frozenset((r.entity_slug, r.role_type) for r in rel.roles))
+
+
+async def reconcile_staged_extractions(
+    db: AsyncSession,
+    *,
+    source_id: UUID,
+    approved_entity_slugs_to_id: SlugEntityMap,
+    rejected_entity_slugs: set[str],
+    approved_relations: list[ExtractedRelation],
+    approved_relation_ids: list[UUID],
+    user_id: UUID | None,
+) -> None:
+    """
+    After save_extraction_to_graph, link staged extraction records to the newly
+    created graph items and record the user's approval decision.
+
+    - ENTITY staged extractions whose slug is in approved_entity_slugs_to_id
+      → APPROVED + materialized_entity_id set
+    - ENTITY staged extractions whose slug is in rejected_entity_slugs
+      → REJECTED (user linked to an existing entity instead)
+    - RELATION staged extractions matched by (relation_type, roles)
+      → APPROVED + materialized_relation_id set
+    - Claims and unmatched items remain PENDING for the human review queue.
+
+    This is a no-op when no staged extractions exist for the source (e.g. direct
+    API calls that bypass the document extraction preview).
+    """
+    stmt = select(StagedExtraction).where(
+        StagedExtraction.source_id == source_id,
+        StagedExtraction.status.in_([
+            ExtractionStatus.PENDING,
+            ExtractionStatus.AUTO_VERIFIED,
+        ]),
+    )
+    result = await db.execute(stmt)
+    staged_items = result.scalars().all()
+
+    if not staged_items:
+        return
+
+    now = datetime.datetime.utcnow()
+
+    # Build relation key → (index, relation_id) map; first match wins for duplicates
+    relation_key_to_idx: dict[tuple, int] = {}
+    for idx, rel in enumerate(approved_relations):
+        key = _relation_match_key(rel)
+        relation_key_to_idx.setdefault(key, idx)
+
+    for staged in staged_items:
+        if staged.extraction_type == ExtractionType.ENTITY:
+            slug = staged.extraction_data.get("slug")
+            if slug in approved_entity_slugs_to_id:
+                staged.materialized_entity_id = approved_entity_slugs_to_id[slug]
+                staged.status = ExtractionStatus.APPROVED
+                staged.reviewed_by = user_id
+                staged.reviewed_at = now
+            elif slug in rejected_entity_slugs:
+                staged.status = ExtractionStatus.REJECTED
+                staged.reviewed_by = user_id
+                staged.reviewed_at = now
+
+        elif staged.extraction_type == ExtractionType.RELATION:
+            try:
+                staged_rel = ExtractedRelation(**staged.extraction_data)
+                key = _relation_match_key(staged_rel)
+                idx = relation_key_to_idx.get(key)
+                if idx is not None and idx < len(approved_relation_ids):
+                    staged.materialized_relation_id = approved_relation_ids[idx]
+                    staged.status = ExtractionStatus.APPROVED
+                    staged.reviewed_by = user_id
+                    staged.reviewed_at = now
+            except Exception:
+                logger.warning("Could not parse staged relation data for extraction %s", staged.id)
+
+    await db.flush()
+
+
 async def save_extraction_to_graph(
     db: AsyncSession,
     *,
@@ -585,6 +674,11 @@ async def save_extraction_to_graph(
     Creates new entities (entities_to_create), merges entity links (entity_links),
     then creates all relations using the final entity mapping. Commits on success
     and returns counts and IDs in SaveExtractionResult.
+
+    After creating graph items, reconciles any staged extraction records for this
+    source: approved items are linked to their materialized IDs and marked APPROVED,
+    entity_links are marked REJECTED, and unselected items remain PENDING for the
+    human review queue.
     """
     await ensure_source_exists(db, source_id)
 
@@ -609,6 +703,24 @@ async def save_extraction_to_graph(
             user_id=user_id,
         )
 
+    await db.commit()
+
+    # Link staged extraction records to their materialized graph items (no-op
+    # if no staged extractions exist for this source).
+    created_slug_to_id = {
+        e.slug: entity_mapping[e.slug]
+        for e in request.entities_to_create
+        if e.slug in entity_mapping
+    }
+    await reconcile_staged_extractions(
+        db,
+        source_id=source_id,
+        approved_entity_slugs_to_id=created_slug_to_id,
+        rejected_entity_slugs=set(request.entity_links.keys()),
+        approved_relations=request.relations_to_create,
+        approved_relation_ids=relation_ids,
+        user_id=user_id,
+    )
     await db.commit()
 
     return SaveExtractionResult(

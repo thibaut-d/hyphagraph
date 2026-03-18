@@ -112,28 +112,35 @@ class ExtractionReviewService:
         source_id: UUID,
         llm_model: str | None = None,
         llm_provider: str | None = None,
+        auto_materialize: bool = True,
     ) -> list[StagedExtraction]:
-        """Stage a batch of extractions."""
+        """Stage a batch of extractions.
+
+        When auto_materialize=False, items are staged for the review queue but not
+        yet written to the knowledge graph. The caller is responsible for
+        materialising them (e.g. via save_extraction_to_graph) and then calling
+        reconcile_staged_extractions to link the resulting IDs back.
+        """
         staged_extractions = []
 
         for entity, validation_result in entities:
             staged, _ = await self.stage_extraction(
                 ExtractionType.ENTITY, entity, source_id, validation_result,
-                llm_model, llm_provider,
+                llm_model, llm_provider, auto_materialize=auto_materialize,
             )
             staged_extractions.append(staged)
 
         for relation, validation_result in relations:
             staged, _ = await self.stage_extraction(
                 ExtractionType.RELATION, relation, source_id, validation_result,
-                llm_model, llm_provider,
+                llm_model, llm_provider, auto_materialize=auto_materialize,
             )
             staged_extractions.append(staged)
 
         for claim, validation_result in claims:
             staged, _ = await self.stage_extraction(
                 ExtractionType.CLAIM, claim, source_id, validation_result,
-                llm_model, llm_provider,
+                llm_model, llm_provider, auto_materialize=auto_materialize,
             )
             staged_extractions.append(staged)
 
