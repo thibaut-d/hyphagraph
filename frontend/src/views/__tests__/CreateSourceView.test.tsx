@@ -19,6 +19,7 @@ vi.mock('../../utils/cacheUtils', () => ({
 }));
 
 vi.mock('react-i18next', () => ({
+  initReactI18next: { type: '3rdParty', init: () => {} },
   useTranslation: () => ({
     t: (key: string, defaultValueOrOptions?: string | { defaultValue?: string }) => {
       if (typeof defaultValueOrOptions === 'string') {
@@ -264,7 +265,7 @@ describe('CreateSourceView', () => {
       await waitFor(() => {
         expect(mockNavigate).toHaveBeenCalledWith('/sources/456');
       });
-    }, 10000); // Increase timeout to 10 seconds
+    }); // Uses global testTimeout from vitest.config.ts
 
     it('parses comma-separated authors correctly', async () => {
       const mockSource = {

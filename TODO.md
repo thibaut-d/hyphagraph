@@ -1,6 +1,6 @@
 # Current Work
 
-**Last updated**: 2026-03-18
+**Last updated**: 2026-03-18 (Audit 19)
 
 ## In Progress
 
@@ -207,6 +207,21 @@ Progress update:
 
 - Status: Audit 18 is complete.
 
+### Audit 19: Test Suite Health (Second Pass)
+
+1. Fix the 21 pre-existing frontend test failures deferred from Audit 18 (i18n mock setup gap introduced by Audit 15's `errorHandler.ts` import of `src/i18n/index.ts`).
+
+Progress update:
+- Root cause: After Audit 15 added `import i18n from "../i18n"` to `errorHandler.ts`, the module-level `i18n.use(initReactI18next)` call in `src/i18n/index.ts` ran during test module loading. Any test file with a local `vi.mock('react-i18next', ...)` factory that omitted `initReactI18next` caused the vitest error "No 'initReactI18next' export defined on the mock", failing before any test ran.
+- Completed: Added `initReactI18next: { type: '3rdParty', init: () => {} }` to 15 local `vi.mock('react-i18next', ...)` factories across failing test files.
+- Completed: Fixed `Layout.test.tsx` i18next mock: added `.use: () => ({ init: () => {} })` to the bare `i18next` default mock so `i18n.use(...).init(...)` chain succeeds.
+- Completed: Added `testTimeout: 15000` to `vitest.config.ts` to handle MUI-heavy component tests that time out under full-suite load at default 5000ms.
+- Completed: Removed explicit `10000ms` override on `CreateSourceView.test.tsx` "submits form with all fields filled" test — was below the new global 15s timeout, causing a timeout failure under load.
+- Result: 54/54 test files, 547/547 tests passing.
+- Report: `.temp/test_suite_health_report_v2.md`
+
+- Status: Audit 19 is complete.
+
 ## Audit Reports
 
 - [knowledge_integrity_explainability_report.md](/home/thibaut/code/hyphagraph/.temp/knowledge_integrity_explainability_report.md)
@@ -225,6 +240,7 @@ Progress update:
 - [dead_code_compatibility_shims_report.md](.temp/dead_code_compatibility_shims_report.md)
 - [dead_code_compatibility_shims_report_v2.md](.temp/dead_code_compatibility_shims_report_v2.md)
 - [typed_contract_discipline_report_v3.md](.temp/typed_contract_discipline_report_v3.md)
+- [test_suite_health_report_v2.md](.temp/test_suite_health_report_v2.md)
 - [ai_edit_safety_report.md](/home/thibaut/code/hyphagraph/.temp/ai_edit_safety_report.md)
 - [documentation_i18n_completeness_report.md](/home/thibaut/code/hyphagraph/.temp/documentation_i18n_completeness_report.md)
 

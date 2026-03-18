@@ -13,6 +13,7 @@ vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (_key: string, defaultValue?: string) => defaultValue ?? _key,
   }),
+  initReactI18next: { type: '3rdParty', init: () => {} },
 }));
 
 const showError = vi.fn();

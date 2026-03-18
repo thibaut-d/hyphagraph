@@ -17,6 +17,7 @@ vi.mock("react-i18next", () => ({
       return defaultValueOrOptions?.defaultValue || key;
     },
   }),
+  initReactI18next: { type: '3rdParty', init: () => {} },
 }));
 
 vi.mock("react-router-dom", async () => {

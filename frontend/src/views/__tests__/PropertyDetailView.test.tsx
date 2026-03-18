@@ -59,6 +59,7 @@ vi.mock("react-i18next", () => ({
     t: translate,
     i18n: { language: "en" },
   }),
+  initReactI18next: { type: '3rdParty', init: () => {} },
 }));
 
 vi.mock("../../components/EvidenceTrace", () => ({

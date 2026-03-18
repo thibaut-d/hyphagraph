@@ -48,6 +48,9 @@ export default defineConfig({
     // Output options
     reporters: ['verbose'],
 
+    // Test timeout — increased for MUI-heavy component tests under full-suite load
+    testTimeout: 15000,
+
     // Mock configuration
     mockReset: true,
     clearMocks: true,

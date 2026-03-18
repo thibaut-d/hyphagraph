@@ -20,6 +20,7 @@ vi.mock('react-i18next', () => ({
       return defaultValueOrOptions?.defaultValue || key;
     },
   }),
+  initReactI18next: { type: '3rdParty', init: () => {} },
 }));
 
 // Mock the API modules

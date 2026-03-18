@@ -47,13 +47,15 @@ vi.mock("react-i18next", () => ({
     },
     i18n: { language: "en" },
   }),
+  initReactI18next: { type: '3rdParty', init: () => {} },
 }));
 
-// Mock i18next module directly
+// Mock i18next module directly (must include .use() for i18n/index.ts chain)
 vi.mock("i18next", () => ({
   default: {
     language: "en",
     changeLanguage: vi.fn(),
+    use: () => ({ init: () => {} }),
   },
 }));
 

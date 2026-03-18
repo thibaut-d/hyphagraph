@@ -16,6 +16,7 @@ vi.mock("react-i18next", () => ({
       return mockTranslations[key] || options?.defaultValue || key;
     },
   }),
+  initReactI18next: { type: '3rdParty', init: () => {} },
 }));
 
 // Test component that uses the notification hook

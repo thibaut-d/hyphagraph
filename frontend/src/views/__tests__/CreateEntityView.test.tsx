@@ -22,6 +22,7 @@ vi.mock('react-i18next', () => ({
     t: translate,
     i18n: { language: 'en' },
   }),
+  initReactI18next: { type: '3rdParty', init: () => {} },
 }));
 
 // Mock the API module
