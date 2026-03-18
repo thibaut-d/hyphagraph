@@ -15,15 +15,12 @@
 
 ```bash
 # Clone and configure
-git clone https://github.com/your-org/hyphagraph.git
+git clone https://github.com/thibaut-d/hyphagraph.git
 cd hyphagraph
 cp .env.sample .env
 
-# Start services
+# Start services (migrations run automatically on startup)
 docker compose up --build -d
-
-# Initialize database
-docker compose exec api alembic upgrade head
 ```
 
 ### Local development (without Docker)
@@ -94,6 +91,54 @@ Full details: [E2E Testing Guide](docs/development/E2E_TESTING_GUIDE.md)
 
 ---
 
+## Branching Strategy (GitHub Flow)
+
+`main` is always green and releasable. All work happens on feature branches.
+
+```
+main          ─────●────────────────●──────── (protected, CI required)
+                    ↑                ↑
+feat/my-thing  ──●──●──●   feat/x  ──●──●
+```
+
+### Day-to-day workflow
+
+```bash
+# 1. Create a branch from main
+git checkout -b feat/my-thing
+
+# 2. Work, commit often
+git add -p
+git commit -m "feat: ..."
+
+# 3. Push and open a PR
+git push -u origin feat/my-thing
+# → open PR on GitHub
+
+# 4. CI must pass before merge (backend, frontend, E2E, migration-check)
+# 5. Squash-merge or merge commit into main
+# 6. Delete the branch
+```
+
+### Releases
+
+Tags on `main` trigger the release workflow (Docker image build + GitHub Release):
+
+```bash
+git tag v1.2.0
+git push origin v1.2.0
+```
+
+Pin to a specific version in `.env` via `HYPHAGRAPH_VERSION=1.2.0`.
+
+### Branch protection
+
+On GitHub: Settings → Branches → Add rule for `main`:
+- Require status checks: `Backend tests`, `Frontend tests`, `Playwright E2E`
+- Require branches to be up to date before merging
+
+---
+
 ## Workflow
 
 ### 1. Plan (required before coding)
@@ -104,17 +149,16 @@ Full details: [E2E Testing Guide](docs/development/E2E_TESTING_GUIDE.md)
 
 ### 2. Execute
 
-- New feature -> tests first
+- New feature → tests first
 - No stubs, no placeholders, no "we'll do it later"
 - Commit after each significant step
-- Push regularly
 
 ### 3. Document
 
-- Update [Roadmap](docs/product/ROADMAP.md) if status changes
+- Update [Roadmap](../product/ROADMAP.md) if status changes
 - Update architecture docs if behavior or structure changes
 
-Full details: [Dev Workflow](docs/development/DEV_WORKFLOW.md)
+Full details: [Dev Workflow](development/DEV_WORKFLOW.md)
 
 ---
 
@@ -122,8 +166,8 @@ Full details: [Dev Workflow](docs/development/DEV_WORKFLOW.md)
 
 - Keep PRs focused on a single concern
 - Include test coverage for all changes
-- Ensure all tests pass before requesting review
-- Use descriptive commit messages
+- All CI checks must pass before merge
+- Use descriptive commit messages following the existing style
 
 ---
 
