@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Callable
 from uuid import UUID
+
+logger = logging.getLogger(__name__)
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -196,7 +199,13 @@ async def bulk_import_pubmed_articles(
                     source_service_factory=source_service_factory,
                 )
             )
-        except Exception:
+        except Exception as e:
+            logger.warning(
+                "Failed to import PubMed article %s: %s",
+                article.pmid,
+                e,
+                exc_info=True,
+            )
             failed_pmids.append(article.pmid)
 
     fetched_pmids = {article.pmid for article in articles}

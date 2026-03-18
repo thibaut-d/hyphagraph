@@ -156,6 +156,18 @@ Progress update:
 
 - Status: Audit 15 is complete.
 
+### Audit 16: Silent Error Handling & Logging (Second Pass)
+
+1. Re-scan backend and frontend for silent failures introduced since the first pass, focusing on the auth split modules, extraction review modules, and the i18n-wired errorHandler.
+
+Progress update:
+- Completed: Added `import logging` + `logger` to `document_extraction_discovery.py`; replaced bare `except Exception:` in `bulk_import_pubmed_articles` with `except Exception as e` + `logger.warning(..., exc_info=True)` — previously all per-article failures were silently swallowed.
+- Completed: Added `console.warn` to `AuthContext.tsx` logout token-revocation catch block so silent systematic revocation failures are now observable.
+- Completed: Added `exc_info=True` to `auto_commit.py` error log so full stack traces are preserved on auto-commit failures.
+- Deferred: `except Exception: rollback; raise` pre-rollback context logging (20+ sites, minor, opportunistic). Layout category fetch failure (acceptable degraded state). `usePersistedFilters` QuotaExceededError distinction. Password reset unknown-email debug logging.
+
+- Status: Audit 16 is complete.
+
 ## Audit Reports
 
 - [knowledge_integrity_explainability_report.md](/home/thibaut/code/hyphagraph/.temp/knowledge_integrity_explainability_report.md)

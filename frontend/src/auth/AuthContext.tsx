@@ -81,8 +81,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const currentRefreshToken = refreshTokenRef.current;
 
     if (currentRefreshToken) {
-      logoutApi(currentRefreshToken).catch(() => {
+      logoutApi(currentRefreshToken).catch((err) => {
         // Logout should clear client state even if token revocation fails.
+        console.warn("[auth] Token revocation failed (session cleared anyway):", err);
       });
     }
 

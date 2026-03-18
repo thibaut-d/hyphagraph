@@ -64,7 +64,7 @@ async def run_auto_commit(db: AsyncSession, auto_commit_threshold: float) -> Aut
 
         except Exception as e:
             failed_count += 1
-            logger.error("Failed to auto-commit extraction %s: %s", staged.id, e)
+            logger.error("Failed to auto-commit extraction %s: %s", staged.id, e, exc_info=True)
             await db.rollback()
 
     logger.info(
