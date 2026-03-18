@@ -254,45 +254,15 @@ class BatchExtractionOrchestrator:
         relations: list[ExtractedRelation],
         claims: list[ExtractedClaim],
         text: str,
-    ) -> tuple[
-        list[ExtractedEntity], list[ExtractedRelation], list[ExtractedClaim]
-    ]:
+    ) -> tuple[list[ExtractedEntity], list[ExtractedRelation], list[ExtractedClaim]]:
         """
         Validate extractions and return filtered lists (without validation results).
 
-        Args:
-            entities: Extracted entities
-            relations: Extracted relations
-            claims: Extracted claims
-            text: Source text for validation
-
-        Returns:
-            Tuple of (filtered_entities, filtered_relations, filtered_claims)
+        Delegates to _validate_extractions_with_results and discards the result metadata.
         """
-        logger.info("Validating extractions against source text...")
-
-        # Validate entities
-        entities, entity_results = await self.validation_service.validate_entities(entities, text)
-
-        # Validate relations
-        relations, relation_results = await self.validation_service.validate_relations(
-            relations, text
+        entities, relations, claims, _, _, _ = await self._validate_extractions_with_results(
+            entities, relations, claims, text
         )
-
-        # Validate claims
-        claims, claim_results = await self.validation_service.validate_claims(claims, text)
-
-        # Log validation summary
-        flagged_entities = sum(1 for r in entity_results if r.flags)
-        flagged_relations = sum(1 for r in relation_results if r.flags)
-        flagged_claims = sum(1 for r in claim_results if r.flags)
-
-        if flagged_entities + flagged_relations + flagged_claims > 0:
-            logger.warning(
-                f"Validation flagged items: {flagged_entities} entities, "
-                f"{flagged_relations} relations, {flagged_claims} claims"
-            )
-
         return entities, relations, claims
 
     async def _validate_extractions_with_results(
