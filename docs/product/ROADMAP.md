@@ -105,8 +105,8 @@ See `E2E_TEST_FIXES_SUMMARY.md` and `E2E_TEST_ANALYSIS.md` for detailed technica
 - ✅ Relations export button on SourcesView — `exportType="relations"` (JSON + CSV + RDF)
 
 #### CI/CD Pipeline
-- GitHub Actions for automated testing (backend + frontend + E2E)
-- Coverage reporting
+- ✅ GitHub Actions for automated testing (backend + frontend + E2E)
+- ✅ Coverage reporting
 
 ---
 
