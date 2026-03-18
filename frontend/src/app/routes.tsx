@@ -35,6 +35,7 @@ import { AdminView } from "../views/AdminView";
 import { ReviewQueueView } from "../views/ReviewQueueView";
 import { NotificationDemoView } from "../views/NotificationDemoView";
 import { ImportEntitiesView } from "../views/ImportEntitiesView";
+import { ImportSourcesView } from "../views/ImportSourcesView";
 import { BatchCreateRelationsView } from "../views/BatchCreateRelationsView";
 
 export const router = createBrowserRouter([
@@ -58,6 +59,7 @@ export const router = createBrowserRouter([
 
       { path: "sources", element: <SourcesView /> },
       { path: "sources/new", element: <ProtectedRoute><CreateSourceView /></ProtectedRoute> },
+      { path: "sources/import", element: <ProtectedRoute><ImportSourcesView /></ProtectedRoute> },
       { path: "sources/import-pubmed", element: <ProtectedRoute><PubMedImportView /></ProtectedRoute> },
       { path: "sources/smart-discovery", element: <ProtectedRoute><SmartSourceDiscoveryView /></ProtectedRoute> },
       { path: "sources/:id", element: <SourceDetailView /> },

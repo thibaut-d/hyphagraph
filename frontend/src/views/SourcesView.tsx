@@ -20,6 +20,7 @@ import AddIcon from "@mui/icons-material/Add";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import DownloadIcon from "@mui/icons-material/Download";
 import SearchIcon from "@mui/icons-material/Search";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
 
 import { listSources, SourceFilters, getSourceFilterOptions, SourceFilterOptions } from "../api/sources";
 import { SourceRead } from "../types/source";
@@ -208,7 +209,19 @@ export function SourcesView() {
               Smart Discovery
             </Box>
           </Button>
-          <ExportMenu exportType="full-graph" buttonText={t("export.full_graph", "Export")} size="small" />
+          <ExportMenu exportType="sources" buttonText={t("export.sources", "Export Sources")} size="small" />
+          <ExportMenu exportType="relations" buttonText={t("export.relations", "Export Relations")} size="small" />
+          <Button
+            component={RouterLink}
+            to="/sources/import"
+            variant="outlined"
+            startIcon={<UploadFileIcon />}
+            size="small"
+          >
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+              {t("source_import.toolbar_button")}
+            </Box>
+          </Button>
           <Button
             component={RouterLink}
             to="/sources/import-pubmed"

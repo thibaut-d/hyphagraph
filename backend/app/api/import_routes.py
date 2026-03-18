@@ -1,11 +1,16 @@
 """
 API endpoints for bulk import operations.
 
-Provides a two-step workflow:
+Entity import (two-step workflow):
 1. POST /api/import/entities/preview  — validate rows, return per-row status (no writes)
 2. POST /api/import/entities          — execute the import and write to DB
 
-Supported upload formats: CSV (multipart/form-data) and JSON (application/json body).
+Source import (two-step workflow):
+1. POST /api/import/sources/preview   — validate rows, return per-row status (no writes)
+2. POST /api/import/sources           — execute the import and write to DB
+
+Entity upload formats: CSV, JSON
+Source upload formats: BibTeX, RIS, JSON
 """
 import logging
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
@@ -13,7 +18,12 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from app.api.service_dependencies import get_import_service
 from app.dependencies.auth import get_current_user
 from app.models.user import User
-from app.schemas.import_schema import ImportPreviewResult, ImportResult
+from app.schemas.import_schema import (
+    ImportPreviewResult,
+    ImportResult,
+    SourceImportPreviewResult,
+    SourceImportResult,
+)
 from app.services.import_service import ImportService
 
 logger = logging.getLogger(__name__)
@@ -21,7 +31,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/import", tags=["import"])
 
 
-def _parse_rows(service: ImportService, file: UploadFile, format: str):
+def _parse_entity_rows(service: ImportService, file: UploadFile, format: str):
     """Parse uploaded file into EntityImportRow list."""
     content = file.file.read().decode("utf-8")
     if format == "csv":
@@ -32,6 +42,22 @@ def _parse_rows(service: ImportService, file: UploadFile, format: str):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Unsupported format: {format!r}. Use 'csv' or 'json'.",
+        )
+
+
+def _parse_source_rows(service: ImportService, file: UploadFile, format: str):
+    """Parse uploaded file into SourceImportRow list."""
+    content = file.file.read().decode("utf-8")
+    if format == "bibtex":
+        return service.parse_bibtex(content)
+    elif format == "ris":
+        return service.parse_ris(content)
+    elif format == "json":
+        return service.parse_sources_json(content)
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Unsupported format: {format!r}. Use 'bibtex', 'ris', or 'json'.",
         )
 
 
@@ -53,7 +79,7 @@ async def preview_entity_import(
     which rows will be created vs skipped before they confirm the import.
     """
     try:
-        rows = _parse_rows(service, file, format)
+        rows = _parse_entity_rows(service, file, format)
         return await service.preview_entities(rows)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
@@ -78,7 +104,55 @@ async def import_entities(
     (missing slug) are counted and returned in `failed`.
     """
     try:
-        rows = _parse_rows(service, file, format)
+        rows = _parse_entity_rows(service, file, format)
         return await service.import_entities(rows, user_id=current_user.id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+
+
+@router.post(
+    "/sources/preview",
+    response_model=SourceImportPreviewResult,
+    summary="Preview source import",
+)
+async def preview_source_import(
+    file: UploadFile = File(..., description="BibTeX, RIS, or JSON file"),
+    format: str = Form(default="bibtex", description="'bibtex', 'ris', or 'json'"),
+    service: ImportService = Depends(get_import_service),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Validate a source import file and return a per-row preview.
+
+    No data is written to the database.
+    """
+    try:
+        rows = _parse_source_rows(service, file, format)
+        return await service.preview_sources(rows)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+
+
+@router.post(
+    "/sources",
+    response_model=SourceImportResult,
+    status_code=status.HTTP_201_CREATED,
+    summary="Execute source import",
+)
+async def import_sources(
+    file: UploadFile = File(..., description="BibTeX, RIS, or JSON file"),
+    format: str = Form(default="bibtex", description="'bibtex', 'ris', or 'json'"),
+    service: ImportService = Depends(get_import_service),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Execute a bulk source import.
+
+    Duplicate sources (matched by URL or title) are skipped. Invalid rows
+    (missing title) are counted and returned in `failed`.
+    """
+    try:
+        rows = _parse_source_rows(service, file, format)
+        return await service.import_sources(rows, user_id=current_user.id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))

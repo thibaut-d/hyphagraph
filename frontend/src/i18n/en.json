@@ -96,6 +96,22 @@
     "stat_skipped": "{{count}} skipped",
     "stat_failed": "{{count}} failed"
   },
+  "source_import": {
+    "page_title": "Import Sources",
+    "upload_title": "Upload a file",
+    "upload_description": "Import sources in bulk from a BibTeX, RIS, or JSON file. Maximum 500 entries.",
+    "bibtex_hint": "BibTeX entries with @article, @book, @inproceedings, etc.",
+    "ris_hint": "RIS format with TY, TI, AU, PY, ER tags.",
+    "json_hint": "JSON array with title, kind, authors, year, url, origin fields.",
+    "confirm_button": "Import {{count}} new sources",
+    "done_title": "Import complete",
+    "import_more": "Import more",
+    "back_to_sources": "Back to Sources",
+    "toolbar_button": "Import Sources",
+    "col_title": "Title",
+    "col_authors": "Authors",
+    "col_year": "Year"
+  },
   "entity": {
     "inference": "Related assertions",
     "delete_confirm_title": "Delete Entity",

@@ -1,6 +1,6 @@
 # HyphaGraph TODO
 
-**Last Updated**: 2026-03-18 (Batch Operations)
+**Last Updated**: 2026-03-18 (Bulk Source Import)
 
 ---
 
@@ -8,8 +8,8 @@
 
 | Area | Status | Details |
 |------|--------|---------|
-| **Backend tests** | ✅ 507/507 | All passing (+13 import service tests) |
-| **Frontend tests** | ✅ 597/597 | All passing (+18 ImportEntitiesView tests) |
+| **Backend tests** | ✅ 509/509 | All passing (+2 sources export tests) |
+| **Frontend tests** | ✅ 613/613 | All passing (+16 BatchCreateRelationsView tests) |
 | **E2E tests** | ✅ **72/72** | **🎉 All passing!** |
 | **Technical debt** | ✅ Minimal | All test issues resolved |
 
@@ -98,10 +98,11 @@ See `E2E_TEST_FIXES_SUMMARY.md` and `E2E_TEST_ANALYSIS.md` for detailed technica
   - ✅ `ImportEntitiesView` — 3-stage UI (upload → preview table → done summary)
   - ✅ Import button wired into `EntitiesView` toolbar
   - ✅ i18n (EN + FR), 13 backend tests, 18 frontend tests
-- Bulk source import (BibTeX, RIS, JSON)
-- Batch relation creation
+- ✅ Bulk source import (BibTeX, RIS, JSON) — 3-stage UI, 36 backend tests
+- ✅ Batch relation creation — multi-row form, shared source selector, per-row results, 16 frontend tests
 - ✅ Export functionality (JSON, CSV, RDF) — already complete
-- Relation export button on SourcesView (minor — ExportMenu already available)
+- ✅ Sources export button on SourcesView — `exportType="sources"` (JSON + CSV), dedicated backend endpoint
+- ✅ Relations export button on SourcesView — `exportType="relations"` (JSON + CSV + RDF)
 
 #### CI/CD Pipeline
 - GitHub Actions for automated testing (backend + frontend + E2E)

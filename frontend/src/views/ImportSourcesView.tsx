@@ -1,0 +1,378 @@
+/**
+ * Three-stage source bulk import view.
+ *
+ * Stage 1 — Upload:  user picks a BibTeX, RIS, or JSON file and clicks "Preview"
+ * Stage 2 — Preview: per-row table showing new / duplicate / invalid status
+ * Stage 3 — Done:    summary of created / skipped / failed counts
+ */
+import { useRef, useState } from "react";
+import { Link as RouterLink } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  Paper,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  ToggleButton,
+  ToggleButtonGroup,
+  Typography,
+} from "@mui/material";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+
+import {
+  type SourceImportFormat,
+  type SourceImportPreviewRow,
+  type SourceImportPreviewResult,
+  type SourceImportResult,
+  executeSourceImport,
+  previewSourceImport,
+} from "../api/import";
+
+type Stage = "upload" | "preview" | "done";
+
+const STATUS_COLOR: Record<SourceImportPreviewRow["status"], "success" | "warning" | "error"> = {
+  new: "success",
+  duplicate: "warning",
+  invalid: "error",
+};
+
+const FORMAT_ACCEPT: Record<SourceImportFormat, string> = {
+  bibtex: ".bib,.bibtex,text/plain",
+  ris: ".ris,text/plain",
+  json: ".json,application/json",
+};
+
+export function ImportSourcesView() {
+  const { t } = useTranslation();
+
+  const [stage, setStage] = useState<Stage>("upload");
+  const [format, setFormat] = useState<SourceImportFormat>("bibtex");
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<SourceImportPreviewResult | null>(null);
+  const [result, setResult] = useState<SourceImportResult | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // -------------------------------------------------------------------------
+  // Handlers
+  // -------------------------------------------------------------------------
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const selected = e.target.files?.[0] ?? null;
+    setFile(selected);
+    setError(null);
+  }
+
+  async function handlePreview() {
+    if (!file) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await previewSourceImport(file, format);
+      setPreview(data);
+      setStage("preview");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t("common.error"));
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleConfirm() {
+    if (!file) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await executeSourceImport(file, format);
+      setResult(data);
+      setStage("done");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t("common.error"));
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  function handleReset() {
+    setStage("upload");
+    setFile(null);
+    setPreview(null);
+    setResult(null);
+    setError(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  // -------------------------------------------------------------------------
+  // Render helpers
+  // -------------------------------------------------------------------------
+
+  function renderUpload() {
+    return (
+      <Paper sx={{ p: 3, maxWidth: 600 }}>
+        <Typography variant="h6" gutterBottom>
+          {t("source_import.upload_title")}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          {t("source_import.upload_description")}
+        </Typography>
+
+        <Stack spacing={3}>
+          <Box>
+            <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+              {t("import.format_label")}
+            </Typography>
+            <ToggleButtonGroup
+              value={format}
+              exclusive
+              size="small"
+              onChange={(_e, val) => { if (val) setFormat(val as SourceImportFormat); }}
+            >
+              <ToggleButton value="bibtex">BibTeX</ToggleButton>
+              <ToggleButton value="ris">RIS</ToggleButton>
+              <ToggleButton value="json">JSON</ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
+
+          <Box>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={FORMAT_ACCEPT[format]}
+              style={{ display: "none" }}
+              onChange={handleFileChange}
+            />
+            <Button
+              variant="outlined"
+              startIcon={<UploadFileIcon />}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {file ? file.name : t("import.choose_file")}
+            </Button>
+          </Box>
+
+          {format === "bibtex" && (
+            <Alert severity="info" sx={{ fontSize: "0.8rem" }}>
+              {t("source_import.bibtex_hint")}
+              <Box component="code" sx={{ display: "block", mt: 0.5, fontSize: "0.75rem" }}>
+                {"@article{key, title={...}, author={...}, year={2024}, journal={...}}"}
+              </Box>
+            </Alert>
+          )}
+
+          {format === "ris" && (
+            <Alert severity="info" sx={{ fontSize: "0.8rem" }}>
+              {t("source_import.ris_hint")}
+              <Box component="code" sx={{ display: "block", mt: 0.5, fontSize: "0.75rem", whiteSpace: "pre" }}>
+                {"TY  - JOUR\nTI  - Title\nAU  - Author\nPY  - 2024\nER  -"}
+              </Box>
+            </Alert>
+          )}
+
+          {format === "json" && (
+            <Alert severity="info" sx={{ fontSize: "0.8rem" }}>
+              {t("source_import.json_hint")}
+              <Box component="code" sx={{ display: "block", mt: 0.5, fontSize: "0.75rem" }}>
+                {'[{"title":"...","kind":"article","year":2024,"url":"..."}]'}
+              </Box>
+            </Alert>
+          )}
+
+          {error && <Alert severity="error">{error}</Alert>}
+
+          <Button
+            variant="contained"
+            disabled={!file || isLoading}
+            onClick={handlePreview}
+            startIcon={isLoading ? <CircularProgress size={16} /> : undefined}
+          >
+            {t("import.preview_button")}
+          </Button>
+        </Stack>
+      </Paper>
+    );
+  }
+
+  function renderPreview() {
+    if (!preview) return null;
+
+    const hasNew = preview.new_count > 0;
+
+    return (
+      <Box>
+        {/* Summary chips */}
+        <Stack direction="row" spacing={1} sx={{ mb: 2 }} flexWrap="wrap">
+          <Chip
+            label={t("import.stat_new", { count: preview.new_count })}
+            color="success"
+            variant={preview.new_count > 0 ? "filled" : "outlined"}
+            size="small"
+          />
+          <Chip
+            label={t("import.stat_duplicate", { count: preview.duplicate_count })}
+            color="warning"
+            variant={preview.duplicate_count > 0 ? "filled" : "outlined"}
+            size="small"
+          />
+          <Chip
+            label={t("import.stat_invalid", { count: preview.invalid_count })}
+            color="error"
+            variant={preview.invalid_count > 0 ? "filled" : "outlined"}
+            size="small"
+          />
+        </Stack>
+
+        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+        {/* Per-row table */}
+        <Paper sx={{ mb: 2, overflow: "auto", maxHeight: 400 }}>
+          <Table size="small" stickyHeader>
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ width: 50 }}>{t("import.col_row")}</TableCell>
+                <TableCell>{t("source_import.col_title")}</TableCell>
+                <TableCell sx={{ width: 160 }}>{t("source_import.col_authors")}</TableCell>
+                <TableCell sx={{ width: 60 }}>{t("source_import.col_year")}</TableCell>
+                <TableCell>{t("import.col_status")}</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {preview.rows.map((row) => (
+                <TableRow key={row.row}>
+                  <TableCell>{row.row}</TableCell>
+                  <TableCell sx={{ maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {row.title || "—"}
+                  </TableCell>
+                  <TableCell sx={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {row.authors_display ?? "—"}
+                  </TableCell>
+                  <TableCell>{row.year ?? "—"}</TableCell>
+                  <TableCell>
+                    <Chip
+                      label={row.error ?? t(`import.row_status_${row.status}`)}
+                      color={STATUS_COLOR[row.status]}
+                      size="small"
+                    />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Paper>
+
+        {/* Actions */}
+        <Stack direction="row" spacing={2}>
+          <Button variant="outlined" onClick={handleReset} disabled={isLoading}>
+            {t("common.cancel")}
+          </Button>
+          <Button
+            variant="contained"
+            disabled={!hasNew || isLoading}
+            onClick={handleConfirm}
+            startIcon={isLoading ? <CircularProgress size={16} /> : undefined}
+          >
+            {t("source_import.confirm_button", { count: preview.new_count })}
+          </Button>
+        </Stack>
+      </Box>
+    );
+  }
+
+  function renderDone() {
+    if (!result) return null;
+    return (
+      <Paper sx={{ p: 3, maxWidth: 480 }}>
+        <Stack spacing={2} alignItems="flex-start">
+          <Stack direction="row" spacing={1} alignItems="center">
+            <CheckCircleOutlineIcon color="success" />
+            <Typography variant="h6">{t("source_import.done_title")}</Typography>
+          </Stack>
+
+          <Stack direction="row" spacing={1} flexWrap="wrap">
+            <Chip label={t("import.stat_created", { count: result.created })} color="success" size="small" />
+            <Chip label={t("import.stat_skipped", { count: result.skipped_duplicates })} color="warning" variant="outlined" size="small" />
+            {result.failed > 0 && (
+              <Chip label={t("import.stat_failed", { count: result.failed })} color="error" size="small" />
+            )}
+          </Stack>
+
+          <Stack direction="row" spacing={2}>
+            <Button variant="outlined" onClick={handleReset}>
+              {t("source_import.import_more")}
+            </Button>
+            <Button
+              variant="contained"
+              component={RouterLink}
+              to="/sources"
+              startIcon={<ArrowBackIcon />}
+            >
+              {t("source_import.back_to_sources")}
+            </Button>
+          </Stack>
+        </Stack>
+      </Paper>
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Layout
+  // -------------------------------------------------------------------------
+
+  const stepLabels = [
+    t("import.step_upload"),
+    t("import.step_preview"),
+    t("import.step_done"),
+  ];
+  const stepIndex = stage === "upload" ? 0 : stage === "preview" ? 1 : 2;
+
+  return (
+    <Box sx={{ p: 2 }}>
+      {/* Header */}
+      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+        <Button
+          component={RouterLink}
+          to="/sources"
+          size="small"
+          startIcon={<ArrowBackIcon />}
+          sx={{ minWidth: 0 }}
+        >
+          {t("sources.title")}
+        </Button>
+      </Stack>
+
+      <Typography variant="h5" sx={{ mb: 3 }}>
+        {t("source_import.page_title")}
+      </Typography>
+
+      {/* Step indicator */}
+      <Stack direction="row" spacing={1} sx={{ mb: 4 }}>
+        {stepLabels.map((label, i) => (
+          <Chip
+            key={label}
+            label={`${i + 1}. ${label}`}
+            color={i === stepIndex ? "primary" : "default"}
+            variant={i === stepIndex ? "filled" : "outlined"}
+            size="small"
+          />
+        ))}
+      </Stack>
+
+      {/* Stage content */}
+      {stage === "upload" && renderUpload()}
+      {stage === "preview" && renderPreview()}
+      {stage === "done" && renderDone()}
+    </Box>
+  );
+}
