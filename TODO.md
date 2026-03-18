@@ -294,6 +294,36 @@ Progress update:
 
 - Status: Audit 24 complete.
 
+### Audit 25: Dead Code & Legacy Fields (Third Pass)
+
+1. Assess retirement readiness for legacy entity fields (kind, label, synonyms, ontology_ref).
+2. Re-assess subject_slug/object_slug.
+3. Check test-file F401s and dead code in new modules.
+
+Progress update:
+- Completed: Audit run. Clean pass — no immediate removals.
+- Confirmed: `kind`, `label`, `synonyms`, `ontology_ref` on EntityRead are still actively consumed by 10+ frontend files as fallbacks. Cannot retire until frontend migrates to slug+summary exclusively.
+- Confirmed: `subject_slug`/`object_slug` keep their well-documented deprecated status; LLM backward-compat path and CSV export still depend on them.
+- Confirmed: Test-file F401s are clean (prior passes eliminated them). New modules (extraction_review, user service split, auth_handlers) have no dead code.
+- Deferred: entity legacy field retirement — requires frontend migration sprint first.
+
+- Status: Audit 25 complete.
+
+### Audit 26: Test Suite Health (Third Pass)
+
+1. Identify coverage gaps for behaviors changed in Audits 20–24.
+2. Write missing tests for: created_with_llm propagation, AUTO_VERIFIED rejection, auto_materialize=False status, user_id → created_by_user_id.
+
+Progress update:
+- Completed: audit subagent identified 4 specific coverage gaps.
+- Completed: added `test_materialized_entity_revision_carries_llm_model` (verifies EntityRevision.created_with_llm from materialization).
+- Completed: added `test_reject_auto_verified_extraction_transitions_to_rejected` (verifies AUTO_VERIFIED extractions can be rejected).
+- Completed: added `test_auto_materialize_false_high_confidence_status_is_pending` (verifies status=PENDING when auto_materialize=False).
+- Completed: added `test_create_entity_with_user_id_sets_created_by` in test_entity_service.py (verifies user_id flows to EntityRevision.created_by_user_id).
+- All 4 new tests pass.
+
+- Status: Audit 26 complete.
+
 ## Audit Reports
 
 - [knowledge_integrity_explainability_report.md](/home/thibaut/code/hyphagraph/.temp/knowledge_integrity_explainability_report.md)
