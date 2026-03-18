@@ -136,18 +136,16 @@ class TestAuthentication:
 
     @pytest.mark.asyncio
     async def test_authenticate_inactive_user(self, user_service, mock_user_repo, sample_user, mock_db):
-        """Authentication with inactive user should reactivate the account."""
+        """Authentication with inactive user should raise UnauthorizedException."""
+        from app.utils.errors import UnauthorizedException
         sample_user.is_active = False
         mock_user_repo.get_by_email.return_value = sample_user
 
         with patch("app.services.user_service.verify_password") as mock_verify:
             mock_verify.return_value = True
 
-            result = await user_service.authenticate("test@example.com", "password")
-
-        # User should be reactivated
-        assert result.is_active == True
-        assert mock_db.commit.call_count == 1
+            with pytest.raises(UnauthorizedException):
+                await user_service.authenticate("test@example.com", "password")
 
 
 class TestPasswordManagement:

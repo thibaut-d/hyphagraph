@@ -251,6 +251,19 @@ Progress update:
 
 - Status: Audit 21 complete.
 
+### Audit 22: Security & Authentication
+
+1. Remove auto-reactivation of inactive users in `authenticate_user()`.
+2. Verify JWT, bcrypt, permission checks, token lifecycle, secrets handling.
+
+Progress update:
+- Completed: Audit run. Report: `.temp/security_authentication_report_v2.md`.
+- Completed: Fixed C1 — `account.py` `authenticate_user()` now raises `UnauthorizedException` for inactive users instead of silently re-activating them. Test updated.
+- Confirmed: JWT, bcrypt, refresh tokens, permission checks, secrets handling all sound.
+- Deferred: plaintext reset/verification token storage (low risk given short expiry + single-use).
+
+- Status: Audit 22 complete.
+
 ## Audit Reports
 
 - [knowledge_integrity_explainability_report.md](/home/thibaut/code/hyphagraph/.temp/knowledge_integrity_explainability_report.md)

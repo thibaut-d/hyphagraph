@@ -151,14 +151,10 @@ async def authenticate_user(
         )
 
     if not user.is_active:
-        try:
-            user.is_active = True
-            await service.repo.update(user)
-            await service.db.commit()
-            await service.db.refresh(user)
-        except Exception:
-            await service.db.rollback()
-            raise
+        raise UnauthorizedException(
+            message="Account is deactivated",
+            details="This account has been deactivated. Contact an administrator.",
+        )
 
     return user
 
