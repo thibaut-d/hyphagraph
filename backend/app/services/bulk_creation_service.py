@@ -124,7 +124,8 @@ class BulkCreationService:
                     # Re-raise other integrity errors
                     await self.db.rollback()
                     raise
-            except Exception:
+            except Exception as e:
+                logger.error("Failed to create entity '%s' in bulk operation: %s", extracted.slug, e, exc_info=True)
                 # Rollback on any other error
                 await self.db.rollback()
                 raise

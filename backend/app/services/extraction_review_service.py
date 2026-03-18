@@ -256,7 +256,7 @@ class ExtractionReviewService:
                     else:
                         failed.append(extraction_id)
             except Exception as e:
-                logger.error("Failed to review extraction %s: %s", extraction_id, e)
+                logger.error("Failed to review extraction %s: %s", extraction_id, e, exc_info=True)
                 failed.append(extraction_id)
 
         return BatchReviewResponse(
@@ -324,7 +324,7 @@ class ExtractionReviewService:
                 )
 
         except Exception as e:
-            logger.error("Failed to materialize extraction %s: %s", extraction_id, e)
+            logger.error("Failed to materialize extraction %s: %s", extraction_id, e, exc_info=True)
             await self.db.rollback()
             return MaterializationResult(
                 success=False,

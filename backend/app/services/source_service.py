@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timezone
 from typing import Optional, Tuple
 from uuid import UUID
@@ -17,6 +18,8 @@ from app.schemas.source import SourceWrite, SourceRead
 from app.services.derived_properties_service import DerivedPropertiesService
 from app.utils.errors import SourceNotFoundException
 from app.utils.revision_helpers import create_new_revision, get_current_revision
+
+logger = logging.getLogger(__name__)
 
 DOMAIN_KEYWORDS: dict[str, list[str]] = {
     "cardiology": ["cardio", "heart", "cardiac", "cardiovascular"],
@@ -75,7 +78,8 @@ class SourceService:
             await self.db.commit()
             return source_to_read(source, revision)
 
-        except Exception:
+        except Exception as e:
+            logger.error("Failed to create source '%s': %s", payload.title, e, exc_info=True)
             await self.db.rollback()
             raise
 
@@ -294,7 +298,8 @@ class SourceService:
 
         except SourceNotFoundException:
             raise
-        except Exception:
+        except Exception as e:
+            logger.error("Failed to update source %s: %s", source_id, e, exc_info=True)
             await self.db.rollback()
             raise
 
@@ -318,7 +323,8 @@ class SourceService:
 
         except SourceNotFoundException:
             raise
-        except Exception:
+        except Exception as e:
+            logger.error("Failed to delete source %s: %s", source_id, e, exc_info=True)
             await self.db.rollback()
             raise
 
@@ -434,6 +440,7 @@ class SourceService:
 
         except SourceNotFoundException:
             raise
-        except Exception:
+        except Exception as e:
+            logger.error("Failed to add document to source %s: %s", source_id, e, exc_info=True)
             await self.db.rollback()
             raise

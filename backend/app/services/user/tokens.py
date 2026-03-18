@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta, timezone
 from inspect import isawaitable
 from typing import Protocol
@@ -18,6 +19,8 @@ from app.utils.auth import (
     verify_refresh_token,
 )
 from app.utils.errors import AppException, ErrorCode, UnauthorizedException
+
+logger = logging.getLogger(__name__)
 
 
 class UserServiceContext(Protocol):
@@ -53,7 +56,8 @@ async def create_refresh_token_pair(
             await add_result
         await service.db.commit()
         return access_token, refresh_token
-    except Exception:
+    except Exception as e:
+        logger.error("Failed to create refresh token for user %s: %s", user_id, e, exc_info=True)
         await service.db.rollback()
         raise
 
@@ -130,6 +134,7 @@ async def revoke_refresh_token(
         matched_token.is_revoked = True
         matched_token.revoked_at = datetime.now(timezone.utc)
         await service.db.commit()
-    except Exception:
+    except Exception as e:
+        logger.error("Failed to revoke refresh token for user %s: %s", user_id, e, exc_info=True)
         await service.db.rollback()
         raise

@@ -98,6 +98,6 @@ async def _materialize_approved(db: AsyncSession, staged: StagedExtraction) -> b
         # Claims not yet supported
         return False
     except Exception as e:
-        logger.error("Materialization failed for extraction %s: %s", staged.id, e)
+        logger.error("Materialization failed for extraction %s: %s", staged.id, e, exc_info=True)
         await db.rollback()
         return False

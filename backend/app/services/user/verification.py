@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Protocol
 from uuid import UUID
@@ -13,6 +14,8 @@ from app.utils.auth import hash_password
 from app.utils.email import generate_verification_token
 from app.utils.errors import ValidationException
 from app.services.user.common import to_user_read, user_not_found
+
+logger = logging.getLogger(__name__)
 
 
 class UserServiceContext(Protocol):
@@ -40,7 +43,8 @@ async def create_verification_token(
         await service.repo.update(user)
         await service.db.commit()
         return token
-    except Exception:
+    except Exception as e:
+        logger.error("Failed to create verification token for user %s: %s", user_id, e, exc_info=True)
         await service.db.rollback()
         raise
 
@@ -71,7 +75,8 @@ async def verify_email(service: UserServiceContext, token: str) -> UserRead:
         await service.db.commit()
         await service.db.refresh(user)
         return to_user_read(user)
-    except Exception:
+    except Exception as e:
+        logger.error("Failed to verify email (token redacted): %s", e, exc_info=True)
         await service.db.rollback()
         raise
 
@@ -94,7 +99,8 @@ async def request_password_reset(
         await service.repo.update(user)
         await service.db.commit()
         return token
-    except Exception:
+    except Exception as e:
+        logger.error("Failed to store password reset token: %s", e, exc_info=True)
         await service.db.rollback()
         raise
 
@@ -128,6 +134,7 @@ async def reset_password(
         await service.db.commit()
         await service.db.refresh(user)
         return to_user_read(user)
-    except Exception:
+    except Exception as e:
+        logger.error("Failed to reset password (token redacted): %s", e, exc_info=True)
         await service.db.rollback()
         raise

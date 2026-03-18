@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from typing import Protocol
 from uuid import UUID
@@ -9,6 +10,8 @@ from app.schemas.auth import UserRead, UserRegister, UserUpdate
 from app.utils.auth import hash_password, verify_password
 from app.utils.errors import UnauthorizedException, ValidationException
 from app.services.user.common import load_active_refresh_tokens, to_user_read, user_not_found
+
+logger = logging.getLogger(__name__)
 
 
 class UserServiceContext(Protocol):
@@ -44,7 +47,8 @@ async def create_user(
         await service.db.commit()
         await service.db.refresh(user)
         return to_user_read(user)
-    except Exception:
+    except Exception as e:
+        logger.error("Failed to create user '%s': %s", payload.email, e, exc_info=True)
         await service.db.rollback()
         raise
 
@@ -98,7 +102,8 @@ async def update_user(
         await service.db.commit()
         await service.db.refresh(user)
         return to_user_read(user)
-    except Exception:
+    except Exception as e:
+        logger.error("Failed to update user %s: %s", user_id, e, exc_info=True)
         await service.db.rollback()
         raise
 
@@ -118,7 +123,8 @@ async def deactivate_user(service: UserServiceContext, user_id: UUID) -> None:
             token.revoked_at = datetime.now(timezone.utc)
 
         await service.db.commit()
-    except Exception:
+    except Exception as e:
+        logger.error("Failed to deactivate user %s: %s", user_id, e, exc_info=True)
         await service.db.rollback()
         raise
 
@@ -131,7 +137,8 @@ async def delete_user(service: UserServiceContext, user_id: UUID) -> None:
     try:
         await service.repo.delete(user)
         await service.db.commit()
-    except Exception:
+    except Exception as e:
+        logger.error("Failed to delete user %s: %s", user_id, e, exc_info=True)
         await service.db.rollback()
         raise
 
@@ -182,6 +189,7 @@ async def change_password(
         user.hashed_password = await hash_password_fn(new_password)
         await service.repo.update(user)
         await service.db.commit()
-    except Exception:
+    except Exception as e:
+        logger.error("Failed to change password for user %s: %s", user_id, e, exc_info=True)
         await service.db.rollback()
         raise

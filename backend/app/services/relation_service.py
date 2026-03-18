@@ -1,3 +1,4 @@
+import logging
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,6 +14,8 @@ from app.mappers.relation_mapper import (
 from app.services.validation_service import validate_relation
 from app.utils.revision_helpers import get_current_revision, create_new_revision
 from app.utils.errors import RelationNotFoundException, ValidationException
+
+logger = logging.getLogger(__name__)
 
 
 class RelationService:
@@ -74,7 +77,8 @@ class RelationService:
             # 7. Return Read
             return relation_to_read(relation, revision)
 
-        except Exception:
+        except Exception as e:
+            logger.error("Failed to create relation for source %s: %s", payload.source_id, e, exc_info=True)
             await self.db.rollback()
             raise
 
@@ -184,7 +188,8 @@ class RelationService:
 
         except (RelationNotFoundException, ValidationException):
             raise
-        except Exception:
+        except Exception as e:
+            logger.error("Failed to update relation %s: %s", relation_id, e, exc_info=True)
             await self.db.rollback()
             raise
 
@@ -208,6 +213,7 @@ class RelationService:
 
         except RelationNotFoundException:
             raise
-        except Exception:
+        except Exception as e:
+            logger.error("Failed to delete relation %s: %s", relation_id, e, exc_info=True)
             await self.db.rollback()
             raise

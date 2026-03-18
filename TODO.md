@@ -264,6 +264,20 @@ Progress update:
 
 - Status: Audit 22 complete.
 
+### Audit 23: Silent Error Handling & Logging (Third Pass)
+
+1. Add `logger.error(..., exc_info=True)` before every bare `except Exception: rollback; raise` in core and user services.
+2. Add `exc_info=True` to existing `logger.error` calls that were missing it.
+
+Progress update:
+- Completed: Audit run. 22 unlogged rollback sites and 3 missing `exc_info=True` identified.
+- Completed: Added `import logging` + `logger = logging.getLogger(__name__)` to entity_service, relation_service, source_service, user/account, user/tokens, user/verification.
+- Completed: Added pre-rollback `logger.error(...)` with context to all 22 unlogged `except Exception:` blocks across 7 files.
+- Completed: Added `exc_info=True` to 3 existing logger.error calls in extraction_review_service and auto_commit.
+- All 451 backend tests green.
+
+- Status: Audit 23 complete.
+
 ## Audit Reports
 
 - [knowledge_integrity_explainability_report.md](/home/thibaut/code/hyphagraph/.temp/knowledge_integrity_explainability_report.md)

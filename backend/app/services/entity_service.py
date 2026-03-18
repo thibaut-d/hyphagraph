@@ -1,4 +1,5 @@
 import json
+import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -20,6 +21,8 @@ from app.utils.revision_helpers import get_current_revision, create_new_revision
 from app.services.derived_properties_service import DerivedPropertiesService
 from app.services.entity_query_builder import EntityQueryBuilder
 from app.utils.errors import AppException, EntityNotFoundException, ValidationException, ErrorCode
+
+logger = logging.getLogger(__name__)
 
 
 class EntityService:
@@ -83,7 +86,8 @@ class EntityService:
                 )
             # Re-raise other integrity errors
             raise
-        except Exception:
+        except Exception as e:
+            logger.error("Failed to create entity '%s': %s", payload.slug, e, exc_info=True)
             await self.db.rollback()
             raise
 
@@ -180,7 +184,8 @@ class EntityService:
 
         except (EntityNotFoundException, ValidationException):
             raise
-        except Exception:
+        except Exception as e:
+            logger.error("Failed to update entity %s: %s", entity_id, e, exc_info=True)
             await self.db.rollback()
             raise
 
@@ -204,7 +209,8 @@ class EntityService:
 
         except EntityNotFoundException:
             raise
-        except Exception:
+        except Exception as e:
+            logger.error("Failed to delete entity %s: %s", entity_id, e, exc_info=True)
             await self.db.rollback()
             raise
 
