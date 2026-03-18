@@ -1,6 +1,6 @@
 # HyphaGraph TODO
 
-**Last Updated**: 2026-03-18 (Bulk Source Import)
+**Last Updated**: 2026-03-18 (Staged extractions pipeline integration)
 
 ---
 
@@ -8,7 +8,7 @@
 
 | Area | Status | Details |
 |------|--------|---------|
-| **Backend tests** | ✅ 509/509 | All passing (+2 sources export tests) |
+| **Backend tests** | ✅ 538/538 | All passing (+6 reconcile_staged_extractions tests) |
 | **Frontend tests** | ✅ 613/613 | All passing (+16 BatchCreateRelationsView tests) |
 | **E2E tests** | ✅ **72/72** | **🎉 All passing!** |
 | **Technical debt** | ✅ Minimal | All test issues resolved |
@@ -85,7 +85,7 @@ See `E2E_TEST_FIXES_SUMMARY.md` and `E2E_TEST_ANALYSIS.md` for detailed technica
   - ✅ Full REST API (/api/extraction-review)
   - ✅ Auto-verification for high-confidence extractions
   - ✅ Visibility strategy: show all, flag uncertain
-  - ⏳ Integration with document extraction pipeline (optional, non-breaking)
+  - ✅ Integration with document extraction pipeline: stage_review_batch uses auto_materialize=False; save_extraction_to_graph calls reconcile_staged_extractions to link staged records to materialized IDs and mark APPROVED/REJECTED
   - ✅ Unit tests for review service (47 tests: auto-commit logic, relation/claim staging, materialization edge cases, filters, pagination, batch ops)
   - ✅ Frontend UI (review queue, badges, type/score/flag filters, batch approve/reject, View Entity/Relation links, 32 tests)
 - ✅ Track LLM model version and provider (stored in staged_extractions)
