@@ -18,7 +18,20 @@
     "not_found": "Introuvable",
     "error": "Une erreur s'est produite",
     "back_to_entity": "Retour à l'entité",
-    "no_data": "Aucune donnée"
+    "no_data": "Aucune donnée",
+    "not_available": "N/D"
+  },
+  "scope_filter": {
+    "title": "Filtre de portée",
+    "active_count": " ({{count}} actif)",
+    "active_filters": "Filtres actifs :",
+    "add_filter": "Ajouter un filtre :",
+    "attribute_label": "Attribut",
+    "attribute_placeholder": "ex. : population",
+    "value_label": "Valeur",
+    "value_placeholder": "ex. : adultes",
+    "add_button": "Ajouter",
+    "help_text": "Filtrez les inférences par attributs de portée comme la population, la condition, la posologie, etc. Seules les relations correspondant à tous les critères seront incluses dans l'inférence."
   },
   "notifications": {
     "network_error": "Erreur réseau. Vérifiez votre connexion.",

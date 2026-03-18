@@ -1,6 +1,6 @@
 # HyphaGraph TODO
 
-**Last Updated**: 2026-03-07 (Session 4)
+**Last Updated**: 2026-03-18 (Audit 28)
 
 ---
 
@@ -9,7 +9,7 @@
 | Area | Status | Details |
 |------|--------|---------|
 | **Backend tests** | ✅ 491/491 | All passing (+26 review service tests, bug fix in materialize_relation) |
-| **Frontend tests** | ✅ 421/421 | All passing |
+| **Frontend tests** | ✅ 579/579 | All passing (+32 review queue UI tests) |
 | **E2E tests** | ✅ **72/72** | **🎉 All passing!** |
 | **Technical debt** | ✅ Minimal | All test issues resolved |
 
@@ -87,7 +87,7 @@ See `E2E_TEST_FIXES_SUMMARY.md` and `E2E_TEST_ANALYSIS.md` for detailed technica
   - ✅ Visibility strategy: show all, flag uncertain
   - ⏳ Integration with document extraction pipeline (optional, non-breaking)
   - ✅ Unit tests for review service (47 tests: auto-commit logic, relation/claim staging, materialization edge cases, filters, pagination, batch ops)
-  - 🔮 Frontend UI (review queue, badges, filters)
+  - ✅ Frontend UI (review queue, badges, type/score/flag filters, batch approve/reject, View Entity/Relation links, 32 tests)
 - ✅ Track LLM model version and provider (stored in staged_extractions)
 - ⏳ Claim extraction to Relations (auto-materialization)
 
