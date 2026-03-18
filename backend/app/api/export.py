@@ -99,6 +99,36 @@ async def export_relations(
     )
 
 
+@router.get("/sources")
+async def export_sources(
+    format: Literal["json", "csv"] = Query("json", description="Export format"),
+    include_metadata: bool = Query(True, description="Include creation dates"),
+    service: ExportService = Depends(get_export_service),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Export all sources in specified format.
+
+    Formats:
+    - json: Complete JSON with all fields
+    - csv: Spreadsheet-compatible tabular format
+
+    Returns a downloadable file.
+    """
+    content = await service.export_sources(format, include_metadata)
+
+    content_types = {"json": "application/json", "csv": "text/csv"}
+    extensions = {"json": "json", "csv": "csv"}
+
+    return Response(
+        content=content,
+        media_type=content_types[format],
+        headers={
+            "Content-Disposition": f'attachment; filename="sources.{extensions[format]}"'
+        },
+    )
+
+
 @router.get("/full-graph")
 async def export_full_graph(
     include_metadata: bool = Query(True, description="Include creation dates and provenance"),

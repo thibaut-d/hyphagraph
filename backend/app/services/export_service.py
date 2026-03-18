@@ -306,6 +306,72 @@ class ExportService:
         return "\n".join(lines)
 
     # =========================================================================
+    # SOURCES EXPORT
+    # =========================================================================
+
+    async def export_sources(
+        self,
+        format: ExportFormat = "json",
+        include_metadata: bool = True,
+    ) -> str:
+        """Export all sources in JSON or CSV format."""
+        stmt = select(Source, SourceRevision).join(
+            SourceRevision, Source.id == SourceRevision.source_id
+        ).where(SourceRevision.is_current == True)
+
+        result = await self.db.execute(stmt)
+        sources_data = []
+
+        for source, revision in result:
+            source_dict = {
+                "id": str(source.id),
+                "kind": revision.kind,
+                "title": revision.title,
+                "authors": revision.authors,
+                "year": revision.year,
+                "origin": revision.origin,
+                "url": revision.url,
+                "trust_level": revision.trust_level,
+            }
+            if include_metadata:
+                source_dict["created_at"] = (
+                    source.created_at.isoformat() if source.created_at else None
+                )
+            sources_data.append(source_dict)
+
+        if format == "json":
+            return json.dumps(
+                {
+                    "export_type": "sources",
+                    "export_date": datetime.utcnow().isoformat(),
+                    "count": len(sources_data),
+                    "sources": sources_data,
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+        elif format == "csv":
+            output = StringIO()
+            writer = csv.writer(output)
+            writer.writerow(["id", "kind", "title", "authors", "year", "origin", "url", "trust_level", "created_at"])
+            for s in sources_data:
+                authors = s.get("authors") or []
+                writer.writerow([
+                    s["id"],
+                    s.get("kind", ""),
+                    s.get("title", ""),
+                    "; ".join(authors) if isinstance(authors, list) else str(authors),
+                    s.get("year", ""),
+                    s.get("origin", ""),
+                    s.get("url", ""),
+                    s.get("trust_level", ""),
+                    s.get("created_at", ""),
+                ])
+            return output.getvalue()
+        else:
+            raise ValueError(f"Unsupported format for sources export: {format}")
+
+    # =========================================================================
     # FULL GRAPH EXPORT
     # =========================================================================
 

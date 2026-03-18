@@ -21,7 +21,7 @@ import { useNotification } from "../notifications/NotificationContext";
 import { downloadExportFile } from "../api/export";
 
 interface ExportMenuProps {
-  exportType: "entities" | "relations" | "full-graph";
+  exportType: "entities" | "relations" | "sources" | "full-graph";
   onExport?: (format: string) => void;
   disabled?: boolean;
   buttonText?: string;
@@ -83,7 +83,7 @@ export function ExportMenu({
         open={open}
         onClose={handleClose}
       >
-        {exportType !== "full-graph" && (
+        {(exportType === "entities" || exportType === "relations" || exportType === "sources") && (
           <>
             <MenuItem onClick={() => handleExport("json")}>
               <ListItemIcon>
@@ -99,12 +99,14 @@ export function ExportMenu({
               <ListItemText>Export as CSV</ListItemText>
             </MenuItem>
 
-            <MenuItem onClick={() => handleExport("rdf")}>
-              <ListItemIcon>
-                <AccountTreeIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>Export as RDF/Turtle</ListItemText>
-            </MenuItem>
+            {exportType !== "sources" && (
+              <MenuItem onClick={() => handleExport("rdf")}>
+                <ListItemIcon>
+                  <AccountTreeIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>Export as RDF/Turtle</ListItemText>
+              </MenuItem>
+            )}
           </>
         )}
 

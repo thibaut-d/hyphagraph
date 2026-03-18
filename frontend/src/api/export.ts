@@ -1,6 +1,6 @@
 import { apiFetchBlob } from "./client";
 
-export type ExportType = "entities" | "relations" | "full-graph";
+export type ExportType = "entities" | "relations" | "sources" | "full-graph";
 
 function getExportPath(exportType: ExportType, format: string): string {
   const basePath = `/export/${exportType}`;

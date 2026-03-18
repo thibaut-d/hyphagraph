@@ -30,6 +30,47 @@ async def test_export_entities_uses_export_service_dependency() -> None:
 
 
 @pytest.mark.asyncio
+async def test_export_sources_json_uses_export_service_dependency() -> None:
+    class StubExportService:
+        async def export_sources(self, export_format, include_metadata):
+            assert export_format == "json"
+            assert include_metadata is True
+            return '{"export_type":"sources","count":0,"sources":[]}'
+
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(email="test@example.com")
+    app.dependency_overrides[get_export_service] = lambda: StubExportService()
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get("/api/export/sources")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/json")
+    assert response.headers["content-disposition"] == 'attachment; filename="sources.json"'
+
+
+@pytest.mark.asyncio
+async def test_export_sources_csv_uses_export_service_dependency() -> None:
+    class StubExportService:
+        async def export_sources(self, export_format, include_metadata):
+            assert export_format == "csv"
+            return "id,kind,title\n"
+
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(email="test@example.com")
+    app.dependency_overrides[get_export_service] = lambda: StubExportService()
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get("/api/export/sources?format=csv")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/csv")
+    assert response.headers["content-disposition"] == 'attachment; filename="sources.csv"'
+
+
+@pytest.mark.asyncio
 async def test_export_typedb_full_uses_typedb_service_dependency() -> None:
     class StubTypeDBExportService:
         async def export_full(self):
