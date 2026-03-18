@@ -26,6 +26,7 @@ from app.schemas.staged_extraction import (
 from app.services.extraction_validation_service import ValidationResult
 from app.services.extraction_review.auto_commit import check_auto_commit_eligible, run_auto_commit
 from app.services.extraction_review.materialization import (
+    materialize_claim,
     materialize_entity,
     materialize_relation,
 )
@@ -315,12 +316,15 @@ class ExtractionReviewService:
                     materialized_relation_id=relation_id,
                 )
 
-            else:  # CLAIM
+            else:  # CLAIM → materialized as a relation
+                relation_id = await materialize_claim(self.db, staged)
+                staged.materialized_relation_id = relation_id
+                await self.db.commit()
                 return MaterializationResult(
-                    success=False,
+                    success=True,
                     extraction_id=extraction_id,
                     extraction_type="claim",
-                    error="Claim materialization not yet implemented",
+                    materialized_relation_id=relation_id,
                 )
 
         except Exception as e:

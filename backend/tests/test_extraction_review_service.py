@@ -1072,10 +1072,10 @@ async def test_stage_relation_without_matching_entities_skips_roles(
 
 
 @pytest.mark.asyncio
-async def test_stage_claim_creates_record_without_materializing(
+async def test_stage_claim_without_auto_materialize_stays_unmaterialized(
     review_service, sample_source, uncertain_validation
 ):
-    """Claims are staged but never materialized (not yet implemented)."""
+    """Claims staged with auto_materialize=False are stored as PENDING without a relation."""
     from app.llm.schemas import ExtractedClaim
 
     claim = ExtractedClaim(
@@ -1092,12 +1092,13 @@ async def test_stage_claim_creates_record_without_materializing(
         extraction_data=claim,
         source_id=sample_source.id,
         validation_result=uncertain_validation,
-        auto_materialize=True,
+        auto_materialize=False,
     )
 
     assert staged is not None
     assert staged.extraction_type == ExtractionType.CLAIM
-    assert materialized_id is None  # Claims not yet materializable
+    assert staged.status.value == "pending"
+    assert materialized_id is None
     assert staged.materialized_entity_id is None
     assert staged.materialized_relation_id is None
 
@@ -1257,11 +1258,13 @@ async def test_materialize_extraction_after_manual_approval(
 
 
 @pytest.mark.asyncio
-async def test_materialize_extraction_claim_not_implemented(
+async def test_materialize_claim_creates_relation(
     review_service, sample_source, uncertain_validation, sample_user
 ):
-    """Attempting to materialize a claim returns a clear 'not implemented' error."""
+    """Materializing a claim creates a relation with claim_type as kind and claim_text in notes."""
     from app.llm.schemas import ExtractedClaim
+    from app.models.relation_revision import RelationRevision
+    from sqlalchemy import select
 
     claim = ExtractedClaim(
         claim_text="Some factual claim about a drug with sufficient length",
@@ -1280,7 +1283,6 @@ async def test_materialize_extraction_claim_not_implemented(
         auto_materialize=False,
     )
 
-    # Approve without materializing
     await review_service.approve_extraction(
         extraction_id=staged.id,
         reviewer_id=sample_user.id,
@@ -1288,8 +1290,142 @@ async def test_materialize_extraction_claim_not_implemented(
     )
 
     result = await review_service.materialize_extraction(staged.id)
-    assert result.success is False
-    assert "not yet implemented" in result.error.lower()
+
+    assert result.success is True
+    assert result.extraction_type == "claim"
+    assert result.materialized_relation_id is not None
+
+    # Verify the relation revision has correct fields
+    db = review_service.db
+    revision_result = await db.execute(
+        select(RelationRevision)
+        .where(RelationRevision.relation_id == result.materialized_relation_id)
+        .where(RelationRevision.is_current == True)  # noqa: E712
+    )
+    revision = revision_result.scalar_one()
+    assert revision.kind == "efficacy"
+    assert revision.notes == {"en": "Some factual claim about a drug with sufficient length"}
+    assert revision.scope == {"evidence_strength": "moderate"}
+    assert revision.confidence is not None
+
+
+@pytest.mark.asyncio
+async def test_stage_claim_auto_materializes_when_high_confidence(
+    review_service, sample_source, high_confidence_validation
+):
+    """High-confidence claims are auto-materialized as relations on staging."""
+    from app.llm.schemas import ExtractedClaim
+
+    claim = ExtractedClaim(
+        claim_text="Aspirin significantly reduces risk of cardiovascular events in high-risk patients",
+        entities_involved=["aspirin"],
+        claim_type="efficacy",
+        evidence_strength="strong",
+        confidence="high",
+        text_span="reduces risk of cardiovascular events",
+    )
+
+    staged, materialized_id = await review_service.stage_extraction(
+        extraction_type=ExtractionType.CLAIM,
+        extraction_data=claim,
+        source_id=sample_source.id,
+        validation_result=high_confidence_validation,
+        auto_materialize=True,
+    )
+
+    assert staged.extraction_type == ExtractionType.CLAIM
+    assert materialized_id is not None
+    assert staged.materialized_relation_id == materialized_id
+
+
+@pytest.mark.asyncio
+async def test_materialize_claim_skips_missing_entities(
+    review_service, sample_source, uncertain_validation, sample_user
+):
+    """Claim materialization proceeds even when entities_involved slugs are not in DB."""
+    from app.llm.schemas import ExtractedClaim
+
+    claim = ExtractedClaim(
+        claim_text="Nonexistent-drug reduces some-unknown-condition symptoms reliably",
+        entities_involved=["nonexistent-slug-abc", "another-missing-slug-xyz"],
+        claim_type="safety",
+        evidence_strength="weak",
+        confidence="low",
+        text_span="reduces some-unknown-condition symptoms",
+    )
+
+    staged, _ = await review_service.stage_extraction(
+        extraction_type=ExtractionType.CLAIM,
+        extraction_data=claim,
+        source_id=sample_source.id,
+        validation_result=uncertain_validation,
+        auto_materialize=False,
+    )
+
+    await review_service.approve_extraction(
+        extraction_id=staged.id,
+        reviewer_id=sample_user.id,
+        auto_materialize=False,
+    )
+
+    # Should succeed even though no entity slugs resolve
+    result = await review_service.materialize_extraction(staged.id)
+    assert result.success is True
+    assert result.materialized_relation_id is not None
+
+
+@pytest.mark.asyncio
+async def test_materialize_claim_with_known_entities_creates_roles(
+    review_service, sample_source, entity_slugs_in_db, uncertain_validation, sample_user
+):
+    """Claim materialization creates RelationRoleRevision entries for known entity slugs."""
+    from app.llm.schemas import ExtractedClaim
+    from app.models.relation_role_revision import RelationRoleRevision
+    from app.models.relation_revision import RelationRevision
+    from sqlalchemy import select
+
+    claim = ExtractedClaim(
+        claim_text="Drug-agent reduces pain-condition severity in chronic patients significantly",
+        entities_involved=["drug-agent", "pain-condition"],
+        claim_type="mechanism",
+        evidence_strength="moderate",
+        confidence="medium",
+        text_span="reduces pain-condition severity",
+    )
+
+    staged, _ = await review_service.stage_extraction(
+        extraction_type=ExtractionType.CLAIM,
+        extraction_data=claim,
+        source_id=sample_source.id,
+        validation_result=uncertain_validation,
+        auto_materialize=False,
+    )
+
+    await review_service.approve_extraction(
+        extraction_id=staged.id,
+        reviewer_id=sample_user.id,
+        auto_materialize=False,
+    )
+
+    result = await review_service.materialize_extraction(staged.id)
+    assert result.success is True
+
+    db = review_service.db
+    revision_result = await db.execute(
+        select(RelationRevision)
+        .where(RelationRevision.relation_id == result.materialized_relation_id)
+        .where(RelationRevision.is_current == True)  # noqa: E712
+    )
+    revision = revision_result.scalar_one()
+
+    roles_result = await db.execute(
+        select(RelationRoleRevision)
+        .where(RelationRoleRevision.relation_revision_id == revision.id)
+    )
+    roles = list(roles_result.scalars().all())
+
+    assert len(roles) == 2
+    assert all(r.role_type == "participant" for r in roles)
 
 
 # === Test Review Edge Cases (not found) ===

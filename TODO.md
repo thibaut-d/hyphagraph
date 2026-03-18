@@ -1,8 +1,14 @@
 # Current Work
 
-**Last updated**: 2026-03-18 (Frontend review queue UI)
+**Last updated**: 2026-03-18 (Claim materialization)
 
 ## Recently Completed
+
+- **Claim extraction → Relation materialization** (494 backend tests passing):
+  - Added `materialize_claim` to `materialization.py`: maps `claim_type→kind`, `claim_text→notes["en"]`, `evidence_strength→scope`, `entities_involved→RelationRoleRevision` with `role_type="participant"`.
+  - Wired into `staging.py`, `auto_commit.py`, and `extraction_review_service.py` (removed "not yet implemented" stub).
+  - Added 4 tests: manual materialize, auto-materialize on high confidence, missing entity slugs skipped gracefully, participant roles created for known entities.
+  - Updated 2 stale tests whose assertions reflected old "not implemented" behavior.
 
 - **Frontend review queue UI** (579 frontend tests passing):
   - Added extraction type filter (Entity/Relation/Claim `ToggleButtonGroup`) to `ReviewQueueView`.

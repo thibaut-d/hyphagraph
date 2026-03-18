@@ -4,7 +4,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.llm.schemas import ExtractedEntity, ExtractedRelation
+from app.llm.schemas import ExtractedClaim, ExtractedEntity, ExtractedRelation
 from app.models.entity import Entity
 from app.models.entity_revision import EntityRevision
 from app.models.relation import Relation
@@ -85,4 +85,64 @@ async def materialize_relation(db: AsyncSession, staged: StagedExtraction) -> UU
 
     await db.flush()
     logger.info("Materialized relation %s from staged extraction %s", relation.id, staged.id)
+    return relation.id
+
+
+async def materialize_claim(db: AsyncSession, staged: StagedExtraction) -> UUID:
+    """Materialize a claim as a relation in the knowledge graph.
+
+    Claims become relations where:
+    - claim_type → relation kind
+    - claim_text → notes (i18n)
+    - evidence_strength → scope metadata
+    - entities_involved → participant roles (skipped if entity not found)
+    """
+    claim_data = ExtractedClaim(**staged.extraction_data)
+
+    relation = Relation(source_id=staged.source_id)
+    db.add(relation)
+    await db.flush()
+
+    confidence_map = {"high": 0.9, "medium": 0.7, "low": 0.5}
+    final_confidence = confidence_map.get(claim_data.confidence, 0.7) * staged.confidence_adjustment
+
+    revision = RelationRevision(
+        relation_id=relation.id,
+        kind=claim_data.claim_type,
+        confidence=final_confidence,
+        notes={"en": claim_data.claim_text},
+        scope={"evidence_strength": claim_data.evidence_strength},
+        is_current=True,
+        created_with_llm=staged.llm_model,
+    )
+    db.add(revision)
+    await db.flush()
+
+    for slug in claim_data.entities_involved:
+        entity_result = await db.execute(
+            select(EntityRevision)
+            .where(EntityRevision.slug == slug)
+            .where(EntityRevision.is_current == True)  # noqa: E712
+            .limit(1)
+        )
+        entity_revision = entity_result.scalar_one_or_none()
+
+        if not entity_revision:
+            logger.warning(
+                "Entity with slug '%s' not found, skipping participant in claim %s",
+                slug,
+                relation.id,
+            )
+            continue
+
+        db.add(
+            RelationRoleRevision(
+                relation_revision_id=revision.id,
+                entity_id=entity_revision.entity_id,
+                role_type="participant",
+            )
+        )
+
+    await db.flush()
+    logger.info("Materialized claim %s as relation %s from staged extraction %s", claim_data.claim_type, relation.id, staged.id)
     return relation.id

@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.llm.schemas import ExtractedClaim, ExtractedEntity, ExtractedRelation
 from app.models.staged_extraction import ExtractionStatus, ExtractionType, StagedExtraction
-from app.services.extraction_review.materialization import materialize_entity, materialize_relation
+from app.services.extraction_review.materialization import materialize_claim, materialize_entity, materialize_relation
 from app.services.extraction_validation_service import ValidationResult
 
 logger = logging.getLogger(__name__)
@@ -61,7 +61,10 @@ async def create_staged_extraction(
             relation_id = await materialize_relation(db, staged)
             staged.materialized_relation_id = relation_id
             materialized_id = relation_id
-        # Claims not yet supported for materialization
+        elif extraction_type == ExtractionType.CLAIM:
+            relation_id = await materialize_claim(db, staged)
+            staged.materialized_relation_id = relation_id
+            materialized_id = relation_id
 
     await db.commit()
     await db.refresh(staged)
