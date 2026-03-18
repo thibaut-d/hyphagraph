@@ -441,6 +441,88 @@ async def test_cannot_review_auto_verified_extraction(
     assert "already" in result.error.lower()
 
 
+@pytest.mark.asyncio
+async def test_materialized_entity_revision_carries_llm_model(
+    review_service, sample_source, high_confidence_entity, high_confidence_validation
+):
+    """EntityRevision created during materialization should record the LLM model."""
+    staged, entity_id = await review_service.stage_extraction(
+        extraction_type=ExtractionType.ENTITY,
+        extraction_data=high_confidence_entity,
+        source_id=sample_source.id,
+        validation_result=high_confidence_validation,
+        llm_model="claude-sonnet-4-5",
+        llm_provider="anthropic",
+        auto_materialize=True,
+    )
+
+    assert entity_id is not None
+
+    from sqlalchemy import select
+    from app.models.entity_revision import EntityRevision
+    result = await review_service.db.execute(
+        select(EntityRevision)
+        .where(EntityRevision.entity_id == entity_id)
+        .where(EntityRevision.is_current == True)
+    )
+    revision = result.scalar_one()
+    assert revision.created_with_llm == "claude-sonnet-4-5"
+    assert revision.created_by_user_id is None  # LLM-created, not user-created
+
+
+@pytest.mark.asyncio
+async def test_reject_auto_verified_extraction_transitions_to_rejected(
+    review_service, sample_source, sample_user, high_confidence_entity, high_confidence_validation
+):
+    """Rejecting an AUTO_VERIFIED extraction should succeed and mark it REJECTED."""
+    staged, _ = await review_service.stage_extraction(
+        extraction_type=ExtractionType.ENTITY,
+        extraction_data=high_confidence_entity,
+        source_id=sample_source.id,
+        validation_result=high_confidence_validation,
+        llm_model="claude-sonnet-4-5",
+        llm_provider="anthropic",
+        auto_materialize=True,
+    )
+
+    assert staged.status == ExtractionStatus.AUTO_VERIFIED
+
+    success = await review_service.reject_extraction(
+        extraction_id=staged.id,
+        reviewer_id=sample_user.id,
+        notes="Reject even though auto-verified",
+    )
+
+    assert success is True
+
+    from sqlalchemy import select
+    db_result = await review_service.db.execute(
+        select(StagedExtraction).where(StagedExtraction.id == staged.id)
+    )
+    updated = db_result.scalar_one()
+    assert updated.status == ExtractionStatus.REJECTED
+    assert updated.reviewed_by == sample_user.id
+
+
+@pytest.mark.asyncio
+async def test_auto_materialize_false_high_confidence_status_is_pending(
+    review_service, sample_source, high_confidence_entity, high_confidence_validation
+):
+    """High-confidence + auto_materialize=False should produce PENDING status, not AUTO_VERIFIED."""
+    staged, entity_id = await review_service.stage_extraction(
+        extraction_type=ExtractionType.ENTITY,
+        extraction_data=high_confidence_entity,
+        source_id=sample_source.id,
+        validation_result=high_confidence_validation,
+        llm_model="claude-sonnet-4-5",
+        llm_provider="anthropic",
+        auto_materialize=False,
+    )
+
+    assert entity_id is None
+    assert staged.status == ExtractionStatus.PENDING
+
+
 # === Test Batch Operations ===
 
 

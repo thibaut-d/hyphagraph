@@ -5,6 +5,7 @@ Tests entity CRUD operations with revision tracking.
 Uses scientifically accurate fibromyalgia/chronic pain test data.
 """
 import pytest
+from datetime import datetime
 from uuid import uuid4
 from fastapi import HTTPException
 
@@ -192,6 +193,40 @@ class TestEntityService:
         current = await service.get(created.id)
         assert current.summary["en"] == "Version 3"
         assert current.id == created.id == v2.id == v3.id
+
+    async def test_create_entity_with_user_id_sets_created_by(self, db_session):
+        """create() with a user_id should record it on the EntityRevision."""
+        from datetime import timezone
+        from sqlalchemy import select
+        from app.models.entity_revision import EntityRevision
+        from app.models.user import User
+
+        # Create a real user (FK constraint requires it)
+        user = User(
+            id=uuid4(),
+            email="test-author@example.com",
+            hashed_password="$2b$12$placeholder",
+            is_active=True,
+            is_superuser=False,
+            is_verified=True,
+            created_at=datetime.now(timezone.utc),
+        )
+        db_session.add(user)
+        await db_session.commit()
+
+        service = EntityService(db_session)
+        created = await service.create(
+            EntityWrite(slug="pregabalin", kind="drug"),
+            user_id=user.id,
+        )
+
+        result = await db_session.execute(
+            select(EntityRevision)
+            .where(EntityRevision.entity_id == created.id)
+            .where(EntityRevision.is_current == True)
+        )
+        revision = result.scalar_one()
+        assert revision.created_by_user_id == user.id
 
     async def test_create_duplicate_slug_rejected(self, db_session):
         """Test that creating two entities with the same slug is rejected."""
