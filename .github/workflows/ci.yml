@@ -28,8 +28,20 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen
 
-      - name: Run tests
-        run: uv run pytest -q --tb=short
+      - name: Run tests with coverage
+        run: uv run pytest -q --tb=short --cov=app --cov-report=xml --cov-report=term-missing
+
+      - name: Write coverage summary
+        run: |
+          echo "## Backend Coverage" >> $GITHUB_STEP_SUMMARY
+          uv run coverage report --format=markdown >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage.xml
+          retention-days: 14
 
   frontend:
     name: Frontend tests
@@ -51,5 +63,26 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
-      - name: Run tests
-        run: npm test -- --run
+      - name: Run tests with coverage
+        run: npm run test:coverage -- --run
+
+      - name: Write coverage summary
+        run: |
+          echo "## Frontend Coverage" >> $GITHUB_STEP_SUMMARY
+          node -e "
+            const s = require('./coverage/coverage-summary.json').total;
+            const fmt = (x) => x.pct.toFixed(1) + '%';
+            console.log('| Metric | Coverage |');
+            console.log('|--------|----------|');
+            console.log(\`| Lines | \${fmt(s.lines)} |\`);
+            console.log(\`| Statements | \${fmt(s.statements)} |\`);
+            console.log(\`| Functions | \${fmt(s.functions)} |\`);
+            console.log(\`| Branches | \${fmt(s.branches)} |\`);
+          " >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/
+          retention-days: 14
