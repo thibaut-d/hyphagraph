@@ -35,6 +35,7 @@ import { AdminView } from "../views/AdminView";
 import { ReviewQueueView } from "../views/ReviewQueueView";
 import { NotificationDemoView } from "../views/NotificationDemoView";
 import { ImportEntitiesView } from "../views/ImportEntitiesView";
+import { BatchCreateRelationsView } from "../views/BatchCreateRelationsView";
 
 export const router = createBrowserRouter([
   {
@@ -77,6 +78,7 @@ export const router = createBrowserRouter([
 
       { path: "relations", element: <RelationsView /> },
       { path: "relations/new", element: <ProtectedRoute><CreateRelationView /></ProtectedRoute> },
+      { path: "relations/batch", element: <ProtectedRoute><BatchCreateRelationsView /></ProtectedRoute> },
       { path: "relations/:id/edit", element: <ProtectedRoute><EditRelationView /></ProtectedRoute> },
 
       { path: "review-queue", element: <ProtectedRoute><ReviewQueueView /></ProtectedRoute> },

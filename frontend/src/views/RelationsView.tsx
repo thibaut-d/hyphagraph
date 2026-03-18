@@ -9,6 +9,7 @@ import {
   Alert,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+import PlaylistAddIcon from "@mui/icons-material/PlaylistAdd";
 import SourceIcon from "@mui/icons-material/Source";
 
 export default function RelationsView() {
@@ -18,14 +19,24 @@ export default function RelationsView() {
     <Stack spacing={3}>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <Typography variant="h4">{t("relations.title", "Relations")}</Typography>
-        <Button
-          component={RouterLink}
-          to="/relations/new"
-          variant="contained"
-          startIcon={<AddIcon />}
-        >
-          {t("relation.create", "Create relation")}
-        </Button>
+        <Stack direction="row" spacing={1}>
+          <Button
+            component={RouterLink}
+            to="/relations/batch"
+            variant="outlined"
+            startIcon={<PlaylistAddIcon />}
+          >
+            {t("batch_relations.button_label")}
+          </Button>
+          <Button
+            component={RouterLink}
+            to="/relations/new"
+            variant="contained"
+            startIcon={<AddIcon />}
+          >
+            {t("relation.create", "Create relation")}
+          </Button>
+        </Stack>
       </Box>
 
       <Alert severity="info">
