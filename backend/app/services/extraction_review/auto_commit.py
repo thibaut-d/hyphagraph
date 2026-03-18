@@ -1,7 +1,7 @@
 """Auto-commit decision and execution helpers for extraction review."""
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -52,7 +52,7 @@ async def run_auto_commit(db: AsyncSession, auto_commit_threshold: float) -> Aut
     for staged in eligible:
         try:
             staged.status = ExtractionStatus.APPROVED
-            staged.reviewed_at = datetime.utcnow()
+            staged.reviewed_at = datetime.now(timezone.utc)
             staged.review_notes = "Auto-approved by system (high validation score)"
             await db.commit()
 

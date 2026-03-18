@@ -1,6 +1,6 @@
 # Current Work
 
-**Last updated**: 2026-03-18 (Claim materialization)
+**Last updated**: 2026-03-18 (Full system audit — 538 backend + 579 frontend tests passing)
 
 ## Recently Completed
 
@@ -27,6 +27,33 @@
 - Rule-based maintainability follow-up for the remaining test-suite, typed-contract, type-coverage, and modularity cleanup.
 - Execution status: Audit 7 is implemented and verified. Audit 8 is in progress with the first typed-contract slice landed and verified.
 - Execution status: Audit 7 is implemented and verified. Audit 8 is mostly advanced through route-schema extraction and stable contract cleanup, and Audit 9 has started with the first frontend type-surface reductions.
+
+## Audit findings from 2026-03-18 full system run
+
+Full report: `.temp/full_audit_report_2026-03-18.md`
+Score: 91/100 — 0 critical, 2 major, 4 minor. All 538 backend + 579 frontend tests passing.
+
+### Deprecation fixes (Major — forward-compat, easy)
+
+- [x] Replace `datetime.datetime.utcnow()` with `datetime.datetime.now(datetime.UTC)` in:
+  - `backend/app/services/document_extraction_processing.py:626`
+  - `backend/app/services/extraction_review/queries.py:104`
+  - `backend/app/services/extraction_review/auto_commit.py:55`
+- [x] Replace `min_items=` with `min_length=` in `backend/app/llm/schemas.py:197` (Pydantic V2 → V3 compat)
+
+### Frontend correctness (Minor)
+
+- [x] Fix duplicate React key `ext-1` in `ReviewQueueView` — fixed filter-change effect to reset (not append) in `useReviewQueue`
+- [x] Fix `<p>` nesting in `ExtractionCard.tsx:75` — added `component="span"/"div"` on inner Typography/Stack/Box
+- [x] Wrap async state updates in `act()` in `GlobalSearch.test.tsx` (loading indicator test)
+
+### Architecture follow-up (Minor)
+
+- [x] `NotificationDemoView.tsx` — confirmed false positive; file has no Session import, only uses `useNotification()`
+
+### E2E (blocked on Docker)
+
+- E2E tests not run — Docker Desktop was not running. Run `docker compose up -d && npm --prefix e2e test` when available.
 
 ## Action Plan
 

@@ -115,11 +115,11 @@ export function ExtractionCard({
             </Stack>
           }
           secondary={
-            <Stack spacing={1} sx={{ mt: 1 }}>
-              <Typography variant="body2">{summary}</Typography>
+            <Stack spacing={1} sx={{ mt: 1 }} component="div">
+              <Typography variant="body2" component="span">{summary}</Typography>
               {extraction.validation_flags.length > 0 && (
-                <Box>
-                  <Typography variant="caption" color="text.secondary">
+                <Box component="span">
+                  <Typography variant="caption" color="text.secondary" component="span">
                     {t("extraction_card.validation_issues")}
                   </Typography>
                   {extraction.validation_flags.map((flag, idx) => (
@@ -127,7 +127,7 @@ export function ExtractionCard({
                   ))}
                 </Box>
               )}
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" color="text.secondary" component="span">
                 {t("extraction_card.text_span")} &quot;{(extraction.extraction_data as ExtractedEntity).text_span}&quot;
               </Typography>
               <Stack direction="row" spacing={1} sx={{ mt: 1 }}>

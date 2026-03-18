@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy import and_, func, select
@@ -101,5 +101,5 @@ async def get_stats(db: AsyncSession) -> ReviewStats:
 def apply_review_metadata(staged: StagedExtraction, reviewer_id: UUID, notes: str | None, approved: bool) -> None:
     staged.status = ExtractionStatus.APPROVED if approved else ExtractionStatus.REJECTED
     staged.reviewed_by = reviewer_id
-    staged.reviewed_at = datetime.utcnow()
+    staged.reviewed_at = datetime.now(timezone.utc)
     staged.review_notes = notes

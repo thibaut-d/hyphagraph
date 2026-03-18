@@ -197,7 +197,7 @@ class ExtractedClaim(BaseModel):
     entities_involved: list[str] = Field(
         ...,
         description="List of entity slugs mentioned in the claim",
-        min_items=1
+        min_length=1
     )
     claim_type: ClaimType = Field(
         ...,

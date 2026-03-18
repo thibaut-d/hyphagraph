@@ -48,10 +48,11 @@ export function useReviewQueue(
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
-  // Reset to page 1 whenever filters change
+  // Reset to page 1 and reload fresh whenever filters change
   useEffect(() => {
     setPage(1);
-  }, [minScore, onlyFlagged, extractionType]);
+    loadExtractions(true); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [minScore, onlyFlagged, extractionType]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadExtractions = useCallback(
     async (reset: boolean = false) => {
@@ -110,10 +111,12 @@ export function useReviewQueue(
     // Filter state is owned by the caller via options; this is a no-op.
   }, []);
 
-  // Load when page or filters change
+  // Append when page increments (load more)
   useEffect(() => {
-    loadExtractions(false);
-  }, [page, minScore, onlyFlagged, extractionType]);
+    if (page > 1) {
+      loadExtractions(false); // eslint-disable-line react-hooks/exhaustive-deps
+    }
+  }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     loadStats();

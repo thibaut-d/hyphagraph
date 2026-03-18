@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { BrowserRouter } from "react-router-dom";
 import { GlobalSearch } from "../GlobalSearch";
@@ -260,8 +260,10 @@ describe("GlobalSearch", () => {
       expect(spinner).toBeInTheDocument();
     });
 
-    // Resolve the promise
-    resolvePromise!({ query: "test", suggestions: [] });
+    // Resolve the promise inside act() to flush resulting state updates
+    await act(async () => {
+      resolvePromise!({ query: "test", suggestions: [] });
+    });
   });
 
   it("handles API errors gracefully", async () => {

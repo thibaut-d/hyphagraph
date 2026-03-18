@@ -623,7 +623,7 @@ async def reconcile_staged_extractions(
     if not staged_items:
         return
 
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.UTC)
 
     # Build relation key → (index, relation_id) map; first match wins for duplicates
     relation_key_to_idx: dict[tuple, int] = {}
