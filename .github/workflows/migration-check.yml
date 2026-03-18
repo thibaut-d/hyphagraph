@@ -1,0 +1,60 @@
+name: Migration check
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/alembic/**"
+      - "backend/app/models/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend/alembic/**"
+      - "backend/app/models/**"
+
+jobs:
+  migrate:
+    name: Apply migrations to blank database
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: hyphagraph
+          POSTGRES_PASSWORD: hyphagraph_ci
+          POSTGRES_DB: hyphagraph_migrate_check
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hyphagraph"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: backend
+
+    env:
+      DATABASE_URL: postgresql+asyncpg://hyphagraph:hyphagraph_ci@localhost:5432/hyphagraph_migrate_check
+      # Minimal required env — real values not needed for migration-only run
+      SECRET_KEY: ci-secret-key
+      JWT_SECRET_KEY: ci-jwt-secret-key
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Apply all migrations to blank database
+        run: uv run alembic upgrade head

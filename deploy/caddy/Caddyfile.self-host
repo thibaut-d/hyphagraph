@@ -1,0 +1,14 @@
+# Self-hosting Caddyfile
+# Replace your-domain.com with your actual domain.
+# Caddy obtains and renews HTTPS certificates from Let's Encrypt automatically.
+# Requires ports 80 and 443 open to the internet.
+
+your-domain.com {
+    handle /api/* {
+        reverse_proxy api:8000
+    }
+
+    handle {
+        reverse_proxy web:80
+    }
+}
