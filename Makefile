@@ -146,6 +146,48 @@ recompute: ## Recompute all inferences deterministically
 	$(COMPOSE) exec api python scripts/recompute_inferences.py
 
 ## -------------------------
+## Self-hosting
+## -------------------------
+
+COMPOSE_SELF_HOST = docker compose -f docker-compose.self-host.yml
+
+.PHONY: self-host-setup
+self-host-setup: ## Interactive setup wizard (run once on a fresh server)
+	bash scripts/setup-self-host.sh
+
+.PHONY: self-host-up
+self-host-up: ## Start the self-hosted stack
+	$(COMPOSE_SELF_HOST) up -d
+
+.PHONY: self-host-down
+self-host-down: ## Stop the self-hosted stack
+	$(COMPOSE_SELF_HOST) down
+
+.PHONY: self-host-logs
+self-host-logs: ## Follow logs for the self-hosted stack
+	$(COMPOSE_SELF_HOST) logs -f
+
+.PHONY: self-host-update
+self-host-update: ## Back up DB, pull new images, and restart
+	@echo "Backing up database before update..."
+	$(COMPOSE_SELF_HOST) exec -T db pg_dump -U $$POSTGRES_USER $$POSTGRES_DB > backups/pre-update-$$(date +%Y%m%d%H%M%S).sql || true
+	$(COMPOSE_SELF_HOST) pull
+	$(COMPOSE_SELF_HOST) up -d
+	@echo "Update complete."
+
+.PHONY: self-host-backup
+self-host-backup: ## Dump the self-hosted database to ./backups/
+	mkdir -p backups
+	$(COMPOSE_SELF_HOST) exec -T db pg_dump -U $$POSTGRES_USER $$POSTGRES_DB > backups/hyphagraph-$$(date +%Y%m%d%H%M%S).sql
+	@echo "Backup saved to backups/"
+
+.PHONY: self-host-check
+self-host-check: ## Verify the self-hosted deployment is healthy
+	@$(COMPOSE_SELF_HOST) exec api curl -sf http://localhost:8000/health \
+		&& echo "API is healthy" \
+		|| (echo "API health check FAILED" && exit 1)
+
+## -------------------------
 ## Cleanup
 ## -------------------------
 

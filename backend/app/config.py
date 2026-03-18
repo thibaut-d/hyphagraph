@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from pydantic import ConfigDict
+from pydantic import ConfigDict, model_validator
 
 
 class Settings(BaseSettings):
@@ -59,6 +59,25 @@ class Settings(BaseSettings):
     STRICT_VALIDATION: bool = True
     SQL_DEBUG: bool = False
     TESTING: bool = False  # Enable test-only endpoints (e.g., /api/test/reset-database)
+
+    @model_validator(mode="after")
+    def _block_placeholder_secrets_in_production(self) -> "Settings":
+        if self.ENV != "production":
+            return self
+        checks = {
+            "SECRET_KEY": self.SECRET_KEY,
+            "DATABASE_URL": self.DATABASE_URL,
+        }
+        if self.ADMIN_PASSWORD:
+            checks["ADMIN_PASSWORD"] = self.ADMIN_PASSWORD
+        bad = [name for name, val in checks.items() if "change-me" in val]
+        if bad:
+            raise ValueError(
+                f"Production startup blocked — these variables still contain placeholder values: "
+                f"{', '.join(bad)}. "
+                f"Run 'bash scripts/setup-self-host.sh' or edit your .env file."
+            )
+        return self
 
     model_config = ConfigDict(
         env_file=".env",  # Development configuration (not tracked by git) - overridden by environment variables
