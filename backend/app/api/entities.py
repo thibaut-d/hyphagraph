@@ -37,7 +37,7 @@ async def create_entity(
     service: EntityService = Depends(get_entity_service),
     user=Depends(get_current_user),
 ):
-    return await service.create(payload)
+    return await service.create(payload, user_id=user.id if user else None)
 
 @router.get("/", response_model=PaginatedResponse[EntityRead])
 async def list_entities(

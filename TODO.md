@@ -238,6 +238,19 @@ Progress update:
 
 - Status: Audit 20 complete (M4 deferred).
 
+### Audit 21: Revision Architecture & Provenance
+
+1. Fix API create endpoints to pass `user_id` to service calls (entities, relations, sources).
+2. Verify `is_current` lifecycle and materialization provenance.
+
+Progress update:
+- Completed: Audit run. Report: `.temp/revision_architecture_provenance_report_v1.md`.
+- Completed: Fixed C1 — `entities.py`, `relations.py`, `sources.py` create handlers now forward `user_id=user.id if user else None`. All 451 backend tests green.
+- Confirmed: LLM materialization with `created_by_user_id=NULL` + `created_with_llm` is correct design.
+- Confirmed: `is_current` atomicity and revision model schemas are sound.
+
+- Status: Audit 21 complete.
+
 ## Audit Reports
 
 - [knowledge_integrity_explainability_report.md](/home/thibaut/code/hyphagraph/.temp/knowledge_integrity_explainability_report.md)

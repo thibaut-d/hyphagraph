@@ -103,7 +103,7 @@ async def create_source(
     service: SourceService = Depends(get_source_service),
     user=Depends(get_current_user),
 ):
-    return await service.create(payload)
+    return await service.create(payload, user_id=user.id if user else None)
 
 @router.get("/", response_model=PaginatedResponse[SourceRead])
 async def list_sources(
