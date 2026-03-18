@@ -122,7 +122,7 @@ export function DisagreementsView() {
   return (
     <Stack spacing={3}>
       <DisagreementsHeaderSection
-        entityId={id}
+        entityId={id!}
         entityLabel={entityLabel}
         onBack={() => navigate(`/entities/${id}`)}
       />

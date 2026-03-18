@@ -1,6 +1,6 @@
 # Current Work
 
-**Last updated**: 2026-03-17
+**Last updated**: 2026-03-18
 
 ## In Progress
 
@@ -182,6 +182,31 @@ Progress update:
 
 - Status: Audit 17 is complete.
 
+### Audit 18: Typed Contract Discipline (Third Pass)
+
+1. Resolve all 35 pre-existing TypeScript errors surfaced by Audit 17's `tsc --noEmit` run.
+
+Progress update:
+- Completed: `Layout.tsx` — removed `transformedCategories` pre-resolution that was passing `{label: string}` to subcomponents expecting `UICategoryOption`; also fixed silent runtime bug in `MobileDrawer` label rendering.
+- Completed: `DesktopNavigation.tsx` — resolved `category.value` (non-existent field) → `category.id`; inline label resolution with `i18n`.
+- Completed: `useInferenceFiltering.ts` — rewrote stale filter API: `entity` → `entity_id`, `direction` → `directions[]`, `kind` → `kinds[]`, `yearStart/yearEnd` → `yearRange` tuple, `minTrust` → `minTrustLevel`.
+- Completed: `EntityDetailFilters.tsx` — cast CheckboxFilter onChange to `string[]` for directions/kinds.
+- Completed: `EntitiesView.tsx`, `SourcesView.tsx` — added `as string[]`, `as [number, number]`, `as number` casts after `Array.isArray` / null guards for `FilterValue` narrowing.
+- Completed: `EvidenceView.tsx`, `SynthesisView.tsx`, `DisagreementsView.tsx` — `entityId={id!}` non-null assertions (useParams returns `string | undefined`).
+- Completed: `useEvidenceRelations.ts` — widened `EnrichedRelation.source` to `SourceRead | null | undefined`.
+- Completed: `SynthesisRelationsSection.tsx` — `!== undefined` → `!= null` for nullable confidence field.
+- Completed: `useDiscoveryEntities.ts` — captured `preselectedEntity` in `const sel` for closure narrowing.
+- Completed: `errorHandler.ts` — added `"developerMessage" in error` to type guard; `as unknown as ParsedError` for stricter overlap.
+- Completed: `extractionRelation.ts` — removed dead legacy dict branches (roles is always `ExtractedRole[]`); simplified to always-array paths.
+- Completed: `ActiveFilters.tsx` — `String(value[0])` for `FilterValue` display.
+- Completed: `EvidenceTableSection.tsx` — updated `formatRoleTypeLabel` `t` parameter signature.
+- Completed: Test fixtures — `trust` → `trust_level` in 4 test files; `FilterConfig<TestItem, any>` for contravariance in filterUtils.test.ts.
+- Result: `tsc --noEmit` passes with 0 errors. Test failures reduced from 23 → 21 files (pre-existing i18n mock issues), 2 → 0 failing test cases.
+- Report: `.temp/typed_contract_discipline_report_v3.md`
+- Deferred: Pre-existing i18n mock test failures (21 files) — test setup doesn't call `initReactI18next`.
+
+- Status: Audit 18 is complete.
+
 ## Audit Reports
 
 - [knowledge_integrity_explainability_report.md](/home/thibaut/code/hyphagraph/.temp/knowledge_integrity_explainability_report.md)
@@ -199,6 +224,7 @@ Progress update:
 - [pattern_consistency_report.md](/home/thibaut/code/hyphagraph/.temp/pattern_consistency_report.md)
 - [dead_code_compatibility_shims_report.md](.temp/dead_code_compatibility_shims_report.md)
 - [dead_code_compatibility_shims_report_v2.md](.temp/dead_code_compatibility_shims_report_v2.md)
+- [typed_contract_discipline_report_v3.md](.temp/typed_contract_discipline_report_v3.md)
 - [ai_edit_safety_report.md](/home/thibaut/code/hyphagraph/.temp/ai_edit_safety_report.md)
 - [documentation_i18n_completeness_report.md](/home/thibaut/code/hyphagraph/.temp/documentation_i18n_completeness_report.md)
 

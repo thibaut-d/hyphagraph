@@ -29,7 +29,7 @@ describe('filterUtils', () => {
     ];
 
     it('returns all items when no filters are active', () => {
-      const configs: FilterConfig<TestItem>[] = [
+      const configs: FilterConfig<TestItem, any>[] = [
         {
           id: 'type',
           type: 'checkbox',
@@ -46,7 +46,7 @@ describe('filterUtils', () => {
     });
 
     it('filters items by checkbox filter', () => {
-      const configs: FilterConfig<TestItem>[] = [
+      const configs: FilterConfig<TestItem, any>[] = [
         {
           id: 'type',
           type: 'checkbox',
@@ -64,7 +64,7 @@ describe('filterUtils', () => {
     });
 
     it('filters items by range filter', () => {
-      const configs: FilterConfig<TestItem>[] = [
+      const configs: FilterConfig<TestItem, any>[] = [
         {
           id: 'year',
           type: 'yearRange',
@@ -84,7 +84,7 @@ describe('filterUtils', () => {
     });
 
     it('applies multiple filters with AND logic', () => {
-      const configs: FilterConfig<TestItem>[] = [
+      const configs: FilterConfig<TestItem, any>[] = [
         {
           id: 'type',
           type: 'checkbox',
@@ -115,7 +115,7 @@ describe('filterUtils', () => {
     });
 
     it('ignores filters with empty array values', () => {
-      const configs: FilterConfig<TestItem>[] = [
+      const configs: FilterConfig<TestItem, any>[] = [
         {
           id: 'type',
           type: 'checkbox',
@@ -132,7 +132,7 @@ describe('filterUtils', () => {
     });
 
     it('ignores filters with null or undefined values', () => {
-      const configs: FilterConfig<TestItem>[] = [
+      const configs: FilterConfig<TestItem, any>[] = [
         {
           id: 'type',
           type: 'checkbox',
@@ -149,7 +149,7 @@ describe('filterUtils', () => {
     });
 
     it('ignores filters with empty string values', () => {
-      const configs: FilterConfig<TestItem>[] = [
+      const configs: FilterConfig<TestItem, any>[] = [
         {
           id: 'search',
           type: 'search',
@@ -166,7 +166,7 @@ describe('filterUtils', () => {
     });
 
     it('returns empty array when no items match filters', () => {
-      const configs: FilterConfig<TestItem>[] = [
+      const configs: FilterConfig<TestItem, any>[] = [
         {
           id: 'type',
           type: 'checkbox',
@@ -188,7 +188,7 @@ describe('filterUtils', () => {
         { id: '2', name: 'Item 2', type: 'B' }, // Missing year
       ];
 
-      const configs: FilterConfig<TestItem>[] = [
+      const configs: FilterConfig<TestItem, any>[] = [
         {
           id: 'year',
           type: 'yearRange',

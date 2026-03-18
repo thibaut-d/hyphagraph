@@ -36,7 +36,7 @@ export function ActiveFilters({ filters, configs, onDelete }: ActiveFiltersProps
 
     if (Array.isArray(value)) {
       // For checkbox filters, show count
-      return value.length === 1 ? value[0] : `${value.length} selected`;
+      return value.length === 1 ? String(value[0]) : `${value.length} selected`;
     }
 
     if (

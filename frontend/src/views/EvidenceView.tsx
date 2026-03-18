@@ -133,8 +133,8 @@ export function EvidenceView() {
     );
   }
 
-  // Error state
-  if (error || (!entity && !detailLoading)) {
+  // Error or no-data state (detailLoading already handled above)
+  if (error || !entity) {
     return (
       <Alert severity="error">
         {error || t("common.error", "An error occurred")}
@@ -147,7 +147,7 @@ export function EvidenceView() {
   return (
     <Stack spacing={3}>
       <EvidenceHeaderSection
-        entityId={id}
+        entityId={id!}
         entityLabel={entityLabel}
         roleType={roleType}
         relationCount={relations.length}
@@ -159,7 +159,7 @@ export function EvidenceView() {
       />
 
       <EvidenceTableSection
-        entityId={id}
+        entityId={id!}
         entityLabel={entityLabel}
         language={i18n.language}
         roleType={roleType}

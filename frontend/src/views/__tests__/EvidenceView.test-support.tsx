@@ -92,7 +92,7 @@ export const mockSources: SourceRead[] = [
     year: 2020,
     kind: "clinical_trial",
     origin: "journal",
-    trust: 0.9,
+    trust_level: 0.9,
     created_at: "2025-01-01T00:00:00Z",
   },
   {
@@ -102,7 +102,7 @@ export const mockSources: SourceRead[] = [
     year: 2019,
     kind: "observational_study",
     origin: "journal",
-    trust: 0.7,
+    trust_level: 0.7,
     created_at: "2025-01-01T00:00:00Z",
   },
   {
@@ -112,7 +112,7 @@ export const mockSources: SourceRead[] = [
     year: 2021,
     kind: "meta_analysis",
     origin: "journal",
-    trust: 0.95,
+    trust_level: 0.95,
     created_at: "2025-01-01T00:00:00Z",
   },
 ];
@@ -195,7 +195,7 @@ export function mockEvidenceInferencePending() {
 }
 
 export function mockEvidenceInferenceResolved(inference: Partial<InferenceDetailRead>) {
-  vi.spyOn(inferencesApi, "getInferenceDetailForEntity").mockResolvedValue(inference);
+  vi.spyOn(inferencesApi, "getInferenceDetailForEntity").mockResolvedValue(inference as InferenceDetailRead);
 }
 
 export function clickSortableHeader(label: string) {

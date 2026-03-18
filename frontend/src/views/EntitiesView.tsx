@@ -138,27 +138,27 @@ export function EntitiesView() {
     }
 
     if (filters.ui_category_id && Array.isArray(filters.ui_category_id)) {
-      apiFilters.ui_category_id = filters.ui_category_id;
+      apiFilters.ui_category_id = filters.ui_category_id as string[];
     }
 
     if (filters.clinical_effects && Array.isArray(filters.clinical_effects)) {
-      apiFilters.clinical_effects = filters.clinical_effects;
+      apiFilters.clinical_effects = filters.clinical_effects as string[];
     }
 
     if (filters.consensus_level && Array.isArray(filters.consensus_level)) {
-      apiFilters.consensus_level = filters.consensus_level;
+      apiFilters.consensus_level = filters.consensus_level as string[];
     }
 
-    if (filters.evidence_quality_min !== undefined) {
-      apiFilters.evidence_quality_min = filters.evidence_quality_min;
+    if (filters.evidence_quality_min !== undefined && filters.evidence_quality_min !== null) {
+      apiFilters.evidence_quality_min = filters.evidence_quality_min as number;
     }
 
-    if (filters.evidence_quality_max !== undefined) {
-      apiFilters.evidence_quality_max = filters.evidence_quality_max;
+    if (filters.evidence_quality_max !== undefined && filters.evidence_quality_max !== null) {
+      apiFilters.evidence_quality_max = filters.evidence_quality_max as number;
     }
 
     if (filters.recency && Array.isArray(filters.recency)) {
-      apiFilters.recency = filters.recency;
+      apiFilters.recency = filters.recency as string[];
     }
 
     try {

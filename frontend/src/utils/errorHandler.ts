@@ -199,8 +199,8 @@ export function parseError(
   fallbackMessage: string = "An unexpected error occurred",
 ): ParsedError {
   // If already a ParsedError, return it
-  if (isRecord(error) && "userMessage" in error && "code" in error) {
-    return error as ParsedError;
+  if (isRecord(error) && "userMessage" in error && "developerMessage" in error && "code" in error) {
+    return error as unknown as ParsedError;
   }
 
   // Handle Error instances with structured detail

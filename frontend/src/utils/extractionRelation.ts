@@ -1,19 +1,8 @@
-import type { ExtractedRelation, ExtractedRole } from "../types/extraction";
-
-function isRoleArray(roles: ExtractedRelation["roles"]): roles is ExtractedRole[] {
-  return Array.isArray(roles);
-}
+import type { ExtractedRelation } from "../types/extraction";
 
 function roleSignature(relation: ExtractedRelation): string {
-  if (isRoleArray(relation.roles)) {
-    return relation.roles
-      .map((role) => `${role.role_type}:${role.entity_slug}`)
-      .sort()
-      .join("|");
-  }
-
-  return Object.entries(relation.roles)
-    .map(([key, value]) => `${key}:${value}`)
+  return relation.roles
+    .map((role) => `${role.role_type}:${role.entity_slug}`)
     .sort()
     .join("|");
 }
@@ -23,17 +12,6 @@ function pickRoleEntity(
   candidates: string[],
   fallbackIndex: number,
 ): string {
-  if (!isRoleArray(relation.roles)) {
-    for (const candidate of candidates) {
-      const value = relation.roles[candidate];
-      if (value) {
-        return value;
-      }
-    }
-
-    return Object.values(relation.roles)[fallbackIndex] || Object.values(relation.roles)[0] || "Unknown";
-  }
-
   if (relation.roles.length === 0) {
     return "Unknown";
   }
@@ -75,15 +53,8 @@ export function getRelationObject(relation: ExtractedRelation): string {
 }
 
 export function getRelationDisplayRoles(relation: ExtractedRelation): Array<{ role: string; value: string }> {
-  if (isRoleArray(relation.roles)) {
-    return relation.roles.map((role) => ({
-      role: role.role_type,
-      value: role.entity_slug,
-    }));
-  }
-
-  return Object.entries(relation.roles).map(([role, value]) => ({
-    role,
-    value,
+  return relation.roles.map((role) => ({
+    role: role.role_type,
+    value: role.entity_slug,
   }));
 }

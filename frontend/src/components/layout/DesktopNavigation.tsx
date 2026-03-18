@@ -39,7 +39,7 @@ export function DesktopNavigation({
   onNavigate,
 }: DesktopNavigationProps) {
   const location = useLocation();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [entitiesMenuAnchor, setEntitiesMenuAnchor] = useState<null | HTMLElement>(null);
 
   const handleCategoryClick = (categoryId: string) => {
@@ -126,15 +126,18 @@ export function DesktopNavigation({
           <FiberManualRecordIcon sx={{ fontSize: 8, mr: 1, opacity: 0.6 }} />
           {t("menu.all_entities", "All Entities")}
         </MenuItem>
-        {categories.map((category) => (
-          <MenuItem
-            key={category.value}
-            onClick={() => handleCategoryClick(category.value)}
-          >
-            <FiberManualRecordIcon sx={{ fontSize: 8, mr: 1, opacity: 0.6 }} />
-            {category.label}
-          </MenuItem>
-        ))}
+        {categories.map((category) => {
+          const label = category.label[i18n.language as "en" | "fr"] || category.label.en || category.id;
+          return (
+            <MenuItem
+              key={category.id}
+              onClick={() => handleCategoryClick(category.id)}
+            >
+              <FiberManualRecordIcon sx={{ fontSize: 8, mr: 1, opacity: 0.6 }} />
+              {label}
+            </MenuItem>
+          );
+        })}
       </Menu>
     </>
   );

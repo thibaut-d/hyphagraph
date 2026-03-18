@@ -105,11 +105,11 @@ export function SourcesView() {
     };
 
     if (filters.kind && Array.isArray(filters.kind)) {
-      apiFilters.kind = filters.kind;
+      apiFilters.kind = filters.kind as string[];
     }
 
     if (filters.year && Array.isArray(filters.year) && filters.year.length === 2) {
-      const [min, max] = filters.year;
+      const [min, max] = filters.year as [number, number];
       // Only send year filters if they differ from the full range
       if (!yearRange || min !== yearRange[0] || max !== yearRange[1]) {
         apiFilters.year_min = min;
@@ -118,7 +118,7 @@ export function SourcesView() {
     }
 
     if (filters.trust_level && Array.isArray(filters.trust_level) && filters.trust_level.length === 2) {
-      const [min, max] = filters.trust_level;
+      const [min, max] = filters.trust_level as [number, number];
       // Only send trust level filters if they differ from defaults
       if (min !== 0 || max !== 1) {
         apiFilters.trust_level_min = min;
@@ -131,11 +131,11 @@ export function SourcesView() {
     }
 
     if (filters.domain && Array.isArray(filters.domain)) {
-      apiFilters.domain = filters.domain;
+      apiFilters.domain = filters.domain as string[];
     }
 
     if (filters.role && Array.isArray(filters.role)) {
-      apiFilters.role = filters.role;
+      apiFilters.role = filters.role as string[];
     }
 
     try {
@@ -319,7 +319,7 @@ export function SourcesView() {
         <FilterSection title={t("filters.study_type", "Study Type")}>
           <CheckboxFilter
             options={kindOptionsWithLabels}
-            value={filters.kind || []}
+            value={(filters.kind as (string | number)[]) || []}
             onChange={(value) => setFilter('kind', value)}
           />
         </FilterSection>
@@ -330,7 +330,7 @@ export function SourcesView() {
               min={yearRange[0]}
               max={yearRange[1]}
               step={1}
-              value={filters.year || yearRange}
+              value={(filters.year as [number, number]) || yearRange}
               onChange={(value) => setFilter('year', value)}
               formatValue={(v) => v.toString()}
             />
@@ -342,7 +342,7 @@ export function SourcesView() {
             min={0}
             max={1}
             step={0.1}
-            value={filters.trust_level || [0, 1]}
+            value={(filters.trust_level as [number, number]) || [0, 1]}
             onChange={(value) => setFilter('trust_level', value)}
             formatValue={(v) => v.toFixed(1)}
           />

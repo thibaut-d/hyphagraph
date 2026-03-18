@@ -39,40 +39,38 @@ export function useInferenceFiltering(
     }
 
     const filtered: InferenceRead = {
-      entity: inference.entity,
+      entity_id: inference.entity_id,
       relations_by_kind: {},
     };
 
     Object.entries(inference.relations_by_kind).forEach(([kind, relations]) => {
       const filteredRelations = relations.filter((rel) => {
         // Direction filter
-        if (filters.direction && filters.direction !== "all") {
-          if (filters.direction === "incoming" && rel.direction !== "incoming") {
-            return false;
-          }
-          if (filters.direction === "outgoing" && rel.direction !== "outgoing") {
+        if (filters.directions && filters.directions.length > 0) {
+          if (!filters.directions.includes(rel.direction ?? "")) {
             return false;
           }
         }
 
         // Kind filter
-        if (filters.kind && rel.kind !== filters.kind) {
+        if (filters.kinds && filters.kinds.length > 0 && rel.kind && !filters.kinds.includes(rel.kind)) {
           return false;
         }
 
         // Year range filter (requires source data)
         const source = sources[rel.source_id];
         if (source) {
-          if (filters.yearStart !== undefined && source.year && source.year < filters.yearStart) {
+          const [yearStart, yearEnd] = filters.yearRange ?? [undefined, undefined];
+          if (yearStart !== undefined && source.year && source.year < yearStart) {
             return false;
           }
-          if (filters.yearEnd !== undefined && source.year && source.year > filters.yearEnd) {
+          if (yearEnd !== undefined && source.year && source.year > yearEnd) {
             return false;
           }
 
           // Trust level filter
-          if (filters.minTrust !== undefined && source.trust_level !== null) {
-            if (source.trust_level < filters.minTrust) {
+          if (filters.minTrustLevel !== undefined && source.trust_level !== null) {
+            if ((source.trust_level ?? 0) < filters.minTrustLevel) {
               return false;
             }
           }

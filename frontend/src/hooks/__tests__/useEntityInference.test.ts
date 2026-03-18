@@ -57,7 +57,7 @@ describe("useEntityInference", () => {
     year: 2024,
     kind: "paper",
     origin: "journal",
-    trust: 0.9,
+    trust_level: 0.9,
     created_at: "2025-01-01T00:00:00Z",
   };
 

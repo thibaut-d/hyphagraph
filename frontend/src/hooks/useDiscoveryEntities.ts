@@ -64,8 +64,9 @@ export function useDiscoveryEntities(): DiscoveryEntitiesState {
               offset: 0,
             });
             preselectedEntity = searchResponse.items.find((entity) => entity.slug === entitySlugParam);
-            if (preselectedEntity && !dedupedEntities.some((entity) => entity.id === preselectedEntity.id)) {
-              dedupedEntities.push(preselectedEntity);
+            const sel = preselectedEntity;
+            if (sel && !dedupedEntities.some((entity) => entity.id === sel.id)) {
+              dedupedEntities.push(sel);
             }
           }
         }

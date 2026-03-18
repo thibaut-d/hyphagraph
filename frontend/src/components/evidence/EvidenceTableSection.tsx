@@ -78,7 +78,7 @@ function getDirectionChip(direction: string, t: (key: string, fallback: string) 
 
 function formatRoleTypeLabel(
   roleType: string,
-  t: (key: string, fallbackOrOptions?: string | { defaultValue?: string }) => string,
+  t: (key: string, options?: { defaultValue?: string; [key: string]: unknown }) => string,
 ): string {
   const defaultLabel = roleType
     .split("_")

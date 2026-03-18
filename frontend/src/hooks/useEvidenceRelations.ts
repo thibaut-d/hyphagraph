@@ -7,7 +7,7 @@ import type { SourceRead } from "../types/source";
 import { usePageErrorHandler } from "./usePageErrorHandler";
 
 export interface EnrichedRelation extends RelationRead {
-  source?: SourceRead;
+  source?: SourceRead | null;
 }
 
 export interface UseEvidenceRelationsResult {

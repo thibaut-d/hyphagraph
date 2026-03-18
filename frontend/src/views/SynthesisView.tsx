@@ -127,7 +127,7 @@ export function SynthesisView() {
   return (
     <Stack spacing={3}>
       <SynthesisHeaderSection
-        entityId={id}
+        entityId={id!}
         entityLabel={entityLabel}
         onBack={() => navigate(`/entities/${id}`)}
       />

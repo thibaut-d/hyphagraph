@@ -141,7 +141,7 @@ export function SynthesisRelationsSection({
                             </Box>
                           }
                           secondary={
-                            relation.confidence !== undefined
+                            relation.confidence != null
                               ? t("synthesis.relation.confidence", "Confidence: {{value}}%", {
                                   value: Math.round(relation.confidence * 100),
                                 })

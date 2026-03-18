@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link as RouterLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import i18n from "i18next";
 
 import {
   AppBar,
@@ -71,12 +70,6 @@ export function Layout() {
     setMobileSearchOpen(false);
   }, [location.pathname]);
 
-  // Transform categories for sub-components
-  const transformedCategories = categories.map((cat) => ({
-    id: cat.id,
-    value: cat.id,
-    label: cat.label[i18n.language as 'en' | 'fr'] || cat.label.en || cat.id,
-  }));
 
   return (
     <>
@@ -110,7 +103,7 @@ export function Layout() {
           {/* Desktop: Main menu (md+ only) */}
           <DesktopNavigation
             menuItems={menuItems}
-            categories={transformedCategories}
+            categories={categories}
             user={user}
             onNavigate={navigate}
           />
@@ -156,7 +149,7 @@ export function Layout() {
         open={mobileMenuOpen}
         onClose={() => setMobileMenuOpen(false)}
         menuItems={menuItems}
-        categories={transformedCategories}
+        categories={categories}
         user={user}
       />
 

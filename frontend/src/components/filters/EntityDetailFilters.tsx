@@ -87,7 +87,7 @@ export function EntityDetailFilters({
           <CheckboxFilter
             options={directionOptions}
             value={filters.directions || []}
-            onChange={(value) => onFilterChange("directions", value)}
+            onChange={(value) => onFilterChange("directions", value as string[])}
           />
         </FilterSection>
       )}
@@ -97,7 +97,7 @@ export function EntityDetailFilters({
           <CheckboxFilter
             options={kindOptions}
             value={filters.kinds || []}
-            onChange={(value) => onFilterChange("kinds", value)}
+            onChange={(value) => onFilterChange("kinds", value as string[])}
           />
         </FilterSection>
       )}
