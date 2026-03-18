@@ -1,4 +1,5 @@
 import { Link as RouterLink } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import type { StagedExtractionRead } from "../../api/extractionReview";
 import type { ExtractedEntity, ExtractedRelation, ExtractedClaim } from "../../types/extraction";
 import {
@@ -12,10 +13,10 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import WarningIcon from "@mui/icons-material/Warning";
-import VerifiedIcon from "@mui/icons-material/Verified";
 
 interface ExtractionCardProps {
   extraction: StagedExtractionRead;
@@ -33,18 +34,10 @@ function getExtractionTitle(extraction: StagedExtractionRead): string {
   }
 }
 
-function getExtractionSummary(extraction: StagedExtractionRead): string {
-  switch (extraction.extraction_type) {
-    case "entity": return (extraction.extraction_data as ExtractedEntity).summary ?? "";
-    case "relation": return (extraction.extraction_data as ExtractedRelation).notes || "No notes";
-    case "claim": return (extraction.extraction_data as ExtractedClaim).claim_text;
-  }
-}
-
-function getStatusColor(status: string): "success" | "warning" | "error" | "default" {
+function getStatusColor(status: string): "info" | "success" | "warning" | "error" | "default" {
   switch (status) {
-    case "auto_verified":
-    case "approved": return "success";
+    case "auto_verified": return "info";    // AI-staged, not yet human-reviewed
+    case "approved": return "success";       // human approved
     case "pending": return "warning";
     case "rejected": return "error";
     default: return "default";
@@ -53,7 +46,7 @@ function getStatusColor(status: string): "success" | "warning" | "error" | "defa
 
 function getStatusIcon(status: string) {
   switch (status) {
-    case "auto_verified": return <VerifiedIcon fontSize="small" />;
+    case "auto_verified": return <AutoAwesomeIcon fontSize="small" />;
     case "approved": return <CheckCircleIcon fontSize="small" />;
     case "pending": return <WarningIcon fontSize="small" />;
     case "rejected": return <CancelIcon fontSize="small" />;
@@ -68,6 +61,24 @@ export function ExtractionCard({
   onApprove,
   onReject,
 }: ExtractionCardProps) {
+  const { t } = useTranslation();
+
+  const noNotesLabel = t("extraction_card.no_notes");
+  const summary = (() => {
+    switch (extraction.extraction_type) {
+      case "entity": return (extraction.extraction_data as ExtractedEntity).summary ?? "";
+      case "relation": return (extraction.extraction_data as ExtractedRelation).notes || noNotesLabel;
+      case "claim": return (extraction.extraction_data as ExtractedClaim).claim_text;
+    }
+  })();
+
+  const statusLabel: Record<string, string> = {
+    auto_verified: t("extraction_card.status_auto_staged"),
+    approved: t("extraction_card.status_approved"),
+    pending: t("extraction_card.status_pending"),
+    rejected: t("extraction_card.status_rejected"),
+  };
+
   return (
     <Paper sx={{ mb: 2 }}>
       <ListItem>
@@ -83,13 +94,13 @@ export function ExtractionCard({
                 variant="outlined"
               />
               <Chip
-                label={extraction.status}
+                label={statusLabel[extraction.status] ?? extraction.status}
                 size="small"
                 color={getStatusColor(extraction.status)}
                 icon={getStatusIcon(extraction.status)}
               />
               <Chip
-                label={`Score: ${(extraction.validation_score * 100).toFixed(0)}%`}
+                label={t("extraction_card.validation_score", { score: (extraction.validation_score * 100).toFixed(0) })}
                 size="small"
                 color={extraction.validation_score >= 0.9 ? "success" : "warning"}
               />
@@ -105,11 +116,11 @@ export function ExtractionCard({
           }
           secondary={
             <Stack spacing={1} sx={{ mt: 1 }}>
-              <Typography variant="body2">{getExtractionSummary(extraction)}</Typography>
+              <Typography variant="body2">{summary}</Typography>
               {extraction.validation_flags.length > 0 && (
                 <Box>
                   <Typography variant="caption" color="text.secondary">
-                    Validation issues:
+                    {t("extraction_card.validation_issues")}
                   </Typography>
                   {extraction.validation_flags.map((flag, idx) => (
                     <Chip key={idx} label={flag} size="small" sx={{ ml: 0.5, mt: 0.5 }} />
@@ -117,7 +128,7 @@ export function ExtractionCard({
                 </Box>
               )}
               <Typography variant="caption" color="text.secondary">
-                Text span: &quot;{(extraction.extraction_data as ExtractedEntity).text_span}&quot;
+                {t("extraction_card.text_span")} &quot;{(extraction.extraction_data as ExtractedEntity).text_span}&quot;
               </Typography>
               <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
                 <Button
@@ -127,7 +138,7 @@ export function ExtractionCard({
                   startIcon={<CheckCircleIcon />}
                   onClick={onApprove}
                 >
-                  Approve
+                  {t("extraction_card.approve")}
                 </Button>
                 <Button
                   size="small"
@@ -136,7 +147,7 @@ export function ExtractionCard({
                   startIcon={<CancelIcon />}
                   onClick={onReject}
                 >
-                  Reject
+                  {t("extraction_card.reject")}
                 </Button>
                 {extraction.materialized_entity_id && (
                   <Button
@@ -144,7 +155,7 @@ export function ExtractionCard({
                     component={RouterLink}
                     to={`/entities/${extraction.materialized_entity_id}`}
                   >
-                    View Entity
+                    {t("extraction_card.view_entity")}
                   </Button>
                 )}
               </Stack>

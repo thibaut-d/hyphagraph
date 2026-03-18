@@ -369,6 +369,19 @@
     "review_notes": "Review Notes (optional)",
     "action_all": "{{action}} All"
   },
+  "extraction_card": {
+    "no_notes": "No notes",
+    "validation_score": "Score: {{score}}%",
+    "validation_issues": "Validation issues:",
+    "text_span": "Text span:",
+    "approve": "Approve",
+    "reject": "Reject",
+    "view_entity": "View Entity",
+    "status_auto_staged": "Auto-staged (AI)",
+    "status_approved": "Approved",
+    "status_pending": "Pending review",
+    "status_rejected": "Rejected"
+  },
   "extraction_preview": {
     "title": "Extraction Complete!",
     "high_confidence_bold": "High-confidence extraction detected.",

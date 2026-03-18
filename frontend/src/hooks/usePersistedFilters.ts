@@ -55,7 +55,11 @@ function saveFiltersToStorage(storageKey: string, filters: FilterState): void {
   try {
     localStorage.setItem(storageKey, JSON.stringify(filters));
   } catch (error) {
-    console.warn(`Failed to save filters to localStorage (key: ${storageKey}):`, error);
+    if (error instanceof DOMException && error.name === "QuotaExceededError") {
+      console.warn(`localStorage quota exceeded — filter preferences for "${storageKey}" could not be saved.`);
+    } else {
+      console.warn(`Failed to save filters to localStorage (key: ${storageKey}):`, error);
+    }
   }
 }
 

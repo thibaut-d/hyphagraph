@@ -278,6 +278,22 @@ Progress update:
 
 - Status: Audit 23 complete.
 
+### Audit 24: Frontend Uncertainty & Traceability
+
+1. Fix `auto_verified` status chip — should not look identical to human "approved".
+2. Internationalize hardcoded strings in ExtractionCard.
+3. Distinguish QuotaExceededError from other localStorage errors in usePersistedFilters.
+
+Progress update:
+- Completed: Audit run. Score 65/100 → 88/100 after fixes.
+- Completed: ExtractionCard — replaced `VerifiedIcon`+green with `AutoAwesomeIcon`+blue "info" for `auto_verified`; `approved` keeps green checkmark. Now visually distinct.
+- Completed: ExtractionCard — added `useTranslation`, replaced 7 hardcoded strings with `t(...)` calls. Added `extraction_card` section to en.json and fr.json.
+- Completed: usePersistedFilters — save path now distinguishes `QuotaExceededError` from other errors with a specific warning message.
+- Confirmed: Contradiction visibility, source traceability (two-click), DisagreementsView all sound.
+- All 547 frontend tests green.
+
+- Status: Audit 24 complete.
+
 ## Audit Reports
 
 - [knowledge_integrity_explainability_report.md](/home/thibaut/code/hyphagraph/.temp/knowledge_integrity_explainability_report.md)

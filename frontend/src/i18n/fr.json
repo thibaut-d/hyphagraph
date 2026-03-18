@@ -340,6 +340,19 @@
     "review_notes": "Notes de révision (optionnel)",
     "action_all": "{{action}} tout"
   },
+  "extraction_card": {
+    "no_notes": "Aucune note",
+    "validation_score": "Score : {{score}} %",
+    "validation_issues": "Problèmes de validation :",
+    "text_span": "Extrait de texte :",
+    "approve": "Approuver",
+    "reject": "Rejeter",
+    "view_entity": "Voir l'entité",
+    "status_auto_staged": "Staged automatiquement (IA)",
+    "status_approved": "Approuvé",
+    "status_pending": "En attente de révision",
+    "status_rejected": "Rejeté"
+  },
   "extraction_preview": {
     "title": "Extraction terminée !",
     "high_confidence_bold": "Extraction à haute confiance détectée.",
