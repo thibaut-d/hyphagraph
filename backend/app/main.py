@@ -13,6 +13,7 @@ from app.api import (
     export,
     extraction,
     extraction_review,
+    import_routes,
     inferences,
     relations,
     relation_types,
@@ -113,6 +114,7 @@ app.include_router(relation_types.router, prefix="/api/relation-types", tags=["r
 app.include_router(export.router, prefix="/api/export", tags=["export"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 app.include_router(extraction_review.router, prefix="/api")
+app.include_router(import_routes.router, prefix="/api")
 
 # --- Test Helpers (only in testing mode) ---
 if settings.TESTING:

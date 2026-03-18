@@ -34,6 +34,7 @@ import { SmartSourceDiscoveryView } from "../views/SmartSourceDiscoveryView";
 import { AdminView } from "../views/AdminView";
 import { ReviewQueueView } from "../views/ReviewQueueView";
 import { NotificationDemoView } from "../views/NotificationDemoView";
+import { ImportEntitiesView } from "../views/ImportEntitiesView";
 
 export const router = createBrowserRouter([
   {
@@ -44,6 +45,7 @@ export const router = createBrowserRouter([
 
       { path: "entities", element: <EntitiesView /> },
       { path: "entities/new", element: <ProtectedRoute><CreateEntityView /></ProtectedRoute> },
+      { path: "entities/import", element: <ProtectedRoute><ImportEntitiesView /></ProtectedRoute> },
       { path: "entities/:id", element: <EntityDetailView /> },
       { path: "entities/:id/edit", element: <ProtectedRoute><EditEntityView /></ProtectedRoute> },
       { path: "entities/:id/synthesis", element: <SynthesisView /> },

@@ -1,6 +1,6 @@
 # HyphaGraph TODO
 
-**Last Updated**: 2026-03-18 (Audit 28)
+**Last Updated**: 2026-03-18 (Batch Operations)
 
 ---
 
@@ -8,8 +8,8 @@
 
 | Area | Status | Details |
 |------|--------|---------|
-| **Backend tests** | ✅ 494/494 | All passing (+3 claim materialization tests) |
-| **Frontend tests** | ✅ 579/579 | All passing (+32 review queue UI tests) |
+| **Backend tests** | ✅ 507/507 | All passing (+13 import service tests) |
+| **Frontend tests** | ✅ 597/597 | All passing (+18 ImportEntitiesView tests) |
 | **E2E tests** | ✅ **72/72** | **🎉 All passing!** |
 | **Technical debt** | ✅ Minimal | All test issues resolved |
 
@@ -92,11 +92,16 @@ See `E2E_TEST_FIXES_SUMMARY.md` and `E2E_TEST_ANALYSIS.md` for detailed technica
 - ✅ Claim extraction to Relations (auto-materialization): claims materialize as relations with kind=claim_type, notes=claim_text, scope=evidence_strength, participant roles
 
 #### Batch Operations
-- Bulk entity import (CSV, JSON)
+- ✅ Bulk entity import (CSV, JSON) — preview + commit workflow, 500-row limit
+  - ✅ `ImportService` with CSV/JSON parsing, duplicate detection, per-row status
+  - ✅ `POST /api/import/entities/preview` and `POST /api/import/entities`
+  - ✅ `ImportEntitiesView` — 3-stage UI (upload → preview table → done summary)
+  - ✅ Import button wired into `EntitiesView` toolbar
+  - ✅ i18n (EN + FR), 13 backend tests, 18 frontend tests
 - Bulk source import (BibTeX, RIS, JSON)
 - Batch relation creation
-- Export functionality (JSON, CSV, RDF)
-- Import validation, error reporting, and preview
+- ✅ Export functionality (JSON, CSV, RDF) — already complete
+- Relation export button on SourcesView (minor — ExportMenu already available)
 
 #### CI/CD Pipeline
 - GitHub Actions for automated testing (backend + frontend + E2E)

@@ -24,6 +24,7 @@ from app.services.search_service import SearchService
 from app.services.relation_service import RelationService
 from app.services.relation_type_service import RelationTypeService
 from app.services.source_service import SourceService
+from app.services.import_service import ImportService
 from app.services.typedb_export_service import TypeDBExportService
 from app.utils.errors import LLMServiceUnavailableException
 
@@ -46,6 +47,11 @@ def get_entity_term_service(db: AsyncSession = Depends(get_db)) -> EntityTermSer
 def get_source_service(db: AsyncSession = Depends(get_db)) -> SourceService:
     """Return a SourceService bound to the current request's database session."""
     return SourceService(db)
+
+
+def get_import_service(db: AsyncSession = Depends(get_db)) -> ImportService:
+    """Return an ImportService bound to the current request's database session."""
+    return ImportService(db)
 
 
 def get_export_service(db: AsyncSession = Depends(get_db)) -> ExportService:

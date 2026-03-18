@@ -21,6 +21,7 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import FilterListIcon from "@mui/icons-material/FilterList";
+import UploadIcon from "@mui/icons-material/Upload";
 
 import { FilterDrawer, FilterSection, CheckboxFilter, SearchFilter, RangeFilter } from "../components/filters";
 import { ScrollToTop } from "../components/ScrollToTop";
@@ -220,6 +221,17 @@ export function EntitiesView() {
             </Button>
           </Badge>
           <ExportMenu exportType="entities" buttonText={t("entities.export", "Export")} size="small" />
+          <Button
+            component={RouterLink}
+            to="/entities/import"
+            variant="outlined"
+            startIcon={<UploadIcon />}
+            size="small"
+          >
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+              {t("entities.import", "Import")}
+            </Box>
+          </Button>
           <Button
             component={RouterLink}
             to="/entities/new"
