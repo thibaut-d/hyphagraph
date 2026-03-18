@@ -1,6 +1,6 @@
 # Current Work
 
-**Last updated**: 2026-03-18 (Audit 19)
+**Last updated**: 2026-03-18 (Audit 20)
 
 ## In Progress
 
@@ -221,6 +221,22 @@ Progress update:
 - Report: `.temp/test_suite_health_report_v2.md`
 
 - Status: Audit 19 is complete.
+
+### Audit 20: Knowledge Integrity & Explainability
+
+1. Populate `created_with_llm` on `EntityRevision` and `RelationRevision` at materialization.
+2. Extend `reject_extraction()` to accept `AUTO_VERIFIED` extractions (not only PENDING).
+3. Resolve the `run_auto_commit` dead-code issue: either fix the status flow so it is reachable, or remove the endpoint.
+4. Decide and document the rejected-extraction visibility policy (M4): options are a `rejection_flagged` column, `is_current=False` on reject, or a documented deferral.
+
+Progress update:
+- Completed: Audit 20 run and findings recorded. Report: `.temp/knowledge_integrity_report_v1.md`.
+- Completed: Fixed M1 — `created_with_llm` now populated at materialization for both entity and relation revisions.
+- Completed: Fixed M2 — `reject_extraction()` now accepts `AUTO_VERIFIED` extractions in addition to PENDING.
+- Completed: Fixed M3 — `run_auto_commit` dead-code gap resolved: `staging.py` now assigns `AUTO_VERIFIED` only on inline materialization; deferred-path high-confidence items stay `PENDING` so `run_auto_commit` can find them.
+- Remaining: M4 (rejected-extraction visibility policy — intentional design, needs documented deferral or `rejection_flagged` column).
+
+- Status: Audit 20 complete (M4 deferred).
 
 ## Audit Reports
 

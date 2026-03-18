@@ -28,6 +28,7 @@ async def materialize_entity(db: AsyncSession, staged: StagedExtraction) -> UUID
             slug=entity_data.slug,
             summary={"en": entity_data.summary} if entity_data.summary else None,
             is_current=True,
+            created_with_llm=staged.llm_model,
         )
     )
     await db.flush()
@@ -52,6 +53,7 @@ async def materialize_relation(db: AsyncSession, staged: StagedExtraction) -> UU
         confidence=final_confidence,
         notes={"en": relation_data.text_span} if relation_data.text_span else None,
         is_current=True,
+        created_with_llm=staged.llm_model,
     )
     db.add(revision)
     await db.flush()

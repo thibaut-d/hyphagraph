@@ -26,7 +26,12 @@ async def create_staged_extraction(
     auto_materialize: bool,
 ) -> tuple[StagedExtraction, UUID | None]:
     """Create a staged extraction record and optionally materialize it immediately."""
-    initial_status = ExtractionStatus.AUTO_VERIFIED if is_high_confidence else ExtractionStatus.PENDING
+    # AUTO_VERIFIED only when materializing inline; deferred high-confidence items stay PENDING
+    # so run_auto_commit can find and materialize them later.
+    initial_status = (
+        ExtractionStatus.AUTO_VERIFIED if (is_high_confidence and auto_materialize)
+        else ExtractionStatus.PENDING
+    )
 
     staged = StagedExtraction(
         extraction_type=extraction_type,

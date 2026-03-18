@@ -198,7 +198,8 @@ class ExtractionReviewService:
         """Reject a staged extraction."""
         staged = await load_staged_extraction(self.db, extraction_id)
 
-        if not staged or staged.status != ExtractionStatus.PENDING:
+        reviewable = {ExtractionStatus.PENDING, ExtractionStatus.AUTO_VERIFIED}
+        if not staged or staged.status not in reviewable:
             return False
 
         apply_review_metadata(staged, reviewer_id, notes, approved=False)
