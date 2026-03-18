@@ -324,6 +324,23 @@ Progress update:
 
 - Status: Audit 26 complete.
 
+### Audit 27: API and Service Boundary Discipline (Second Pass)
+
+1. Check admin.py, auth_handlers.py, recently changed service and API files for boundary violations.
+2. Move admin user management logic to AdminService.
+3. Fix UserListItem NameError in list_users.
+4. Add type hints to auth_handlers.py.
+
+Progress update:
+- Completed: Audit run. Report: `.temp/api_service_boundary_report_v2.md`.
+- Completed: Fixed C1 — `UserListItem` NameError in `admin.py:93` (class not defined; should be `UserListItemRead`).
+- Completed: Fixed C2 — Created `backend/app/services/admin_service.py` with all domain logic (guards, stats, CRUD); reduced `admin.py` to 5 thin route handlers; added `get_admin_service` to `service_dependencies.py`.
+- Completed: Fixed m1 — Added `user_service: UserService` and `db: AsyncSession` type hints throughout `auth_handlers.py`.
+- Completed: 10 new `TestAdminService` tests added — all passing.
+- Result: 465 backend tests green (451 → 465).
+
+- Status: Audit 27 complete.
+
 ## Audit Reports
 
 - [knowledge_integrity_explainability_report.md](/home/thibaut/code/hyphagraph/.temp/knowledge_integrity_explainability_report.md)

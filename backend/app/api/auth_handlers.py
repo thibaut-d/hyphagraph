@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi import Request, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.user import User
@@ -17,14 +18,15 @@ from app.schemas.auth import (
     UserUpdate,
     VerifyEmail,
 )
+from app.services.user_service import UserService
 from app.utils.errors import AppException, ErrorCode, ValidationException
 
 
 async def register_user(
     request: Request,
     payload: UserRegister,
-    user_service,
-    db,
+    user_service: UserService,
+    db: AsyncSession,
     *,
     send_verification_email,
     log_registration,
@@ -59,8 +61,8 @@ async def login_user(
     request: Request,
     email: str,
     password: str,
-    user_service,
-    db,
+    user_service: UserService,
+    db: AsyncSession,
     *,
     log_login_attempt,
 ) -> TokenPair:
@@ -104,8 +106,8 @@ def read_current_user(current_user: User) -> UserRead:
 async def refresh_user_token(
     request: Request,
     payload: RefreshTokenRequest,
-    user_service,
-    db,
+    user_service: UserService,
+    db: AsyncSession,
     *,
     log_token_refresh,
 ) -> Token:
@@ -131,7 +133,7 @@ async def refresh_user_token(
         raise
 
 
-async def logout_user(payload: RefreshTokenRequest, current_user: User, user_service) -> None:
+async def logout_user(payload: RefreshTokenRequest, current_user: User, user_service: UserService) -> None:
     await user_service.revoke_refresh_token(current_user.id, payload.refresh_token)
     return None
 
@@ -140,8 +142,8 @@ async def change_current_password(
     request: Request,
     payload: ChangePassword,
     current_user: User,
-    user_service,
-    db,
+    user_service: UserService,
+    db: AsyncSession,
     *,
     log_password_change,
 ) -> None:
@@ -171,11 +173,11 @@ async def change_current_password(
         raise
 
 
-async def update_current_profile(payload: UserUpdate, current_user: User, user_service) -> UserRead:
+async def update_current_profile(payload: UserUpdate, current_user: User, user_service: UserService) -> UserRead:
     return await user_service.update(current_user.id, payload)
 
 
-async def deactivate_current_account(current_user: User, user_service) -> None:
+async def deactivate_current_account(current_user: User, user_service: UserService) -> None:
     await user_service.deactivate(current_user.id)
     return None
 
@@ -183,8 +185,8 @@ async def deactivate_current_account(current_user: User, user_service) -> None:
 async def delete_current_account(
     request: Request,
     current_user: User,
-    user_service,
-    db,
+    user_service: UserService,
+    db: AsyncSession,
     *,
     log_account_deletion,
 ) -> None:
@@ -198,14 +200,14 @@ async def delete_current_account(
     return None
 
 
-async def verify_user_email_address(payload: VerifyEmail, user_service) -> UserRead:
+async def verify_user_email_address(payload: VerifyEmail, user_service: UserService) -> UserRead:
     return await user_service.verify_email(payload.token)
 
 
 async def resend_verification(
     payload: ResendVerificationEmail,
-    user_service,
-    db,
+    user_service: UserService,
+    db: AsyncSession,
     *,
     send_verification_email,
 ) -> None:
@@ -233,7 +235,7 @@ async def resend_verification(
 
 async def request_reset(
     payload: RequestPasswordReset,
-    user_service,
+    user_service: UserService,
     *,
     send_password_reset_email,
 ) -> None:
@@ -243,5 +245,5 @@ async def request_reset(
     return None
 
 
-async def reset_user_password(payload: ResetPassword, user_service) -> UserRead:
+async def reset_user_password(payload: ResetPassword, user_service: UserService) -> UserRead:
     return await user_service.reset_password(payload.token, payload.new_password)
