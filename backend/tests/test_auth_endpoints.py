@@ -6,7 +6,7 @@ token management, password reset, and email verification.
 """
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from uuid import uuid4
 from fastapi import status
 from httpx import AsyncClient, ASGITransport
@@ -503,7 +503,6 @@ class TestEmailVerification:
                     is_superuser=False,
                     created_at=datetime.now(timezone.utc),
                 )
-                from app.schemas.auth import UserRead
                 # Mock is_verified check - need to return actual User object
                 user_obj = MagicMock()
                 user_obj.is_verified = True

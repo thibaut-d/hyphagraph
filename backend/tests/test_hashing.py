@@ -6,8 +6,7 @@ Tests the deterministic hashing algorithm from DATABASE_SCHEMA.md:
 - SHA256 hashing
 - Determinism (same inputs → same hash)
 """
-import pytest
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 from app.utils.hashing import compute_scope_hash
 

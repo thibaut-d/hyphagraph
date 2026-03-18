@@ -4,7 +4,6 @@ Tests for EntityService filtering functionality.
 Tests advanced filtering like consensus level, evidence quality, recency, etc.
 """
 import pytest
-from uuid import uuid4
 
 from app.services.entity_service import EntityService
 from app.services.source_service import SourceService

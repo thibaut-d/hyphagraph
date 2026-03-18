@@ -5,14 +5,13 @@ Comprehensive tests for explanation generation, confidence breakdown,
 contradiction detection, and source chain building.
 """
 import pytest
-from uuid import uuid4
 
 from app.services.explanation_service import ExplanationService
 from app.services.entity_service import EntityService
 from app.services.source_service import SourceService
 from app.services.relation_service import RelationService
 from app.schemas.entity import EntityWrite
-from fixtures.scientific_data import ScientificEntities, ScientificSources
+from fixtures.scientific_data import ScientificEntities
 from app.schemas.source import SourceWrite
 from app.schemas.relation import RelationWrite, RoleRevisionWrite as RoleWrite
 

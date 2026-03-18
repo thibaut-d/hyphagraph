@@ -212,7 +212,7 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 <ArticleIcon />
                 <Typography variant="h6">
-                  {t("extraction_preview.extracted_text", { count: preview.extracted_text.length.toLocaleString() })}
+                  {t("extraction_preview.extracted_text", { count: preview.extracted_text.length })}
                 </Typography>
               </Box>
             </AccordionSummary>

@@ -7,7 +7,6 @@ Tests the caching layer of the inference service:
 - Model version handling
 """
 import pytest
-from uuid import uuid4
 
 from app.services.inference_service import InferenceService
 from app.services.entity_service import EntityService
@@ -15,7 +14,7 @@ from app.services.source_service import SourceService
 from app.services.relation_service import RelationService
 from app.repositories.computed_relation_repo import ComputedRelationRepository
 from app.schemas.entity import EntityWrite
-from fixtures.scientific_data import ScientificEntities, ScientificSources
+from fixtures.scientific_data import ScientificEntities
 from app.schemas.source import SourceWrite
 from app.schemas.relation import RelationWrite, RoleRevisionWrite as RoleWrite
 from app.config import settings

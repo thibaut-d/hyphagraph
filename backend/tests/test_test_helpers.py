@@ -7,7 +7,6 @@ so we test the endpoint functions directly rather than via HTTP client.
 """
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from sqlalchemy import text
 from fastapi import HTTPException
 
 from app.api.test_helpers import check_testing_mode, reset_database, test_health

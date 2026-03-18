@@ -168,6 +168,20 @@ Progress update:
 
 - Status: Audit 16 is complete.
 
+### Audit 17: Dead Code & Compatibility Shims (Second Pass)
+
+1. Re-scan backend and frontend for unused imports, deprecated fields still in use, and compatibility shims that can now be removed.
+
+Progress update:
+- Completed: 39 unused imports removed from 22 backend test files via `ruff check tests --select F401 --fix`. 0 remaining.
+- Completed: `ExtractionPreview.tsx:215` — `count: toLocaleString()` passed `string` to i18n count interpolation (expects `number`); removed `.toLocaleString()`.
+- Assessed: Legacy entity fields (`kind`, `synonyms`, `ontology_ref`, `label`) in `EntityWrite`/`EntityRead` — `kind`, `synonyms`, `ontology_ref` are never set or used; `label` is aliased to `slug` in backend and consumed as `entity.label || entity.slug` in 7 frontend views. Safe to retire but multi-file. Deferred.
+- Assessed: `subject_slug`/`object_slug` — still actively used in CSV export (`export_service.py`) and LLM backward compat path (`llm/schemas.py:321-341`) and frontend extraction util. Cannot retire yet.
+- Found: ~35 pre-existing TypeScript type errors across frontend (FilterValue narrowing, UICategoryOption shape, nullability). Not introduced by recent passes. Schedule as Audit 18 (Typed Contract Discipline, Third Pass).
+- Report: `.temp/dead_code_compatibility_shims_report_v2.md`
+
+- Status: Audit 17 is complete.
+
 ## Audit Reports
 
 - [knowledge_integrity_explainability_report.md](/home/thibaut/code/hyphagraph/.temp/knowledge_integrity_explainability_report.md)
@@ -175,14 +189,16 @@ Progress update:
 - [security_authentication_report.md](/home/thibaut/code/hyphagraph/.temp/security_authentication_report.md)
 - [api_service_boundary_discipline_report.md](/home/thibaut/code/hyphagraph/.temp/api_service_boundary_discipline_report.md)
 - [frontend_uncertainty_traceability_report.md](/home/thibaut/code/hyphagraph/.temp/frontend_uncertainty_traceability_report.md)
-- [silent_error_handling_logging_report.md](/home/thibaut/code/hyphagraph/.temp/silent_error_handling_logging_report.md)
+- [silent_error_handling_logging_report.md](.temp/silent_error_handling_logging_report.md)
+- [silent_error_handling_logging_report_v2.md](.temp/silent_error_handling_logging_report_v2.md)
 - [test_suite_health_report.md](/home/thibaut/code/hyphagraph/.temp/test_suite_health_report.md)
 - [pydantic_typed_contract_discipline_report.md](/home/thibaut/code/hyphagraph/.temp/pydantic_typed_contract_discipline_report.md)
 - [type_coverage_report.md](/home/thibaut/code/hyphagraph/.temp/type_coverage_report.md)
 - [function_size_modularity_report.md](/home/thibaut/code/hyphagraph/.temp/function_size_modularity_report.md)
 - [side_effects_coupling_report.md](/home/thibaut/code/hyphagraph/.temp/side_effects_coupling_report.md)
 - [pattern_consistency_report.md](/home/thibaut/code/hyphagraph/.temp/pattern_consistency_report.md)
-- [dead_code_compatibility_shims_report.md](/home/thibaut/code/hyphagraph/.temp/dead_code_compatibility_shims_report.md)
+- [dead_code_compatibility_shims_report.md](.temp/dead_code_compatibility_shims_report.md)
+- [dead_code_compatibility_shims_report_v2.md](.temp/dead_code_compatibility_shims_report_v2.md)
 - [ai_edit_safety_report.md](/home/thibaut/code/hyphagraph/.temp/ai_edit_safety_report.md)
 - [documentation_i18n_completeness_report.md](/home/thibaut/code/hyphagraph/.temp/documentation_i18n_completeness_report.md)
 

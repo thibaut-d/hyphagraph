@@ -6,7 +6,7 @@ Uses scientifically accurate fibromyalgia/chronic pain test data.
 """
 
 import pytest
-from uuid import uuid4, UUID
+from uuid import uuid4
 from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi import HTTPException
 
@@ -19,19 +19,14 @@ from app.api.document_extraction_routes.discovery import (
 from app.api.document_extraction_routes.document import extract_from_url
 from app.api.document_extraction_schemas import (
     SmartDiscoveryRequest,
-    SmartDiscoveryResponse,
-    SmartDiscoveryResult,
     PubMedBulkSearchRequest,
-    PubMedBulkSearchResponse,
-    PubMedSearchResult,
     PubMedBulkImportRequest,
-    PubMedBulkImportResponse,
     UrlExtractionRequest,
 )
 from app.services.pubmed_fetcher import PubMedArticle
 from app.services.source_service import SourceService
 from app.schemas.source import SourceWrite
-from fixtures.scientific_data import ScientificEntities, ScientificSources
+from fixtures.scientific_data import ScientificEntities
 
 
 # =============================================================================

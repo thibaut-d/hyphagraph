@@ -6,7 +6,6 @@ and prevents O(n) bcrypt operations.
 """
 import pytest
 from datetime import datetime, timedelta, timezone
-from uuid import uuid4
 
 from app.models.refresh_token import RefreshToken
 from app.services.user_service import UserService

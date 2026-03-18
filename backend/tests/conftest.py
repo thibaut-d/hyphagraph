@@ -12,13 +12,11 @@ tests_dir = Path(__file__).parent
 if str(tests_dir) not in sys.path:
     sys.path.insert(0, str(tests_dir))
 
-import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.pool import StaticPool
 from sqlalchemy import TypeDecorator, Text, event, text as sql_text
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.types import String
 import json
 import sqlalchemy
 

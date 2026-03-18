@@ -3,7 +3,6 @@ Unit tests for authentication utilities.
 
 Tests password hashing, JWT token generation, and refresh token utilities.
 """
-import pytest
 from datetime import datetime, timedelta, timezone
 from app.utils.auth import (
     hash_password,

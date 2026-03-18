@@ -10,9 +10,8 @@ from uuid import uuid4
 from fastapi import HTTPException
 
 from app.services.user_service import UserService
-from app.schemas.auth import UserRegister, UserUpdate
+from app.schemas.auth import UserRegister
 from app.models.user import User
-from app.config import settings
 
 
 @pytest.fixture

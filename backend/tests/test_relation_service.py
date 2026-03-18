@@ -14,7 +14,7 @@ from app.services.entity_service import EntityService
 from app.schemas.relation import RelationWrite, RoleRevisionWrite as RoleWrite
 from app.schemas.source import SourceWrite
 from app.schemas.entity import EntityWrite
-from fixtures.scientific_data import ScientificEntities, ScientificSources
+from fixtures.scientific_data import ScientificEntities
 
 
 @pytest.mark.asyncio

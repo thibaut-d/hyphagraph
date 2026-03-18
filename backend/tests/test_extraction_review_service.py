@@ -13,17 +13,16 @@ Tests cover:
 """
 
 import pytest
-from datetime import datetime, timezone, UTC
-from uuid import uuid4, UUID
+from datetime import datetime, timezone
+from uuid import uuid4
 
 from app.models.staged_extraction import StagedExtraction, ExtractionStatus, ExtractionType
 from app.models.source import Source
 from app.models.entity import Entity
-from app.models.relation import Relation
 from app.models.user import User
 from app.services.extraction_review_service import ExtractionReviewService
 from app.services.extraction_validation_service import ValidationResult
-from app.llm.schemas import ExtractedEntity, ExtractedRelation
+from app.llm.schemas import ExtractedEntity
 
 
 @pytest.fixture

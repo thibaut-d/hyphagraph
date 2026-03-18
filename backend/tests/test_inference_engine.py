@@ -8,8 +8,7 @@ Tests the mathematical model from COMPUTED_RELATIONS.md:
 - Confidence: 1 - exp(-λ × Coverage)
 """
 import pytest
-from unittest.mock import AsyncMock, MagicMock
-from uuid import uuid4
+from unittest.mock import AsyncMock
 from app.services.inference_service import InferenceService
 
 

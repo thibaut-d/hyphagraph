@@ -10,8 +10,6 @@ from fastapi import HTTPException
 
 from app.services.entity_service import EntityService
 from app.schemas.entity import EntityWrite
-from app.models.entity import Entity
-from app.models.entity_revision import EntityRevision
 from fixtures.scientific_data import ScientificEntities
 
 

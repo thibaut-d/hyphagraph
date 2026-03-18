@@ -9,7 +9,6 @@ import pytest
 from app.services.extraction_validation_service import (
     TextSpanValidator,
     ExtractionValidationService,
-    ValidationResult,
 )
 from app.llm.schemas import ExtractedEntity, ExtractedRelation, ExtractedClaim
 

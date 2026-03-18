@@ -3,7 +3,6 @@ Tests for source quality scoring system.
 
 Validates trust level calculation based on evidence hierarchy.
 """
-import pytest
 from app.utils.source_quality import (
     calculate_trust_level,
     infer_trust_level_from_pubmed_metadata,

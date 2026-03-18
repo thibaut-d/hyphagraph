@@ -5,7 +5,6 @@ The create_new_revision function must ensure that exactly one revision per
 parent entity has is_current=True at all times.
 """
 import pytest
-from uuid import uuid4
 
 from sqlalchemy import select
 
