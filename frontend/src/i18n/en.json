@@ -367,7 +367,12 @@
     "dialog_action_approve": "Approve",
     "dialog_action_reject": "Reject",
     "review_notes": "Review Notes (optional)",
-    "action_all": "{{action}} All"
+    "action_all": "{{action}} All",
+    "type_filter_label": "Filter by type",
+    "type_all": "All",
+    "type_entity": "Entity",
+    "type_relation": "Relation",
+    "type_claim": "Claim"
   },
   "extraction_card": {
     "no_notes": "No notes",
@@ -377,6 +382,7 @@
     "approve": "Approve",
     "reject": "Reject",
     "view_entity": "View Entity",
+    "view_relation": "View Relation",
     "status_auto_staged": "Auto-staged (AI)",
     "status_approved": "Approved",
     "status_pending": "Pending review",

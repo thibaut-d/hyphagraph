@@ -116,6 +116,7 @@ export async function listPendingExtractions(
   filters?: StagedExtractionFilters
 ): Promise<StagedExtractionListResponse> {
   const params = createSearchParams((query) => {
+    appendOptionalParam(query, "extraction_type", filters?.extraction_type);
     appendOptionalNumber(query, "min_validation_score", filters?.min_validation_score);
     appendOptionalNumber(query, "max_validation_score", filters?.max_validation_score);
     appendOptionalParam(query, "has_flags", filters?.has_flags);

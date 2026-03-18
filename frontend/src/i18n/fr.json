@@ -338,7 +338,12 @@
     "dialog_action_approve": "Approuver",
     "dialog_action_reject": "Rejeter",
     "review_notes": "Notes de révision (optionnel)",
-    "action_all": "{{action}} tout"
+    "action_all": "{{action}} tout",
+    "type_filter_label": "Filtrer par type",
+    "type_all": "Tous",
+    "type_entity": "Entité",
+    "type_relation": "Relation",
+    "type_claim": "Affirmation"
   },
   "extraction_card": {
     "no_notes": "Aucune note",
@@ -348,6 +353,7 @@
     "approve": "Approuver",
     "reject": "Rejeter",
     "view_entity": "Voir l'entité",
+    "view_relation": "Voir la relation",
     "status_auto_staged": "Staged automatiquement (IA)",
     "status_approved": "Approuvé",
     "status_pending": "En attente de révision",

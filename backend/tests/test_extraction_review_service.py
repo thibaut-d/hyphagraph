@@ -906,3 +906,623 @@ async def test_get_stats_after_reviews(
     assert stats.total_pending == 0
     assert stats.total_approved == 1
     assert stats.total_rejected == 1
+
+
+# === Pure Function Tests: check_auto_commit_eligible ===
+
+
+from app.services.extraction_review.auto_commit import check_auto_commit_eligible
+
+
+def test_check_auto_commit_eligible_all_criteria_met():
+    """All criteria met → True."""
+    result = ValidationResult(
+        is_valid=True, confidence_adjustment=1.0, validation_score=0.95,
+        flags=[], matched_span="some text",
+    )
+    assert check_auto_commit_eligible(result, True, 0.9, True) is True
+
+
+def test_check_auto_commit_eligible_disabled():
+    """auto_commit_enabled=False always returns False regardless of score."""
+    result = ValidationResult(
+        is_valid=True, confidence_adjustment=1.0, validation_score=0.99,
+        flags=[], matched_span="some text",
+    )
+    assert check_auto_commit_eligible(result, False, 0.9, True) is False
+
+
+def test_check_auto_commit_eligible_score_below_threshold():
+    """Score below threshold → False."""
+    result = ValidationResult(
+        is_valid=True, confidence_adjustment=0.8, validation_score=0.8,
+        flags=[], matched_span="some text",
+    )
+    assert check_auto_commit_eligible(result, True, 0.9, True) is False
+
+
+def test_check_auto_commit_eligible_score_at_threshold():
+    """Score exactly at threshold passes (>= comparison)."""
+    result = ValidationResult(
+        is_valid=True, confidence_adjustment=0.9, validation_score=0.9,
+        flags=[], matched_span="some text",
+    )
+    assert check_auto_commit_eligible(result, True, 0.9, True) is True
+
+
+def test_check_auto_commit_eligible_fails_with_flags_when_required():
+    """Has flags + require_no_flags=True → False even if score is high."""
+    result = ValidationResult(
+        is_valid=True, confidence_adjustment=1.0, validation_score=0.95,
+        flags=["fuzzy_match"], matched_span="some text",
+    )
+    assert check_auto_commit_eligible(result, True, 0.9, True) is False
+
+
+def test_check_auto_commit_eligible_allows_flags_when_not_required():
+    """Has flags + require_no_flags=False → True if score passes."""
+    result = ValidationResult(
+        is_valid=True, confidence_adjustment=1.0, validation_score=0.95,
+        flags=["fuzzy_match"], matched_span="some text",
+    )
+    assert check_auto_commit_eligible(result, True, 0.9, False) is True
+
+
+# === Test Relation Staging and Materialization ===
+
+
+@pytest.fixture
+async def entity_slugs_in_db(review_service, sample_source, high_confidence_validation):
+    """Ensure two entities with known slugs exist in the database."""
+    for slug, summary in [
+        ("drug-agent", "A drug used as the agent in a treatment relation"),
+        ("pain-condition", "A chronic pain condition used as target in a relation"),
+    ]:
+        await review_service.stage_extraction(
+            extraction_type=ExtractionType.ENTITY,
+            extraction_data=ExtractedEntity(
+                slug=slug,
+                category="drug" if "drug" in slug else "disease",
+                summary=summary,
+                text_span=summary,
+                confidence="high",
+            ),
+            source_id=sample_source.id,
+            validation_result=high_confidence_validation,
+            auto_materialize=True,
+        )
+    return ["drug-agent", "pain-condition"]
+
+
+@pytest.fixture
+def high_confidence_relation(entity_slugs_in_db):
+    from app.llm.schemas import ExtractedRelation, ExtractedRole
+    return ExtractedRelation(
+        relation_type="treats",
+        roles=[
+            ExtractedRole(entity_slug="drug-agent", role_type="agent"),
+            ExtractedRole(entity_slug="pain-condition", role_type="target"),
+        ],
+        confidence="high",
+        text_span="Drug-agent treats pain-condition in clinical studies",
+    )
+
+
+@pytest.mark.asyncio
+async def test_stage_relation_auto_verifies_and_materializes(
+    review_service, sample_source, entity_slugs_in_db, high_confidence_relation,
+    high_confidence_validation
+):
+    """High-confidence relation should auto-verify and materialize into a Relation row."""
+    from app.models.relation import Relation
+    from sqlalchemy import select
+
+    staged, relation_id = await review_service.stage_extraction(
+        extraction_type=ExtractionType.RELATION,
+        extraction_data=high_confidence_relation,
+        source_id=sample_source.id,
+        validation_result=high_confidence_validation,
+        llm_model="claude-sonnet-4-5",
+        llm_provider="anthropic",
+        auto_materialize=True,
+    )
+
+    assert staged.status == ExtractionStatus.AUTO_VERIFIED
+    assert relation_id is not None
+    assert staged.materialized_relation_id == relation_id
+
+    result = await review_service.db.execute(select(Relation).where(Relation.id == relation_id))
+    assert result.scalar_one_or_none() is not None
+
+
+@pytest.mark.asyncio
+async def test_stage_relation_without_matching_entities_skips_roles(
+    review_service, sample_source, high_confidence_validation
+):
+    """Relation with unknown entity slugs materializes but skips missing roles (no crash)."""
+    from app.llm.schemas import ExtractedRelation, ExtractedRole
+    from app.models.relation import Relation
+    from sqlalchemy import select
+
+    relation = ExtractedRelation(
+        relation_type="treats",
+        roles=[
+            ExtractedRole(entity_slug="unknown-entity-a", role_type="agent"),
+            ExtractedRole(entity_slug="unknown-entity-b", role_type="target"),
+        ],
+        confidence="high",
+        text_span="unknown-entity-a treats unknown-entity-b",
+    )
+
+    staged, relation_id = await review_service.stage_extraction(
+        extraction_type=ExtractionType.RELATION,
+        extraction_data=relation,
+        source_id=sample_source.id,
+        validation_result=high_confidence_validation,
+        auto_materialize=True,
+    )
+
+    # Relation row should still be created even if no roles could be linked
+    assert relation_id is not None
+    result = await review_service.db.execute(select(Relation).where(Relation.id == relation_id))
+    assert result.scalar_one_or_none() is not None
+
+
+# === Test Claim Staging ===
+
+
+@pytest.mark.asyncio
+async def test_stage_claim_creates_record_without_materializing(
+    review_service, sample_source, uncertain_validation
+):
+    """Claims are staged but never materialized (not yet implemented)."""
+    from app.llm.schemas import ExtractedClaim
+
+    claim = ExtractedClaim(
+        claim_text="Duloxetine reduces pain scores by 50% in fibromyalgia patients",
+        entities_involved=["duloxetine", "fibromyalgia"],
+        claim_type="efficacy",
+        evidence_strength="moderate",
+        confidence="medium",
+        text_span="reduces pain scores by 50%",
+    )
+
+    staged, materialized_id = await review_service.stage_extraction(
+        extraction_type=ExtractionType.CLAIM,
+        extraction_data=claim,
+        source_id=sample_source.id,
+        validation_result=uncertain_validation,
+        auto_materialize=True,
+    )
+
+    assert staged is not None
+    assert staged.extraction_type == ExtractionType.CLAIM
+    assert materialized_id is None  # Claims not yet materializable
+    assert staged.materialized_entity_id is None
+    assert staged.materialized_relation_id is None
+
+
+@pytest.mark.asyncio
+async def test_stage_batch_with_all_types(
+    review_service, sample_source, entity_slugs_in_db,
+    high_confidence_entity, uncertain_entity,
+    high_confidence_validation, uncertain_validation
+):
+    """stage_batch should handle entities, relations, and claims together."""
+    from app.llm.schemas import ExtractedClaim, ExtractedRelation, ExtractedRole
+
+    relation = ExtractedRelation(
+        relation_type="treats",
+        roles=[
+            ExtractedRole(entity_slug="drug-agent", role_type="agent"),
+            ExtractedRole(entity_slug="pain-condition", role_type="target"),
+        ],
+        confidence="medium",
+        text_span="drug-agent treats pain-condition",
+    )
+    claim = ExtractedClaim(
+        claim_text="Drug-agent reduces pain scores significantly in clinical trials",
+        entities_involved=["drug-agent"],
+        claim_type="efficacy",
+        evidence_strength="moderate",
+        confidence="medium",
+        text_span="reduces pain scores significantly",
+    )
+
+    staged_list = await review_service.stage_batch(
+        entities=[(high_confidence_entity, high_confidence_validation)],
+        relations=[(relation, uncertain_validation)],
+        claims=[(claim, uncertain_validation)],
+        source_id=sample_source.id,
+        llm_model="claude-sonnet-4-5",
+        llm_provider="anthropic",
+    )
+
+    assert len(staged_list) == 3
+    types = {s.extraction_type for s in staged_list}
+    assert ExtractionType.ENTITY in types
+    assert ExtractionType.RELATION in types
+    assert ExtractionType.CLAIM in types
+
+
+# === Test auto_commit_eligible_extractions ===
+
+
+@pytest.mark.asyncio
+async def test_auto_commit_eligible_extractions_when_disabled(db_session, sample_source):
+    """When auto-commit is disabled, returns early with 'disabled' message."""
+    service = ExtractionReviewService(db=db_session, auto_commit_enabled=False)
+    response = await service.auto_commit_eligible_extractions()
+    assert response.auto_committed == 0
+    assert "disabled" in response.message.lower()
+
+
+@pytest.mark.asyncio
+async def test_auto_commit_eligible_extractions_no_eligible(review_service):
+    """When no eligible pending extractions exist, reports 0 committed."""
+    response = await review_service.auto_commit_eligible_extractions()
+    assert response.auto_committed == 0
+
+
+@pytest.mark.asyncio
+async def test_auto_commit_eligible_extractions_materializes_pending(
+    review_service, sample_source, high_confidence_entity, high_confidence_validation
+):
+    """Eligible pending extractions should be auto-approved and materialized."""
+    from sqlalchemy import select
+
+    # Stage without materializing — high confidence stays PENDING with auto_commit_eligible=True
+    staged, entity_id = await review_service.stage_extraction(
+        extraction_type=ExtractionType.ENTITY,
+        extraction_data=high_confidence_entity,
+        source_id=sample_source.id,
+        validation_result=high_confidence_validation,
+        auto_materialize=False,
+    )
+    assert staged.status == ExtractionStatus.PENDING
+    assert staged.auto_commit_eligible is True
+    assert entity_id is None
+
+    response = await review_service.auto_commit_eligible_extractions()
+
+    assert response.auto_committed == 1
+
+    # Verify DB state: APPROVED and materialized
+    result = await review_service.db.execute(
+        select(StagedExtraction).where(StagedExtraction.id == staged.id)
+    )
+    updated = result.scalar_one()
+    assert updated.status == ExtractionStatus.APPROVED
+    assert updated.materialized_entity_id is not None
+
+
+# === Test materialize_extraction Edge Cases ===
+
+
+@pytest.mark.asyncio
+async def test_materialize_extraction_not_found(review_service):
+    """materialize_extraction returns failure when ID does not exist."""
+    fake_id = uuid4()
+    result = await review_service.materialize_extraction(fake_id)
+    assert result.success is False
+    assert "not found" in result.error.lower()
+
+
+@pytest.mark.asyncio
+async def test_materialize_extraction_wrong_status(
+    review_service, sample_source, uncertain_entity, uncertain_validation
+):
+    """materialize_extraction returns failure when extraction is not APPROVED."""
+    staged, _ = await review_service.stage_extraction(
+        extraction_type=ExtractionType.ENTITY,
+        extraction_data=uncertain_entity,
+        source_id=sample_source.id,
+        validation_result=uncertain_validation,
+        auto_materialize=False,
+    )
+    assert staged.status == ExtractionStatus.PENDING
+
+    result = await review_service.materialize_extraction(staged.id)
+    assert result.success is False
+    assert "not approved" in result.error.lower()
+
+
+@pytest.mark.asyncio
+async def test_materialize_extraction_after_manual_approval(
+    review_service, sample_source, sample_user, uncertain_entity, uncertain_validation
+):
+    """materialize_extraction succeeds on an APPROVED extraction that was not yet materialized."""
+    from sqlalchemy import select
+
+    staged, _ = await review_service.stage_extraction(
+        extraction_type=ExtractionType.ENTITY,
+        extraction_data=uncertain_entity,
+        source_id=sample_source.id,
+        validation_result=uncertain_validation,
+        auto_materialize=False,
+    )
+
+    # Approve without materializing
+    approval = await review_service.approve_extraction(
+        extraction_id=staged.id,
+        reviewer_id=sample_user.id,
+        auto_materialize=False,
+    )
+    assert approval.success is True
+
+    # Materialize explicitly
+    result = await review_service.materialize_extraction(staged.id)
+    assert result.success is True
+    assert result.materialized_entity_id is not None
+
+
+@pytest.mark.asyncio
+async def test_materialize_extraction_claim_not_implemented(
+    review_service, sample_source, uncertain_validation, sample_user
+):
+    """Attempting to materialize a claim returns a clear 'not implemented' error."""
+    from app.llm.schemas import ExtractedClaim
+
+    claim = ExtractedClaim(
+        claim_text="Some factual claim about a drug with sufficient length",
+        entities_involved=["duloxetine"],
+        claim_type="efficacy",
+        evidence_strength="moderate",
+        confidence="medium",
+        text_span="factual claim about a drug",
+    )
+
+    staged, _ = await review_service.stage_extraction(
+        extraction_type=ExtractionType.CLAIM,
+        extraction_data=claim,
+        source_id=sample_source.id,
+        validation_result=uncertain_validation,
+        auto_materialize=False,
+    )
+
+    # Approve without materializing
+    await review_service.approve_extraction(
+        extraction_id=staged.id,
+        reviewer_id=sample_user.id,
+        auto_materialize=False,
+    )
+
+    result = await review_service.materialize_extraction(staged.id)
+    assert result.success is False
+    assert "not yet implemented" in result.error.lower()
+
+
+# === Test Review Edge Cases (not found) ===
+
+
+@pytest.mark.asyncio
+async def test_approve_extraction_not_found(review_service, sample_user):
+    """approve_extraction returns failure result for unknown ID."""
+    result = await review_service.approve_extraction(
+        extraction_id=uuid4(),
+        reviewer_id=sample_user.id,
+    )
+    assert result.success is False
+    assert result.error is not None
+
+
+@pytest.mark.asyncio
+async def test_reject_extraction_not_found(review_service, sample_user):
+    """reject_extraction returns False for unknown ID."""
+    success = await review_service.reject_extraction(
+        extraction_id=uuid4(),
+        reviewer_id=sample_user.id,
+    )
+    assert success is False
+
+
+@pytest.mark.asyncio
+async def test_delete_extraction_not_found(review_service):
+    """delete_extraction returns False for unknown ID."""
+    deleted = await review_service.delete_extraction(uuid4())
+    assert deleted is False
+
+
+# === Test Additional list_extractions Filters ===
+
+
+@pytest.mark.asyncio
+async def test_list_extractions_filter_by_type(
+    review_service, sample_source, high_confidence_entity, high_confidence_validation,
+    entity_slugs_in_db, high_confidence_relation
+):
+    """Should return only extractions matching the requested extraction_type."""
+    from app.schemas.staged_extraction import StagedExtractionFilters
+
+    await review_service.stage_extraction(
+        ExtractionType.ENTITY, high_confidence_entity, sample_source.id,
+        high_confidence_validation, auto_materialize=True,
+    )
+    await review_service.stage_extraction(
+        ExtractionType.RELATION, high_confidence_relation, sample_source.id,
+        high_confidence_validation, auto_materialize=True,
+    )
+
+    entities, _ = await review_service.list_extractions(
+        StagedExtractionFilters(extraction_type="entity", page_size=10)
+    )
+    assert all(e.extraction_type == ExtractionType.ENTITY for e in entities)
+
+    relations, _ = await review_service.list_extractions(
+        StagedExtractionFilters(extraction_type="relation", page_size=10)
+    )
+    assert all(r.extraction_type == ExtractionType.RELATION for r in relations)
+
+
+@pytest.mark.asyncio
+async def test_list_extractions_filter_by_source(
+    review_service, sample_source, db_session, sample_user,
+    uncertain_entity, uncertain_validation
+):
+    """Should return only extractions from the specified source."""
+    from app.models.source import Source
+    from app.models.source_revision import SourceRevision
+    from app.schemas.staged_extraction import StagedExtractionFilters
+
+    # Create a second source
+    source2 = Source(id=uuid4())
+    db_session.add(source2)
+    await db_session.flush()
+    db_session.add(SourceRevision(
+        id=uuid4(), source_id=source2.id, kind="document",
+        title="Another Document", url="test://other",
+        is_current=True, created_by_user_id=sample_user.id,
+    ))
+    await db_session.commit()
+
+    await review_service.stage_extraction(
+        ExtractionType.ENTITY, uncertain_entity, sample_source.id,
+        uncertain_validation, auto_materialize=False,
+    )
+    await review_service.stage_extraction(
+        ExtractionType.ENTITY,
+        ExtractedEntity(
+            slug="other-entity", category="drug",
+            summary="Entity from another source document for testing",
+            text_span="other source text", confidence="medium",
+        ),
+        source2.id, uncertain_validation, auto_materialize=False,
+    )
+
+    results, count = await review_service.list_extractions(
+        StagedExtractionFilters(source_id=sample_source.id, page_size=10)
+    )
+    assert count == 1
+    assert results[0].source_id == sample_source.id
+
+
+@pytest.mark.asyncio
+async def test_list_extractions_filter_has_no_flags(
+    review_service, sample_source,
+    high_confidence_entity, uncertain_entity,
+    high_confidence_validation, uncertain_validation
+):
+    """has_flags=False should return only extractions with empty validation_flags."""
+    from app.schemas.staged_extraction import StagedExtractionFilters
+
+    await review_service.stage_extraction(
+        ExtractionType.ENTITY, high_confidence_entity, sample_source.id,
+        high_confidence_validation, auto_materialize=True,
+    )
+    await review_service.stage_extraction(
+        ExtractionType.ENTITY, uncertain_entity, sample_source.id,
+        uncertain_validation, auto_materialize=True,
+    )
+
+    results, count = await review_service.list_extractions(
+        StagedExtractionFilters(has_flags=False, page_size=10)
+    )
+    assert count >= 1
+    assert all(len(e.validation_flags) == 0 for e in results)
+
+
+@pytest.mark.asyncio
+async def test_list_extractions_pagination(
+    review_service, sample_source, uncertain_validation
+):
+    """Pagination should return the correct page and total count."""
+    from app.schemas.staged_extraction import StagedExtractionFilters
+
+    for i in range(5):
+        await review_service.stage_extraction(
+            ExtractionType.ENTITY,
+            ExtractedEntity(
+                slug=f"paged-entity-{i}", category="drug",
+                summary=f"Entity {i} created for pagination testing purposes",
+                text_span="affecting serotonin levels", confidence="medium",
+            ),
+            sample_source.id, uncertain_validation, auto_materialize=False,
+        )
+
+    page1, total = await review_service.list_extractions(
+        StagedExtractionFilters(
+            status="pending", page=1, page_size=3,
+            sort_by="created_at", sort_order="asc",
+        )
+    )
+    page2, _ = await review_service.list_extractions(
+        StagedExtractionFilters(
+            status="pending", page=2, page_size=3,
+            sort_by="created_at", sort_order="asc",
+        )
+    )
+
+    assert total >= 5
+    assert len(page1) == 3
+    assert len(page2) >= 2
+    # Pages should not overlap
+    page1_ids = {e.id for e in page1}
+    page2_ids = {e.id for e in page2}
+    assert page1_ids.isdisjoint(page2_ids)
+
+
+@pytest.mark.asyncio
+async def test_list_extractions_sort_by_validation_score(
+    review_service, sample_source, high_confidence_entity, uncertain_entity,
+    high_confidence_validation, uncertain_validation
+):
+    """sort_by=validation_score desc should return highest score first."""
+    from app.schemas.staged_extraction import StagedExtractionFilters
+
+    await review_service.stage_extraction(
+        ExtractionType.ENTITY, high_confidence_entity, sample_source.id,
+        high_confidence_validation, auto_materialize=True,
+    )
+    await review_service.stage_extraction(
+        ExtractionType.ENTITY, uncertain_entity, sample_source.id,
+        uncertain_validation, auto_materialize=True,
+    )
+
+    results, _ = await review_service.list_extractions(
+        StagedExtractionFilters(sort_by="validation_score", sort_order="desc", page_size=10)
+    )
+    scores = [e.validation_score for e in results]
+    assert scores == sorted(scores, reverse=True)
+
+
+# === Test Batch Review with Reject Decision ===
+
+
+@pytest.mark.asyncio
+async def test_batch_review_reject_multiple(
+    review_service, sample_source, sample_user, uncertain_validation
+):
+    """Batch reject should update all targeted extractions to REJECTED."""
+    from sqlalchemy import select
+
+    staged_list = []
+    for i in range(3):
+        staged, _ = await review_service.stage_extraction(
+            extraction_type=ExtractionType.ENTITY,
+            extraction_data=ExtractedEntity(
+                slug=f"reject-entity-{i}", category="drug",
+                summary=f"Entity {i} for batch rejection workflow testing",
+                text_span="affecting serotonin levels", confidence="medium",
+            ),
+            source_id=sample_source.id,
+            validation_result=uncertain_validation,
+            auto_materialize=True,
+        )
+        staged_list.append(staged)
+
+    result = await review_service.batch_review(
+        extraction_ids=[s.id for s in staged_list],
+        decision="reject",
+        reviewer_id=sample_user.id,
+        notes="Batch rejection",
+    )
+
+    assert result.succeeded == 3
+    assert result.failed == 0
+
+    for staged in staged_list:
+        db_result = await review_service.db.execute(
+            select(StagedExtraction).where(StagedExtraction.id == staged.id)
+        )
+        updated = db_result.scalar_one()
+        assert updated.status == ExtractionStatus.REJECTED

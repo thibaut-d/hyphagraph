@@ -4,6 +4,7 @@ import { useReviewQueue } from "../hooks/useReviewQueue";
 import { useSelection } from "../hooks/useSelection";
 import { useReviewDialog } from "../hooks/useReviewDialog";
 import { ExtractionCard } from "../components/extraction/ExtractionCard";
+import type { ExtractionType } from "../api/extractionReview";
 
 import {
   Typography,
@@ -21,6 +22,8 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
@@ -37,6 +40,7 @@ export function ReviewQueueView() {
   // Filters state (kept in component for TextField binding)
   const [minScore, setMinScore] = useState<number | undefined>(undefined);
   const [onlyFlagged, setOnlyFlagged] = useState(false);
+  const [extractionType, setExtractionType] = useState<ExtractionType | undefined>(undefined);
 
   // Custom hooks
   const {
@@ -46,7 +50,7 @@ export function ReviewQueueView() {
     hasMore,
     loadMore,
     refresh
-  } = useReviewQueue({ pageSize: PAGE_SIZE, minScore, onlyFlagged });
+  } = useReviewQueue({ pageSize: PAGE_SIZE, minScore, onlyFlagged, extractionType });
 
   const {
     selectedIds,
@@ -163,23 +167,37 @@ export function ReviewQueueView() {
 
         {/* Filters */}
         <Paper sx={{ p: 2 }}>
-          <Stack direction="row" spacing={2} alignItems="center">
-            <TextField
-              label={t("review_queue.min_score_label")}
-              type="number"
+          <Stack spacing={2}>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <TextField
+                label={t("review_queue.min_score_label")}
+                type="number"
+                size="small"
+                value={minScore ?? ""}
+                onChange={(e) => setMinScore(e.target.value ? parseFloat(e.target.value) : undefined)}
+                inputProps={{ min: 0, max: 1, step: 0.1 }}
+                sx={{ width: 200 }}
+              />
+              <Button
+                variant={onlyFlagged ? "contained" : "outlined"}
+                onClick={() => setOnlyFlagged(!onlyFlagged)}
+                startIcon={<WarningIcon />}
+              >
+                {t("review_queue.only_flagged")}
+              </Button>
+            </Stack>
+            <ToggleButtonGroup
+              value={extractionType ?? "all"}
+              exclusive
+              onChange={(_e, value) => setExtractionType(value === "all" ? undefined : value as ExtractionType)}
               size="small"
-              value={minScore ?? ""}
-              onChange={(e) => setMinScore(e.target.value ? parseFloat(e.target.value) : undefined)}
-              inputProps={{ min: 0, max: 1, step: 0.1 }}
-              sx={{ width: 200 }}
-            />
-            <Button
-              variant={onlyFlagged ? "contained" : "outlined"}
-              onClick={() => setOnlyFlagged(!onlyFlagged)}
-              startIcon={<WarningIcon />}
+              aria-label={t("review_queue.type_filter_label")}
             >
-              {t("review_queue.only_flagged")}
-            </Button>
+              <ToggleButton value="all">{t("review_queue.type_all")}</ToggleButton>
+              <ToggleButton value="entity">{t("review_queue.type_entity")}</ToggleButton>
+              <ToggleButton value="relation">{t("review_queue.type_relation")}</ToggleButton>
+              <ToggleButton value="claim">{t("review_queue.type_claim")}</ToggleButton>
+            </ToggleButtonGroup>
           </Stack>
         </Paper>
 

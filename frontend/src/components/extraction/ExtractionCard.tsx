@@ -158,6 +158,15 @@ export function ExtractionCard({
                     {t("extraction_card.view_entity")}
                   </Button>
                 )}
+                {extraction.materialized_relation_id && (
+                  <Button
+                    size="small"
+                    component={RouterLink}
+                    to={`/relations/${extraction.materialized_relation_id}`}
+                  >
+                    {t("extraction_card.view_relation")}
+                  </Button>
+                )}
               </Stack>
             </Stack>
           }

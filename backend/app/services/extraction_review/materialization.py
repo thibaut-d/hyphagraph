@@ -61,7 +61,7 @@ async def materialize_relation(db: AsyncSession, staged: StagedExtraction) -> UU
     for role_data in relation_data.roles:
         entity_result = await db.execute(
             select(EntityRevision)
-            .where(EntityRevision.slug == role_data["entity_slug"])
+            .where(EntityRevision.slug == role_data.entity_slug)
             .where(EntityRevision.is_current == True)
             .limit(1)
         )
@@ -70,7 +70,7 @@ async def materialize_relation(db: AsyncSession, staged: StagedExtraction) -> UU
         if not entity_revision:
             logger.warning(
                 "Entity with slug '%s' not found, skipping role in relation %s",
-                role_data["entity_slug"],
+                role_data.entity_slug,
                 relation.id,
             )
             continue
@@ -79,7 +79,7 @@ async def materialize_relation(db: AsyncSession, staged: StagedExtraction) -> UU
             RelationRoleRevision(
                 relation_revision_id=revision.id,
                 entity_id=entity_revision.entity_id,
-                role_type=role_data["role_type"],
+                role_type=role_data.role_type,
             )
         )
 

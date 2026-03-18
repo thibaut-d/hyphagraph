@@ -1,6 +1,20 @@
 # Current Work
 
-**Last updated**: 2026-03-18 (Audit 20)
+**Last updated**: 2026-03-18 (Frontend review queue UI)
+
+## Recently Completed
+
+- **Frontend review queue UI** (579 frontend tests passing):
+  - Added extraction type filter (Entity/Relation/Claim `ToggleButtonGroup`) to `ReviewQueueView`.
+  - Wired `extraction_type` through `listPendingExtractions` API, `useReviewQueue` hook options, and view state.
+  - Refactored `useReviewQueue` to use options directly (removed redundant internal filter state that caused sync bugs with parent state).
+  - Added "View Relation" button to `ExtractionCard` for materialized relations.
+  - Added i18n keys (`type_filter_label`, `type_all/entity/relation/claim`, `view_relation`) to both `en.json` and `fr.json`.
+  - Added 20 tests in `ReviewQueueView.test.tsx` and 18 tests in `ExtractionCard.test.tsx`.
+
+- Added 26 unit tests for `ExtractionReviewService` (now 47/47 passing, 491 backend total).
+  - Covered: `check_auto_commit_eligible` pure fn, relation/claim staging, `auto_commit_eligible_extractions()`, `materialize_extraction` edge cases, approve/reject/delete not-found, `list_extractions` filters/pagination/sorting, batch reject.
+  - Fixed production bug: `materialize_relation` used `role_data["entity_slug"]` (dict subscript) on `ExtractedRole` Pydantic objects → now `role_data.entity_slug`.
 
 ## In Progress
 

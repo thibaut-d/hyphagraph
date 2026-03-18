@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import {
   listPendingExtractions,
   getReviewStats,
+  type ExtractionType,
   type StagedExtractionRead,
   type ReviewStats,
   type StagedExtractionFilters,
@@ -21,6 +22,7 @@ export interface UseReviewQueueOptions {
   pageSize?: number;
   minScore?: number;
   onlyFlagged?: boolean;
+  extractionType?: ExtractionType;
 }
 
 export interface UseReviewQueueReturn {
@@ -31,13 +33,13 @@ export interface UseReviewQueueReturn {
   hasMore: boolean;
   loadMore: () => void;
   refresh: () => void;
-  applyFilters: (minScore?: number, onlyFlagged?: boolean) => void;
+  applyFilters: (minScore?: number, onlyFlagged?: boolean, extractionType?: ExtractionType) => void;
 }
 
 export function useReviewQueue(
   options: UseReviewQueueOptions = {}
 ): UseReviewQueueReturn {
-  const { pageSize = 20, minScore: initialMinScore, onlyFlagged: initialOnlyFlagged } = options;
+  const { pageSize = 20, minScore, onlyFlagged = false, extractionType } = options;
   const handlePageError = usePageErrorHandler();
 
   const [extractions, setExtractions] = useState<StagedExtractionRead[]>([]);
@@ -45,8 +47,11 @@ export function useReviewQueue(
   const [isLoading, setIsLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [minScore, setMinScore] = useState<number | undefined>(initialMinScore);
-  const [onlyFlagged, setOnlyFlagged] = useState(initialOnlyFlagged || false);
+
+  // Reset to page 1 whenever filters change
+  useEffect(() => {
+    setPage(1);
+  }, [minScore, onlyFlagged, extractionType]);
 
   const loadExtractions = useCallback(
     async (reset: boolean = false) => {
@@ -56,6 +61,7 @@ export function useReviewQueue(
         const filters: StagedExtractionFilters = {
           page: reset ? 1 : page,
           page_size: pageSize,
+          extraction_type: extractionType,
           min_validation_score: minScore,
           has_flags: onlyFlagged || undefined,
         };
@@ -76,7 +82,7 @@ export function useReviewQueue(
         setIsLoading(false);
       }
     },
-    [handlePageError, page, pageSize, minScore, onlyFlagged]
+    [handlePageError, page, pageSize, extractionType, minScore, onlyFlagged]
   );
 
   const loadStats = useCallback(async () => {
@@ -99,16 +105,15 @@ export function useReviewQueue(
     loadStats();
   }, [loadExtractions, loadStats]);
 
-  const applyFilters = useCallback((newMinScore?: number, newOnlyFlagged?: boolean) => {
-    setMinScore(newMinScore);
-    setOnlyFlagged(newOnlyFlagged || false);
-    setPage(1);
+  // applyFilters is kept for backward compatibility; prefer passing options directly.
+  const applyFilters = useCallback((_minScore?: number, _onlyFlagged?: boolean, _extractionType?: ExtractionType) => {
+    // Filter state is owned by the caller via options; this is a no-op.
   }, []);
 
-  // Load initial data
+  // Load when page or filters change
   useEffect(() => {
     loadExtractions(false);
-  }, [page, minScore, onlyFlagged]);
+  }, [page, minScore, onlyFlagged, extractionType]);
 
   useEffect(() => {
     loadStats();
