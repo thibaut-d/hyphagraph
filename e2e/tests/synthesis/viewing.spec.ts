@@ -85,8 +85,9 @@ test.describe('Synthesis View', () => {
     await page.waitForLoadState('networkidle');
 
     // The page should not present synthesis as authoritative truth — it should
-    // display the entity slug/name and a computed nature indicator
-    await expect(page.locator(`text=${entitySlug}`).first()).toBeVisible({ timeout: 5000 });
+    // display the entity's summary/name and a computed nature indicator
+    // SynthesisView shows summary text, not slug
+    await expect(page.locator('text=Synthesis label entity').first()).toBeVisible({ timeout: 5000 });
   });
 
   test('should provide a back navigation to entity detail', async ({ page }) => {

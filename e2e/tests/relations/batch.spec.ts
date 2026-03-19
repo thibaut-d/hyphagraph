@@ -15,13 +15,14 @@ test.describe('Batch Relation Creation', () => {
 
   test('should load the batch relation creation page', async ({ page }) => {
     await page.goto('/relations/batch');
-    await page.waitForLoadState('networkidle');
-    await expect(page.locator('text=/batch|multiple relation/i').first()).toBeVisible({ timeout: 10000 });
+    await page.waitForLoadState('domcontentloaded');
+    // Page heading: t("batch_relations.page_title") = "Batch Create Relations"
+    await expect(page.getByRole('heading', { name: /batch/i })).toBeVisible({ timeout: 10000 });
   });
 
   test('should show a shared source selector', async ({ page }) => {
     await page.goto('/relations/batch');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // There should be a source selector applying to all rows
     const sourceSelector = page.getByLabel(/source/i).first();
@@ -32,7 +33,7 @@ test.describe('Batch Relation Creation', () => {
 
   test('should allow adding multiple relation rows', async ({ page }) => {
     await page.goto('/relations/batch');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Add row button
     const addRowButton = page.getByRole('button', { name: /add relation|add row|\+/i }).first();
@@ -52,6 +53,7 @@ test.describe('Batch Relation Creation', () => {
     // Create source and entities for the batch
     const sourceTitle = generateSourceName('batch-rel-source');
     await page.goto('/sources/new');
+    await page.waitForLoadState('domcontentloaded');
     await page.getByRole('textbox', { name: 'Title' }).fill(sourceTitle);
     await page.getByRole('textbox', { name: 'URL' }).fill('https://example.com/batch-rel');
     await page.getByRole('textbox', { name: /summary.*english/i }).fill('Source for batch relation');
@@ -60,6 +62,7 @@ test.describe('Batch Relation Creation', () => {
 
     const slug1 = generateEntityName('batch-e1').toLowerCase().replace(/\s+/g, '-');
     await page.goto('/entities/new');
+    await page.waitForLoadState('domcontentloaded');
     await page.getByRole('textbox', { name: 'Slug' }).fill(slug1);
     await page.getByRole('textbox', { name: /summary.*english/i }).fill('Entity 1 for batch');
     await page.getByRole('button', { name: /create|submit/i }).click();
@@ -67,6 +70,7 @@ test.describe('Batch Relation Creation', () => {
 
     const slug2 = generateEntityName('batch-e2').toLowerCase().replace(/\s+/g, '-');
     await page.goto('/entities/new');
+    await page.waitForLoadState('domcontentloaded');
     await page.getByRole('textbox', { name: 'Slug' }).fill(slug2);
     await page.getByRole('textbox', { name: /summary.*english/i }).fill('Entity 2 for batch');
     await page.getByRole('button', { name: /create|submit/i }).click();
@@ -74,7 +78,7 @@ test.describe('Batch Relation Creation', () => {
 
     // Now go to batch page and fill in the form
     await page.goto('/relations/batch');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Select a source
     const sourceSelect = page.getByLabel(/source/i).first();

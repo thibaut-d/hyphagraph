@@ -28,6 +28,7 @@ test.describe('Source Export', () => {
     // Create a source to ensure there is something to export
     const sourceTitle = generateSourceName('export-test');
     await page.goto('/sources/new');
+    await page.waitForLoadState('domcontentloaded');
     await page.getByRole('textbox', { name: 'Title' }).fill(sourceTitle);
     await page.getByRole('textbox', { name: 'URL' }).fill('https://example.com/export-test');
     await page.getByRole('textbox', { name: /summary.*english/i }).fill('Source for export test');

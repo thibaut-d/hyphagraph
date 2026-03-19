@@ -14,7 +14,7 @@ test.describe('Navigation', () => {
 
     test('should show persistent AppBar on every page', async ({ page }) => {
       for (const path of ['/', '/entities', '/sources', '/search']) {
-        await page.goto(path);
+        await page.goto(path, { waitUntil: 'domcontentloaded' });
         await expect(page.getByRole('banner')).toBeVisible();
         await expect(page.locator('text=HyphaGraph')).toBeVisible();
       }
@@ -68,8 +68,8 @@ test.describe('Navigation', () => {
     test('should open mobile drawer on hamburger click', async ({ page }) => {
       await page.goto('/');
       await page.getByRole('button', { name: /open menu/i }).click();
-      // Drawer should appear
-      await expect(page.getByRole('navigation')).toBeVisible({ timeout: 3000 });
+      // MobileDrawer uses MuiDrawer-paper (no role="navigation" on the drawer element)
+      await expect(page.locator('.MuiDrawer-paper')).toBeVisible({ timeout: 3000 });
     });
 
     test('should close drawer after navigating to a link', async ({ page }) => {

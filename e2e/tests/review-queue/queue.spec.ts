@@ -14,20 +14,20 @@ test.describe('LLM Extraction Review Queue', () => {
 
   test('should load the review queue page', async ({ page }) => {
     await page.goto('/review-queue');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Page heading from t("menu.review_queue")
     await expect(
-      page.locator('text=/review queue|review/i').first()
+      page.getByRole('heading', { name: 'Review Queue' })
     ).toBeVisible({ timeout: 10000 });
   });
 
   test('should show statistics cards (pending, auto-verified, avg score, flagged)', async ({ page }) => {
     await page.goto('/review-queue');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Stats cards are only shown when stats data loads. Verify heading at minimum.
-    const heading = page.locator('text=/review queue/i').first();
+    const heading = page.getByRole('heading', { name: 'Review Queue' });
     await expect(heading).toBeVisible({ timeout: 10000 });
 
     // Stats section may show these labels
@@ -39,7 +39,7 @@ test.describe('LLM Extraction Review Queue', () => {
 
   test('should show empty state when queue is empty', async ({ page }) => {
     await page.goto('/review-queue');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // When empty, shows no_pending message (t("review_queue.no_pending_title"))
     const emptyState = page.locator('text=/no pending|queue.*empty|all.*reviewed/i').first();
@@ -50,7 +50,7 @@ test.describe('LLM Extraction Review Queue', () => {
 
   test('should show a refresh button', async ({ page }) => {
     await page.goto('/review-queue');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const refreshButton = page.getByRole('button', { name: /refresh/i });
     await expect(refreshButton).toBeVisible({ timeout: 10000 });
@@ -60,7 +60,7 @@ test.describe('LLM Extraction Review Queue', () => {
 
   test('should show minimum score filter input', async ({ page }) => {
     await page.goto('/review-queue');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Min score filter — TextField labeled with min_score_label
     const minScoreInput = page.getByLabel(/min.*score|score/i).first();
@@ -71,7 +71,7 @@ test.describe('LLM Extraction Review Queue', () => {
 
   test('should show flagged-only filter toggle', async ({ page }) => {
     await page.goto('/review-queue');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Button for onlyFlagged toggle
     const flaggedButton = page.getByRole('button', { name: /flagged/i });
@@ -82,7 +82,7 @@ test.describe('LLM Extraction Review Queue', () => {
 
   test('should show extraction type filter (entity/relation/claim)', async ({ page }) => {
     await page.goto('/review-queue');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // ToggleButtonGroup with entity, relation, claim options
     const typeFilter = page.locator('[role="group"]').first();
@@ -99,14 +99,14 @@ test.describe('LLM Extraction Review Queue', () => {
 
   test('should apply extraction type filter without error', async ({ page }) => {
     await page.goto('/review-queue');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const entityToggle = page.getByRole('button', { name: /^entity$/i });
     if (await entityToggle.isVisible({ timeout: 5000 })) {
       await entityToggle.click();
       await page.waitForTimeout(500);
       // Page should still be functional after filter change
-      await expect(page.locator('text=/review queue/i').first()).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Review Queue' })).toBeVisible();
     }
   });
 
@@ -116,7 +116,7 @@ test.describe('LLM Extraction Review Queue', () => {
 
   test('should show select-all button when extractions are present', async ({ page }) => {
     await page.goto('/review-queue');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Select All button only renders when extractions.length > 0
     const selectAllButton = page.getByRole('button', { name: /select all/i });
@@ -128,7 +128,7 @@ test.describe('LLM Extraction Review Queue', () => {
   // US-LLM-03 — Batch Approve / Reject
   test('should show batch action buttons when items are selected', async ({ page }) => {
     await page.goto('/review-queue');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const selectAllButton = page.getByRole('button', { name: /select all/i });
     if (await selectAllButton.isVisible({ timeout: 3000 })) {
@@ -148,7 +148,7 @@ test.describe('LLM Extraction Review Queue', () => {
   // US-LLM-05 — Navigate from extraction to entity/relation
   test('should show entity/relation links in extraction cards when queue has items', async ({ page }) => {
     await page.goto('/review-queue');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // If there are extraction cards, each should have View Entity or View Relation links
     const viewEntityLink = page.getByRole('link', { name: /view entity/i }).first();

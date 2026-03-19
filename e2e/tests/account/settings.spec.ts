@@ -59,8 +59,8 @@ test.describe('Account Settings', () => {
     await page.waitForLoadState('networkidle');
 
     const currentPasswordField = page.getByLabel(/current.*password|old.*password/i);
-    const newPasswordField = page.getByLabel(/new.*password/i).first();
-    const confirmPasswordField = page.getByLabel(/confirm.*password|repeat.*password/i);
+    const newPasswordField = page.getByLabel('New Password', { exact: true });
+    const confirmPasswordField = page.getByLabel('Confirm New Password', { exact: true });
 
     if (await newPasswordField.isVisible({ timeout: 3000 })) {
       if (await currentPasswordField.isVisible({ timeout: 1000 })) {
@@ -106,8 +106,8 @@ test.describe('Account Settings', () => {
     await page.waitForLoadState('networkidle');
 
     const currentPasswordField = page.getByLabel(/current.*password|old.*password/i);
-    const newPasswordField = page.getByLabel(/new.*password/i).first();
-    const confirmPasswordField = page.getByLabel(/confirm.*password|repeat.*password/i);
+    const newPasswordField = page.getByLabel('New Password', { exact: true });
+    const confirmPasswordField = page.getByLabel('Confirm New Password', { exact: true });
 
     if (await newPasswordField.isVisible({ timeout: 3000 })) {
       if (await currentPasswordField.isVisible({ timeout: 1000 })) {

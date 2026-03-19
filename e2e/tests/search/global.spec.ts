@@ -82,6 +82,7 @@ test.describe('Global Search', () => {
   test('should return source results matching a query', async ({ page }) => {
     const sourceTitle = generateSourceName('searchable-source');
     await page.goto('/sources/new');
+    await page.waitForLoadState('domcontentloaded');
     await page.getByRole('textbox', { name: 'Title' }).fill(sourceTitle);
     await page.getByRole('textbox', { name: 'URL' }).fill('https://example.com/searchable-source');
     await page.getByRole('textbox', { name: /summary.*english/i }).fill('Searchable source for global search');

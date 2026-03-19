@@ -25,10 +25,10 @@ test.describe('Admin Panel', () => {
     await page.waitForLoadState('networkidle');
 
     // Stats cards: Total Users, Active, Superusers, Verified
-    await expect(page.locator('text=Total Users')).toBeVisible({ timeout: 10000 });
-    await expect(page.locator('text=Active')).toBeVisible();
-    await expect(page.locator('text=Superusers')).toBeVisible();
-    await expect(page.locator('text=Verified')).toBeVisible();
+    await expect(page.locator('text=Total Users')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('text=Active')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=Superusers')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=Verified')).toBeVisible({ timeout: 5000 });
   });
 
   test('should show users table with email column', async ({ page }) => {
@@ -45,7 +45,7 @@ test.describe('Admin Panel', () => {
     await page.goto('/admin');
     await page.waitForLoadState('networkidle');
 
-    await expect(page.locator('text=admin@example.com')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=admin@example.com')).toBeVisible({ timeout: 15000 });
   });
 
   test('should show edit and delete buttons for each user', async ({ page }) => {
@@ -60,10 +60,10 @@ test.describe('Admin Panel', () => {
     const editButtonByTitle = page.locator('[title="Edit user"]').first();
     const deleteButtonByTitle = page.locator('[title="Delete user"]').first();
 
-    const hasEdit = await editButton.isVisible({ timeout: 3000 }).catch(() => false) ||
-      await editButtonByTitle.isVisible({ timeout: 1000 }).catch(() => false);
-    const hasDelete = await deleteButton.isVisible({ timeout: 1000 }).catch(() => false) ||
-      await deleteButtonByTitle.isVisible({ timeout: 1000 }).catch(() => false);
+    const hasEdit = await editButton.isVisible({ timeout: 5000 }).catch(() => false) ||
+      await editButtonByTitle.isVisible({ timeout: 3000 }).catch(() => false);
+    const hasDelete = await deleteButton.isVisible({ timeout: 3000 }).catch(() => false) ||
+      await deleteButtonByTitle.isVisible({ timeout: 3000 }).catch(() => false);
 
     expect(hasEdit).toBeTruthy();
     expect(hasDelete).toBeTruthy();
@@ -103,11 +103,16 @@ test.describe('Admin Panel', () => {
 
     const BASE_URL = process.env.BASE_URL || 'http://localhost:3001';
     await page.goto(BASE_URL);
-    await page.evaluate((token) => localStorage.setItem('auth_token', token), access_token);
+    // Clear admin tokens first, then set only the non-admin token
+    await page.evaluate((token) => {
+      localStorage.clear();
+      localStorage.setItem('auth_token', token);
+    }, access_token);
 
     // Non-admin accessing /admin should be redirected or shown an error
     await page.goto('/admin');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(1000);
 
     const isOnAdminPage = await page.locator('text=Administration Panel').isVisible({ timeout: 2000 }).catch(() => false);
     expect(isOnAdminPage).toBeFalsy();

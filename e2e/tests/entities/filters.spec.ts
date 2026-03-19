@@ -61,8 +61,8 @@ test.describe('Entity Filters', () => {
       // Create an entity with a known slug to check after filtering
       const entitySlug = generateEntityName('filter-score-test').toLowerCase().replace(/\s+/g, '-');
       await page.goto('/entities/new');
-      await page.getByLabel(/slug/i).fill(entitySlug);
-      await page.getByLabel(/summary.*english/i).fill('Entity for filter score test');
+      await page.getByRole('textbox', { name: 'Slug' }).fill(entitySlug);
+      await page.getByRole('textbox', { name: /summary.*english/i }).fill('Entity for filter score test');
       await page.getByRole('button', { name: /create|submit/i }).click();
       await page.waitForURL(/\/entities\/[a-f0-9-]+/);
 
@@ -70,7 +70,7 @@ test.describe('Entity Filters', () => {
 
       // Navigate to entity and note any displayed scores
       await page.goto(`/entities/${entityId}`);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // The page should load consistently — scores are computed server-side and
       // are not affected by client-side display filters

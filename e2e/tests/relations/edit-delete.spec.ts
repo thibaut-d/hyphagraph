@@ -14,6 +14,7 @@ test.describe('Relation Edit and Delete', () => {
     // Create prerequisite source
     const sourceTitle = generateSourceName('rel-edit-source');
     await page.goto('/sources/new');
+    await page.waitForLoadState('domcontentloaded');
     await page.getByRole('textbox', { name: 'Title' }).fill(sourceTitle);
     await page.getByRole('textbox', { name: 'URL' }).fill('https://example.com/rel-edit-source');
     await page.getByRole('textbox', { name: /summary.*english/i }).fill('Source for relation edit tests');
@@ -24,6 +25,7 @@ test.describe('Relation Edit and Delete', () => {
     // Create two entities
     const slug1 = generateEntityName('rel-edit-e1').toLowerCase().replace(/\s+/g, '-');
     await page.goto('/entities/new');
+    await page.waitForLoadState('domcontentloaded');
     await page.getByRole('textbox', { name: 'Slug' }).fill(slug1);
     await page.getByRole('textbox', { name: /summary.*english/i }).fill('Entity 1 for relation edit');
     await page.getByRole('button', { name: /create|submit/i }).click();
@@ -32,6 +34,7 @@ test.describe('Relation Edit and Delete', () => {
 
     const slug2 = generateEntityName('rel-edit-e2').toLowerCase().replace(/\s+/g, '-');
     await page.goto('/entities/new');
+    await page.waitForLoadState('domcontentloaded');
     await page.getByRole('textbox', { name: 'Slug' }).fill(slug2);
     await page.getByRole('textbox', { name: /summary.*english/i }).fill('Entity 2 for relation edit');
     await page.getByRole('button', { name: /create|submit/i }).click();
@@ -84,7 +87,7 @@ test.describe('Relation Edit and Delete', () => {
     if (!relationId) test.skip();
 
     await page.goto(`/relations/${relationId}/edit`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // The kind field should be pre-filled
     const kindField = page.getByLabel(/relation kind|kind/i);
@@ -97,7 +100,7 @@ test.describe('Relation Edit and Delete', () => {
     if (!relationId) test.skip();
 
     await page.goto(`/relations/${relationId}/edit`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const kindField = page.getByLabel(/relation kind|kind/i);
     if (await kindField.isVisible({ timeout: 3000 })) {
