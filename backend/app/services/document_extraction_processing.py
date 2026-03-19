@@ -161,7 +161,7 @@ class BulkCreationServiceProtocol(Protocol):
         entity_mapping: SlugEntityMap,
         source_id: UUID,
         user_id: UUID | None,
-    ) -> list[UUID]: ...
+    ) -> tuple[list[ExtractedRelation], list[UUID]]: ...
 
 
 class BulkCreationServiceFactory(Protocol):
@@ -532,9 +532,8 @@ async def fetch_document_from_url(
         )
 
     article = await pubmed_fetcher.fetch_by_pmid(pmid)
-    source = await ensure_source_exists(db, source_id)
-    if source:
-        await _update_source_revision_from_pubmed(db, source_id=source_id, article=article)
+    await ensure_source_exists(db, source_id)
+    await _update_source_revision_from_pubmed(db, source_id=source_id, article=article)
 
     return FetchedDocument(
         text=article.full_text,
@@ -694,9 +693,10 @@ async def save_extraction_to_graph(
 
     entity_mapping.update(request.entity_links)
 
+    created_relations: list[ExtractedRelation] = []
     relation_ids: list[UUID] = []
     if request.relations_to_create:
-        relation_ids = await bulk_service.bulk_create_relations(
+        created_relations, relation_ids = await bulk_service.bulk_create_relations(
             relations=request.relations_to_create,
             entity_mapping=entity_mapping,
             source_id=source_id,
@@ -707,6 +707,8 @@ async def save_extraction_to_graph(
 
     # Link staged extraction records to their materialized graph items (no-op
     # if no staged extractions exist for this source).
+    # Use only successfully-created relations so approved_relations and
+    # approved_relation_ids remain aligned even when some entries were skipped.
     created_slug_to_id = {
         e.slug: entity_mapping[e.slug]
         for e in request.entities_to_create
@@ -717,7 +719,7 @@ async def save_extraction_to_graph(
         source_id=source_id,
         approved_entity_slugs_to_id=created_slug_to_id,
         rejected_entity_slugs=set(request.entity_links.keys()),
-        approved_relations=request.relations_to_create,
+        approved_relations=created_relations,
         approved_relation_ids=relation_ids,
         user_id=user_id,
     )

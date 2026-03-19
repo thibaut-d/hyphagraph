@@ -144,15 +144,14 @@ class TextSpanValidator:
 
         if self.allow_fuzzy_match:
             fuzzy_match, similarity = self._find_fuzzy_match(relation.text_span, source_text)
-            if fuzzy_match and similarity >= self.fuzzy_threshold:
-                if similarity >= 0.85:
-                    return ValidationResult(
-                        is_valid=True,
-                        confidence_adjustment=0.9 * similarity,
-                        validation_score=similarity,
-                        flags=["fuzzy_match"],
-                        matched_span=fuzzy_match,
-                    )
+            if fuzzy_match and similarity >= max(self.fuzzy_threshold, 0.85):
+                return ValidationResult(
+                    is_valid=True,
+                    confidence_adjustment=0.9 * similarity,
+                    validation_score=similarity,
+                    flags=["fuzzy_match"],
+                    matched_span=fuzzy_match,
+                )
 
         if self.validation_level == "strict":
             return ValidationResult(

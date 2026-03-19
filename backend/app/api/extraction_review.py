@@ -81,6 +81,40 @@ async def get_review_stats(
     return await service.get_stats()
 
 
+@router.get("/all", response_model=StagedExtractionListResponse)
+async def list_all_extractions(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=100),
+    status: str | None = None,
+    extraction_type: str | None = None,
+    source_id: UUID | None = None,
+    service: ExtractionReviewService = Depends(get_extraction_review_service),
+    current_user: User = Depends(get_current_active_superuser),
+):
+    """
+    List all staged extractions with filtering.
+
+    Admin only. Allows viewing extractions in any status.
+    """
+    filters = StagedExtractionFilters(
+        status=status,
+        extraction_type=extraction_type,
+        source_id=source_id,
+        page=page,
+        page_size=page_size,
+    )
+
+    extractions, total = await service.list_extractions(filters)
+
+    return StagedExtractionListResponse(
+        extractions=[StagedExtractionRead.model_validate(e) for e in extractions],
+        total=total,
+        page=page,
+        page_size=page_size,
+        has_more=(page * page_size) < total,
+    )
+
+
 @router.get("/{extraction_id}", response_model=StagedExtractionRead)
 async def get_extraction(
     extraction_id: UUID,
@@ -129,6 +163,15 @@ async def review_extraction(
         )
         return result
     else:  # reject
+        staged = await service.get_extraction(extraction_id)
+        if not staged:
+            raise AppException(
+                status_code=404,
+                error_code=ErrorCode.NOT_FOUND,
+                message="Staged extraction not found",
+                details=f"Staged extraction with ID '{extraction_id}' does not exist",
+                context={"extraction_id": str(extraction_id)}
+            )
         success = await service.reject_extraction(
             extraction_id=extraction_id,
             reviewer_id=current_user.id,
@@ -138,7 +181,7 @@ async def review_extraction(
             return MaterializationResult(
                 success=True,
                 extraction_id=extraction_id,
-                extraction_type="entity",  # Will be overwritten by actual type
+                extraction_type=staged.extraction_type.value,
             )
         else:
             raise AppException(
@@ -187,44 +230,6 @@ async def trigger_auto_commit(
     that meet auto-commit criteria.
     """
     return await service.auto_commit_eligible_extractions()
-
-
-# =============================================================================
-# Debugging and Admin
-# =============================================================================
-
-@router.get("/all", response_model=StagedExtractionListResponse)
-async def list_all_extractions(
-    page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=50, ge=1, le=100),
-    status: str | None = None,
-    extraction_type: str | None = None,
-    source_id: UUID | None = None,
-    service: ExtractionReviewService = Depends(get_extraction_review_service),
-    current_user: User = Depends(get_current_active_superuser),
-):
-    """
-    List all staged extractions with filtering.
-
-    Admin only. Allows viewing extractions in any status.
-    """
-    filters = StagedExtractionFilters(
-        status=status,
-        extraction_type=extraction_type,
-        source_id=source_id,
-        page=page,
-        page_size=page_size,
-    )
-
-    extractions, total = await service.list_extractions(filters)
-
-    return StagedExtractionListResponse(
-        extractions=[StagedExtractionRead.model_validate(e) for e in extractions],
-        total=total,
-        page=page,
-        page_size=page_size,
-        has_more=(page * page_size) < total,
-    )
 
 
 @router.delete("/{extraction_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -6,8 +6,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.service_dependencies import get_document_service
 from app.api.document_extraction_dependencies import (
-    EntityLinkingService,
-    ExtractionService,
     PubMedFetcher,
     UrlFetcher,
     raise_internal_api_exception,
@@ -20,7 +18,6 @@ from app.models.user import User
 from app.schemas.source import DocumentExtractionPreview, SaveExtractionRequest, SaveExtractionResult
 from app.services.document_extraction_workflow import (
     build_extraction_preview,
-    build_extraction_preview_with_service,
     fetch_document_from_url,
     load_source_document_text,
     save_extraction_to_graph,
@@ -192,12 +189,10 @@ async def extract_from_url(
             file_name=fetched_document.file_name,
             user_id=current_user.id if current_user else None,
         )
-        preview = await build_extraction_preview_with_service(
+        preview = await build_extraction_preview(
             db,
             source_id=source_id,
             text=fetched_document.text,
-            extraction_service_factory=ExtractionService,
-            linking_service_factory=EntityLinkingService,
         )
         logger.info(
             f"Extracted {preview.entity_count} entities and {preview.relation_count} relations"

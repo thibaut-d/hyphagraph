@@ -3,8 +3,6 @@ from fastapi import HTTPException, status
 from app.api.document_extraction_schemas import PubMedBulkSearchRequest, PubMedSearchResult
 from app.llm.client import is_llm_available
 from app.services.document_extraction_workflow import calculate_relevance  # noqa: F401 — re-exported for test suite
-from app.services.entity_linking_service import EntityLinkingService  # noqa: F401 — re-exported for document route
-from app.services.extraction_service import ExtractionService  # noqa: F401 — re-exported for document route
 from app.services.pubmed_fetcher import PubMedArticle, PubMedFetcher
 from app.services.url_fetcher import UrlFetcher  # noqa: F401 — re-exported for document route
 from app.utils.errors import LLMServiceUnavailableException

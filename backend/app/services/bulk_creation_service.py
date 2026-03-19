@@ -65,49 +65,47 @@ class BulkCreationService:
         entity_mapping: SlugEntityMap = {}
         warnings = []
 
-        # Process entities one at a time with individual transactions
-        # This allows us to skip duplicates without breaking the session
+        # Process entities one at a time using savepoints (begin_nested) so a duplicate-slug error
+        # only rolls back that single entity, leaving all others intact.
         for extracted in entities:
             try:
-                # Create base entity
-                entity = Entity()
-                self.db.add(entity)
-                await self.db.flush()  # Get entity.id
+                async with self.db.begin_nested():
+                    # Create base entity
+                    entity = Entity()
+                    self.db.add(entity)
+                    await self.db.flush()  # Get entity.id
 
-                # Prepare revision data
-                revision_data = {
-                    "slug": extracted.slug,
-                    "summary": extracted.summary,
-                    "ui_category_id": None,  # Will be set by frontend/user later
-                    "created_with_llm": settings.OPENAI_MODEL,  # Track LLM provenance
-                    "created_by_user_id": user_id,
-                }
+                    # Prepare revision data
+                    revision_data = {
+                        "slug": extracted.slug,
+                        "summary": {"en": extracted.summary} if extracted.summary else None,
+                        "ui_category_id": None,  # Will be set by frontend/user later
+                        "created_with_llm": settings.OPENAI_MODEL,  # Track LLM provenance
+                        "created_by_user_id": user_id,
+                    }
 
-                # Create first revision
-                await create_new_revision(
-                    db=self.db,
-                    revision_class=EntityRevision,
-                    parent_id_field='entity_id',
-                    parent_id=entity.id,
-                    revision_data=revision_data,
-                    set_as_current=True,
-                )
+                    # Create first revision
+                    await create_new_revision(
+                        db=self.db,
+                        revision_class=EntityRevision,
+                        parent_id_field='entity_id',
+                        parent_id=entity.id,
+                        revision_data=revision_data,
+                        set_as_current=True,
+                    )
 
-                # Don't commit here - will commit at transaction end to avoid greenlet issues
-                # await self.db.commit()  # REMOVED - commit happens at endpoint level
-
-                # Map slug to entity_id
-                entity_mapping[extracted.slug] = entity.id
+                    # Map slug to entity_id (only reached if savepoint succeeds)
+                    entity_mapping[extracted.slug] = entity.id
 
             except IntegrityError as e:
-                # Handle duplicate slug - find existing entity and add to mapping
+                # Savepoint was already rolled back; outer transaction is intact.
+                # Handle duplicate slug - find existing entity and add to mapping.
                 error_msg = str(e.orig).lower()
                 if ('ix_entity_revisions_slug_current_unique' in error_msg or
                     'unique constraint failed: entity_revisions.slug' in error_msg):
                     warning = f"Skipping duplicate entity slug: {extracted.slug}"
                     warnings.append(warning)
                     logger.warning(warning)
-                    await self.db.rollback()
 
                     # Find the existing entity so we can still create relations to it
                     stmt = select(EntityRevision).where(
@@ -121,13 +119,9 @@ class BulkCreationService:
 
                     continue
                 else:
-                    # Re-raise other integrity errors
-                    await self.db.rollback()
                     raise
             except Exception as e:
                 logger.error("Failed to create entity '%s' in bulk operation: %s", extracted.slug, e, exc_info=True)
-                # Rollback on any other error
-                await self.db.rollback()
                 raise
 
         logger.info(
@@ -163,11 +157,12 @@ class BulkCreationService:
             ValueError: If subject/object slug not found in entity_mapping
             Exception: On database errors
         """
-        relation_ids = []
+        created_relations: list[ExtractedRelation] = []
+        relation_ids: list[UUID] = []
         warnings = []
 
-        # Process relations one at a time with individual transactions
-        # This ensures session stays clean even if individual relations fail
+        # Process relations one at a time using savepoints (begin_nested) so a single
+        # failure only rolls back that relation, leaving all others intact.
         for extracted in relations:
             # NEW: Resolve ALL entity slugs in roles array (N-ary relations)
             resolved_roles = []
@@ -200,60 +195,58 @@ class BulkCreationService:
                 continue
 
             try:
-                # Create base relation
-                relation = Relation(source_id=source_id)
-                self.db.add(relation)
-                await self.db.flush()  # Get relation.id
+                async with self.db.begin_nested():
+                    # Create base relation
+                    relation = Relation(source_id=source_id)
+                    self.db.add(relation)
+                    await self.db.flush()  # Get relation.id
 
-                # Prepare revision data
-                # Map extraction schema to database schema
-                revision_data = {
-                    "kind": extracted.relation_type,  # "treats", "causes", etc.
-                    "confidence": 0.8 if extracted.confidence == "high" else 0.6 if extracted.confidence == "medium" else 0.4,
-                    "notes": {"en": extracted.notes} if extracted.notes else None,
-                    "created_with_llm": settings.OPENAI_MODEL,
-                    "created_by_user_id": user_id,
-                }
+                    # Prepare revision data
+                    # Map extraction schema to database schema
+                    revision_data = {
+                        "kind": extracted.relation_type,  # "treats", "causes", etc.
+                        "confidence": 0.8 if extracted.confidence == "high" else 0.6 if extracted.confidence == "medium" else 0.4,
+                        "notes": {"en": extracted.notes} if extracted.notes else None,
+                        "created_with_llm": settings.OPENAI_MODEL,
+                        "created_by_user_id": user_id,
+                    }
 
-                # Create first revision
-                revision = await create_new_revision(
-                    db=self.db,
-                    revision_class=RelationRevision,
-                    parent_id_field='relation_id',
-                    parent_id=relation.id,
-                    revision_data=revision_data,
-                    set_as_current=True,
-                )
-
-                # Create role revisions for ALL entities in the relation (N-ary support)
-                # Each resolved role becomes a RelationRoleRevision
-                for role_data in resolved_roles:
-                    role_revision = RelationRoleRevision(
-                        relation_revision_id=revision.id,
-                        entity_id=role_data['entity_id'],
-                        role_type=role_data['role_type'],  # Semantic role (agent, target, population, etc.)
-                        weight=1.0,  # Default weight (can be adjusted based on evidence)
-                        coverage=None,  # No coverage for individual roles
+                    # Create first revision
+                    revision = await create_new_revision(
+                        db=self.db,
+                        revision_class=RelationRevision,
+                        parent_id_field='relation_id',
+                        parent_id=relation.id,
+                        revision_data=revision_data,
+                        set_as_current=True,
                     )
-                    self.db.add(role_revision)
 
-                logger.debug(
-                    f"Created relation {extracted.relation_type} with {len(resolved_roles)} roles: "
-                    f"{[r['role_type'] for r in resolved_roles]}"
-                )
+                    # Create role revisions for ALL entities in the relation (N-ary support)
+                    # Each resolved role becomes a RelationRoleRevision
+                    for role_data in resolved_roles:
+                        role_revision = RelationRoleRevision(
+                            relation_revision_id=revision.id,
+                            entity_id=role_data['entity_id'],
+                            role_type=role_data['role_type'],  # Semantic role (agent, target, population, etc.)
+                            weight=1.0,  # Default weight (can be adjusted based on evidence)
+                            coverage=None,  # No coverage for individual roles
+                        )
+                        self.db.add(role_revision)
 
-                # Don't commit here - will commit at transaction end to avoid greenlet issues
-                # await self.db.commit()  # REMOVED - commit happens at endpoint level
+                    logger.debug(
+                        f"Created relation {extracted.relation_type} with {len(resolved_roles)} roles: "
+                        f"{[r['role_type'] for r in resolved_roles]}"
+                    )
 
-                relation_ids.append(relation.id)
+                    created_relations.append(extracted)
+                    relation_ids.append(relation.id)
 
             except Exception as e:
-                # Rollback this relation and continue
+                # Savepoint was already rolled back; outer transaction is intact.
                 role_summary = " + ".join([f"{r['entity_slug']}({r['role_type']})" for r in resolved_roles[:3]])
                 warning = f"Skipping relation {extracted.relation_type} [{role_summary}]: {str(e)}"
                 warnings.append(warning)
                 logger.warning(warning)
-                await self.db.rollback()
                 continue
 
         logger.info(
@@ -261,4 +254,4 @@ class BulkCreationService:
             f"skipped {len(warnings)} with errors/missing entities"
         )
 
-        return relation_ids
+        return created_relations, relation_ids

@@ -8,7 +8,7 @@ Provides:
 - Usage tracking
 - Suggestion system for new types
 """
-from datetime import datetime
+from datetime import datetime, timezone
 import difflib
 import json
 from typing import List
@@ -80,7 +80,7 @@ class RelationTypeService:
             is_system=is_system,
             usage_count=0,
             category=category,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
 
         self.db.add(new_type)

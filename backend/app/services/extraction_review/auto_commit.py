@@ -51,11 +51,6 @@ async def run_auto_commit(db: AsyncSession, auto_commit_threshold: float) -> Aut
 
     for staged in eligible:
         try:
-            staged.status = ExtractionStatus.APPROVED
-            staged.reviewed_at = datetime.now(timezone.utc)
-            staged.review_notes = "Auto-approved by system (high validation score)"
-            await db.commit()
-
             if await _materialize_approved(db, staged):
                 materialized_count += 1
             else:
@@ -83,8 +78,17 @@ async def run_auto_commit(db: AsyncSession, auto_commit_threshold: float) -> Aut
 
 
 async def _materialize_approved(db: AsyncSession, staged: StagedExtraction) -> bool:
-    """Materialize a single auto-approved staged extraction. Returns True on success."""
+    """Materialize a single auto-approved staged extraction. Returns True on success.
+
+    Sets status=APPROVED and materializes in the same transaction so that a
+    materialization failure leaves the extraction in PENDING (retryable) rather
+    than stuck in APPROVED with no materialized ID.
+    """
     try:
+        staged.status = ExtractionStatus.APPROVED
+        staged.reviewed_at = datetime.now(timezone.utc)
+        staged.review_notes = "Auto-approved by system (high validation score)"
+
         if staged.extraction_type == ExtractionType.ENTITY:
             entity_id = await materialize_entity(db, staged)
             staged.materialized_entity_id = entity_id
@@ -100,6 +104,7 @@ async def _materialize_approved(db: AsyncSession, staged: StagedExtraction) -> b
             staged.materialized_relation_id = relation_id
             await db.commit()
             return True
+        await db.rollback()
         return False
     except Exception as e:
         logger.error("Materialization failed for extraction %s: %s", staged.id, e, exc_info=True)
