@@ -301,7 +301,7 @@ class TestReconcileStagedExtractions:
         db_session.add(relation)
         await db_session.flush()
         db_session.add(RelationRevision(
-            relation_id=relation.id, kind="treats", confidence=0.8, is_current=True
+            relation_id=relation.id, confidence=0.8, is_current=True
         ))
         await db_session.flush()
         return relation.id

@@ -94,11 +94,8 @@ function EntityInferenceCard({ item }: { item: EntityWithInferences }) {
                   '&:hover': { textDecoration: 'underline' },
                 }}
               >
-                {entity.label || entity.slug}
+                {entity.slug}
               </Typography>
-              {entity.kind && (
-                <Chip label={entity.kind} size="small" sx={{ mt: 0.5 }} />
-              )}
             </Box>
           </Stack>
 

@@ -89,7 +89,7 @@ export function PropertyDetailView() {
     return <Alert severity="error">{error || t("common.error", "An error occurred")}</Alert>;
   }
 
-  const entityLabel = entity.label || entity.slug;
+  const entityLabel = entity.slug;
 
   const contradictionDetail = explanation.contradictions;
   const hasContradictions =

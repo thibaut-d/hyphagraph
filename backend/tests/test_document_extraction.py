@@ -130,7 +130,7 @@ class TestSmartDiscovery:
         # Arrange - Create entity
         entity_service = EntityService(db_session)
         entity_data = ScientificEntities.PREGABALIN
-        await entity_service.create(EntityWrite(slug=entity_data["slug"], kind="drug"))
+        await entity_service.create(EntityWrite(slug=entity_data["slug"]))
 
         # Mock PubMed search and fetch
         with patch("app.api.document_extraction_routes.discovery.PubMedFetcher") as mock_fetcher_class:
@@ -172,10 +172,10 @@ class TestSmartDiscovery:
         # Arrange - Create entities
         entity_service = EntityService(db_session)
         await entity_service.create(
-            EntityWrite(slug=ScientificEntities.DULOXETINE["slug"], kind="drug")
+            EntityWrite(slug=ScientificEntities.DULOXETINE["slug"])
         )
         await entity_service.create(
-            EntityWrite(slug=ScientificEntities.FIBROMYALGIA["slug"], kind="disease")
+            EntityWrite(slug=ScientificEntities.FIBROMYALGIA["slug"])
         )
 
         # Mock PubMed search and fetch
@@ -215,7 +215,7 @@ class TestSmartDiscovery:
         # Arrange
         entity_service = EntityService(db_session)
         await entity_service.create(
-            EntityWrite(slug=ScientificEntities.FIBROMYALGIA["slug"], kind="disease")
+            EntityWrite(slug=ScientificEntities.FIBROMYALGIA["slug"])
         )
 
         # Mock two articles with different quality scores
@@ -257,7 +257,7 @@ class TestSmartDiscovery:
         # Arrange - Create entity and existing source with PMID
         entity_service = EntityService(db_session)
         await entity_service.create(
-            EntityWrite(slug=ScientificEntities.PREGABALIN["slug"], kind="drug")
+            EntityWrite(slug=ScientificEntities.PREGABALIN["slug"])
         )
 
         source_service = SourceService(db_session)

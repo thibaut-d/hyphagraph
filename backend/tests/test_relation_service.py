@@ -29,11 +29,10 @@ class TestRelationService:
         relation_service = RelationService(db_session)
 
         source = await source_service.create(SourceWrite(kind="study", title="Test", url="https://example.com/study"))
-        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.PREGABALIN["slug"], kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.PREGABALIN["slug"]))
 
         payload = RelationWrite(
             source_id=str(source.id),
-            kind="effect",
             confidence=0.9,
             direction="positive",
             roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
@@ -57,12 +56,11 @@ class TestRelationService:
         relation_service = RelationService(db_session)
 
         source = await source_service.create(SourceWrite(kind="study", title="Test", url="https://example.com/study"))
-        drug = await entity_service.create(EntityWrite(slug=ScientificEntities.PREGABALIN["slug"], kind="drug"))
-        disease = await entity_service.create(EntityWrite(slug=ScientificEntities.WIDESPREAD_MUSCULOSKELETAL_PAIN["slug"], kind="symptom"))
+        drug = await entity_service.create(EntityWrite(slug=ScientificEntities.PREGABALIN["slug"]))
+        disease = await entity_service.create(EntityWrite(slug=ScientificEntities.WIDESPREAD_MUSCULOSKELETAL_PAIN["slug"]))
 
         payload = RelationWrite(
             source_id=str(source.id),
-            kind="treats",
             confidence=0.9,
             direction="positive",
             roles=[
@@ -87,12 +85,11 @@ class TestRelationService:
         relation_service = RelationService(db_session)
 
         source = await source_service.create(SourceWrite(kind="study", title="Test", url="https://example.com/study"))
-        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.DULOXETINE["slug"], kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.DULOXETINE["slug"]))
 
         created = await relation_service.create(
             RelationWrite(
                 source_id=str(source.id),
-                kind="effect",
                 confidence=0.9,
                 direction="positive",
                 roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
@@ -125,13 +122,12 @@ class TestRelationService:
 
         source1 = await source_service.create(SourceWrite(kind="study", title="Source 1", url="https://example.com/study"))
         source2 = await source_service.create(SourceWrite(kind="study", title="Source 2", url="https://example.com/study"))
-        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.DULOXETINE["slug"], kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.DULOXETINE["slug"]))
 
         # Create relations for different sources
         await relation_service.create(
             RelationWrite(
                 source_id=str(source1.id),
-                kind="effect",
                 confidence=0.9,
                 direction="positive",
                 roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
@@ -140,7 +136,6 @@ class TestRelationService:
         await relation_service.create(
             RelationWrite(
                 source_id=str(source1.id),
-                kind="mechanism",
                 confidence=0.9,
                 direction="positive",
                 roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
@@ -149,7 +144,6 @@ class TestRelationService:
         await relation_service.create(
             RelationWrite(
                 source_id=str(source2.id),
-                kind="effect",
                 confidence=0.9,
                 direction="negative",
                 roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
@@ -171,12 +165,11 @@ class TestRelationService:
         relation_service = RelationService(db_session)
 
         source = await source_service.create(SourceWrite(kind="study", title="Test", url="https://example.com/study"))
-        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.DULOXETINE["slug"], kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.DULOXETINE["slug"]))
 
         created = await relation_service.create(
             RelationWrite(
                 source_id=str(source.id),
-                kind="effect",
                 confidence=0.9,
                 direction="positive",
                 roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
@@ -209,12 +202,11 @@ class TestRelationService:
 
         source1 = await source_service.create(SourceWrite(kind="study", title="Source 1", url="https://example.com/study"))
         source2 = await source_service.create(SourceWrite(kind="study", title="Source 2", url="https://example.com/study"))
-        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.DULOXETINE["slug"], kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.DULOXETINE["slug"]))
 
         created = await relation_service.create(
             RelationWrite(
                 source_id=str(source1.id),
-                kind="effect",
                 confidence=0.9,
                 direction="positive",
                 roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
@@ -244,7 +236,7 @@ class TestRelationService:
         relation_service = RelationService(db_session)
 
         source = await source_service.create(SourceWrite(kind="study", title="Test", url="https://example.com/study"))
-        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.DULOXETINE["slug"], kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.DULOXETINE["slug"]))
 
         # Act & Assert
         with pytest.raises(HTTPException) as exc_info:
@@ -252,7 +244,6 @@ class TestRelationService:
                 uuid4(),
                 RelationWrite(
                     source_id=str(source.id),
-                    kind="effect",
                     confidence=0.9,
                     direction="positive",
                     roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
@@ -268,12 +259,11 @@ class TestRelationService:
         relation_service = RelationService(db_session)
 
         source = await source_service.create(SourceWrite(kind="study", title="Test", url="https://example.com/study"))
-        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.DULOXETINE["slug"], kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug=ScientificEntities.DULOXETINE["slug"]))
 
         created = await relation_service.create(
             RelationWrite(
                 source_id=str(source.id),
-                kind="effect",
                 confidence=0.9,
                 direction="positive",
                 roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],

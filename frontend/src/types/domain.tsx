@@ -7,8 +7,7 @@ export interface Source {
 
 export interface Entity {
   id: string;
-  kind: string;
-  label: string;
+  slug: string;
 }
 
 export interface Relation {

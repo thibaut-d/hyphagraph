@@ -78,7 +78,7 @@ export function DisagreementsView() {
     );
   }
 
-  const entityLabel = resolveLabel(entity.label || entity.slug, entity.summary, i18n.language);
+  const entityLabel = resolveLabel(entity.slug, entity.summary, i18n.language);
 
   // Group relations by role type and direction
   const disagreementGroups: DisagreementGroup[] = inference?.disagreement_groups

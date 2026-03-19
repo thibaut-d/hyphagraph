@@ -46,12 +46,11 @@ vi.mock('../../components/entity/EntityDetailHeader', () => ({
     entity,
     onDeleteClick,
   }: {
-    entity: { slug: string; kind: string; id: string };
+    entity: { slug: string; id: string };
     onDeleteClick: () => void;
   }) => (
     <div>
       <div>{entity.slug}</div>
-      <div>{entity.kind}</div>
       <a href={`/entities/${entity.id}/edit`}>Edit</a>
       <button type="button" onClick={onDeleteClick}>
         Delete
@@ -135,8 +134,6 @@ describe('EntityDetailView', () => {
   const mockEntity: EntityRead = {
     id: '123e4567-e89b-12d3-a456-426614174000',
     slug: 'aspirin',
-    kind: 'drug',
-    label: 'Aspirin',
     label_i18n: {},
     summaries: {},
     created_at: new Date().toISOString(),
@@ -180,12 +177,11 @@ describe('EntityDetailView', () => {
       (getInferenceForEntity as any).mockResolvedValue(mockInference);
     });
 
-    it('displays entity slug and kind', async () => {
+    it('displays entity slug', async () => {
       renderWithRouter('123e4567-e89b-12d3-a456-426614174000');
 
       await waitFor(() => {
         expect(screen.getByText('aspirin')).toBeInTheDocument();
-        expect(screen.getByText('drug')).toBeInTheDocument();
       });
     });
 

@@ -149,7 +149,6 @@ async def test_sources(db_session, system_source):
     rev1 = SourceRevision(
         id=uuid4(),
         source_id=s1.id,
-        kind="study",
         title="Paracetamol Efficacy in Chronic Pain",
         authors=["Smith J", "Doe A"],
         year=2023,
@@ -169,7 +168,6 @@ async def test_sources(db_session, system_source):
     rev2 = SourceRevision(
         id=uuid4(),
         source_id=s2.id,
-        kind="article",
         title="Pain Management Guidelines",
         authors=["Paracetamol Research Group"],
         year=2022,
@@ -189,7 +187,6 @@ async def test_sources(db_session, system_source):
     rev3 = SourceRevision(
         id=uuid4(),
         source_id=s3.id,
-        kind="study",
         title="Ibuprofen vs Aspirin",
         authors=["Johnson M"],
         year=2021,
@@ -649,7 +646,6 @@ class TestRelationSearch:
         rel_revision = RelationRevision(
             id=uuid4(),
             relation_id=relation.id,
-            kind="drug_interaction",
             direction="supports",
             confidence=0.85,
             notes={"en": "Interaction between pain medications"},

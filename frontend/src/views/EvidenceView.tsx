@@ -142,7 +142,7 @@ export function EvidenceView() {
     );
   }
 
-  const entityLabel = entity.label || entity.slug;
+  const entityLabel = entity.slug;
 
   return (
     <Stack spacing={3}>

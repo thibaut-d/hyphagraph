@@ -60,7 +60,7 @@ export function EditRelationView() {
         setEntities(
           (entitiesRes.items || []).map((entity) => ({
             id: entity.id,
-            label: entity.label || entity.slug,
+            label: entity.slug,
           }))
         );
 

@@ -81,7 +81,6 @@ class TestRelationServiceMocked:
         different_source_id = uuid4()
         payload = RelationWrite(
             source_id=str(different_source_id),
-            kind="effect",
             direction="positive",
             confidence=0.9,
             roles=[RoleWrite(role_type="drug", entity_id=str(uuid4()))]
@@ -103,7 +102,6 @@ class TestRelationServiceMocked:
 
         payload = RelationWrite(
             source_id=str(uuid4()),
-            kind="effect",
             direction="positive",
             confidence=0.9,
             roles=[RoleWrite(role_type="drug", entity_id=str(uuid4()))]

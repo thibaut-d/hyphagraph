@@ -25,13 +25,12 @@ class TestYearRangeCalculation:
         relation_service = RelationService(db_session)
 
         # Create an entity
-        entity = await entity_service.create(EntityWrite(slug="test-drug", kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug="test-drug"))
 
         # Create sources with different years
         source_1995 = await source_service.create(SourceWrite(
             title="Old Study",
             year=1995,
-            kind="clinical_trial",
             url="https://example.com/1995",
             trust_level=0.8
         ))
@@ -39,7 +38,6 @@ class TestYearRangeCalculation:
         source_2024 = await source_service.create(SourceWrite(
             title="Recent Study",
             year=2024,
-            kind="meta_analysis",
             url="https://example.com/2024",
             trust_level=0.9
         ))
@@ -47,7 +45,6 @@ class TestYearRangeCalculation:
         source_2010 = await source_service.create(SourceWrite(
             title="Middle Study",
             year=2010,
-            kind="review",
             url="https://example.com/2010",
             trust_level=0.85
         ))
@@ -55,7 +52,6 @@ class TestYearRangeCalculation:
         # Create relations linking sources to entity
         await relation_service.create(RelationWrite(
             source_id=source_1995.id,
-            kind="treats",
             direction="supports",
             confidence=0.7,
             roles=[RoleRevisionWrite(entity_id=entity.id, role_type="agent")]
@@ -63,7 +59,6 @@ class TestYearRangeCalculation:
 
         await relation_service.create(RelationWrite(
             source_id=source_2024.id,
-            kind="treats",
             direction="supports",
             confidence=0.9,
             roles=[RoleRevisionWrite(entity_id=entity.id, role_type="agent")]
@@ -71,7 +66,6 @@ class TestYearRangeCalculation:
 
         await relation_service.create(RelationWrite(
             source_id=source_2010.id,
-            kind="treats",
             direction="supports",
             confidence=0.8,
             roles=[RoleRevisionWrite(entity_id=entity.id, role_type="agent")]
@@ -105,13 +99,12 @@ class TestYearRangeCalculation:
         relation_service = RelationService(db_session)
 
         # Create an entity
-        entity = await entity_service.create(EntityWrite(slug="test-drug", kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug="test-drug"))
 
         # Create a source WITH a relation
         source_with_relation = await source_service.create(SourceWrite(
             title="Connected Study",
             year=2020,
-            kind="clinical_trial",
             url="https://example.com/2020",
             trust_level=0.85
         ))
@@ -137,7 +130,6 @@ class TestYearRangeCalculation:
         # Only link one source to entity
         await relation_service.create(RelationWrite(
             source_id=source_with_relation.id,
-            kind="treats",
             direction="supports",
             confidence=0.8,
             roles=[RoleRevisionWrite(entity_id=entity.id, role_type="agent")]
@@ -162,13 +154,12 @@ class TestYearRangeCalculation:
         relation_service = RelationService(db_session)
 
         # Create an entity
-        entity = await entity_service.create(EntityWrite(slug="test-drug", kind="drug"))
+        entity = await entity_service.create(EntityWrite(slug="test-drug"))
 
         # Create sources: some with years, some without
         source_with_year = await source_service.create(SourceWrite(
             title="Study With Year",
             year=2022,
-            kind="clinical_trial",
             url="https://example.com/2022",
             trust_level=0.85
         ))
@@ -176,7 +167,6 @@ class TestYearRangeCalculation:
         source_without_year = await source_service.create(SourceWrite(
             title="Study Without Year",
             year=None,
-            kind="review",
             url="https://example.com/no-year",
             trust_level=0.7
         ))
@@ -184,7 +174,6 @@ class TestYearRangeCalculation:
         # Link both sources to entity
         await relation_service.create(RelationWrite(
             source_id=source_with_year.id,
-            kind="treats",
             direction="supports",
             confidence=0.8,
             roles=[RoleRevisionWrite(entity_id=entity.id, role_type="agent")]
@@ -192,7 +181,6 @@ class TestYearRangeCalculation:
 
         await relation_service.create(RelationWrite(
             source_id=source_without_year.id,
-            kind="treats",
             direction="supports",
             confidence=0.7,
             roles=[RoleRevisionWrite(entity_id=entity.id, role_type="agent")]

@@ -12,8 +12,8 @@ class TestEntityMergeService:
         entity_service = EntityService(db_session)
         merge_service = EntityMergeService(db_session)
 
-        entity_one = await entity_service.create(EntityWrite(slug="aspirin", kind="drug"))
-        entity_two = await entity_service.create(EntityWrite(slug="aspirine", kind="drug"))
+        entity_one = await entity_service.create(EntityWrite(slug="aspirin"))
+        entity_two = await entity_service.create(EntityWrite(slug="aspirine"))
 
         duplicates = await merge_service.find_potential_duplicates(similarity_threshold=0.8)
 
@@ -28,8 +28,8 @@ class TestEntityMergeService:
         entity_service = EntityService(db_session)
         merge_service = EntityMergeService(db_session)
 
-        source_entity = await entity_service.create(EntityWrite(slug="aspirin", kind="drug"))
-        target_entity = await entity_service.create(EntityWrite(slug="acetylsalicylic-acid", kind="drug"))
+        source_entity = await entity_service.create(EntityWrite(slug="aspirin"))
+        target_entity = await entity_service.create(EntityWrite(slug="acetylsalicylic-acid"))
         db_session.add(
             EntityTerm(
                 entity_id=target_entity.id,
@@ -48,8 +48,8 @@ class TestEntityMergeService:
         entity_service = EntityService(db_session)
         merge_service = EntityMergeService(db_session)
 
-        await entity_service.create(EntityWrite(slug="fibromyalgia-a", kind="disease"))
-        await entity_service.create(EntityWrite(slug="fibromyalgia", kind="disease"))
+        await entity_service.create(EntityWrite(slug="fibromyalgia-a"))
+        await entity_service.create(EntityWrite(slug="fibromyalgia"))
 
         actions = await merge_service.auto_merge_obvious_duplicates(dry_run=True)
 

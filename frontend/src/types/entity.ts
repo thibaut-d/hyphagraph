@@ -6,8 +6,4 @@ export interface EntityRead {
   label_i18n?: { [lang: string]: string };
   summaries?: { [lang: string]: string };
   ui_category_id?: string;
-  kind?: string;
-  label?: string;
-  synonyms?: string[];
-  ontology_ref?: string;
 }

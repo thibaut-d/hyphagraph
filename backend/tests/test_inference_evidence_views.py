@@ -17,7 +17,6 @@ def build_relation_read(*, direction: str | None, confidence: float | None, weig
         id=uuid4(),
         created_at="2026-03-15T00:00:00Z",
         source_id=uuid4(),
-        kind="effect",
         direction=direction,
         confidence=confidence,
         scope=None,
@@ -66,8 +65,8 @@ class TestRoleEvidenceHelpers:
         source_service = SourceService(db_session)
         relation_service = RelationService(db_session)
 
-        subject = await entity_service.create(EntityWrite(slug="aspirin", kind="drug"))
-        target = await entity_service.create(EntityWrite(slug="fibromyalgia", kind="disease"))
+        subject = await entity_service.create(EntityWrite(slug="aspirin"))
+        target = await entity_service.create(EntityWrite(slug="fibromyalgia"))
         source = await source_service.create(
             SourceWrite(
                 kind="study",
@@ -79,7 +78,6 @@ class TestRoleEvidenceHelpers:
         relation_read = await relation_service.create(
             RelationWrite(
                 source_id=source.id,
-                kind="effect",
                 direction="supports",
                 confidence=0.75,
                 roles=[

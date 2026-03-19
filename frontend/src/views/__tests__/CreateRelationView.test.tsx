@@ -54,16 +54,12 @@ describe('CreateRelationView', () => {
     {
       id: 'entity-1',
       slug: 'aspirin',
-      label: 'Aspirin',
-      kind: 'drug',
       summaries: {},
       created_at: new Date().toISOString(),
     },
     {
       id: 'entity-2',
       slug: 'headache',
-      label: 'Headache',
-      kind: 'condition',
       summaries: {},
       created_at: new Date().toISOString(),
     },
@@ -277,8 +273,8 @@ describe('CreateRelationView', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText('Aspirin')).toBeInTheDocument();
-        expect(screen.getByText('Headache')).toBeInTheDocument();
+        expect(screen.getByText('aspirin')).toBeInTheDocument();
+        expect(screen.getByText('headache')).toBeInTheDocument();
       });
     });
 
@@ -296,12 +292,12 @@ describe('CreateRelationView', () => {
       });
 
       await waitFor(() => {
-        fireEvent.click(screen.getByText('Aspirin'));
+        fireEvent.click(screen.getByText('aspirin'));
       });
 
       // Verify that the selected text is displayed
       await waitFor(() => {
-        expect(screen.getAllByText('Aspirin').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('aspirin').length).toBeGreaterThan(0);
       });
     });
 
@@ -368,7 +364,7 @@ describe('CreateRelationView', () => {
       });
 
       await waitFor(() => {
-        fireEvent.click(screen.getByText('Aspirin'));
+        fireEvent.click(screen.getByText('aspirin'));
       });
 
       const roleTypeInput = screen.getByLabelText(/role/i);
@@ -425,7 +421,7 @@ describe('CreateRelationView', () => {
       });
 
       await waitFor(() => {
-        fireEvent.click(screen.getByText('Aspirin'));
+        fireEvent.click(screen.getByText('aspirin'));
       });
 
       const roleTypeInput = screen.getByLabelText(/role/i);
@@ -468,7 +464,7 @@ describe('CreateRelationView', () => {
       });
 
       await waitFor(() => {
-        fireEvent.click(screen.getByText('Aspirin'));
+        fireEvent.click(screen.getByText('aspirin'));
       });
 
       const roleTypeInput = screen.getByLabelText(/role/i);
@@ -512,7 +508,7 @@ describe('CreateRelationView', () => {
       });
 
       await waitFor(() => {
-        fireEvent.click(screen.getByText('Aspirin'));
+        fireEvent.click(screen.getByText('aspirin'));
       });
 
       const roleTypeInput = screen.getByLabelText(/role/i);

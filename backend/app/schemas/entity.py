@@ -1,5 +1,5 @@
 from uuid import UUID
-from typing import Optional, List
+from typing import Optional
 from datetime import datetime
 from app.schemas.base import Schema
 
@@ -14,12 +14,6 @@ class EntityWrite(Schema):
     summary: Optional[dict[str, str]] = None  # i18n: {"en": "...", "fr": "..."}
     ui_category_id: Optional[UUID] = None
     created_with_llm: Optional[str] = None
-
-    # Legacy support (will be deprecated)
-    kind: Optional[str] = None
-    label: Optional[str] = None
-    synonyms: List[str] = []
-    ontology_ref: Optional[str] = None
 
 
 class EntityRevisionRead(Schema):
@@ -49,13 +43,7 @@ class EntityRead(Schema):
     summary: Optional[dict[str, str]] = None
     ui_category_id: Optional[UUID] = None
 
-    # Legacy fields (deprecated, for backward compatibility)
-    kind: Optional[str] = None
-    label: Optional[str] = None
-    synonyms: List[str] = []
-    ontology_ref: Optional[str] = None
-
 
 class EntityWithHistory(EntityRead):
     """Entity with full revision history."""
-    revisions: List[EntityRevisionRead] = []
+    revisions: list[EntityRevisionRead] = []

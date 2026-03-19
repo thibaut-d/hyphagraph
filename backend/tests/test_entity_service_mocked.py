@@ -63,7 +63,7 @@ class TestEntityServiceMocked:
         """Test successful entity creation."""
         # Arrange
         service = EntityService(mock_db)
-        payload = EntityWrite(slug="aspirin", kind="drug", summary={"en": "Pain reliever"})
+        payload = EntityWrite(slug="aspirin", summary={"en": "Pain reliever"})
 
         # Mock the entity creation
         mock_db.flush.return_value = None
@@ -76,7 +76,6 @@ class TestEntityServiceMocked:
         mock_to_read = MagicMock(return_value=EntityRead(
             id=sample_entity.id,
             slug="aspirin",
-            kind="drug",
             summary={"en": "Pain reliever"},
             created_at=sample_entity.created_at,
         ))
@@ -114,7 +113,7 @@ class TestEntityServiceMocked:
 
         # Act & Assert
         with pytest.raises(HTTPException) as exc_info:
-            await service.update(uuid4(), EntityWrite(slug="test", kind="drug"))
+            await service.update(uuid4(), EntityWrite(slug="test"))
 
         assert exc_info.value.status_code == 404
 
@@ -170,7 +169,7 @@ class TestEntityServiceMocked:
         """Test that create rolls back on error."""
         # Arrange
         service = EntityService(mock_db)
-        payload = EntityWrite(slug="test", kind="drug")
+        payload = EntityWrite(slug="test")
 
         # Mock flush to raise exception
         mock_db.flush.side_effect = Exception("Database error")

@@ -61,7 +61,7 @@ export function EntityDetailHeader({
               {entity.slug}
             </Typography>
             <Typography variant="subtitle2" color="text.secondary">
-              {entity.summary?.en || entity.kind}
+              {entity.summary?.en}
             </Typography>
 
             {/* Alternative Names/Aliases */}

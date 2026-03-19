@@ -59,7 +59,7 @@ class TestEntityEndpoints:
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
                 response = await client.post(
                     "/api/entities/",
-                    json={"slug": "test", "kind": "drug"}
+                    json={"slug": "test"}
                 )
                 assert response.status_code == status.HTTP_401_UNAUTHORIZED
         finally:
@@ -82,7 +82,6 @@ class TestEntityEndpoints:
                         mock_entity = AsyncMock()
                         mock_entity.id = uuid4()
                         mock_entity.slug = "aspirin"
-                        mock_entity.kind = "drug"
                         mock_entity.summaries = {}
                         mock_entity.created_at = datetime.now(timezone.utc)
 
@@ -90,7 +89,7 @@ class TestEntityEndpoints:
 
                         response = await client.post(
                             "/api/entities/",
-                            json={"slug": "aspirin", "kind": "drug"}
+                            json={"slug": "aspirin"}
                         )
 
                         # Note: Authentication is mocked, so response may vary
@@ -120,7 +119,7 @@ class TestEntityEndpoints:
                 entity_id = uuid4()
                 response = await client.put(
                     f"/api/entities/{entity_id}",
-                    json={"slug": "updated", "kind": "drug"}
+                    json={"slug": "updated"}
                 )
                 assert response.status_code == status.HTTP_401_UNAUTHORIZED
         finally:
@@ -145,22 +144,8 @@ class TestEntityEndpoints:
                 # Missing required field 'slug'
                 response = await client.post(
                     "/api/entities/",
-                    json={"kind": "drug"}
+                    json={}
                 )
-                assert response.status_code in [status.HTTP_422_UNPROCESSABLE_ENTITY, status.HTTP_401_UNAUTHORIZED]
-        finally:
-            app.dependency_overrides.clear()
-
-    async def test_create_entity_invalid_kind(self, override_get_db):
-        """Test entity creation with invalid kind."""
-        app.dependency_overrides[get_db] = override_get_db
-        try:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-                response = await client.post(
-                    "/api/entities/",
-                    json={"slug": "test", "kind": ""}  # Empty kind
-                )
-                # Validation error or auth error
                 assert response.status_code in [status.HTTP_422_UNPROCESSABLE_ENTITY, status.HTTP_401_UNAUTHORIZED]
         finally:
             app.dependency_overrides.clear()

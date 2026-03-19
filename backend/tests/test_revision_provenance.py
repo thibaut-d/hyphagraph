@@ -70,10 +70,10 @@ class TestEntityMergeProvenance:
         merge_service = EntityMergeService(db_session)
 
         source_entity = await entity_service.create(
-            EntityWrite(slug="source-entity", kind="concept")
+            EntityWrite(slug="source-entity")
         )
         target_entity = await entity_service.create(
-            EntityWrite(slug="target-entity", kind="concept")
+            EntityWrite(slug="target-entity")
         )
         source = await source_service.create(
             SourceWrite(kind="study", title="Merge Study", url="https://example.com/merge")
@@ -82,7 +82,6 @@ class TestEntityMergeProvenance:
         await relation_service.create(
             RelationWrite(
                 source_id=str(source.id),
-                kind="effect",
                 confidence=0.8,
                 direction="supports",
                 roles=[RoleWrite(role_type="subject", entity_id=str(source_entity.id))],

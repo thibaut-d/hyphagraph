@@ -232,7 +232,6 @@ async def existing_source(db_session):
 
     rev = SourceRevision(
         source_id=src.id,
-        kind="article",
         title="Aspirin in cardiology",
         url="https://doi.org/10.1234/aspirin",
         is_current=True,
@@ -483,7 +482,7 @@ async def test_preview_sources_row_limit(service):
 async def test_import_sources_creates_records(service, db_session):
     from sqlalchemy import select
     rows = [
-        SourceImportRow(title="New drug A", url="https://example.com/a", kind="article", year=2021),
+        SourceImportRow(title="New drug A", url="https://example.com/a", year=2021),
         SourceImportRow(title="New drug B", url="https://example.com/b"),
     ]
     result = await service.import_sources(rows)

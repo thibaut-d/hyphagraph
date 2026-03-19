@@ -25,7 +25,6 @@ class TestEntityService:
         entity_data = ScientificEntities.PREGABALIN
         payload = EntityWrite(
             slug=entity_data["slug"],
-            kind="drug",  # Legacy field, ignored
             summary=entity_data["summary"],
         )
 
@@ -43,7 +42,7 @@ class TestEntityService:
         # Arrange
         service = EntityService(db_session)
         entity_data = ScientificEntities.DULOXETINE
-        payload = EntityWrite(slug=entity_data["slug"], kind="drug")  # kind is legacy, ignored
+        payload = EntityWrite(slug=entity_data["slug"])
 
         # Act
         result = await service.create(payload)
@@ -58,7 +57,7 @@ class TestEntityService:
         service = EntityService(db_session)
         entity_data = ScientificEntities.MILNACIPRAN
         created = await service.create(
-            EntityWrite(slug=entity_data["slug"], kind="drug"),  # kind is legacy, ignored
+            EntityWrite(slug=entity_data["slug"]),
 
         )
 
@@ -86,9 +85,9 @@ class TestEntityService:
         """Test listing all entities."""
         # Arrange
         service = EntityService(db_session)
-        await service.create(EntityWrite(slug=ScientificEntities.AMITRIPTYLINE["slug"], kind="drug"))
-        await service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"], kind="drug"))
-        await service.create(EntityWrite(slug=ScientificEntities.FIBROMYALGIA["slug"], kind="disease"))
+        await service.create(EntityWrite(slug=ScientificEntities.AMITRIPTYLINE["slug"]))
+        await service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"]))
+        await service.create(EntityWrite(slug=ScientificEntities.FIBROMYALGIA["slug"]))
 
         # Act
         items, total = await service.list_all()
@@ -116,14 +115,14 @@ class TestEntityService:
         # Arrange
         service = EntityService(db_session)
         created = await service.create(
-            EntityWrite(slug="cyclobenzaprine", kind="drug", summary={"en": "Muscle relaxant"}),
+            EntityWrite(slug="cyclobenzaprine", summary={"en": "Muscle relaxant"}),
 
         )
 
         # Act
         updated = await service.update(
             created.id,
-            EntityWrite(slug="cyclobenzaprine", kind="drug", summary={"en": "Muscle relaxant used off-label for fibromyalgia"}),
+            EntityWrite(slug="cyclobenzaprine", summary={"en": "Muscle relaxant used off-label for fibromyalgia"}),
 
         )
 
@@ -146,7 +145,7 @@ class TestEntityService:
         with pytest.raises(HTTPException) as exc_info:
             await service.update(
                 fake_id,
-                EntityWrite(slug=ScientificEntities.TRAMADOL["slug"], kind="drug")
+                EntityWrite(slug=ScientificEntities.TRAMADOL["slug"])
             )
 
         assert exc_info.value.status_code == 404
@@ -156,7 +155,7 @@ class TestEntityService:
         # Arrange
         service = EntityService(db_session)
         entity_data = ScientificEntities.ACETAMINOPHEN
-        created = await service.create(EntityWrite(slug=entity_data["slug"], kind="drug"))
+        created = await service.create(EntityWrite(slug=entity_data["slug"]))
 
         # Act
         await service.delete(created.id)
@@ -183,11 +182,11 @@ class TestEntityService:
         # Arrange
         service = EntityService(db_session)
         entity_data = ScientificEntities.LOW_DOSE_NALTREXONE
-        created = await service.create(EntityWrite(slug=entity_data["slug"], kind="drug", summary={"en": "Version 1"}))
+        created = await service.create(EntityWrite(slug=entity_data["slug"], summary={"en": "Version 1"}))
 
         # Act - Create multiple revisions
-        v2 = await service.update(created.id, EntityWrite(slug=entity_data["slug"], kind="drug", summary={"en": "Version 2"}))
-        v3 = await service.update(created.id, EntityWrite(slug=entity_data["slug"], kind="drug", summary={"en": "Version 3"}))
+        v2 = await service.update(created.id, EntityWrite(slug=entity_data["slug"], summary={"en": "Version 2"}))
+        v3 = await service.update(created.id, EntityWrite(slug=entity_data["slug"], summary={"en": "Version 3"}))
 
         # Assert - Latest revision is returned
         current = await service.get(created.id)
@@ -216,7 +215,7 @@ class TestEntityService:
 
         service = EntityService(db_session)
         created = await service.create(
-            EntityWrite(slug="pregabalin", kind="drug"),
+            EntityWrite(slug="pregabalin"),
             user_id=user.id,
         )
 
@@ -233,11 +232,11 @@ class TestEntityService:
         # Arrange
         service = EntityService(db_session)
         entity_data = ScientificEntities.TRAMADOL
-        await service.create(EntityWrite(slug=entity_data["slug"], kind="drug"))
+        await service.create(EntityWrite(slug=entity_data["slug"]))
 
         # Act & Assert - Attempting to create another entity with the same slug should fail
         with pytest.raises(HTTPException) as exc_info:
-            await service.create(EntityWrite(slug=entity_data["slug"], kind="drug"))
+            await service.create(EntityWrite(slug=entity_data["slug"]))
 
         assert exc_info.value.status_code == 409
         assert "already exists" in exc_info.value.detail.lower()

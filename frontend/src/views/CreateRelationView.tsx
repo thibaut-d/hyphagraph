@@ -69,7 +69,7 @@ export function CreateRelationView() {
         setEntities(
           entityItems.map((entity) => ({
             id: entity.id,
-            label: entity.label || entity.slug,
+            label: entity.slug,
           }))
         );
         setSources(sourcesRes.items || []);

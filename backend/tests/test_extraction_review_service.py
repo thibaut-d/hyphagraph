@@ -57,7 +57,6 @@ async def sample_source(db_session, sample_user):
     revision = SourceRevision(
         id=uuid4(),
         source_id=source.id,
-        kind="document",
         title="Test Document",
         url="test://document",
         is_current=True,
@@ -1505,7 +1504,7 @@ async def test_list_extractions_filter_by_source(
     db_session.add(source2)
     await db_session.flush()
     db_session.add(SourceRevision(
-        id=uuid4(), source_id=source2.id, kind="document",
+        id=uuid4(), source_id=source2.id,
         title="Another Document", url="test://other",
         is_current=True, created_by_user_id=sample_user.id,
     ))

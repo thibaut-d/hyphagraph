@@ -14,10 +14,6 @@ export interface EntityWrite {
   summary?: Record<string, string>;
   ui_category_id?: string;
   created_with_llm?: string;
-  kind?: string;
-  label?: string;
-  synonyms?: string[];
-  ontology_ref?: string;
 }
 
 export interface EntityFilters {

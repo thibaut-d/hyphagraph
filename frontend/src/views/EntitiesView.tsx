@@ -291,7 +291,7 @@ export function EntitiesView() {
                           )}
                         </Box>
                       }
-                      secondary={e.summary?.en || e.kind}
+                      secondary={e.summary?.en}
                     />
                   </ListItem>
                 );
