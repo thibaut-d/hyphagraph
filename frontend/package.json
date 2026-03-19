@@ -11,7 +11,8 @@
     "format": "prettier --write .",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage"
+    "test:coverage": "vitest --coverage",
+    "test:pact": "vitest run --no-file-parallelism src/api/__tests__/pact/"
   },
   "dependencies": {
     "react": "^18.3.1",
@@ -46,6 +47,7 @@
     "typescript-eslint": "^8.0.0",
     "vite": "^5.4.0",
     "vitest": "^4.0.16",
-    "@vitest/coverage-v8": "^4.0.16"
+    "@vitest/coverage-v8": "^4.0.16",
+    "@pact-foundation/pact": "^13.1.4"
   }
 }
