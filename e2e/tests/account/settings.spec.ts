@@ -71,7 +71,7 @@ test.describe('Account Settings', () => {
         await confirmPasswordField.fill('DifferentPassword456!');
       }
 
-      await page.getByRole('button', { name: /save|update|change/i }).click();
+      await page.getByRole('button', { name: 'Change Password' }).click();
 
       // Should show mismatch error
       const errorMessage = page.locator('text=/match|same|confirm/i').first();
@@ -118,7 +118,7 @@ test.describe('Account Settings', () => {
         await confirmPasswordField.fill(newPassword);
       }
 
-      await page.getByRole('button', { name: /save|update|change/i }).click();
+      await page.getByRole('button', { name: 'Change Password' }).click();
 
       // Should show a success feedback
       const success = page.locator('text=/success|updated|changed/i').first();

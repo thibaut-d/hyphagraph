@@ -84,15 +84,15 @@ test.describe('Entity Filters', () => {
       // Create an entity
       const entitySlug = generateEntityName('evidence-filter').toLowerCase().replace(/\s+/g, '-');
       await page.goto('/entities/new');
-      await page.getByLabel(/slug/i).fill(entitySlug);
-      await page.getByLabel(/summary.*english/i).fill('Entity for evidence filter test');
+      await page.getByRole('textbox', { name: 'Slug' }).fill(entitySlug);
+      await page.getByRole('textbox', { name: /summary.*english/i }).fill('Entity for evidence filter test');
       await page.getByRole('button', { name: /create|submit/i }).click();
       await page.waitForURL(/\/entities\/[a-f0-9-]+/);
 
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
-      // Look for a filter button on the entity detail page
-      const filterButton = page.getByRole('button', { name: /filter/i });
+      // Look for a filter button on the entity detail page — use first() to avoid strict mode
+      const filterButton = page.getByRole('button', { name: /filter/i }).first();
       if (await filterButton.isVisible({ timeout: 3000 })) {
         await filterButton.click();
         await page.waitForTimeout(300);
@@ -110,14 +110,14 @@ test.describe('Entity Filters', () => {
       // Create an entity
       const entitySlug = generateEntityName('filter-warn').toLowerCase().replace(/\s+/g, '-');
       await page.goto('/entities/new');
-      await page.getByLabel(/slug/i).fill(entitySlug);
-      await page.getByLabel(/summary.*english/i).fill('Entity for filter warning test');
+      await page.getByRole('textbox', { name: 'Slug' }).fill(entitySlug);
+      await page.getByRole('textbox', { name: /summary.*english/i }).fill('Entity for filter warning test');
       await page.getByRole('button', { name: /create|submit/i }).click();
       await page.waitForURL(/\/entities\/[a-f0-9-]+/);
 
       // The warning only shows when filters actively hide evidence.
       // Verify the page loads correctly and the filter mechanism exists.
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await expect(page.locator(`text=${entitySlug}`)).toBeVisible();
     });
   });

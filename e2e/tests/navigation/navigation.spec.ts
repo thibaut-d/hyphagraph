@@ -16,13 +16,14 @@ test.describe('Navigation', () => {
       for (const path of ['/', '/entities', '/sources', '/search']) {
         await page.goto(path, { waitUntil: 'domcontentloaded' });
         await expect(page.getByRole('banner')).toBeVisible();
-        await expect(page.locator('text=HyphaGraph')).toBeVisible();
+        // Use the AppBar link specifically (home page also has an h3 "HyphaGraph")
+        await expect(page.getByRole('link', { name: 'HyphaGraph' })).toBeVisible();
       }
     });
 
     test('should navigate to home via logo', async ({ page }) => {
       await page.goto('/entities');
-      await page.locator('text=HyphaGraph').click();
+      await page.getByRole('link', { name: 'HyphaGraph' }).click();
       await expect(page).toHaveURL('/');
     });
 
