@@ -22,7 +22,6 @@ test.describe('Inference Viewing', () => {
     await page.goto('/sources/new');
     await page.getByRole('textbox', { name: 'Title' }).fill(sourceTitle);
     await page.getByRole('textbox', { name: 'URL' }).fill('https://example.com/inf-source');
-    await page.getByLabel(/summary \(english\)/i).fill('Source for inference test');
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/sources\/[a-f0-9-]+/);
 
@@ -87,7 +86,6 @@ test.describe('Inference Viewing', () => {
     await page.goto('/sources/new');
     await page.getByRole('textbox', { name: 'Title' }).fill(sourceTitle);
     await page.getByRole('textbox', { name: 'URL' }).fill('https://example.com/score-test');
-    await page.getByLabel(/summary \(english\)/i).fill('Source with high authority');
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/sources\/[a-f0-9-]+/);
 

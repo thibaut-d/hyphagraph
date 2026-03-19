@@ -82,12 +82,10 @@ test.describe('Synthesis View', () => {
     const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1];
 
     await page.goto(`/entities/${entityId}/synthesis`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
-    // The page should not present synthesis as authoritative truth — it should
-    // display the entity's summary/name and a computed nature indicator
-    // SynthesisView shows summary text, not slug
-    await expect(page.locator('text=Synthesis label entity').first()).toBeVisible({ timeout: 5000 });
+    // The page title "Knowledge Synthesis" labels this as computed, not authored truth
+    await expect(page.getByRole('heading', { name: /knowledge synthesis/i })).toBeVisible({ timeout: 5000 });
   });
 
   test('should provide a back navigation to entity detail', async ({ page }) => {

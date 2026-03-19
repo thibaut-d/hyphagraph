@@ -31,7 +31,6 @@ test.describe('Source Export', () => {
     await page.waitForLoadState('domcontentloaded');
     await page.getByRole('textbox', { name: 'Title' }).fill(sourceTitle);
     await page.getByRole('textbox', { name: 'URL' }).fill('https://example.com/export-test');
-    await page.getByRole('textbox', { name: /summary.*english/i }).fill('Source for export test');
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/sources\/[a-f0-9-]+/);
 

@@ -17,7 +17,6 @@ test.describe('Relation Edit and Delete', () => {
     await page.waitForLoadState('domcontentloaded');
     await page.getByRole('textbox', { name: 'Title' }).fill(sourceTitle);
     await page.getByRole('textbox', { name: 'URL' }).fill('https://example.com/rel-edit-source');
-    await page.getByRole('textbox', { name: /summary.*english/i }).fill('Source for relation edit tests');
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/sources\/([a-f0-9-]+)/);
     sourceId = page.url().match(/\/sources\/([a-f0-9-]+)/)?.[1] || '';

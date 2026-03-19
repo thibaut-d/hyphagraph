@@ -40,7 +40,6 @@ test.describe('Document Upload and Extraction', () => {
     await page.goto('/sources/new');
     await page.getByRole('textbox', { name: 'Title' }).fill(sourceTitle);
     await page.getByRole('textbox', { name: 'URL' }).fill('https://example.com/test-doc');
-    await page.getByRole('textbox', { name: /summary.*english/i }).fill('Test source for document upload');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
     // Extract source ID from URL

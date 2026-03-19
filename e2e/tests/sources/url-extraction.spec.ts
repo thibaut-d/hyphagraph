@@ -14,7 +14,6 @@ test.describe('URL-based Document Extraction', () => {
     await page.goto('/sources/new');
     await page.getByRole('textbox', { name: 'Title' }).fill(sourceTitle);
     await page.getByRole('textbox', { name: 'URL' }).fill('https://example.com/test-url');
-    await page.getByRole('textbox', { name: /summary.*english/i }).fill('Test source for URL extraction');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
     // Extract source ID from URL

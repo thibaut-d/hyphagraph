@@ -25,7 +25,7 @@ test.describe('Source CRUD Operations', () => {
     // Fill in source details (sources use Title and URL, not slug)
     await page.getByRole('textbox', { name: 'Title' }).fill(sourceTitle);
     await page.getByRole('textbox', { name: 'URL' }).fill('https://example.com/test-source');
-    await page.getByRole('textbox', { name: /summary.*english/i }).fill('This is a test source');
+    // Note: summary is in a collapsed "Advanced" section — Title and URL are sufficient
 
     // Submit form
     await page.getByRole('button', { name: /create|submit/i }).click();
@@ -51,7 +51,6 @@ test.describe('Source CRUD Operations', () => {
     await page.goto('/sources/new');
     await page.getByRole('textbox', { name: 'Title' }).fill(sourceTitle);
     await page.getByRole('textbox', { name: 'URL' }).fill('https://example.com/view-test');
-    await page.getByRole('textbox', { name: /summary.*english/i }).fill('Source for viewing');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
     // Wait for navigation to detail page
@@ -70,7 +69,6 @@ test.describe('Source CRUD Operations', () => {
     await page.goto('/sources/new');
     await page.getByRole('textbox', { name: 'Title' }).fill(originalTitle);
     await page.getByRole('textbox', { name: 'URL' }).fill('https://example.com/edit-test');
-    await page.getByRole('textbox', { name: /summary.*english/i }).fill('Original summary');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
     // Wait for navigation to detail page
@@ -104,7 +102,6 @@ test.describe('Source CRUD Operations', () => {
     await page.goto('/sources/new');
     await page.getByRole('textbox', { name: 'Title' }).fill(sourceTitle);
     await page.getByRole('textbox', { name: 'URL' }).fill('https://example.com/delete-test');
-    await page.getByRole('textbox', { name: /summary.*english/i }).fill('Source to be deleted');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
     // Wait for navigation to detail page
@@ -144,7 +141,6 @@ test.describe('Source CRUD Operations', () => {
       await page.goto('/sources/new');
       await page.getByRole('textbox', { name: 'Title' }).fill(title);
       await page.getByRole('textbox', { name: 'URL' }).fill(`https://example.com/${title}`);
-      await page.getByRole('textbox', { name: /summary.*english/i }).fill(`Test source ${title}`);
       await page.getByRole('button', { name: /create|submit/i }).click();
       await page.waitForURL(/\/sources\/[a-f0-9-]+/);
     }
