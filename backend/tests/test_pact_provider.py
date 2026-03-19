@@ -26,6 +26,7 @@ from sqlalchemy import delete, text as sql_text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
+from app.api.document_extraction_dependencies import require_llm
 from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.main import app
@@ -104,6 +105,7 @@ async def pact_client(pact_db: AsyncSession):
 
     app.dependency_overrides[get_db] = _get_db
     app.dependency_overrides[get_current_user] = lambda: test_user
+    app.dependency_overrides[require_llm] = lambda: None  # LLM not needed for pact tests
 
     async with AsyncClient(
         transport=ASGITransport(app=app),

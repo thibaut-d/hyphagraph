@@ -2442,6 +2442,140 @@
       "type": "Synchronous/HTTP"
     },
     {
+      "description": "an authenticated request to save extraction for source 223e4567-e89b-42d3-a456-426614174000",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "source with id 223e4567-e89b-42d3-a456-426614174000 exists"
+        }
+      ],
+      "request": {
+        "body": {
+          "content": {
+            "entities_to_create": [],
+            "entity_links": {},
+            "relations_to_create": []
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Authorization": [
+            "Bearer token"
+          ],
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          },
+          "header": {
+            "Authorization": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "method": "POST",
+        "path": "/api/sources/223e4567-e89b-42d3-a456-426614174000/save-extraction"
+      },
+      "response": {
+        "body": {
+          "content": {
+            "created_entity_ids": [],
+            "created_relation_ids": [],
+            "entities_created": 0,
+            "entities_linked": 0,
+            "relations_created": 0,
+            "warnings": []
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.created_entity_ids": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.created_relation_ids": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.entities_created": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.entities_linked": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.relations_created": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.warnings": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          },
+          "status": {}
+        },
+        "status": 200
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
       "description": "an explanation request for entity 123e4567-e89b-42d3-a456-426614174000 role drug",
       "pending": false,
       "providerStates": [
