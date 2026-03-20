@@ -55,5 +55,19 @@ export default defineConfig({
     mockReset: true,
     clearMocks: true,
     restoreMocks: true,
+
+    // Limit worker parallelism to prevent runaway memory usage.
+    // forks pool is required for jsdom; cap to 2 workers max.
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        maxForks: 2,
+        minForks: 0,
+        forkOptions: {
+          // Cap each worker's V8 heap to 1 GB
+          execArgv: ['--max-old-space-size=1024'],
+        },
+      },
+    },
   },
 });
