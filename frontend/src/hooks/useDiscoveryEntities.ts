@@ -14,6 +14,8 @@ interface DiscoveryEntitiesState {
   setSelectedEntities: React.Dispatch<React.SetStateAction<EntityRead[]>>;
   loadingEntities: boolean;
   entityLoadError: string | null;
+  entityListTruncated: boolean;
+  entityTotal: number;
 }
 
 export function useDiscoveryEntities(): DiscoveryEntitiesState {
@@ -24,6 +26,8 @@ export function useDiscoveryEntities(): DiscoveryEntitiesState {
   const [selectedEntities, setSelectedEntities] = useState<EntityRead[]>([]);
   const [loadingEntities, setLoadingEntities] = useState(false);
   const [entityLoadError, setEntityLoadError] = useState<string | null>(null);
+  const [entityListTruncated, setEntityListTruncated] = useState(false);
+  const [entityTotal, setEntityTotal] = useState(0);
 
   useEffect(() => {
     let isMounted = true;
@@ -76,6 +80,8 @@ export function useDiscoveryEntities(): DiscoveryEntitiesState {
         }
 
         setAvailableEntities(dedupedEntities);
+        setEntityTotal(total);
+        setEntityListTruncated(dedupedEntities.length < total);
         if (preselectedEntity) {
           setSelectedEntities([preselectedEntity]);
         }
@@ -103,5 +109,7 @@ export function useDiscoveryEntities(): DiscoveryEntitiesState {
     setSelectedEntities,
     loadingEntities,
     entityLoadError,
+    entityListTruncated,
+    entityTotal,
   };
 }

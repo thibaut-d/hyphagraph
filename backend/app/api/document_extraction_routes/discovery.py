@@ -48,13 +48,19 @@ async def smart_discovery(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> SmartDiscoveryResponse:
-    user_email = current_user.email if current_user else "system"
+    user_email = current_user.email
 
     if not request.entity_slugs or len(request.entity_slugs) == 0:
         raise ValidationException(
             message="At least one entity slug must be provided",
             field="entity_slugs",
         )
+    for slug in request.entity_slugs:
+        if not slug or not slug.strip():
+            raise ValidationException(
+                message="Entity slugs must be non-empty strings",
+                field="entity_slugs",
+            )
     if len(request.entity_slugs) > 10:
         raise ValidationException(
             message="Maximum 10 entities can be searched at once",
@@ -112,6 +118,7 @@ async def smart_discovery(
             max_results=request.max_results,
             min_quality=request.min_quality,
             databases=request.databases,
+            user_id=current_user.id,
             pubmed_fetcher_factory=PubMedFetcher,
             trust_level_resolver=infer_trust_level_from_pubmed_metadata,
         )
@@ -120,8 +127,20 @@ async def smart_discovery(
             query_used=summary.query_used,
             total_found=summary.total_found,
             results=[
-                SmartDiscoveryResult(**result.__dict__)
-                for result in summary.results
+                SmartDiscoveryResult(
+                    pmid=item.pmid,
+                    title=item.title,
+                    authors=item.authors,
+                    journal=item.journal,
+                    year=item.year,
+                    doi=item.doi,
+                    url=item.url,
+                    trust_level=item.trust_level,
+                    relevance_score=item.relevance_score,
+                    database=item.database,
+                    already_imported=item.already_imported,
+                )
+                for item in summary.results
             ],
             databases_searched=summary.databases_searched,
         )
@@ -146,7 +165,7 @@ async def bulk_search_pubmed(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> PubMedBulkSearchResponse:
-    user_email = current_user.email if current_user else "system"
+    user_email = current_user.email
     query = resolve_pubmed_bulk_query(request)
 
     if request.max_results < 1 or request.max_results > 100:
@@ -196,8 +215,8 @@ async def bulk_import_pubmed(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> PubMedBulkImportResponse:
-    user_email = current_user.email if current_user else "system"
-    user_id = current_user.id if current_user else None
+    user_email = current_user.email
+    user_id = current_user.id
 
     if not request.pmids:
         raise ValidationException(message="No PMIDs provided for import", field="pmids")

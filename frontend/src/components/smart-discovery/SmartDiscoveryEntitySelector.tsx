@@ -14,12 +14,15 @@ interface SmartDiscoveryEntitySelectorProps {
   selectedEntities: EntityRead[];
   loadingEntities: boolean;
   entityLoadError: string | null;
+  entityListTruncated: boolean;
+  entityTotal: number;
   onChange: (entities: EntityRead[]) => void;
   title: string;
   helpText: string;
   label: string;
   placeholder: string;
   previewLabel: string;
+  truncatedHint: string;
 }
 
 export function SmartDiscoveryEntitySelector({
@@ -27,12 +30,14 @@ export function SmartDiscoveryEntitySelector({
   selectedEntities,
   loadingEntities,
   entityLoadError,
+  entityListTruncated,
   onChange,
   title,
   helpText,
   label,
   placeholder,
   previewLabel,
+  truncatedHint,
 }: SmartDiscoveryEntitySelectorProps) {
   return (
     <Paper sx={{ p: 3 }}>
@@ -60,6 +65,12 @@ export function SmartDiscoveryEntitySelector({
           ))
         }
       />
+
+      {entityListTruncated && (
+        <Alert severity="info" sx={{ mt: 2 }}>
+          {truncatedHint}
+        </Alert>
+      )}
 
       {entityLoadError && (
         <Alert severity="error" sx={{ mt: 2 }}>

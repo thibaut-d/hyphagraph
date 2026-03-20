@@ -226,6 +226,7 @@ async def run_smart_discovery(
     max_results: int,
     min_quality: float,
     databases: list[str],
+    user_id: UUID | None,
     pubmed_fetcher_factory: Callable[[], PubMedFetcher] = PubMedFetcher,
     trust_level_resolver: TrustLevelResolver,
 ) -> SmartDiscoverySummary:
@@ -239,8 +240,19 @@ async def run_smart_discovery(
         )
         result = await db.execute(stmt)
         entity_slug = result.scalar_one_or_none() or slug
-        entity_query_clauses.append(build_entity_query_clause(entity_slug))
+        clause = build_entity_query_clause(entity_slug)
+        if clause:
+            entity_query_clauses.append(clause)
         entity_relevance_terms.append(entity_slug.replace("_", "-").replace("-", " "))
+
+    if not entity_query_clauses:
+        return SmartDiscoverySummary(
+            entity_slugs=entity_slugs,
+            query_used="",
+            total_found=0,
+            results=[],
+            databases_searched=[],
+        )
 
     query = " AND ".join(entity_query_clauses)
     all_results: list[SmartDiscoveryItem] = []
@@ -255,6 +267,7 @@ async def run_smart_discovery(
                 entity_relevance_terms=entity_relevance_terms,
                 max_results=max_results,
                 min_quality=min_quality,
+                user_id=user_id,
                 pubmed_fetcher_factory=pubmed_fetcher_factory,
                 trust_level_resolver=trust_level_resolver,
             )
@@ -264,7 +277,7 @@ async def run_smart_discovery(
         all_results,
         key=lambda item: (item.trust_level, item.relevance_score),
         reverse=True,
-    )
+    )[:max_results]
     return SmartDiscoverySummary(
         entity_slugs=entity_slugs,
         query_used=query,
@@ -281,6 +294,7 @@ async def _run_pubmed_smart_discovery(
     entity_relevance_terms: list[str],
     max_results: int,
     min_quality: float,
+    user_id: UUID | None,
     pubmed_fetcher_factory: Callable[[], PubMedFetcher],
     trust_level_resolver: TrustLevelResolver,
 ) -> list[SmartDiscoveryItem]:
@@ -300,7 +314,7 @@ async def _run_pubmed_smart_discovery(
             break
 
         articles = await pubmed_fetcher.bulk_fetch_articles(pmids, skip_pmc_enrichment=True)
-        existing_pmids = await _find_existing_pmids(db, [article.pmid for article in articles])
+        existing_pmids = await _find_existing_pmids(db, [article.pmid for article in articles], user_id)
 
         for article in articles:
             trust_level = trust_level_resolver(
@@ -340,25 +354,26 @@ async def _run_pubmed_smart_discovery(
     return all_results
 
 
-async def _find_existing_pmids(db: AsyncSession, pmids: list[str]) -> set[str]:
+async def _find_existing_pmids(
+    db: AsyncSession, pmids: list[str], user_id: UUID | None
+) -> set[str]:
     if not pmids:
         return set()
 
+    requested = {str(p) for p in pmids}
+    # Filter to the current user's sources that have a pmid key — avoids a full table scan
+    # and cross-user contamination. PMID value matching is done in Python for DB portability.
     stmt = select(SourceRevision.source_metadata).where(
         SourceRevision.is_current == True,
-        SourceRevision.source_metadata.is_not(None),
+        SourceRevision.created_by_user_id == user_id,
+        SourceRevision.source_metadata["pmid"].is_not(None),
     )
     result = await db.execute(stmt)
-
     existing_pmids: set[str] = set()
-    requested_pmids = {str(pmid) for pmid in pmids}
     for row in result:
         metadata = row[0]
-        if metadata and isinstance(metadata, dict) and "pmid" in metadata:
-            existing_pmid = str(metadata["pmid"])
-            if existing_pmid in requested_pmids:
-                existing_pmids.add(existing_pmid)
-                if len(existing_pmids) == len(requested_pmids):
-                    break
-
+        if metadata and isinstance(metadata, dict):
+            pmid = metadata.get("pmid")
+            if pmid and str(pmid) in requested:
+                existing_pmids.add(str(pmid))
     return existing_pmids

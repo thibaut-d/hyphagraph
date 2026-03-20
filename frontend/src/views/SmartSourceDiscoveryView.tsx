@@ -34,6 +34,8 @@ export function SmartSourceDiscoveryView() {
     setSelectedEntities,
     loadingEntities,
     entityLoadError,
+    entityListTruncated,
+    entityTotal,
   } = useDiscoveryEntities();
   const {
     maxResults,
@@ -61,8 +63,9 @@ export function SmartSourceDiscoveryView() {
   } = useSmartDiscoveryController();
 
   const getQualityLabel = (trustLevel: number): string => {
-    if (trustLevel >= 0.9) return "Systematic Review / Meta-analysis";
-    if (trustLevel >= 0.75) return "RCT / High Quality";
+    if (trustLevel >= 0.95) return "Systematic Review / Meta-analysis";
+    if (trustLevel >= 0.85) return "RCT";
+    if (trustLevel >= 0.75) return "Cohort / High Quality";
     if (trustLevel >= 0.65) return "Case-Control";
     if (trustLevel >= 0.5) return "Observational";
     return "Low Quality";
@@ -91,6 +94,8 @@ export function SmartSourceDiscoveryView() {
         selectedEntities={selectedEntities}
         loadingEntities={loadingEntities}
         entityLoadError={entityLoadError}
+        entityListTruncated={entityListTruncated}
+        entityTotal={entityTotal}
         onChange={setSelectedEntities}
         title={t("smart_discovery.step1", "Select Entities")}
         helpText={t(
@@ -100,6 +105,11 @@ export function SmartSourceDiscoveryView() {
         label={t("smart_discovery.select_entities", "Select entities (1-10)")}
         placeholder={t("smart_discovery.entity_placeholder", "Start typing to search...")}
         previewLabel={t("smart_discovery.query_preview", "Query will search for:")}
+        truncatedHint={t(
+          "smart_discovery.entity_list_truncated",
+          "Showing {{shown}} of {{total}} entities — type to search for more.",
+          { shown: availableEntities.length, total: entityTotal }
+        )}
       />
 
       <SmartDiscoveryConfigSection

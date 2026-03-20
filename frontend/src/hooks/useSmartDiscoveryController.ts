@@ -122,14 +122,15 @@ export function useSmartDiscoveryController(): SmartDiscoveryController {
   );
 
   const handleSelectAll = () => {
-    if (selectedPmids.size === notImportedResults.length) {
+    const budgetedResults = notImportedResults.slice(0, maxResults);
+    if (selectedPmids.size === budgetedResults.length) {
       setSelectedPmids(new Set());
       return;
     }
 
     setSelectedPmids(
       new Set(
-        notImportedResults
+        budgetedResults
           .map((result) => result.pmid)
           .filter((pmid): pmid is string => Boolean(pmid))
       )

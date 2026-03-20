@@ -267,7 +267,7 @@ class TestSmartDiscovery:
             url="https://pubmed.ncbi.nlm.nih.gov/17333346/",
             source_metadata={"pmid": "17333346", "source": "pubmed"},
         )
-        await source_service.create(existing_source)
+        await source_service.create(existing_source, user_id=test_user.id)
 
         # Mock PubMed search - returns PMID that already exists
         with patch("app.api.document_extraction_routes.discovery.PubMedFetcher") as mock_fetcher_class:

@@ -149,7 +149,7 @@ def calculate_trust_level(
 
     # Sample size bonus (up to +0.05 for very large studies)
     if sample_size is not None and sample_size > 0:
-        # Logarithmic bonus: 100 participants = +0.01, 1000 = +0.03, 10000 = +0.05
+        # Square-root bonus: 100 participants ≈ +0.003, 1000 ≈ +0.011, 10000 ≈ +0.033
         size_bonus = min(0.05, 0.01 * (sample_size / 100) ** 0.5 / 3)
         trust_level = min(1.0, trust_level + size_bonus)
 
@@ -366,14 +366,10 @@ def infer_trust_level_from_pubmed_metadata(
         ... )
         1.0
     """
-    # Special case: Cochrane Database publications are ALWAYS systematic reviews
+    # Special case: Cochrane Database publications are always systematic reviews at maximum trust.
+    # Bypasses calculate_trust_level to guarantee 1.0 regardless of age or other modifiers.
     if journal and "cochrane database" in journal.lower():
-        return calculate_trust_level(
-            study_type="systematic_review",
-            journal=journal,
-            is_peer_reviewed=True,
-            publication_year=year
-        )
+        return 1.0
 
     # Detect study type from title
     study_type = detect_study_type_from_title(title)

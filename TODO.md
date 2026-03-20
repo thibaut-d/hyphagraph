@@ -28,6 +28,32 @@
 - Execution status: Audit 7 is implemented and verified. Audit 8 is in progress with the first typed-contract slice landed and verified.
 - Execution status: Audit 7 is implemented and verified. Audit 8 is mostly advanced through route-schema extraction and stable contract cleanup, and Audit 9 has started with the first frontend type-surface reductions.
 
+## Smart Discovery audit findings — 2026-03-20 ✅ FIXED 2026-03-21
+
+Full report: `.temp/audit_smart_discovery_2026-03-20.md`
+
+### Critical
+
+- [x] **C1** — `_find_existing_pmids` full table scan + no user scoping — scoped to `created_by_user_id` + pmid-key filter in SQL
+- [x] **C2** — Empty PubMed query passthrough — filter empty clauses in service + validate non-blank slugs in route
+
+### Major
+
+- [x] **M1** — `SmartDiscoveryResult(**result.__dict__)` — replaced with explicit field mapping
+- [x] **M2** — `run_smart_discovery` returns more than `max_results` — cap `sorted_results[:max_results]`
+- [x] **M3** — `handleSelectAll` ignores budget — capped to `slice(0, maxResults)`
+
+- [x] **M4** — Cochrane "always 1.0" — now returns `1.0` directly, bypasses age penalty
+- [x] **M5** — Sample size bonus comment corrected to match actual square-root behaviour
+- [x] **M6** — `_find_existing_pmids` early-exit fragility — rewritten without early-exit
+
+### Minor
+
+- [x] **m1** — Dead `current_user` None-guards removed from route handlers
+- [x] **m2** — Entity truncation: `entityListTruncated`/`entityTotal` exposed; info hint shown in selector
+- [x] **m3** — `handlePageError` stability — confirmed: `usePageErrorHandler` uses `useCallback([showError])`, `showError` also `useCallback` — chain is stable, no re-fetch risk
+- [x] **m4** — `getQualityLabel` thresholds corrected to match OCEBM EVIDENCE_HIERARCHY
+
 ## Audit findings from 2026-03-18 full system run
 
 Full report: `.temp/full_audit_report_2026-03-18.md`
