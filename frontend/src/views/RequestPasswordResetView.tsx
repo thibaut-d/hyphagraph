@@ -54,7 +54,7 @@ export default function RequestPasswordResetView() {
             {t("forgot_password.check_email_title")}
           </h2>
           <p style={{ margin: 0, color: "#0c4a6e" }}>
-            {t("forgot_password.check_email_message", { email })}
+            {t("forgot_password.check_email_message")}
           </p>
           <p
             style={{

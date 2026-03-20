@@ -176,7 +176,15 @@ export function EntitiesView() {
     } finally {
       setIsLoading(false);
     }
-  }, [debouncedSearch, filters.ui_category_id]);
+  }, [
+    debouncedSearch,
+    filters.ui_category_id,
+    filters.clinical_effects,
+    filters.consensus_level,
+    filters.evidence_quality_min,
+    filters.evidence_quality_max,
+    filters.recency,
+  ]);
 
   useEffect(() => {
     loadEntities(0);
@@ -273,11 +281,17 @@ export function EntitiesView() {
             <List>
               {entities.map((e) => {
                 const categoryLabel = getCategoryLabel(e.ui_category_id);
+                const consensusColor: Record<string, "success" | "warning" | "error" | "default"> = {
+                  strong: "success",
+                  moderate: "warning",
+                  weak: "error",
+                  disputed: "error",
+                };
                 return (
                   <ListItem key={e.id}>
                     <ListItemText
                       primary={
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                           <Link component={RouterLink} to={`/entities/${e.id}`}>
                             {e.slug}
                           </Link>
@@ -286,6 +300,14 @@ export function EntitiesView() {
                               label={categoryLabel}
                               size="small"
                               color="primary"
+                              variant="outlined"
+                            />
+                          )}
+                          {e.consensus_level && (
+                            <Chip
+                              label={t(`filters.consensus_${e.consensus_level}`, e.consensus_level)}
+                              size="small"
+                              color={consensusColor[e.consensus_level] ?? "default"}
                               variant="outlined"
                             />
                           )}

@@ -12,7 +12,9 @@ export function LanguageSwitch() {
   const { t } = useTranslation();
 
   const toggleLanguage = () => {
-    i18n.changeLanguage(i18n.language === "en" ? "fr" : "en");
+    const newLang = i18n.language === "en" ? "fr" : "en";
+    i18n.changeLanguage(newLang);
+    localStorage.setItem("hyphagraph_lang", newLang);
   };
 
   return (

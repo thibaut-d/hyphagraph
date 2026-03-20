@@ -6,4 +6,5 @@ export interface EntityRead {
   label_i18n?: { [lang: string]: string };
   summaries?: { [lang: string]: string };
   ui_category_id?: string;
+  consensus_level?: string | null;
 }

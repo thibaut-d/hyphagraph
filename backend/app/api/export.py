@@ -5,7 +5,7 @@ Provides data export functionality in multiple formats.
 """
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
-from typing import Literal
+from typing import Literal, List, Optional
 
 from app.api.service_dependencies import get_export_service, get_typedb_export_service
 from app.services.export_service import ExportService
@@ -103,19 +103,29 @@ async def export_relations(
 async def export_sources(
     format: Literal["json", "csv"] = Query("json", description="Export format"),
     include_metadata: bool = Query(True, description="Include creation dates"),
+    kind: Optional[List[str]] = Query(None, description="Filter by source kind"),
+    year_min: Optional[int] = Query(None, description="Filter by minimum year"),
+    year_max: Optional[int] = Query(None, description="Filter by maximum year"),
+    trust_level_min: Optional[float] = Query(None, description="Filter by minimum trust level", ge=0.0, le=1.0),
+    trust_level_max: Optional[float] = Query(None, description="Filter by maximum trust level", ge=0.0, le=1.0),
+    search: Optional[str] = Query(None, description="Search in title/authors"),
+    domain: Optional[List[str]] = Query(None, description="Filter by domain"),
+    role: Optional[List[str]] = Query(None, description="Filter by graph role"),
     service: ExportService = Depends(get_export_service),
     current_user: User = Depends(get_current_user),
 ):
     """
-    Export all sources in specified format.
+    Export sources in specified format.
 
-    Formats:
-    - json: Complete JSON with all fields
-    - csv: Spreadsheet-compatible tabular format
-
-    Returns a downloadable file.
+    Accepts the same filter parameters as the sources list endpoint so that
+    the export reflects the currently visible (filtered) sources.
     """
-    content = await service.export_sources(format, include_metadata)
+    content = await service.export_sources(
+        format, include_metadata,
+        kind=kind, year_min=year_min, year_max=year_max,
+        trust_level_min=trust_level_min, trust_level_max=trust_level_max,
+        search=search, domain=domain, role=role,
+    )
 
     content_types = {"json": "application/json", "csv": "text/csv"}
     extensions = {"json": "json", "csv": "csv"}

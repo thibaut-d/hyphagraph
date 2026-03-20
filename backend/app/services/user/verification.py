@@ -93,7 +93,7 @@ async def request_password_reset(
 
     try:
         token = generate_verification_token_fn()
-        expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
         user.reset_token = token
         user.reset_token_expires_at = expires_at
         await service.repo.update(user)

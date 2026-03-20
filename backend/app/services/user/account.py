@@ -28,10 +28,9 @@ async def create_user(
     existing_user = await service.repo.get_by_email(payload.email)
     if existing_user:
         raise ValidationException(
-            message="Email already registered",
+            message="Registration failed",
             field="email",
-            details=f"An account with email '{payload.email}' already exists",
-            context={"email": payload.email},
+            details="If this email is not already registered, please try again.",
         )
 
     hashed_password = await hash_password_fn(payload.password)

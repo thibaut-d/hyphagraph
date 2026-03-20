@@ -20,6 +20,8 @@ export function AccountView() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [passwordConfirmError, setPasswordConfirmError] = useState("");
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [error, setError] = useState("");
   const { isRunning, run } = useAsyncAction((message) => setError(message ?? ""));
@@ -42,13 +44,25 @@ export function AccountView() {
 
   const handleRegister = async () => {
     setError("");
+    setPasswordConfirmError("");
     setRegistrationSuccess(false);
+
+    if (password.length < 8) {
+      setError(t("account.password_too_short", "Password must be at least 8 characters"));
+      return;
+    }
+    if (password !== passwordConfirm) {
+      setPasswordConfirmError(t("account.password_mismatch", "Passwords do not match"));
+      return;
+    }
+
     const result = await run(async () => {
-      await apiRegister({ email, password });
+      await apiRegister({ email, password, password_confirmation: passwordConfirm });
       // Show success message instead of auto-login
       // (in case email verification is required)
       setRegistrationSuccess(true);
       setPassword(""); // Clear password for security
+      setPasswordConfirm("");
     }, t("account.register_error", "Registration failed"));
 
     if (!result.ok) {
@@ -67,13 +81,22 @@ export function AccountView() {
           {t("account.logged_as", "Logged in as")} {user.email}
         </Typography>
 
-        <Button
-          sx={{ mt: 2 }}
-          variant="outlined"
-          onClick={logout}
-        >
-          {t("account.logout", "Logout")}
-        </Button>
+        <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+          <Button
+            variant="outlined"
+            component={Link}
+            to="/account/change-password"
+          >
+            {t("account.change_password", "Change Password")}
+          </Button>
+          <Button
+            variant="outlined"
+            color="error"
+            onClick={logout}
+          >
+            {t("account.logout", "Logout")}
+          </Button>
+        </Stack>
       </Paper>
     );
   }
@@ -108,6 +131,19 @@ export function AccountView() {
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+        />
+
+        <TextField
+          label={t("account.password_confirm", "Confirm Password")}
+          name="password_confirmation"
+          type="password"
+          value={passwordConfirm}
+          onChange={(e) => {
+            setPasswordConfirm(e.target.value);
+            setPasswordConfirmError("");
+          }}
+          error={!!passwordConfirmError}
+          helperText={passwordConfirmError || t("account.password_confirm_hint", "Only required for registration")}
         />
 
         {error && <Typography color="error">{error}</Typography>}

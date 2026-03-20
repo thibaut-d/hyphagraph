@@ -188,6 +188,7 @@ class ImportService:
                         row=i,
                         slug=slug,
                         summary_en=row.summary_en,
+                        summary_fr=row.summary_fr,
                         status="duplicate",
                     )
                 )
@@ -198,6 +199,7 @@ class ImportService:
                         row=i,
                         slug=slug,
                         summary_en=row.summary_en,
+                        summary_fr=row.summary_fr,
                         status="new",
                     )
                 )

@@ -387,7 +387,7 @@
     "email_required": "Email address is required",
     "error": "Failed to request password reset",
     "check_email_title": "Check Your Email",
-    "check_email_message": "If an account exists for {{email}}, you will receive a password reset link shortly.",
+    "check_email_message": "If an account exists for that email address, you will receive a password reset link shortly.",
     "check_spam": "Please check your inbox and spam folder.",
     "back_to_login": "Back to Login",
     "email_label": "Email Address",

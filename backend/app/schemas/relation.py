@@ -27,7 +27,7 @@ class RelationWrite(Schema):
     Creates both the base Relation and its first RelationRevision.
     """
     source_id: UUID  # Immutable - relation always from one source
-    kind: Optional[str] = None
+    kind: str
     direction: Optional[str] = None
     confidence: Optional[float] = None
     scope: Optional[ScopeFilter] = None  # Contextual qualifiers

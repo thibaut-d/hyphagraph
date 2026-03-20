@@ -3,7 +3,7 @@ Authentication schemas for request/response validation.
 """
 from uuid import UUID
 from datetime import datetime
-from pydantic import EmailStr, Field
+from pydantic import EmailStr, Field, model_validator
 from app.schemas.base import Schema
 
 
@@ -11,6 +11,13 @@ class UserRegister(Schema):
     """Schema for user registration."""
     email: EmailStr
     password: str = Field(min_length=8, description="Password must be at least 8 characters")
+    password_confirmation: str = Field(min_length=8, description="Must match password")
+
+    @model_validator(mode="after")
+    def passwords_match(self) -> "UserRegister":
+        if self.password != self.password_confirmation:
+            raise ValueError("Passwords do not match")
+        return self
 
 
 class UserLogin(Schema):

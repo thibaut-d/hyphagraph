@@ -371,7 +371,7 @@
     "email_required": "L'adresse e-mail est requise",
     "error": "Échec de la demande de réinitialisation du mot de passe",
     "check_email_title": "Vérifiez votre e-mail",
-    "check_email_message": "Si un compte existe pour {{email}}, vous recevrez un lien de réinitialisation sous peu.",
+    "check_email_message": "Si un compte existe pour cette adresse e-mail, vous recevrez un lien de réinitialisation sous peu.",
     "check_spam": "Veuillez vérifier votre boîte de réception et votre dossier spam.",
     "back_to_login": "Retour à la connexion",
     "email_label": "Adresse e-mail",

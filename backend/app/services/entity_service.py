@@ -12,6 +12,8 @@ from app.schemas.filters import EntityFilters, EntityFilterOptions, UICategoryOp
 from app.repositories.entity_repo import EntityRepository
 from app.models.entity import Entity
 from app.models.entity_revision import EntityRevision
+from app.models.relation_revision import RelationRevision
+from app.models.relation_role_revision import RelationRoleRevision
 from app.models.ui_category import UiCategory
 from app.mappers.entity_mapper import (
     entity_revision_from_write,
@@ -92,7 +94,7 @@ class EntityService:
             raise
 
     async def get(self, entity_id: UUID) -> EntityRead:
-        """Get entity with its current revision."""
+        """Get entity with its current revision and computed consensus level."""
         entity = await self.repo.get_by_id(entity_id)
         if not entity:
             raise EntityNotFoundException(
@@ -107,7 +109,9 @@ class EntityService:
             parent_id=entity.id,
         )
 
-        return entity_to_read(entity, current_revision)
+        result = entity_to_read(entity, current_revision)
+        result.consensus_level = await self.derived_properties_service.get_entity_consensus_level(entity.id)
+        return result
 
     async def list_all(self, filters: Optional[EntityFilters] = None) -> Tuple[list[EntityRead], int]:
         """
@@ -193,8 +197,8 @@ class EntityService:
         """
         Delete an entity and all its revisions.
 
-        Note: This is a hard delete. Consider implementing soft delete
-        by adding a deleted_at field if needed.
+        Raises 409 if any current relation revisions reference this entity,
+        so callers must remove those relations first.
         """
         try:
             entity = await self.repo.get_by_id(entity_id)
@@ -203,11 +207,33 @@ class EntityService:
                     entity_id=str(entity_id)
                 )
 
-            # Delete the entity (cascade should handle revisions)
+            # Block deletion if current relation revisions reference this entity
+            rel_count_result = await self.db.execute(
+                select(func.count(func.distinct(RelationRevision.relation_id)))
+                .join(RelationRoleRevision, RelationRoleRevision.relation_revision_id == RelationRevision.id)
+                .where(
+                    RelationRoleRevision.entity_id == entity.id,
+                    RelationRevision.is_current == True,  # noqa: E712
+                )
+            )
+            rel_count = rel_count_result.scalar() or 0
+            if rel_count > 0:
+                raise AppException(
+                    status_code=409,
+                    error_code=ErrorCode.ENTITY_HAS_RELATIONS,
+                    message="Entity has dependent relations",
+                    details=(
+                        f"This entity is referenced by {rel_count} relation(s). "
+                        "Delete those relations before deleting the entity."
+                    ),
+                    context={"relation_count": rel_count},
+                )
+
+            # Delete the entity (cascade handles revisions)
             await self.repo.delete(entity)
             await self.db.commit()
 
-        except EntityNotFoundException:
+        except (EntityNotFoundException, AppException):
             raise
         except Exception as e:
             logger.error("Failed to delete entity %s: %s", entity_id, e, exc_info=True)

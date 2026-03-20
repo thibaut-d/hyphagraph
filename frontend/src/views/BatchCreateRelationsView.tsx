@@ -189,7 +189,7 @@ export function BatchCreateRelationsView() {
   // -------------------------------------------------------------------------
   function validateDraft(d: RelationDraft): string | null {
     if (!d.kind.trim()) return t("batch_relations.error_kind_required");
-    if (d.roles.length < 1) return t("batch_relations.error_roles_required");
+    if (d.roles.length < 2) return t("batch_relations.error_roles_required");
     if (d.roles.some((r) => !r.entity_id || !r.role_type.trim()))
       return t("batch_relations.error_role_fields_required");
     return null;

@@ -26,6 +26,8 @@ interface ExportMenuProps {
   disabled?: boolean;
   buttonText?: string;
   size?: "small" | "medium" | "large";
+  /** Optional filter params forwarded to the export endpoint (exports only visible/filtered data). */
+  filterParams?: Record<string, string | number | string[] | undefined | null>;
 }
 
 export function ExportMenu({
@@ -34,6 +36,7 @@ export function ExportMenu({
   disabled = false,
   buttonText = "Export",
   size = "small",
+  filterParams,
 }: ExportMenuProps) {
   const { showError } = useNotification();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -53,7 +56,7 @@ export function ExportMenu({
     handleClose();
 
     try {
-      await downloadExportFile(exportType, format);
+      await downloadExportFile(exportType, format, filterParams);
 
       if (onExport) {
         onExport(format);

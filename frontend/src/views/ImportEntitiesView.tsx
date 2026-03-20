@@ -227,7 +227,8 @@ export function ImportEntitiesView() {
               <TableRow>
                 <TableCell sx={{ width: 60 }}>{t("import.col_row")}</TableCell>
                 <TableCell>{t("import.col_slug")}</TableCell>
-                <TableCell>{t("import.col_summary")}</TableCell>
+                <TableCell>{t("import.col_summary_en", "Summary (EN)")}</TableCell>
+                <TableCell>{t("import.col_summary_fr", "Summary (FR)")}</TableCell>
                 <TableCell>{t("import.col_status")}</TableCell>
               </TableRow>
             </TableHead>
@@ -236,8 +237,11 @@ export function ImportEntitiesView() {
                 <TableRow key={row.row}>
                   <TableCell>{row.row}</TableCell>
                   <TableCell>{row.slug}</TableCell>
-                  <TableCell sx={{ maxWidth: 300, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <TableCell sx={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {row.summary_en ?? "—"}
+                  </TableCell>
+                  <TableCell sx={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {row.summary_fr ?? "—"}
                   </TableCell>
                   <TableCell>
                     <Chip

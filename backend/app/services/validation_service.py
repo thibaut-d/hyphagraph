@@ -34,8 +34,8 @@ def validate_relation(payload: RelationWrite) -> None:
     # ------------------------------------------------------------
     # 3. Roles presence
     # ------------------------------------------------------------
-    if not payload.roles or len(payload.roles) == 0:
-        _fail("relation must have at least one role")
+    if not payload.roles or len(payload.roles) < 2:
+        _fail("relation must have at least two roles")
 
     for role in payload.roles:
         validate_role(role)

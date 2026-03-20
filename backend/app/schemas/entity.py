@@ -43,6 +43,9 @@ class EntityRead(Schema):
     summary: Optional[dict[str, str]] = None
     ui_category_id: Optional[UUID] = None
 
+    # Computed fields (populated by service on detail views; None in list views)
+    consensus_level: Optional[str] = None
+
 
 class EntityWithHistory(EntityRead):
     """Entity with full revision history."""

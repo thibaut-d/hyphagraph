@@ -89,6 +89,20 @@ export function SourcesView() {
   // Debounce search to reduce server load during typing
   const debouncedSearch = useDebounce(filters.search, 300);
 
+  // Build filter params for export — exports only the currently visible (filtered) sources
+  const sourceFilterParams = useMemo(() => ({
+    ...(filters.kind && Array.isArray(filters.kind) && filters.kind.length > 0 ? { kind: filters.kind as string[] } : {}),
+    ...(filters.year && Array.isArray(filters.year) && filters.year.length === 2
+      ? { year_min: (filters.year as number[])[0], year_max: (filters.year as number[])[1] }
+      : {}),
+    ...(filters.trust_level && Array.isArray(filters.trust_level) && filters.trust_level.length === 2
+      ? { trust_level_min: (filters.trust_level as number[])[0], trust_level_max: (filters.trust_level as number[])[1] }
+      : {}),
+    ...(debouncedSearch ? { search: debouncedSearch as string } : {}),
+    ...(filters.domain && Array.isArray(filters.domain) && filters.domain.length > 0 ? { domain: filters.domain as string[] } : {}),
+    ...(filters.role && Array.isArray(filters.role) && filters.role.length > 0 ? { role: filters.role as string[] } : {}),
+  }), [filters.kind, filters.year, filters.trust_level, debouncedSearch, filters.domain, filters.role]);
+
   // Reset pagination when filters change
   useEffect(() => {
     setSources([]);
@@ -209,8 +223,8 @@ export function SourcesView() {
               Smart Discovery
             </Box>
           </Button>
-          <ExportMenu exportType="sources" buttonText={t("export.sources", "Export Sources")} size="small" />
-          <ExportMenu exportType="relations" buttonText={t("export.relations", "Export Relations")} size="small" />
+          <ExportMenu exportType="sources" buttonText={t("export.sources", "Export Sources")} size="small" filterParams={sourceFilterParams} />
+          <ExportMenu exportType="relations" buttonText={t("export.relations", "Export Relations")} size="small" filterParams={sourceFilterParams} />
           <Button
             component={RouterLink}
             to="/sources/import"

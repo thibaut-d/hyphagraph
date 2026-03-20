@@ -23,6 +23,7 @@ class EntityImportPreviewRow(Schema):
     row: int
     slug: str
     summary_en: str | None = None
+    summary_fr: str | None = None
     status: Literal["new", "duplicate", "invalid"]
     error: str | None = None
 

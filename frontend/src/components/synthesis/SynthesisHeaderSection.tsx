@@ -4,12 +4,14 @@ import {
   Box,
   Breadcrumbs,
   Button,
+  Chip,
   Link,
   Paper,
   Stack,
   Typography,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import AutoGraphIcon from "@mui/icons-material/AutoGraph";
 
 interface SynthesisHeaderSectionProps {
   entityId: string;
@@ -51,9 +53,18 @@ export function SynthesisHeaderSection({
 
       <Paper sx={{ p: 3 }}>
         <Stack spacing={2}>
-          <Typography variant="h4" component="h1">
-            {t("synthesis.header", "Evidence Synthesis")}
-          </Typography>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography variant="h4" component="h1">
+              {t("synthesis.header", "Evidence Synthesis")}
+            </Typography>
+            <Chip
+              icon={<AutoGraphIcon />}
+              label={t("synthesis.algorithmically_derived", "Algorithmically derived")}
+              size="small"
+              color="info"
+              variant="outlined"
+            />
+          </Stack>
           <Typography variant="h6" color="text.secondary">
             {entityLabel}
           </Typography>

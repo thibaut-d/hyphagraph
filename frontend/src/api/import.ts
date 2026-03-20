@@ -13,6 +13,7 @@ export interface EntityImportPreviewRow {
   row: number;
   slug: string;
   summary_en: string | null;
+  summary_fr: string | null;
   status: ImportRowStatus;
   error: string | null;
 }

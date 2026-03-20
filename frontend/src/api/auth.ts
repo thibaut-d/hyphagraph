@@ -10,6 +10,7 @@ export type LoginPayload = {
 export type RegisterPayload = {
   email: string;
   password: string;
+  password_confirmation: string;
 };
 
 export type TokenPairResponse = {

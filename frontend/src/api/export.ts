@@ -2,11 +2,27 @@ import { apiFetchBlob } from "./client";
 
 export type ExportType = "entities" | "relations" | "sources" | "full-graph";
 
-function getExportPath(exportType: ExportType, format: string): string {
+function getExportPath(
+  exportType: ExportType,
+  format: string,
+  params?: Record<string, string | number | string[] | undefined | null>,
+): string {
   const basePath = `/export/${exportType}`;
-  return exportType === "full-graph"
-    ? basePath
-    : `${basePath}?format=${encodeURIComponent(format)}`;
+  if (exportType === "full-graph") return basePath;
+
+  const qs = new URLSearchParams();
+  qs.set("format", format);
+  if (params) {
+    for (const [key, value] of Object.entries(params)) {
+      if (value === undefined || value === null) continue;
+      if (Array.isArray(value)) {
+        value.forEach((v) => qs.append(key, String(v)));
+      } else {
+        qs.set(key, String(value));
+      }
+    }
+  }
+  return `${basePath}?${qs.toString()}`;
 }
 
 function getFilenameFromDisposition(
@@ -25,8 +41,9 @@ function getFilenameFromDisposition(
 export async function downloadExportFile(
   exportType: ExportType,
   format: string,
+  params?: Record<string, string | number | string[] | undefined | null>,
 ): Promise<string> {
-  const response = await apiFetchBlob(getExportPath(exportType, format), {
+  const response = await apiFetchBlob(getExportPath(exportType, format, params), {
     method: "GET",
   });
 

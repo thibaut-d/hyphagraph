@@ -4,11 +4,13 @@ import {
   Stack,
   Box,
   Button,
+  Chip,
   Typography,
   Badge,
   Alert,
 } from "@mui/material";
 import FilterListIcon from "@mui/icons-material/FilterList";
+import AutoGraphIcon from "@mui/icons-material/AutoGraph";
 import CloseIcon from "@mui/icons-material/Close";
 import { EntityRead } from "../../types/entity";
 import { InferenceRead } from "../../types/inference";
@@ -68,9 +70,18 @@ export function InferenceSection({
             alignItems: "center",
           }}
         >
-          <Typography variant="h5">
-            {t("entity.inference", "Related assertions")}
-          </Typography>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography variant="h5">
+              {t("entity.inference", "Related assertions")}
+            </Typography>
+            <Chip
+              icon={<AutoGraphIcon />}
+              label={t("inference.computed", "Computed")}
+              size="small"
+              color="info"
+              variant="outlined"
+            />
+          </Stack>
 
           <Stack direction="row" spacing={2}>
             {/* Evidence Filter Button */}

@@ -113,8 +113,8 @@ export function CreateRelationView() {
       return;
     }
 
-    if (roles.length === 0) {
-      setValidationMessage(t("relation.validation.role_required", "Please add at least one role"), "roles");
+    if (roles.length < 2) {
+      setValidationMessage(t("relation.validation.roles_required", "Please add at least two roles (a relation requires at least two participating entities)"), "roles");
       return;
     }
 

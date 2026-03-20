@@ -313,11 +313,39 @@ class ExportService:
         self,
         format: ExportFormat = "json",
         include_metadata: bool = True,
+        kind: list[str] | None = None,
+        year_min: int | None = None,
+        year_max: int | None = None,
+        trust_level_min: float | None = None,
+        trust_level_max: float | None = None,
+        search: str | None = None,
+        domain: list[str] | None = None,
+        role: list[str] | None = None,
     ) -> str:
-        """Export all sources in JSON or CSV format."""
+        """Export sources in JSON or CSV format, respecting the same filters as the list endpoint."""
+        from sqlalchemy import or_, cast, String
         stmt = select(Source, SourceRevision).join(
             SourceRevision, Source.id == SourceRevision.source_id
         ).where(SourceRevision.is_current == True)
+
+        if kind:
+            stmt = stmt.where(SourceRevision.kind.in_(kind))
+        if year_min is not None:
+            stmt = stmt.where(SourceRevision.year >= year_min)
+        if year_max is not None:
+            stmt = stmt.where(SourceRevision.year <= year_max)
+        if trust_level_min is not None:
+            stmt = stmt.where(SourceRevision.trust_level >= trust_level_min)
+        if trust_level_max is not None:
+            stmt = stmt.where(SourceRevision.trust_level <= trust_level_max)
+        if search:
+            search_pattern = f"%{search.lower()}%"
+            stmt = stmt.where(
+                or_(
+                    SourceRevision.title.ilike(search_pattern),
+                    cast(SourceRevision.authors, String).ilike(search_pattern),
+                )
+            )
 
         result = await self.db.execute(stmt)
         sources_data = []

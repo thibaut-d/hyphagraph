@@ -13,12 +13,14 @@ import {
   ListItemText,
   ListItemIcon,
   Collapse,
+  Divider,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 import type { UICategoryOption } from "../../api/entities";
+import { LanguageSwitch } from "./LanguageSwitch";
 
 export interface MenuItem {
   key: string;
@@ -194,6 +196,15 @@ export function MobileDrawer({
             );
           })}
       </List>
+
+      {/* Footer: Language switcher */}
+      <Divider />
+      <Box sx={{ p: 1, display: "flex", alignItems: "center", gap: 1 }}>
+        <Typography variant="body2" sx={{ flexGrow: 1 }}>
+          {i18n.language === "en" ? "English" : "Français"}
+        </Typography>
+        <LanguageSwitch />
+      </Box>
     </Drawer>
   );
 }

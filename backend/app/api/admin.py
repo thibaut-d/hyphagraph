@@ -6,13 +6,19 @@ to users with superuser privileges.
 """
 from fastapi import APIRouter, Depends, Query
 from uuid import UUID
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.service_dependencies import get_admin_service
+from app.database import get_db
 from app.dependencies.auth import get_current_user
+from app.models.ui_category import UiCategory
 from app.models.user import User
 from app.schemas.admin import UserListItemRead, UserStatsRead, UserUpdate
+from app.schemas.ui_category import UICategoryWrite, UICategoryRead
 from app.services.admin_service import AdminService
-from app.utils.errors import ForbiddenException
+from app.utils.errors import AppException, ErrorCode, ForbiddenException
 
 
 router = APIRouter(tags=["admin"])
@@ -85,4 +91,116 @@ async def delete_user(
 ):
     """Delete user (superuser only)."""
     await admin_svc.delete_user(user_id, admin.id)
+    return None
+
+
+# =============================================================================
+# UI Category management (ADM-02)
+# =============================================================================
+
+def _cat_to_read(cat: UiCategory) -> UICategoryRead:
+    return UICategoryRead(
+        id=cat.id,
+        slug=cat.slug,
+        labels=cat.labels,
+        description=cat.description,
+        order=cat.order,
+        created_at=getattr(cat, "created_at", None),
+        updated_at=getattr(cat, "updated_at", None),
+    )
+
+
+@router.get("/categories", response_model=list[UICategoryRead])
+async def list_categories(
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(require_superuser),
+):
+    """List all UI categories (superuser only)."""
+    result = await db.execute(select(UiCategory).order_by(UiCategory.order))
+    return [_cat_to_read(c) for c in result.scalars().all()]
+
+
+@router.post("/categories", response_model=UICategoryRead, status_code=201)
+async def create_category(
+    payload: UICategoryWrite,
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(require_superuser),
+):
+    """Create a new UI category (superuser only)."""
+    cat = UiCategory(
+        slug=payload.slug,
+        labels=payload.labels,
+        description=payload.description,
+        order=payload.order,
+    )
+    db.add(cat)
+    try:
+        await db.commit()
+        await db.refresh(cat)
+    except IntegrityError:
+        await db.rollback()
+        raise AppException(
+            status_code=409,
+            error_code=ErrorCode.ENTITY_SLUG_CONFLICT,
+            message="Category slug already exists",
+            field="slug",
+            details=f"A UI category with slug '{payload.slug}' already exists.",
+        )
+    return _cat_to_read(cat)
+
+
+@router.put("/categories/{category_id}", response_model=UICategoryRead)
+async def update_category(
+    category_id: UUID,
+    payload: UICategoryWrite,
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(require_superuser),
+):
+    """Update a UI category (superuser only)."""
+    result = await db.execute(select(UiCategory).where(UiCategory.id == category_id))
+    cat = result.scalar_one_or_none()
+    if not cat:
+        raise AppException(
+            status_code=404,
+            error_code=ErrorCode.NOT_FOUND,
+            message="Category not found",
+            details=f"No UI category with ID '{category_id}'.",
+        )
+    cat.slug = payload.slug
+    cat.labels = payload.labels
+    cat.description = payload.description
+    cat.order = payload.order
+    try:
+        await db.commit()
+        await db.refresh(cat)
+    except IntegrityError:
+        await db.rollback()
+        raise AppException(
+            status_code=409,
+            error_code=ErrorCode.ENTITY_SLUG_CONFLICT,
+            message="Category slug already exists",
+            field="slug",
+            details=f"A UI category with slug '{payload.slug}' already exists.",
+        )
+    return _cat_to_read(cat)
+
+
+@router.delete("/categories/{category_id}", status_code=204)
+async def delete_category(
+    category_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(require_superuser),
+):
+    """Delete a UI category (superuser only)."""
+    result = await db.execute(select(UiCategory).where(UiCategory.id == category_id))
+    cat = result.scalar_one_or_none()
+    if not cat:
+        raise AppException(
+            status_code=404,
+            error_code=ErrorCode.NOT_FOUND,
+            message="Category not found",
+            details=f"No UI category with ID '{category_id}'.",
+        )
+    await db.delete(cat)
+    await db.commit()
     return None
