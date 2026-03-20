@@ -75,7 +75,7 @@ export function SynthesisView() {
     );
   }
 
-  const entityLabel = resolveLabel(entity.slug, entity.summary, i18n.language);
+  const entityLabel = resolveLabel(entity.label, entity.label_i18n, i18n.language);
 
   // Calculate synthesis statistics
   const relationsByKind = inference?.relations_by_kind || {};

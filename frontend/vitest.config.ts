@@ -58,16 +58,10 @@ export default defineConfig({
 
     // Limit worker parallelism to prevent runaway memory usage.
     // forks pool is required for jsdom; cap to 2 workers max.
+    // Vitest 4: poolOptions removed — pool config is now top-level.
     pool: 'forks',
-    poolOptions: {
-      forks: {
-        maxForks: 2,
-        minForks: 0,
-        forkOptions: {
-          // Cap each worker's V8 heap to 1 GB
-          execArgv: ['--max-old-space-size=1024'],
-        },
-      },
-    },
+    maxWorkers: 2,
+    // Cap each worker's V8 heap to 1 GB
+    execArgv: ['--max-old-space-size=1024'],
   },
 });
