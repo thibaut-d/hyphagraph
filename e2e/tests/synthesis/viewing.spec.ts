@@ -84,8 +84,8 @@ test.describe('Synthesis View', () => {
     await page.goto(`/entities/${entityId}/synthesis`);
     await page.waitForLoadState('domcontentloaded');
 
-    // The page title "Knowledge Synthesis" labels this as computed, not authored truth
-    await expect(page.getByRole('heading', { name: /knowledge synthesis/i })).toBeVisible({ timeout: 5000 });
+    // The page title (e.g. "Evidence Synthesis") labels this as computed, not authored truth
+    await expect(page.getByRole('heading', { name: /synthesis/i }).first()).toBeVisible({ timeout: 5000 });
   });
 
   test('should provide a back navigation to entity detail', async ({ page }) => {

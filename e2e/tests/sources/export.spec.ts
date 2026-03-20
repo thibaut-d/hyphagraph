@@ -17,9 +17,9 @@ test.describe('Source Export', () => {
     await page.goto('/sources');
     await expect(page.getByRole('heading', { name: 'Sources' })).toBeVisible();
 
-    // Look for an export button
-    const exportButton = page.getByRole('button', { name: /export/i });
-    if (await exportButton.isVisible({ timeout: 5000 })) {
+    // Look for the Export Sources button (page also has Export Relations)
+    const exportButton = page.getByRole('button', { name: /export sources/i });
+    if (await exportButton.isVisible({ timeout: 5000 }).catch(() => false)) {
       await expect(exportButton).toBeVisible();
     }
   });
@@ -37,8 +37,8 @@ test.describe('Source Export', () => {
     await page.goto('/sources');
     await expect(page.getByRole('heading', { name: 'Sources' })).toBeVisible();
 
-    const exportButton = page.getByRole('button', { name: /export/i });
-    if (await exportButton.isVisible({ timeout: 5000 })) {
+    const exportButton = page.getByRole('button', { name: /export sources/i });
+    if (await exportButton.isVisible({ timeout: 5000 }).catch(() => false)) {
       // Listen for the download event
       const [download] = await Promise.all([
         page.waitForEvent('download', { timeout: 10000 }).catch(() => null),
@@ -57,14 +57,14 @@ test.describe('Source Export', () => {
     await page.goto('/sources');
     await expect(page.getByRole('heading', { name: 'Sources' })).toBeVisible();
 
-    const exportButton = page.getByRole('button', { name: /export/i });
-    if (await exportButton.isVisible({ timeout: 5000 })) {
+    const exportButton = page.getByRole('button', { name: /export sources/i });
+    if (await exportButton.isVisible({ timeout: 5000 }).catch(() => false)) {
       await exportButton.click();
       // After clicking, a format menu or dialog may appear with CSV option
       const csvOption = page.getByRole('menuitem', { name: /csv/i }).or(
         page.getByRole('button', { name: /csv/i })
       );
-      if (await csvOption.isVisible({ timeout: 2000 })) {
+      if (await csvOption.isVisible({ timeout: 2000 }).catch(() => false)) {
         const [download] = await Promise.all([
           page.waitForEvent('download', { timeout: 10000 }).catch(() => null),
           csvOption.click(),

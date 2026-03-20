@@ -30,9 +30,10 @@ test.describe('Admin Panel', () => {
     // Then check stats (conditional: stats API may be slow)
     const totalUsers = page.locator('text=Total Users');
     if (await totalUsers.isVisible({ timeout: 15000 }).catch(() => false)) {
-      await expect(page.locator('text=Active')).toBeVisible({ timeout: 5000 });
-      await expect(page.locator('text=Superusers')).toBeVisible({ timeout: 5000 });
-      await expect(page.locator('text=Verified')).toBeVisible({ timeout: 5000 });
+      // Use paragraph role to avoid matching status chips in the users table
+      await expect(page.getByRole('paragraph').filter({ hasText: 'Active' }).first()).toBeVisible({ timeout: 5000 });
+      await expect(page.locator('text=Superusers').first()).toBeVisible({ timeout: 5000 });
+      await expect(page.locator('text=Verified').first()).toBeVisible({ timeout: 5000 });
     }
   });
 

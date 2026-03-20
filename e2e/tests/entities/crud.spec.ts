@@ -149,9 +149,9 @@ test.describe('Entity CRUD Operations', () => {
     await page.getByLabel(/summary.*english/i).fill('Duplicate entity');
     await page.getByRole('button', { name: /create|submit/i}).click();
 
-    // Should show error message in Alert component
-    await expect(page.getByRole('alert')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByRole('alert')).toContainText(/already exists|duplicate/i);
+    // Should show error message in Alert component (may be multiple alerts on page)
+    await expect(page.getByRole('alert').first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('alert').first()).toContainText(/already exists|duplicate/i);
   });
 
   test('should prevent submission with empty slug (HTML5 validation)', async ({ page }) => {

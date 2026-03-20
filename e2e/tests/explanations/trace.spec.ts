@@ -53,9 +53,9 @@ test.describe('Explanation Trace', () => {
     // Navigate to explanation
     await page.goto(`/explain/${entityId}/subject`);
 
-    // Look for explanation components
-    const explanationContent = page.locator('text=/Explanation|Evidence|Trace|Path/i');
-    if (await explanationContent.isVisible({ timeout: 3000 })) {
+    // Look for explanation components (use .first() to avoid strict mode violations)
+    const explanationContent = page.locator('text=/Explanation|Evidence|Trace|Path/i').first();
+    if (await explanationContent.isVisible({ timeout: 3000 }).catch(() => false)) {
       await expect(explanationContent).toBeVisible();
     }
   });
