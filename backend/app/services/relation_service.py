@@ -16,6 +16,7 @@ from app.mappers.relation_mapper import (
 from app.services.validation_service import validate_relation
 from app.utils.revision_helpers import get_current_revision, create_new_revision
 from app.utils.errors import RelationNotFoundException, ValidationException
+from app.services.inference.read_models import resolve_entity_slugs
 
 logger = logging.getLogger(__name__)
 
@@ -91,8 +92,12 @@ class RelationService:
             # 6. Refresh to get the roles relationship populated
             await self.db.refresh(revision, ['roles'])
 
-            # 7. Return Read
-            return relation_to_read(relation, revision)
+            # 7. Resolve entity slugs for display
+            entity_ids = {role.entity_id for role in revision.roles}
+            entity_slug_map = await resolve_entity_slugs(self.db, entity_ids)
+
+            # 8. Return Read
+            return relation_to_read(relation, revision, entity_slug_map=entity_slug_map)
 
         except Exception as e:
             logger.error("Failed to create relation for source %s: %s", payload.source_id, e, exc_info=True)
@@ -116,7 +121,9 @@ class RelationService:
             load_relationships=['roles'],
         )
 
-        return relation_to_read(relation, current_revision)
+        entity_ids = {role.entity_id for role in current_revision.roles}
+        entity_slug_map = await resolve_entity_slugs(self.db, entity_ids)
+        return relation_to_read(relation, current_revision, entity_slug_map=entity_slug_map)
 
     async def list_by_source(self, source_id: str | UUID) -> list[RelationRead]:
         """List all relations for a source with their current revisions."""
@@ -125,7 +132,7 @@ class RelationService:
         relations = await self.repo.list_by_source(source_id)
 
         # Get current revisions for all relations with roles eagerly loaded
-        result = []
+        revisions = []
         for relation in relations:
             current_revision = await get_current_revision(
                 db=self.db,
@@ -134,9 +141,20 @@ class RelationService:
                 parent_id=relation.id,
                 load_relationships=['roles'],
             )
-            result.append(relation_to_read(relation, current_revision))
+            revisions.append((relation, current_revision))
 
-        return result
+        # Resolve entity slugs in one batch query
+        entity_ids = {
+            role.entity_id
+            for _, revision in revisions
+            for role in revision.roles
+        }
+        entity_slug_map = await resolve_entity_slugs(self.db, entity_ids)
+
+        return [
+            relation_to_read(relation, revision, entity_slug_map=entity_slug_map)
+            for relation, revision in revisions
+        ]
 
     async def update(self, relation_id: str, payload: RelationWrite, user_id=None) -> RelationRead:
         """
@@ -201,8 +219,12 @@ class RelationService:
             # 6. Refresh to get the roles relationship populated
             await self.db.refresh(revision, ['roles'])
 
-            # 7. Return Read
-            return relation_to_read(relation, revision)
+            # 7. Resolve entity slugs for display
+            entity_ids = {role.entity_id for role in revision.roles}
+            entity_slug_map = await resolve_entity_slugs(self.db, entity_ids)
+
+            # 8. Return Read
+            return relation_to_read(relation, revision, entity_slug_map=entity_slug_map)
 
         except (RelationNotFoundException, ValidationException):
             raise

@@ -38,20 +38,29 @@ export function GlobalSearch() {
       return;
     }
 
+    const controller = new AbortController();
+
     const fetchSuggestions = async () => {
       setLoading(true);
       try {
         const response = await getSuggestions(debouncedQuery, undefined, 10);
-        setSuggestions(response.suggestions);
+        if (!controller.signal.aborted) {
+          setSuggestions(response.suggestions);
+        }
       } catch (error) {
-        console.error("Failed to fetch suggestions:", error);
-        setSuggestions([]);
+        if (!controller.signal.aborted) {
+          console.error("Failed to fetch suggestions:", error);
+          setSuggestions([]);
+        }
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchSuggestions();
+    return () => controller.abort();
   }, [debouncedQuery]);
 
   const handleSelect = useCallback(
@@ -91,8 +100,11 @@ export function GlobalSearch() {
 
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
-      // If user presses Enter without selecting a suggestion, go to search page
-      if (event.key === "Enter" && inputValue.trim()) {
+      // If user presses Enter without selecting a suggestion, go to search page.
+      // Guard with defaultPrevented: MUI Autocomplete calls preventDefault() when
+      // it handles Enter to confirm a highlighted option, so we skip navigation
+      // in that case to avoid double-firing alongside the onChange handler.
+      if (event.key === "Enter" && !event.defaultPrevented && inputValue.trim()) {
         const searchQuery = inputValue.trim();
         setInputValue("");
         setOpen(false);

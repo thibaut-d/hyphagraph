@@ -31,7 +31,6 @@ import { SynthesisQualitySection } from "../components/synthesis/SynthesisQualit
 import { SynthesisRelationsSection } from "../components/synthesis/SynthesisRelationsSection";
 import { SynthesisStatsSection } from "../components/synthesis/SynthesisStatsSection";
 import type { RelationRead } from "../types/relation";
-import { resolveLabel } from "../utils/i18nLabel";
 import { useEntityInferenceDetail } from "../hooks/useEntityInferenceDetail";
 
 /**
@@ -46,7 +45,7 @@ import { useEntityInferenceDetail } from "../hooks/useEntityInferenceDetail";
  */
 export function SynthesisView() {
   const { id } = useParams<{ id: string }>();
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { data, error, loading } = useEntityInferenceDetail(id, "Failed to load synthesis");
   const entity = data?.entity ?? null;
@@ -75,7 +74,7 @@ export function SynthesisView() {
     );
   }
 
-  const entityLabel = resolveLabel(entity.label, entity.label_i18n, i18n.language);
+  const entityLabel = entity.slug;
 
   // Calculate synthesis statistics
   const relationsByKind = inference?.relations_by_kind || {};

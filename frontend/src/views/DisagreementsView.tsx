@@ -25,7 +25,6 @@ import {
 } from "@mui/material";
 import ThumbUpIcon from "@mui/icons-material/ThumbUp";
 
-import { resolveLabel } from "../utils/i18nLabel";
 import { useEntityInferenceDetail } from "../hooks/useEntityInferenceDetail";
 import type { RelationRead } from "../types/relation";
 import { DisagreementsFooterSection } from "../components/disagreements/DisagreementsFooterSection";
@@ -51,7 +50,7 @@ import { DisagreementsSummarySection } from "../components/disagreements/Disagre
  */
 export function DisagreementsView() {
   const { id } = useParams<{ id: string }>();
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { data, error, loading } = useEntityInferenceDetail(id, "Failed to load disagreements");
   const entity = data?.entity ?? null;
@@ -78,7 +77,7 @@ export function DisagreementsView() {
     );
   }
 
-  const entityLabel = resolveLabel(entity.slug, entity.summary, i18n.language);
+  const entityLabel = entity.slug;
 
   // Group relations by role type and direction
   const disagreementGroups: DisagreementGroup[] = inference?.disagreement_groups
