@@ -8,6 +8,7 @@ import logging
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -74,6 +75,11 @@ async def bootstrap_admin_user(db: AsyncSession) -> None:
         logger.info(f"Admin user bootstrapped successfully: {settings.ADMIN_EMAIL}")
         logger.warning("Bootstrap admin credentials should be rotated outside test environments.")
 
+    except IntegrityError:
+        # Concurrent bootstrap: another process created the admin user between
+        # our existence check and our insert. Roll back and treat as success.
+        await db.rollback()
+        logger.info(f"Admin user already created by concurrent process: {settings.ADMIN_EMAIL}")
     except Exception as e:
         logger.error(f"Failed to bootstrap admin user: {e}")
         await db.rollback()
@@ -146,6 +152,7 @@ async def create_system_source(db: AsyncSession) -> None:
     except Exception as e:
         logger.error(f"Failed to create system source: {e}")
         await db.rollback()
+        raise
 
 
 async def run_startup_tasks(db: AsyncSession) -> None:

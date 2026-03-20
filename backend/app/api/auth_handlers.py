@@ -31,12 +31,19 @@ async def register_user(
     send_verification_email,
     log_registration,
 ) -> UserRead:
+    if settings.EMAIL_VERIFICATION_REQUIRED and not settings.EMAIL_ENABLED:
+        raise AppException(
+            status_code=500,
+            error_code=ErrorCode.INTERNAL_SERVER_ERROR,
+            message="Registration unavailable",
+            details="Email verification is required but email sending is disabled. Contact an administrator.",
+        )
+
     try:
         user = await user_service.create(payload)
         if settings.EMAIL_VERIFICATION_REQUIRED:
             token = await user_service.create_verification_token(user.id)
-            if settings.EMAIL_ENABLED:
-                await send_verification_email(user.email, token)
+            await send_verification_email(user.email, token)
 
         await log_registration(
             db=db,

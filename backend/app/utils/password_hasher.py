@@ -80,11 +80,15 @@ class PasswordHasher:
         hashed_bytes = hashed_password.encode('utf-8')
 
         # Run blocking bcrypt in thread pool
+        def _check() -> bool:
+            try:
+                return bcrypt.checkpw(password_bytes, hashed_bytes)
+            except Exception:
+                # Invalid hash format or other bcrypt error — treat as mismatch
+                return False
+
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            _bcrypt_executor,
-            lambda: bcrypt.checkpw(password_bytes, hashed_bytes)
-        )
+        return await loop.run_in_executor(_bcrypt_executor, _check)
 
 
 # Singleton instance for convenience

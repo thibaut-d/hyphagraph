@@ -107,8 +107,13 @@ class AdminService:
         if updates.is_verified is not None:
             user.is_verified = updates.is_verified
 
-        await self.db.commit()
-        await self.db.refresh(user)
+        try:
+            await self.db.commit()
+            await self.db.refresh(user)
+        except Exception as e:
+            logger.error("Failed to update user %s: %s", user_id, e, exc_info=True)
+            await self.db.rollback()
+            raise
         return _to_read(user)
 
     async def delete_user(self, user_id: UUID, admin_id: UUID) -> None:
@@ -123,8 +128,13 @@ class AdminService:
                 details="You cannot delete your own account",
             )
         user = await self._require_user(user_id)
-        await self.db.delete(user)
-        await self.db.commit()
+        try:
+            await self.db.delete(user)
+            await self.db.commit()
+        except Exception as e:
+            logger.error("Failed to delete user %s: %s", user_id, e, exc_info=True)
+            await self.db.rollback()
+            raise
 
     # -------------------------------------------------------------------------
     # Internal helpers

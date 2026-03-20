@@ -135,6 +135,12 @@ async def delete_user(service: UserServiceContext, user_id: UUID) -> None:
         raise user_not_found(user_id)
 
     try:
+        # Revoke active refresh tokens first to prevent in-flight token replay
+        active_tokens = await load_active_refresh_tokens(service.db, user_id)
+        for token in active_tokens:
+            token.is_revoked = True
+            token.revoked_at = datetime.now(timezone.utc)
+
         await service.repo.delete(user)
         await service.db.commit()
     except Exception as e:

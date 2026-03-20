@@ -1,9 +1,11 @@
 import logging
 from uuid import UUID
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.relation import RelationWrite, RelationRead
 from app.repositories.relation_repo import RelationRepository
+from app.models.entity import Entity
 from app.models.relation import Relation
 from app.models.relation_revision import RelationRevision
 from app.models.relation_role_revision import RelationRoleRevision
@@ -23,6 +25,20 @@ class RelationService:
         self.db = db
         self.repo = RelationRepository(db)
 
+    async def _validate_entity_ids(self, roles) -> None:
+        """Raise ValidationException if any role references a non-existent entity."""
+        for role_data in roles:
+            result = await self.db.execute(
+                select(Entity.id).where(Entity.id == role_data.entity_id)
+            )
+            if result.scalar_one_or_none() is None:
+                raise ValidationException(
+                    message="Entity not found",
+                    field="roles",
+                    details=f"Entity with ID '{role_data.entity_id}' does not exist",
+                    context={"entity_id": str(role_data.entity_id)},
+                )
+
     async def create(self, payload: RelationWrite, user_id=None) -> RelationRead:
         """
         Create a new relation with its first revision.
@@ -34,6 +50,7 @@ class RelationService:
         """
         # 1. Structural validation
         validate_relation(payload)
+        await self._validate_entity_ids(payload.roles)
 
         try:
             # 2. Create base relation
@@ -132,6 +149,7 @@ class RelationService:
         """
         # 1. Structural validation
         validate_relation(payload)
+        await self._validate_entity_ids(payload.roles)
 
         try:
             # 2. Verify relation exists

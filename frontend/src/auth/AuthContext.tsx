@@ -128,19 +128,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        const errorMessage = error?.message || String(error);
-        const isAuthError =
-          errorMessage.includes("Session expired") ||
-          errorMessage.includes("Authentication failed") ||
-          errorMessage.includes("Unauthorized") ||
-          errorMessage.includes("401");
-
-        if (isAuthError) {
-          logout();
-        } else {
-          console.warn("Failed to fetch user data, but keeping session:", error);
-          setLoading(false);
-        }
+        // Any failure to load user data leaves token+user in inconsistent
+        // state. Clear the session so consumers never see a non-null token
+        // with a null user.
+        logout();
       });
 
     return () => {
