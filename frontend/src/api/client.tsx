@@ -170,6 +170,13 @@ async function refreshToken(): Promise<string | null> {
     const data = await response.json();
     const newToken = data.access_token;
 
+    // Guard: if the refresh token was cleared while this request was in-flight
+    // (e.g. user logged out), discard the new access token so it is never
+    // written back to localStorage and does not re-authenticate the user.
+    if (!localStorage.getItem("refresh_token")) {
+      return null;
+    }
+
     // Update stored token
     updateStoredAccessToken(newToken);
 
