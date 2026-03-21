@@ -81,6 +81,19 @@ Full report: `.temp/audit_inference_pipeline_2026-03-21.md`
 - [x] **m1** — Dead `entity_slug_map` param removed from `_compute_role_inferences`
 - [x] **m2** — `evidence_views.py` missing confidence now defaults to `0.0` instead of `1.0`
 
+## Inference engine re-audit findings — 2026-03-21 ✅ FIXED 2026-03-21
+
+All previous findings confirmed fixed. New findings:
+
+### Major
+
+- [x] **NEW-1** — No automatic cache invalidation on relation changes — added `ComputedRelationRepository.delete_by_entity_id`; called from `RelationService.create`, `update`, `delete` before commit
+
+### Minor
+
+- [x] **NEW-2** — `_build_disagreement_group` classified neutral as "supporting" — predicate changed from `!= "contradicts"` to `== "supports"` (`detail_views.py:117`)
+- [x] **NEW-3** — `EntityRoleInference.source_count` dead field — removed from backend schema, frontend type, and `EntityInferenceItem` component
+
 ---
 
 ## Smart Discovery audit findings — 2026-03-20 ✅ FIXED 2026-03-21

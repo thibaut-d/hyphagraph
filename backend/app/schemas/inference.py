@@ -13,7 +13,6 @@ class EntityRoleInference(Schema):
     coverage: float = 0.0  # Information coverage (number of relations with this entity+role)
     confidence: float = 0.0  # Confidence in [0, 1)
     disagreement: float = 0.0  # Contradiction measure in [0, 1]
-    source_count: int = 0  # Number of sources supporting this
 
 
 class RoleInference(Schema):

@@ -8,7 +8,6 @@ export interface EntityRoleInference {
   coverage: number;  // Information coverage (number of relations with this entity+role)
   confidence: number;  // Confidence in [0, 1)
   disagreement: number;  // Contradiction measure in [0, 1]
-  source_count: number;  // Number of sources supporting this
 }
 
 export interface RoleInference {

@@ -114,7 +114,7 @@ def _build_disagreement_group(
     supporting = [
         EvidenceItemRead(**relation.model_dump(), source=source_map.get(str(relation.source_id)))
         for relation in relations
-        if normalize_direction(relation.direction) != "contradicts"
+        if normalize_direction(relation.direction) == "supports"
     ]
     contradicting = [
         EvidenceItemRead(**relation.model_dump(), source=source_map.get(str(relation.source_id)))

@@ -147,7 +147,7 @@ function EntityInferenceItem({
 }: {
   entityInference: EntityRoleInference;
 }) {
-  const { entity_slug, score, source_count, confidence, disagreement } = entityInference;
+  const { entity_slug, score, confidence, disagreement } = entityInference;
 
   return (
     <Box sx={{ mb: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
@@ -161,11 +161,6 @@ function EntityInferenceItem({
           {entity_slug}
         </Link>
         <Stack direction="row" spacing={1}>
-          <Chip
-            label={`${source_count} sources`}
-            size="small"
-            variant="outlined"
-          />
           <Chip
             label={`${(confidence * 100).toFixed(0)}% confidence`}
             size="small"

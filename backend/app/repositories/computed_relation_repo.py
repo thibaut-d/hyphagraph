@@ -7,6 +7,7 @@ from uuid import UUID
 from app.models.computed_relation import ComputedRelation
 from app.models.relation import Relation
 from app.models.relation_revision import RelationRevision
+from app.models.relation_role_revision import RelationRoleRevision
 
 
 class ComputedRelationRepository:
@@ -69,6 +70,36 @@ class ComputedRelationRepository:
         computed_relations = result.scalars().all()
 
         for cr in computed_relations:
+            await self.db.delete(cr)
+
+    async def delete_by_entity_id(self, entity_id: UUID) -> None:
+        """
+        Invalidate all cache entries whose stored roles reference the given entity.
+
+        Joins through ComputedRelation → Relation → RelationRevision (is_current)
+        → RelationRoleRevision to find every cached inference that was computed
+        for this entity, then deletes those ComputedRelation rows.
+
+        Call this whenever a source relation is created, updated, or deleted so
+        that the entity's next inference request re-runs the math.
+        """
+        stmt = (
+            select(ComputedRelation)
+            .join(Relation, ComputedRelation.relation_id == Relation.id)
+            .join(
+                RelationRevision,
+                (RelationRevision.relation_id == Relation.id)
+                & (RelationRevision.is_current == True),
+            )
+            .join(
+                RelationRoleRevision,
+                RelationRoleRevision.relation_revision_id == RelationRevision.id,
+            )
+            .where(RelationRoleRevision.entity_id == entity_id)
+            .distinct()
+        )
+        result = await self.db.execute(stmt)
+        for cr in result.scalars().all():
             await self.db.delete(cr)
 
     async def delete_by_relation_id(self, relation_id: UUID) -> None:

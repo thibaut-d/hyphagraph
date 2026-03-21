@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.relation import RelationWrite, RelationRead
 from app.repositories.relation_repo import RelationRepository
+from app.repositories.computed_relation_repo import ComputedRelationRepository
 from app.models.entity import Entity
 from app.models.relation import Relation
 from app.models.relation_revision import RelationRevision
@@ -88,17 +89,22 @@ class RelationService:
 
             await self.db.flush()  # Ensure roles are created
 
-            # 5. Commit transaction
+            # 5. Invalidate inference cache for all affected entities
+            computed_repo = ComputedRelationRepository(self.db)
+            for entity_id in {role_data.entity_id for role_data in payload.roles}:
+                await computed_repo.delete_by_entity_id(entity_id)
+
+            # 6. Commit transaction
             await self.db.commit()
 
-            # 6. Refresh to get the roles relationship populated
+            # 7. Refresh to get the roles relationship populated
             await self.db.refresh(revision, ['roles'])
 
-            # 7. Resolve entity slugs for display
+            # 8. Resolve entity slugs for display
             entity_ids = {role.entity_id for role in revision.roles}
             entity_slug_map = await resolve_entity_slugs(self.db, entity_ids)
 
-            # 8. Return Read
+            # 9. Return Read
             return relation_to_read(relation, revision, entity_slug_map=entity_slug_map)
 
         except Exception as e:
@@ -188,7 +194,17 @@ class RelationService:
                     context={"relation_id": str(relation_id), "current_source_id": str(relation.source_id), "attempted_source_id": str(payload.source_id)}
                 )
 
-            # 3. Create new revision with updated data
+            # 3. Capture old entity IDs for cache invalidation before revision changes
+            old_revision = await get_current_revision(
+                db=self.db,
+                revision_class=RelationRevision,
+                parent_id_field='relation_id',
+                parent_id=relation.id,
+                load_relationships=['roles'],
+            )
+            old_entity_ids = {role.entity_id for role in old_revision.roles}
+
+            # 4. Create new revision with updated data
             revision_data = relation_revision_from_write(payload)
             if not user_id:
                 logger.warning("Updating relation revision without user attribution (user_id=None) for relation_id=%s", relation_id)
@@ -217,17 +233,23 @@ class RelationService:
 
             await self.db.flush()  # Ensure roles are created
 
-            # 5. Commit transaction
+            # 5. Invalidate inference cache for old and new entity IDs
+            computed_repo = ComputedRelationRepository(self.db)
+            all_affected_entity_ids = old_entity_ids | {role_data.entity_id for role_data in payload.roles}
+            for entity_id in all_affected_entity_ids:
+                await computed_repo.delete_by_entity_id(entity_id)
+
+            # 6. Commit transaction
             await self.db.commit()
 
-            # 6. Refresh to get the roles relationship populated
+            # 7. Refresh to get the roles relationship populated
             await self.db.refresh(revision, ['roles'])
 
-            # 7. Resolve entity slugs for display
+            # 8. Resolve entity slugs for display
             entity_ids = {role.entity_id for role in revision.roles}
             entity_slug_map = await resolve_entity_slugs(self.db, entity_ids)
 
-            # 8. Return Read
+            # 9. Return Read
             return relation_to_read(relation, revision, entity_slug_map=entity_slug_map)
 
         except (RelationNotFoundException, ValidationException):
@@ -251,8 +273,24 @@ class RelationService:
                     relation_id=str(relation_id)
                 )
 
+            # Capture entity IDs before deleting (cascade will remove the revisions)
+            current_rev = await get_current_revision(
+                db=self.db,
+                revision_class=RelationRevision,
+                parent_id_field='relation_id',
+                parent_id=relation.id,
+                load_relationships=['roles'],
+            )
+            entity_ids_to_invalidate = {role.entity_id for role in current_rev.roles}
+
             # Delete the relation (cascade should handle revisions and role revisions)
             await self.repo.delete(relation)
+
+            # Invalidate inference cache for all affected entities
+            computed_repo = ComputedRelationRepository(self.db)
+            for entity_id in entity_ids_to_invalidate:
+                await computed_repo.delete_by_entity_id(entity_id)
+
             await self.db.commit()
 
         except RelationNotFoundException:
