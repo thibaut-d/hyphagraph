@@ -134,8 +134,6 @@ describe('EntityDetailView', () => {
   const mockEntity: EntityRead = {
     id: '123e4567-e89b-12d3-a456-426614174000',
     slug: 'aspirin',
-    label_i18n: {},
-    summaries: {},
     created_at: new Date().toISOString(),
   };
 

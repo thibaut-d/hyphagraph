@@ -54,13 +54,11 @@ describe('CreateRelationView', () => {
     {
       id: 'entity-1',
       slug: 'aspirin',
-      summaries: {},
       created_at: new Date().toISOString(),
     },
     {
       id: 'entity-2',
       slug: 'headache',
-      summaries: {},
       created_at: new Date().toISOString(),
     },
   ];

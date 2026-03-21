@@ -81,7 +81,7 @@ class PubMedMetadataExtractor:
             origin=article.journal,
             kind="article",
             trust_level=trust_level,
-            summary_en=article.abstract,
+            summary={"en": article.abstract} if article.abstract else None,
             source_metadata={
                 "pmid": article.pmid,
                 "doi": article.doi,

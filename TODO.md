@@ -1,6 +1,6 @@
 # Current Work
 
-**Last updated**: 2026-03-21 (Full system audit — score 72/100, 4 critical 7 major 7 minor)
+**Last updated**: 2026-03-21 (Payload flows audit — 2 critical 3 major 1 minor)
 
 ## Recently Completed
 
@@ -80,6 +80,27 @@ Full report: `.temp/audit_inference_pipeline_2026-03-21.md`
 
 - [x] **m1** — Dead `entity_slug_map` param removed from `_compute_role_inferences`
 - [x] **m2** — `evidence_views.py` missing confidence now defaults to `0.0` instead of `1.0`
+
+## Payload flows audit findings — 2026-03-21
+
+Full report: `.temp/audit_payload_flows_2026-03-21.md`
+
+### Critical
+
+- [ ] **C1** — `SaveExtractionRequest.entity_links: dict[str, str]` — strings fed into `SlugEntityMap` without UUID coercion; flow into `RelationRoleRevision.entity_id: Mapped[UUID]` uncoerced → likely `DataError` with asyncpg (`source.py:144`, `document_extraction_processing.py:714`, `bulk_creation_service.py:229`)
+- [ ] **C2** — `RelationWrite.kind` required in backend (`relation.py:30`) but optional in frontend interface (`relations.ts:14`) — frontend can legally omit it; backend returns 422
+
+### Major
+
+- [ ] **M1** — `bulk_create_relations` return annotation `-> list[UUID]` is wrong; function returns `tuple[list[ExtractedRelation], list[UUID]]` (`bulk_creation_service.py:140,257`)
+- [ ] **M2** — Frontend `EntityRead` has phantom fields `label_i18n?` and `summaries?` absent from backend schema; test fixtures carry dead keys (`entity.ts:6-7`)
+- [ ] **M3** — `staged_extraction.py` uses `UUID4` + bare `BaseModel` instead of stdlib `UUID` + project `Schema` base (`staged_extraction.py:11`)
+
+### Minor
+
+- [ ] **m1** — `SourceMetadataSuggestion` uses flat `summary_en`/`summary_fr` instead of `I18nText` dict pattern used everywhere else (`source.py:98-99`)
+
+---
 
 ## Inference engine re-audit findings — 2026-03-21 ✅ FIXED 2026-03-21
 

@@ -43,7 +43,6 @@ export function renderWithNotifications(ui: ReactElement): RenderResult {
 export const mockEntity: EntityRead = {
   id: "entity-1",
   slug: "paracetamol",
-  label_i18n: { en: "Paracetamol" },
   ui_category_id: "drug",
   summary: { en: "A common pain reliever" },
   created_at: "2025-01-01T00:00:00Z",

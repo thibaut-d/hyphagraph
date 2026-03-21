@@ -25,7 +25,6 @@ describe("useEntityData", () => {
   const mockEntity: EntityRead = {
     id: "entity-1",
     slug: "aspirin",
-    label_i18n: {},
     summary: { en: "Pain reliever" },
     created_at: "2025-01-01T00:00:00Z",
   };

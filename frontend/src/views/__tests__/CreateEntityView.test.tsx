@@ -89,7 +89,6 @@ describe('CreateEntityView', () => {
     const mockEntity = {
       id: '123',
       slug: 'aspirin',
-      summaries: {},
       created_at: new Date().toISOString(),
     };
 
@@ -167,7 +166,6 @@ describe('CreateEntityView', () => {
     const mockEntity = {
       id: '123',
       slug: 'aspirin',
-      summaries: {},
       created_at: new Date().toISOString(),
     };
 
@@ -208,7 +206,6 @@ describe('CreateEntityView', () => {
     const mockEntity = {
       id: '123',
       slug: 'aspirin',
-      summaries: {},
       created_at: new Date().toISOString(),
     };
 

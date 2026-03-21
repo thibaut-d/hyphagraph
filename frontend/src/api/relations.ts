@@ -11,7 +11,7 @@ export interface RoleWrite {
 
 export interface RelationWrite {
   source_id: string;
-  kind?: string;
+  kind: string;
   direction?: string;
   confidence?: number;
   scope?: JsonObject | null;

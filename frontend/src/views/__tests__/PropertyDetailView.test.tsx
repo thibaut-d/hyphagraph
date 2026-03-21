@@ -81,7 +81,6 @@ describe("PropertyDetailView", () => {
   const mockEntity: EntityRead = {
     id: "entity-123",
     slug: "paracetamol",
-    label_i18n: {},
     summary: { en: "Common pain reliever" },
     created_at: "2025-01-01T00:00:00Z",
   };

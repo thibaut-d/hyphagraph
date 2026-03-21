@@ -95,8 +95,7 @@ class SourceMetadataSuggestion(Schema):
     origin: Optional[str] = None  # journal, publisher, platform
     kind: Optional[str] = None  # article, website, video, etc.
     trust_level: Optional[float] = None  # Calculated quality score (0.0-1.0)
-    summary_en: Optional[str] = None
-    summary_fr: Optional[str] = None
+    summary: Optional[I18nText] = None
     source_metadata: Optional[JsonObject] = None  # pmid, doi, etc.
 
 
@@ -140,8 +139,7 @@ class DocumentExtractionPreview(Schema):
 class SaveExtractionRequest(Schema):
     """Request to save user-approved extracted data."""
     entities_to_create: List[ExtractedEntity]  # User-approved entities
-    # UUID strings (not UUID objects) - converted to UUID in service layer
-    entity_links: dict[str, str]  # extracted_slug -> existing_entity_id
+    entity_links: dict[str, UUID]  # extracted_slug -> existing_entity_id (Pydantic coerces UUID strings)
     relations_to_create: List[ExtractedRelation]
     # Note: source_id is in URL path, not needed in body
 

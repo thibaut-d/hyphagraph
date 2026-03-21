@@ -137,7 +137,7 @@ class BulkCreationService:
         entity_mapping: SlugEntityMap,
         source_id: UUID,
         user_id: UUID | None = None
-    ) -> list[UUID]:
+    ) -> tuple[list[ExtractedRelation], list[UUID]]:
         """
         Bulk create relations with their first revisions and role revisions.
 
