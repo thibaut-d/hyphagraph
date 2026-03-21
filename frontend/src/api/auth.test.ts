@@ -81,6 +81,7 @@ describe('Auth API Client', () => {
       const payload = {
         email: 'newuser@example.com',
         password: 'password123',
+        password_confirmation: 'password123',
       };
 
       const result = await authApi.register(payload);
@@ -107,6 +108,7 @@ describe('Auth API Client', () => {
       const result = await authApi.register({
         email: 'test@example.com',
         password: 'password123',
+        password_confirmation: 'password123',
       });
 
       expect(result).not.toHaveProperty('password');
@@ -320,7 +322,7 @@ describe('Auth API Client', () => {
       (apiFetch as any).mockRejectedValue(mockError);
 
       await expect(
-        authApi.register({ email: 'existing@example.com', password: 'password' })
+        authApi.register({ email: 'existing@example.com', password: 'password', password_confirmation: 'password' })
       ).rejects.toThrow('Email already registered');
     });
 

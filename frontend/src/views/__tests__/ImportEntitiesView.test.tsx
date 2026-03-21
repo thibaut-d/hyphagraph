@@ -38,9 +38,9 @@ vi.mock("react-router-dom", async () => {
 
 const mockPreviewResult: importApi.ImportPreviewResult = {
   rows: [
-    { row: 1, slug: "aspirin", summary_en: "A drug", status: "new", error: null },
-    { row: 2, slug: "ibuprofen", summary_en: null, status: "duplicate", error: null },
-    { row: 3, slug: "", summary_en: null, status: "invalid", error: "slug is required" },
+    { row: 1, slug: "aspirin", summary_en: "A drug", summary_fr: null, status: "new", error: null },
+    { row: 2, slug: "ibuprofen", summary_en: null, summary_fr: null, status: "duplicate", error: null },
+    { row: 3, slug: "", summary_en: null, summary_fr: null, status: "invalid", error: "slug is required" },
   ],
   total: 3,
   new_count: 1,

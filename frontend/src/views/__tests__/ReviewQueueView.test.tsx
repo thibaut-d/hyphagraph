@@ -36,11 +36,15 @@ vi.mock("react-router-dom", async () => {
 
 const mockStats = {
   total_pending: 5,
+  total_approved: 0,
+  total_rejected: 0,
   total_auto_verified: 2,
-  avg_validation_score: 0.82,
-  flagged_count: 1,
   pending_entities: 3,
   pending_relations: 2,
+  pending_claims: 0,
+  avg_validation_score: 0.82,
+  high_confidence_count: 0,
+  flagged_count: 1,
 };
 
 function makeExtraction(overrides: Partial<reviewApi.StagedExtractionRead> = {}): reviewApi.StagedExtractionRead {
@@ -61,10 +65,10 @@ function makeExtraction(overrides: Partial<reviewApi.StagedExtractionRead> = {})
     llm_model: "gpt-4",
     llm_provider: "openai",
     created_at: "2026-01-01T00:00:00Z",
-    reviewed_at: null,
-    review_notes: null,
-    materialized_entity_id: null,
-    materialized_relation_id: null,
+    reviewed_at: undefined,
+    review_notes: undefined,
+    materialized_entity_id: undefined,
+    materialized_relation_id: undefined,
     confidence_adjustment: 1.0,
     ...overrides,
   };

@@ -48,10 +48,10 @@ function makeExtraction(overrides: Partial<StagedExtractionRead> = {}): StagedEx
     llm_model: "gpt-4",
     llm_provider: "openai",
     created_at: "2026-01-01T00:00:00Z",
-    reviewed_at: null,
-    review_notes: null,
-    materialized_entity_id: null,
-    materialized_relation_id: null,
+    reviewed_at: undefined,
+    review_notes: undefined,
+    materialized_entity_id: undefined,
+    materialized_relation_id: undefined,
     confidence_adjustment: 1.0,
     ...overrides,
   };
@@ -173,7 +173,7 @@ describe("ExtractionCard", () => {
   });
 
   it("does not render View Entity link without materialized_entity_id", () => {
-    renderCard(makeExtraction({ materialized_entity_id: null }));
+    renderCard(makeExtraction({ materialized_entity_id: undefined }));
     expect(screen.queryByText("extraction_card.view_entity")).not.toBeInTheDocument();
   });
 
@@ -185,7 +185,7 @@ describe("ExtractionCard", () => {
   });
 
   it("does not render View Relation link without materialized_relation_id", () => {
-    renderCard(makeExtraction({ materialized_relation_id: null }));
+    renderCard(makeExtraction({ materialized_relation_id: undefined }));
     expect(screen.queryByText("extraction_card.view_relation")).not.toBeInTheDocument();
   });
 
