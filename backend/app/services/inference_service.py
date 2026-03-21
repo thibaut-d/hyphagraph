@@ -133,7 +133,6 @@ class InferenceService:
     def _compute_role_inferences(
         self,
         relations,
-        entity_slug_map: dict | None = None,
         current_entity_id: UUID | None = None,
     ) -> list:
         return compute_role_inferences(relations, current_entity_id)

@@ -1,6 +1,6 @@
 # Current Work
 
-**Last updated**: 2026-03-18 (Full system audit — 538 backend + 579 frontend tests passing)
+**Last updated**: 2026-03-21 (Full system audit — score 72/100, 4 critical 7 major 7 minor)
 
 ## Recently Completed
 
@@ -22,11 +22,66 @@
   - Covered: `check_auto_commit_eligible` pure fn, relation/claim staging, `auto_commit_eligible_extractions()`, `materialize_extraction` edge cases, approve/reject/delete not-found, `list_extractions` filters/pagination/sorting, batch reject.
   - Fixed production bug: `materialize_relation` used `role_data["entity_slug"]` (dict subscript) on `ExtractedRole` Pydantic objects → now `role_data.entity_slug`.
 
+## Full system audit findings — 2026-03-21
+
+Full report: `.temp/full_audit_report_2026-03-21.md`
+Previous: `.temp/full_audit_report_2026-03-18.md` (score 91/100)
+
+### Critical
+
+- [ ] **C1** — `_update_source_revision_from_pubmed` mutates `SourceRevision` fields in-place, bypassing `create_new_revision` — history and provenance overwritten (`document_extraction_processing.py:545–579`)
+- [ ] **C2** — `user_id=None` on service write paths silently creates revisions with no provenance (`entity_service.py:60`, `relation_service.py:64`, `source_service.py:66`) — add assertion/warning
+- [ ] **C3** — `asyncio.get_event_loop()` deprecated (Python 3.10+) — replace with `get_running_loop()` at 4 sites (`password_hasher.py:61,90`, `refresh_token_manager.py:90,112`)
+- [ ] **C4** — `except Exception` in `_check()` swallows all bcrypt errors silently, returning `False` with no log (`password_hasher.py:84–88`) — add `logger.error` before returning
+
+### Major
+
+- [ ] **M1** — `user_id` params on `RelationService.create/update` and `SourceService.create/update` missing `UUID | None` type annotations (`relation_service.py:43,159`, `source_service.py:50,267`)
+- [ ] **M2** — `GET /entities/filter-options`, `GET /sources/filter-options`, `GET /relations/by-source/{source_id}` have no auth + no comment explaining intent (`entities.py:15`, `sources.py:84`, `relations.py:20`)
+- [ ] **M3** — LLM-extracted revisions stored at same `is_current=True` level as human-authored ones — no `requires_review` / `status` field to distinguish LLM drafts (`bulk_creation_service.py:83`)
+- [ ] **M4** — `aggregate_evidence` and `compute_disagreement` return ungeneric `-> dict` instead of `dict[str, float | None]` (`math.py:51,99`)
+- [ ] **M5** — `details=str(e)` leaks raw exception messages to API clients in sources route (`sources.py:74,80`) — replace with generic message + `logger.exception()`
+- [ ] **M6** — No tests for `normalize_direction`, `compute_role_inferences`, `cache_computed_inference`, `_find_existing_pmids` — all modified/added in recent fixes with zero new test coverage
+- [ ] **M7** — ~30 hardcoded English strings in SmartDiscovery components bypass i18n (`SmartDiscoveryConfigSection.tsx`, `SmartDiscoveryResultsSection.tsx`)
+
+### Minor
+
+- [ ] **m1** — `verify_refresh_token` bcrypt call in thread pool has no try/except — malformed stored hash raises unhandled 500 (`refresh_token_manager.py:113–116`)
+- [ ] **m2** — Unauthenticated routes lack intent comment (`entities.py:15`, `sources.py:84`, `relations.py:20`)
+- [ ] **m3** — `entity.slug.replace("-", " ")` only replaces first hyphen — use `.replaceAll` (`SmartDiscoveryEntitySelector.tsx:86`)
+- [ ] **m4** — `explanation_service.py:_generate_summary` assembles hardcoded English prose — no i18n path (`explanation_service.py:166–179`)
+- [ ] **m5** — `Layout.tsx` uses bare `console.error` instead of app error utilities (`Layout.tsx:63–65`)
+- [ ] **m6** — `_block_placeholder_secrets_in_production` only checks `"change-me"` — add empty string + entropy check (`config.py:73`)
+- [ ] **m7** — `RelationRead` and `EntityRead` omit `created_with_llm` from flattened schemas (`relation.py:55–72`, `entity.py:32–48`)
+
 ## In Progress
 
 - Rule-based maintainability follow-up for the remaining test-suite, typed-contract, type-coverage, and modularity cleanup.
 - Execution status: Audit 7 is implemented and verified. Audit 8 is in progress with the first typed-contract slice landed and verified.
 - Execution status: Audit 7 is implemented and verified. Audit 8 is mostly advanced through route-schema extraction and stable contract cleanup, and Audit 9 has started with the first frontend type-surface reductions.
+
+## Inference pipeline audit findings — 2026-03-21 ✅ FIXED 2026-03-21
+
+Full report: `.temp/audit_inference_pipeline_2026-03-21.md`
+
+### Critical
+
+- [x] **C1** — `compute_role_inferences` used `len()` as coverage — now uses `aggregated["coverage"]` (weight sum)
+- [x] **C2** — Neutral-direction contribution fallback — now `0.0` instead of `role.weight` / `1.0`
+
+### Major
+
+- [x] **M1** — `cache_computed_inference` hardcoded `direction="positive"` — now derived from net score sign
+- [x] **M2** — Per-role disagreement lost at cache — added `disagreement` col to `RelationRoleRevision`; migration `005_add_role_disagreement.py`; stored/restored per-role; falls back to global avg for pre-migration rows
+- [x] **M3** — Direction normalization gap — `normalize_direction` extracted to `math.py`; applied in `detail_views.py` stats + disagreement groups + `_build_inference_stats`; `evidence_views.py` local helper replaced; `useInferenceFiltering.ts` normalizes before filter
+- [x] **M4** — `useEntityInference` stale closure — `initialScopeFilter` added to `useEffect` deps
+
+### Minor
+
+- [x] **m1** — Dead `entity_slug_map` param removed from `_compute_role_inferences`
+- [x] **m2** — `evidence_views.py` missing confidence now defaults to `0.0` instead of `1.0`
+
+---
 
 ## Smart Discovery audit findings — 2026-03-20 ✅ FIXED 2026-03-21
 

@@ -6,10 +6,13 @@ Uses bcrypt for secure storage and SHA256 for fast lookup indexing.
 """
 import asyncio
 import hashlib
+import logging
 import secrets
 import bcrypt
 from concurrent.futures import ThreadPoolExecutor
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 # Thread pool for CPU-bound bcrypt operations
@@ -87,7 +90,7 @@ class RefreshTokenManager:
             hashed = bcrypt.hashpw(token_bytes, salt)
             return hashed.decode('utf-8')
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(_bcrypt_executor, _hash)
 
     async def verify_refresh_token(self, plain_token: str, hashed_token: str) -> bool:
@@ -109,11 +112,15 @@ class RefreshTokenManager:
         hashed_bytes = hashed_token.encode('utf-8')
 
         # Run blocking bcrypt in thread pool
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            _bcrypt_executor,
-            lambda: bcrypt.checkpw(token_bytes, hashed_bytes)
-        )
+        def _check() -> bool:
+            try:
+                return bcrypt.checkpw(token_bytes, hashed_bytes)
+            except Exception as exc:
+                logger.error("bcrypt.checkpw raised an unexpected error during token verification: %s", type(exc).__name__)
+                return False
+
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(_bcrypt_executor, _check)
 
 
 # Singleton instance for convenience

@@ -28,6 +28,7 @@ class RelationRoleRevision(Base, UUIDMixin):
     # Optional fields for computed relations only
     weight: Mapped[float | None] = mapped_column(Float)  # For computed relations: strength ∈ [-1, 1]
     coverage: Mapped[float | None] = mapped_column(Float)  # For computed relations: information coverage
+    disagreement: Mapped[float | None] = mapped_column(Float)  # For computed relations: contradiction measure ∈ [0, 1]
 
     # Relationships
     relation_revision = relationship("RelationRevision", back_populates="roles")

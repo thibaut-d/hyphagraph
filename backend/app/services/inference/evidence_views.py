@@ -7,6 +7,7 @@ from app.mappers.relation_mapper import relation_to_read
 from app.models.relation import Relation
 from app.schemas.relation import RelationRead
 
+from .math import normalize_direction
 from .read_models import resolve_entity_slugs
 
 
@@ -21,21 +22,13 @@ class RoleEvidenceRead:
     contribution_direction: str
 
 
-def _normalize_direction(direction: Optional[str]) -> str:
-    if direction in {"positive", "supports"}:
-        return "supports"
-    if direction in {"negative", "contradicts"}:
-        return "contradicts"
-    return direction or "neutral"
-
-
 def _build_role_evidence(relation: RelationRead, role_type: str) -> Optional[RoleEvidenceRead]:
     role = next((item for item in (relation.roles or []) if item.role_type == role_type), None)
     if role is None:
         return None
 
-    relation_confidence = relation.confidence or 1.0
-    relation_direction = _normalize_direction(relation.direction)
+    relation_confidence = relation.confidence or 0.0
+    relation_direction = normalize_direction(relation.direction)
 
     if role.weight is not None:
         role_weight = role.weight

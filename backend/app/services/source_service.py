@@ -47,7 +47,7 @@ class SourceService:
             derived_properties_service or DerivedPropertiesService(db)
         )
 
-    async def create(self, payload: SourceWrite, user_id=None) -> SourceRead:
+    async def create(self, payload: SourceWrite, user_id: UUID | None = None) -> SourceRead:
         """
         Create a new source with its first revision.
 
@@ -63,7 +63,9 @@ class SourceService:
 
             # Create first revision
             revision_data = source_revision_from_write(payload)
-            if user_id:
+            if not user_id:
+                logger.warning("Creating source revision without user attribution (user_id=None) for title=%s", payload.title)
+            else:
                 revision_data['created_by_user_id'] = user_id
 
             revision = await create_new_revision(
@@ -264,7 +266,7 @@ class SourceService:
                 items.append(source_to_read(source, revision))
         return items
 
-    async def update(self, source_id: str, payload: SourceWrite, user_id=None) -> SourceRead:
+    async def update(self, source_id: str, payload: SourceWrite, user_id: UUID | None = None) -> SourceRead:
         """
         Update a source by creating a new revision.
 
@@ -281,7 +283,9 @@ class SourceService:
 
             # Create new revision with updated data
             revision_data = source_revision_from_write(payload)
-            if user_id:
+            if not user_id:
+                logger.warning("Updating source revision without user attribution (user_id=None) for source_id=%s", source_id)
+            else:
                 revision_data['created_by_user_id'] = user_id
 
             revision = await create_new_revision(

@@ -83,7 +83,7 @@ export function SmartDiscoveryEntitySelector({
           {previewLabel}{" "}
           <strong>
             {selectedEntities
-              .map((entity) => entity.slug.replace("-", " ").toUpperCase())
+              .map((entity) => entity.slug.replace(/-/g, " ").toUpperCase())
               .join(" AND ")}
           </strong>
         </Alert>

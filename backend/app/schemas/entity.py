@@ -42,6 +42,7 @@ class EntityRead(Schema):
     slug: str
     summary: Optional[dict[str, str]] = None
     ui_category_id: Optional[UUID] = None
+    created_with_llm: Optional[str] = None
 
     # Computed fields (populated by service on detail views; None in list views)
     consensus_level: Optional[str] = None

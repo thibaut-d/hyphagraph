@@ -71,14 +71,14 @@ async def extract_metadata_from_url(
     except AppException:
         raise
     except Exception as e:
-        logger.error(f"Metadata extraction failed: {e}")
+        logger.exception("Metadata extraction failed for url=%s", request.url)
         raise AppException(
             status_code=500,
             error_code=ErrorCode.INTERNAL_SERVER_ERROR,
             message="Failed to extract metadata from URL",
-            details=str(e),
+            details="An internal error occurred during metadata extraction.",
             context={"url": request.url}
-        )
+        ) from e
 
 
 @router.get("/filter-options", response_model=SourceFilterOptions)
@@ -87,6 +87,9 @@ async def get_source_filter_options(
 ):
     """
     Get available filter options for sources.
+
+    Intentionally unauthenticated: returns only aggregated metadata (distinct field values),
+    not source content. No sensitive data is exposed.
 
     Returns distinct values for filterable fields without fetching full records.
     Useful for populating filter UI controls efficiently.

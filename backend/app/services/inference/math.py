@@ -9,6 +9,21 @@ import math
 from typing import Optional
 
 
+def normalize_direction(direction: str | None) -> str:
+    """
+    Normalise legacy direction values to canonical form.
+
+    "positive" → "supports"
+    "negative" → "contradicts"
+    All other values (including None) → "neutral" or the value unchanged.
+    """
+    if direction in {"positive", "supports"}:
+        return "supports"
+    if direction in {"negative", "contradicts"}:
+        return "contradicts"
+    return direction or "neutral"
+
+
 def compute_claim_score(polarity: int, intensity: float) -> float:
     """Return a signed score by multiplying polarity (+1/-1) with intensity (0-1)."""
     return polarity * intensity
@@ -33,7 +48,7 @@ def compute_role_contribution(claims: list[float]) -> Optional[float]:
     return max(-1.0, min(1.0, contribution))
 
 
-def aggregate_evidence(relations_data: list[dict], role: str) -> dict:
+def aggregate_evidence(relations_data: list[dict], role: str) -> dict[str, float | None]:
     """
     Aggregate weighted evidence from multiple relations for a given role.
 

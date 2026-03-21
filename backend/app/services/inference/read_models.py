@@ -28,7 +28,7 @@ from app.repositories.relation_repo import RelationRepository
 from app.schemas.inference import InferenceRead, RoleInference
 from app.utils.hashing import compute_scope_hash
 
-from .math import aggregate_evidence, compute_confidence, compute_disagreement
+from .math import aggregate_evidence, compute_confidence, compute_disagreement, normalize_direction
 
 
 async def resolve_entity_slugs(
@@ -141,12 +141,13 @@ def compute_role_inferences(relations, current_entity_id: UUID | None = None) ->
             if current_entity_id and role.entity_id != current_entity_id:
                 continue
 
-            if current_rev.direction in {"positive", "supports"}:
+            direction = normalize_direction(current_rev.direction)
+            if direction == "supports":
                 contribution = 1.0
-            elif current_rev.direction in {"negative", "contradicts"}:
+            elif direction == "contradicts":
                 contribution = -1.0
             else:
-                contribution = role.weight if role.weight is not None else 1.0
+                contribution = 0.0
 
             grouped_by_role[role.role_type].append(
                 {
@@ -162,7 +163,7 @@ def compute_role_inferences(relations, current_entity_id: UUID | None = None) ->
             for item in relation_data_list
         ]
         aggregated = aggregate_evidence(relations_data, role=role_type)
-        coverage = float(len(relation_data_list))
+        coverage = aggregated["coverage"]
         inferences.append(
             RoleInference(
                 role_type=role_type,
@@ -201,13 +202,20 @@ async def convert_cached_to_inference_read(
         if current_rev and current_rev.roles:
             for role_rev in current_rev.roles:
                 coverage = role_rev.coverage or 0.0
+                # Use per-role disagreement if stored; fall back to global average
+                # for records written before migration 005.
+                disagreement = (
+                    role_rev.disagreement
+                    if role_rev.disagreement is not None
+                    else cached_computed.uncertainty
+                )
                 role_inferences.append(
                     RoleInference(
                         role_type=role_rev.role_type,
                         score=role_rev.weight,
                         coverage=coverage,
                         confidence=compute_confidence(coverage),
-                        disagreement=cached_computed.uncertainty,
+                        disagreement=disagreement,
                     )
                 )
 
@@ -246,6 +254,13 @@ async def cache_computed_inference(
     if existing:
         return
 
+    net_score = (
+        sum(r.score for r in role_inferences if r.score is not None)
+        if role_inferences
+        else 0.0
+    )
+    inferred_direction = "negative" if net_score < 0 else "positive"
+
     relation = Relation(id=uuid4(), source_id=UUID(settings.SYSTEM_SOURCE_ID))
     db.add(relation)
     await db.flush()
@@ -253,7 +268,7 @@ async def cache_computed_inference(
     revision = RelationRevision(
         relation_id=relation.id,
         kind="computed_inference",
-        direction="positive",
+        direction=inferred_direction,
         confidence=1.0,
         scope=scope_filter,
         is_current=True,
@@ -269,6 +284,7 @@ async def cache_computed_inference(
                 role_type=role_inference.role_type,
                 weight=role_inference.score,
                 coverage=role_inference.coverage,
+                disagreement=role_inference.disagreement,
             )
         )
 

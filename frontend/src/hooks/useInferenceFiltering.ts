@@ -27,6 +27,12 @@ export interface UseInferenceFilteringReturn {
   hiddenRelationsCount: number;
 }
 
+function normalizeDirection(direction: string | null | undefined): string {
+  if (direction === "positive" || direction === "supports") return "supports";
+  if (direction === "negative" || direction === "contradicts") return "contradicts";
+  return direction ?? "neutral";
+}
+
 export function useInferenceFiltering(
   inference: InferenceRead | null,
   filters: EntityDetailFilterValues,
@@ -47,7 +53,7 @@ export function useInferenceFiltering(
       const filteredRelations = relations.filter((rel) => {
         // Direction filter
         if (filters.directions && filters.directions.length > 0) {
-          if (!filters.directions.includes(rel.direction ?? "")) {
+          if (!filters.directions.includes(normalizeDirection(rel.direction))) {
             return false;
           }
         }

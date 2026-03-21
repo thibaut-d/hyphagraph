@@ -12,6 +12,7 @@ from app.schemas.inference import (
 )
 from app.schemas.relation import RelationRead
 from app.schemas.source import SourceRead
+from app.services.inference.math import normalize_direction
 from app.services.source_service import SourceService
 
 
@@ -49,7 +50,7 @@ async def build_inference_detail_read(
     disagreement_groups = [
         _build_disagreement_group(kind, relations, source_map)
         for kind, relations in relations_by_kind.items()
-        if any((relation.direction or "") == "contradicts" for relation in relations)
+        if any(normalize_direction(relation.direction) == "contradicts" for relation in relations)
     ]
     disagreement_groups.sort(key=lambda group: len(group.contradicting), reverse=True)
 
@@ -89,8 +90,8 @@ def _build_relation_kind_summary(
     relations: list[RelationRead],
 ) -> RelationKindSummaryRead:
     confidence_values = [relation.confidence or 0.0 for relation in relations]
-    supporting_count = sum(1 for relation in relations if (relation.direction or "") == "supports")
-    contradicting_count = sum(1 for relation in relations if (relation.direction or "") == "contradicts")
+    supporting_count = sum(1 for relation in relations if normalize_direction(relation.direction) == "supports")
+    contradicting_count = sum(1 for relation in relations if normalize_direction(relation.direction) == "contradicts")
     neutral_count = len(relations) - supporting_count - contradicting_count
 
     return RelationKindSummaryRead(
@@ -113,12 +114,12 @@ def _build_disagreement_group(
     supporting = [
         EvidenceItemRead(**relation.model_dump(), source=source_map.get(str(relation.source_id)))
         for relation in relations
-        if (relation.direction or "") != "contradicts"
+        if normalize_direction(relation.direction) != "contradicts"
     ]
     contradicting = [
         EvidenceItemRead(**relation.model_dump(), source=source_map.get(str(relation.source_id)))
         for relation in relations
-        if (relation.direction or "") == "contradicts"
+        if normalize_direction(relation.direction) == "contradicts"
     ]
     confidence_values = [relation.confidence or 0.0 for relation in relations]
 
@@ -135,7 +136,7 @@ def _build_inference_stats(
     relation_kind_summaries: list[RelationKindSummaryRead],
 ) -> InferenceStatsRead:
     confidence_values = [relation.confidence for relation in relations if relation.confidence is not None]
-    contradiction_count = sum(1 for relation in relations if relation.direction == "contradicts")
+    contradiction_count = sum(1 for relation in relations if normalize_direction(relation.direction) == "contradicts")
 
     return InferenceStatsRead(
         total_relations=len(relations),

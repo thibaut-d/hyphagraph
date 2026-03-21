@@ -38,6 +38,7 @@ from app.services.bulk_creation_service import BulkCreationService
 from app.services.entity_linking_service import EntityLinkMatch as ExistingEntityLinkMatch
 from app.services.entity_linking_service import EntityLinkingService
 from app.services.extraction_review_service import ExtractionReviewService
+from app.utils.revision_helpers import create_new_revision
 from app.services.extraction_service import ExtractionService
 from app.services.extraction_validation_service import ValidationResult
 from app.services.pubmed_fetcher import PubMedArticle, PubMedFetcher
@@ -549,11 +550,13 @@ async def _update_source_revision_from_pubmed(
     article: PubMedArticle,
 ) -> None:
     """
-    Enrich the current source revision with PubMed article metadata in-place.
+    Create a new source revision enriched with PubMed article metadata.
 
-    Only updates fields that are not already populated (authors, year, origin).
-    Always sets PMID, DOI, and source="pubmed" in source_metadata. No-op if the
-    source has no current revision.
+    Copies the current revision and applies PubMed-sourced fields (PMID, DOI,
+    URL, authors, year, journal), preserving any fields already set. Creates a
+    new revision via create_new_revision so that the original revision remains
+    in history and provenance is not overwritten. No-op if the source has no
+    current revision.
     """
     stmt = select(SourceRevision).where(
         SourceRevision.source_id == source_id,
@@ -564,18 +567,35 @@ async def _update_source_revision_from_pubmed(
     if not revision:
         return
 
-    if not revision.source_metadata:
-        revision.source_metadata = {}
-    revision.source_metadata.update(
-        {"pmid": article.pmid, "doi": article.doi, "source": "pubmed"}
+    updated_metadata = dict(revision.source_metadata or {})
+    updated_metadata.update({"pmid": article.pmid, "doi": article.doi, "source": "pubmed"})
+
+    revision_data = {
+        "kind": revision.kind,
+        "title": revision.title,
+        "url": article.url,
+        "authors": revision.authors if revision.authors else (article.authors or []),
+        "year": revision.year if revision.year else article.year,
+        "origin": revision.origin if revision.origin else article.journal,
+        "trust_level": revision.trust_level,
+        "summary": revision.summary,
+        "source_metadata": updated_metadata,
+        "document_text": revision.document_text,
+        "document_format": revision.document_format,
+        "document_file_name": revision.document_file_name,
+        "document_extracted_at": revision.document_extracted_at,
+        # System enrichment — no user attribution
+        "created_by_user_id": None,
+    }
+
+    await create_new_revision(
+        db=db,
+        revision_class=SourceRevision,
+        parent_id_field="source_id",
+        parent_id=source_id,
+        revision_data=revision_data,
+        set_as_current=True,
     )
-    revision.url = article.url
-    if not revision.authors and article.authors:
-        revision.authors = article.authors
-    if not revision.year and article.year:
-        revision.year = article.year
-    if not revision.origin and article.journal:
-        revision.origin = article.journal
     await db.commit()
 
 

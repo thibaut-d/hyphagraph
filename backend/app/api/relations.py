@@ -22,6 +22,7 @@ async def list_relations_by_source(
     source_id: UUID,
     service: RelationService = Depends(get_relation_service),
 ):
+    # Intentionally unauthenticated: public read endpoint for source-scoped relations.
     return await service.list_by_source(source_id)
 
 @router.get("/{relation_id}", response_model=RelationRead)

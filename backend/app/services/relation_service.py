@@ -40,7 +40,7 @@ class RelationService:
                     context={"entity_id": str(role_data.entity_id)},
                 )
 
-    async def create(self, payload: RelationWrite, user_id=None) -> RelationRead:
+    async def create(self, payload: RelationWrite, user_id: UUID | None = None) -> RelationRead:
         """
         Create a new relation with its first revision.
 
@@ -61,7 +61,9 @@ class RelationService:
 
             # 3. Create first revision
             revision_data = relation_revision_from_write(payload)
-            if user_id:
+            if not user_id:
+                logger.warning("Creating relation revision without user attribution (user_id=None)")
+            else:
                 revision_data['created_by_user_id'] = user_id
 
             revision = await create_new_revision(
@@ -156,7 +158,7 @@ class RelationService:
             for relation, revision in revisions
         ]
 
-    async def update(self, relation_id: str, payload: RelationWrite, user_id=None) -> RelationRead:
+    async def update(self, relation_id: str, payload: RelationWrite, user_id: UUID | None = None) -> RelationRead:
         """
         Update a relation by creating a new revision.
 
@@ -188,7 +190,9 @@ class RelationService:
 
             # 3. Create new revision with updated data
             revision_data = relation_revision_from_write(payload)
-            if user_id:
+            if not user_id:
+                logger.warning("Updating relation revision without user attribution (user_id=None) for relation_id=%s", relation_id)
+            else:
                 revision_data['created_by_user_id'] = user_id
 
             revision = await create_new_revision(

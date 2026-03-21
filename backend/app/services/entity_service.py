@@ -57,7 +57,9 @@ class EntityService:
 
             # Create first revision
             revision_data = entity_revision_from_write(payload)
-            if user_id:
+            if not user_id:
+                logger.warning("Creating entity revision without user attribution (user_id=None) for slug=%s", payload.slug)
+            else:
                 revision_data['created_by_user_id'] = user_id
 
             revision = await create_new_revision(
@@ -171,7 +173,9 @@ class EntityService:
 
             # Create new revision with updated data
             revision_data = entity_revision_from_write(payload)
-            if user_id:
+            if not user_id:
+                logger.warning("Updating entity revision without user attribution (user_id=None) for entity_id=%s", entity_id)
+            else:
                 revision_data['created_by_user_id'] = user_id
 
             revision = await create_new_revision(

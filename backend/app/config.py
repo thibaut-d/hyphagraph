@@ -70,7 +70,8 @@ class Settings(BaseSettings):
         }
         if self.ADMIN_PASSWORD:
             checks["ADMIN_PASSWORD"] = self.ADMIN_PASSWORD
-        bad = [name for name, val in checks.items() if "change-me" in val]
+        _placeholder_patterns = ("change-me", "changeme", "placeholder", "your-secret", "your_secret", "insert-secret")
+        bad = [name for name, val in checks.items() if any(p in val.lower() for p in _placeholder_patterns)]
         if bad:
             raise ValueError(
                 f"Production startup blocked — these variables still contain placeholder values: "

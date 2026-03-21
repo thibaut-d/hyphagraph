@@ -5,9 +5,12 @@ Bcrypt operations are CPU-bound and run in a thread pool to avoid blocking
 the async event loop during password hashing/verification.
 """
 import asyncio
+import logging
 import bcrypt
 from concurrent.futures import ThreadPoolExecutor
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 # Thread pool for CPU-bound bcrypt operations
@@ -58,7 +61,7 @@ class PasswordHasher:
             hashed = bcrypt.hashpw(password_bytes, salt)
             return hashed.decode('utf-8')
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(_bcrypt_executor, _hash)
 
     async def verify_password(self, plain_password: str, hashed_password: str) -> bool:
@@ -83,11 +86,13 @@ class PasswordHasher:
         def _check() -> bool:
             try:
                 return bcrypt.checkpw(password_bytes, hashed_bytes)
-            except Exception:
-                # Invalid hash format or other bcrypt error — treat as mismatch
+            except Exception as exc:
+                # Invalid hash format or other bcrypt error — treat as mismatch.
+                # Log the exception type so corrupted hashes are diagnosable.
+                logger.error("bcrypt.checkpw raised an unexpected error: %s", type(exc).__name__)
                 return False
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(_bcrypt_executor, _check)
 
 

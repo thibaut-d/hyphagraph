@@ -68,6 +68,7 @@ class RelationRead(Schema):
     confidence: Optional[float] = None
     scope: Optional[ScopeFilter] = None
     notes: Optional[I18nText] = None
+    created_with_llm: Optional[str] = None
     roles: List[RoleRevisionRead]
 
 

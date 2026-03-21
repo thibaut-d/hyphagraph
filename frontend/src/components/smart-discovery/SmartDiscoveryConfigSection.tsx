@@ -11,6 +11,7 @@ import {
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import Checkbox from "@mui/material/Checkbox";
+import { useTranslation } from "react-i18next";
 
 interface SmartDiscoveryConfigSectionProps {
   maxResults: number;
@@ -39,16 +40,18 @@ export function SmartDiscoveryConfigSection({
   searchDisabled,
   getQualityLabel,
 }: SmartDiscoveryConfigSectionProps) {
+  const { t } = useTranslation();
+
   return (
     <Paper sx={{ p: 3 }}>
       <Typography variant="h5" gutterBottom sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-        <span>2️⃣</span> Configure Search
+        <span>2️⃣</span> {t("smart_discovery.step_configure")}
       </Typography>
 
       <Stack spacing={3}>
         <Box>
           <Typography variant="subtitle2" gutterBottom>
-            Databases to Search
+            {t("smart_discovery.databases_label")}
           </Typography>
           <Stack direction="row" spacing={2}>
             <FormControlLabel
@@ -69,19 +72,19 @@ export function SmartDiscoveryConfigSection({
                   }}
                 />
               }
-              label="PubMed (Medical Literature)"
+              label={t("smart_discovery.pubmed_label")}
             />
-            <FormControlLabel control={<Checkbox disabled />} label="arXiv (Coming Soon)" />
-            <FormControlLabel control={<Checkbox disabled />} label="Wikipedia (Coming Soon)" />
+            <FormControlLabel control={<Checkbox disabled />} label={t("smart_discovery.arxiv_label")} />
+            <FormControlLabel control={<Checkbox disabled />} label={t("smart_discovery.wikipedia_label")} />
           </Stack>
         </Box>
 
         <Box>
           <Typography variant="subtitle2" gutterBottom>
-            Results Budget: {maxResults} sources
+            {t("smart_discovery.results_budget_label", { count: maxResults })}
           </Typography>
           <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
-            Number of top-quality sources to pre-select (you can adjust selection later)
+            {t("smart_discovery.results_budget_hint")}
           </Typography>
           <Slider
             value={maxResults}
@@ -100,10 +103,10 @@ export function SmartDiscoveryConfigSection({
 
         <Box>
           <Typography variant="subtitle2" gutterBottom>
-            Minimum Quality: {(minQuality * 100).toFixed(0)}% ({getQualityLabel(minQuality)})
+            {t("smart_discovery.min_quality_label", { percent: (minQuality * 100).toFixed(0), label: getQualityLabel(minQuality) })}
           </Typography>
           <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
-            Only include sources with quality score above this threshold
+            {t("smart_discovery.min_quality_hint")}
           </Typography>
           <Slider
             value={minQuality}
@@ -112,10 +115,10 @@ export function SmartDiscoveryConfigSection({
             max={1.0}
             step={0.05}
             marks={[
-              { value: 0.3, label: "Low" },
-              { value: 0.5, label: "Neutral" },
-              { value: 0.75, label: "RCT+" },
-              { value: 0.9, label: "SR" },
+              { value: 0.3, label: t("smart_discovery.quality_mark_low") },
+              { value: 0.5, label: t("smart_discovery.quality_mark_neutral") },
+              { value: 0.75, label: t("smart_discovery.quality_mark_rct") },
+              { value: 0.9, label: t("smart_discovery.quality_mark_sr") },
             ]}
             valueLabelDisplay="auto"
             valueLabelFormat={(value) => `${(value * 100).toFixed(0)}%`}
@@ -131,7 +134,7 @@ export function SmartDiscoveryConfigSection({
           disabled={searchDisabled}
           sx={{ py: 2, fontSize: "1.1rem", fontWeight: 600 }}
         >
-          {searching ? "Searching databases..." : "🔍 Discover Sources"}
+          {searching ? t("smart_discovery.searching") : "🔍 " + t("smart_discovery.discover_button")}
         </Button>
 
         {searchError && <Alert severity="error">{searchError}</Alert>}

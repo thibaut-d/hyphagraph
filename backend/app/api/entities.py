@@ -19,6 +19,9 @@ async def get_entity_filter_options(
     """
     Get available filter options for entities.
 
+    Intentionally unauthenticated: returns only aggregated metadata (distinct labels),
+    not entity content. No sensitive data is exposed.
+
     Returns distinct UI categories with i18n labels.
     Useful for populating filter UI controls efficiently.
 

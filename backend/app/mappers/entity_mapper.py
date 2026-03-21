@@ -61,6 +61,7 @@ def entity_to_read(entity: Entity, current_revision: EntityRevision) -> EntityRe
         slug=current_revision.slug,
         summary=summary,
         ui_category_id=current_revision.ui_category_id,
+        created_with_llm=current_revision.created_with_llm,
     )
 
 

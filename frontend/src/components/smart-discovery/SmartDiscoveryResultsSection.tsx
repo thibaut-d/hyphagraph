@@ -17,6 +17,7 @@ import {
 } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
 import InfoIcon from "@mui/icons-material/Info";
+import { useTranslation } from "react-i18next";
 
 import type { SmartDiscoveryResult } from "../../api/smart-discovery";
 
@@ -62,6 +63,8 @@ export function SmartDiscoveryResultsSection({
   getQualityLabel,
   getQualityColor,
 }: SmartDiscoveryResultsSectionProps) {
+  const { t } = useTranslation();
+
   if (results.length === 0) {
     return null;
   }
@@ -70,31 +73,31 @@ export function SmartDiscoveryResultsSection({
     <>
       <Paper sx={{ p: 3 }}>
         <Typography variant="h5" gutterBottom sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <span>3️⃣</span> Review & Import
+          <span>3️⃣</span> {t("smart_discovery.step_review")}
         </Typography>
 
         <Alert severity="success" icon={<InfoIcon />}>
-          <strong>Found {totalFound} sources</strong> ({selectedCount} selected for import)
+          <strong>{t("smart_discovery.found_sources", { total: totalFound })}</strong> ({t("smart_discovery.selected_for_import", { count: selectedCount })})
           <br />
           <Typography variant="caption">
-            Query: <strong>{queryUsed}</strong> • Top {maxResults} highest-quality sources pre-selected
+            {t("smart_discovery.query_label")} <strong>{queryUsed}</strong> • {t("smart_discovery.top_preselected", { max: maxResults })}
           </Typography>
         </Alert>
 
         {alreadyImportedCount > 0 && (
           <Alert severity="info" sx={{ mt: 2 }}>
-            {alreadyImportedCount} sources are already in your database (marked with ✓)
+            {t("smart_discovery.already_imported_notice", { count: alreadyImportedCount })}
           </Alert>
         )}
 
         {importSuccess && (
           <Alert severity="success" sx={{ mt: 2 }}>
-            <strong>✓ Import complete!</strong>
+            <strong>{"✓ " + t("smart_discovery.import_complete")}</strong>
             <br />
-            {importSuccess.created} sources created
-            {importSuccess.failed > 0 && `, ${importSuccess.failed} failed`}
+            {t("smart_discovery.sources_created", { count: importSuccess.created })}
+            {importSuccess.failed > 0 && `, ${t("smart_discovery.sources_failed", { count: importSuccess.failed })}`}
             <br />
-            <Typography variant="caption">Redirecting to sources list...</Typography>
+            <Typography variant="caption">{t("smart_discovery.redirecting")}</Typography>
           </Alert>
         )}
 
@@ -103,13 +106,13 @@ export function SmartDiscoveryResultsSection({
 
       <Paper sx={{ p: 3 }}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-          <Typography variant="h6">Discovered Sources ({results.length})</Typography>
+          <Typography variant="h6">{t("smart_discovery.discovered_sources_title", { count: results.length })}</Typography>
           <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
             <Button variant="outlined" size="small" onClick={onSelectAll} disabled={importing}>
-              {selectedPmids.size === notImportedCount ? "Deselect All" : "Select All"}
+              {selectedPmids.size === notImportedCount ? t("smart_discovery.deselect_all") : t("smart_discovery.select_all")}
             </Button>
             <Chip
-              label={`${selectedCount} / ${notImportedCount} selected`}
+              label={t("smart_discovery.selected_count", { selected: selectedCount, total: notImportedCount })}
               color={selectedCount > 0 ? "primary" : "default"}
             />
           </Box>
@@ -129,11 +132,11 @@ export function SmartDiscoveryResultsSection({
                     disabled={importing}
                   />
                 </TableCell>
-                <TableCell><strong>Quality</strong></TableCell>
-                <TableCell><strong>Title</strong></TableCell>
-                <TableCell><strong>Journal</strong></TableCell>
-                <TableCell><strong>Year</strong></TableCell>
-                <TableCell><strong>Relevance</strong></TableCell>
+                <TableCell><strong>{t("smart_discovery.col_quality")}</strong></TableCell>
+                <TableCell><strong>{t("smart_discovery.col_title")}</strong></TableCell>
+                <TableCell><strong>{t("smart_discovery.col_journal")}</strong></TableCell>
+                <TableCell><strong>{t("smart_discovery.col_year")}</strong></TableCell>
+                <TableCell><strong>{t("smart_discovery.col_relevance")}</strong></TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -211,10 +214,10 @@ export function SmartDiscoveryResultsSection({
         <Box sx={{ mt: 3, display: "flex", gap: 2, justifyContent: "space-between", alignItems: "center" }}>
           <Typography variant="body2" color="text.secondary">
             {selectedCount > maxResults
-              ? `⚠️ ${selectedCount} selected (over budget of ${maxResults})`
+              ? `⚠️ ${t("smart_discovery.over_budget", { count: selectedCount, max: maxResults })}`
               : selectedCount > 0
-                ? `✓ Ready to import ${selectedCount} sources`
-                : "Select sources to import"}
+                ? `✓ ${t("smart_discovery.ready_to_import", { count: selectedCount })}`
+                : t("smart_discovery.select_sources_hint")}
           </Typography>
 
           <Button
@@ -225,7 +228,7 @@ export function SmartDiscoveryResultsSection({
             disabled={importing || selectedCount === 0}
             sx={{ minWidth: 200, fontWeight: 600 }}
           >
-            {importing ? "Importing..." : `Import ${selectedCount} Sources`}
+            {importing ? t("smart_discovery.importing") : t("smart_discovery.import_button", { count: selectedCount })}
           </Button>
         </Box>
       </Paper>

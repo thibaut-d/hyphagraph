@@ -126,7 +126,8 @@ export function useEntityInference(
 
   useEffect(() => {
     loadInference(initialScopeFilter);
-  }, [entityId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entityId, initialScopeFilter]);
 
   return {
     inference,
