@@ -81,9 +81,13 @@ class TestRelationServiceSimple:
         different_source_id = uuid4()
         payload = RelationWrite(
             source_id=different_source_id,
+            kind="association",
             direction="positive",
             confidence=0.9,
-            roles=[RoleRevisionWrite(role_type="drug", entity_id=uuid4())]
+            roles=[
+                RoleRevisionWrite(role_type="drug", entity_id=uuid4()),
+                RoleRevisionWrite(role_type="condition", entity_id=uuid4()),
+            ]
         )
 
         # Act & Assert

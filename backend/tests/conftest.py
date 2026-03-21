@@ -182,6 +182,7 @@ async def system_source(db_session: AsyncSession):
     # Create source revision
     revision = SourceRevision(
         source_id=source.id,
+        kind="article",
         title="Test Inference Engine",
         url="https://test.example.com",
         year=2025,

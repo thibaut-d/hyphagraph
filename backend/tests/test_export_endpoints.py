@@ -32,7 +32,7 @@ async def test_export_entities_uses_export_service_dependency() -> None:
 @pytest.mark.asyncio
 async def test_export_sources_json_uses_export_service_dependency() -> None:
     class StubExportService:
-        async def export_sources(self, export_format, include_metadata):
+        async def export_sources(self, export_format, include_metadata, **kwargs):
             assert export_format == "json"
             assert include_metadata is True
             return '{"export_type":"sources","count":0,"sources":[]}'
@@ -53,7 +53,7 @@ async def test_export_sources_json_uses_export_service_dependency() -> None:
 @pytest.mark.asyncio
 async def test_export_sources_csv_uses_export_service_dependency() -> None:
     class StubExportService:
-        async def export_sources(self, export_format, include_metadata):
+        async def export_sources(self, export_format, include_metadata=False, **kwargs):
             assert export_format == "csv"
             return "id,kind,title\n"
 

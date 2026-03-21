@@ -78,6 +78,7 @@ class TestRoleEvidenceHelpers:
         relation_read = await relation_service.create(
             RelationWrite(
                 source_id=source.id,
+                kind="association",
                 direction="supports",
                 confidence=0.75,
                 roles=[

@@ -24,11 +24,13 @@ class TestYearRangeCalculation:
         source_service = SourceService(db_session)
         relation_service = RelationService(db_session)
 
-        # Create an entity
+        # Create entities
         entity = await entity_service.create(EntityWrite(slug="test-drug"))
+        target = await entity_service.create(EntityWrite(slug="test-condition"))
 
         # Create sources with different years
         source_1995 = await source_service.create(SourceWrite(
+            kind="article",
             title="Old Study",
             year=1995,
             url="https://example.com/1995",
@@ -36,6 +38,7 @@ class TestYearRangeCalculation:
         ))
 
         source_2024 = await source_service.create(SourceWrite(
+            kind="article",
             title="Recent Study",
             year=2024,
             url="https://example.com/2024",
@@ -43,6 +46,7 @@ class TestYearRangeCalculation:
         ))
 
         source_2010 = await source_service.create(SourceWrite(
+            kind="article",
             title="Middle Study",
             year=2010,
             url="https://example.com/2010",
@@ -52,23 +56,35 @@ class TestYearRangeCalculation:
         # Create relations linking sources to entity
         await relation_service.create(RelationWrite(
             source_id=source_1995.id,
+            kind="association",
             direction="supports",
             confidence=0.7,
-            roles=[RoleRevisionWrite(entity_id=entity.id, role_type="agent")]
+            roles=[
+                RoleRevisionWrite(entity_id=entity.id, role_type="agent"),
+                RoleRevisionWrite(entity_id=target.id, role_type="target"),
+            ]
         ))
 
         await relation_service.create(RelationWrite(
             source_id=source_2024.id,
+            kind="association",
             direction="supports",
             confidence=0.9,
-            roles=[RoleRevisionWrite(entity_id=entity.id, role_type="agent")]
+            roles=[
+                RoleRevisionWrite(entity_id=entity.id, role_type="agent"),
+                RoleRevisionWrite(entity_id=target.id, role_type="target"),
+            ]
         ))
 
         await relation_service.create(RelationWrite(
             source_id=source_2010.id,
+            kind="association",
             direction="supports",
             confidence=0.8,
-            roles=[RoleRevisionWrite(entity_id=entity.id, role_type="agent")]
+            roles=[
+                RoleRevisionWrite(entity_id=entity.id, role_type="agent"),
+                RoleRevisionWrite(entity_id=target.id, role_type="target"),
+            ]
         ))
 
         # Act
@@ -98,11 +114,13 @@ class TestYearRangeCalculation:
         source_service = SourceService(db_session)
         relation_service = RelationService(db_session)
 
-        # Create an entity
+        # Create entities
         entity = await entity_service.create(EntityWrite(slug="test-drug"))
+        target = await entity_service.create(EntityWrite(slug="test-condition"))
 
         # Create a source WITH a relation
         source_with_relation = await source_service.create(SourceWrite(
+            kind="article",
             title="Connected Study",
             year=2020,
             url="https://example.com/2020",
@@ -130,9 +148,13 @@ class TestYearRangeCalculation:
         # Only link one source to entity
         await relation_service.create(RelationWrite(
             source_id=source_with_relation.id,
+            kind="association",
             direction="supports",
             confidence=0.8,
-            roles=[RoleRevisionWrite(entity_id=entity.id, role_type="agent")]
+            roles=[
+                RoleRevisionWrite(entity_id=entity.id, role_type="agent"),
+                RoleRevisionWrite(entity_id=target.id, role_type="target"),
+            ]
         ))
 
         # Act
@@ -153,11 +175,13 @@ class TestYearRangeCalculation:
         source_service = SourceService(db_session)
         relation_service = RelationService(db_session)
 
-        # Create an entity
+        # Create entities
         entity = await entity_service.create(EntityWrite(slug="test-drug"))
+        target = await entity_service.create(EntityWrite(slug="test-condition"))
 
         # Create sources: some with years, some without
         source_with_year = await source_service.create(SourceWrite(
+            kind="article",
             title="Study With Year",
             year=2022,
             url="https://example.com/2022",
@@ -165,6 +189,7 @@ class TestYearRangeCalculation:
         ))
 
         source_without_year = await source_service.create(SourceWrite(
+            kind="article",
             title="Study Without Year",
             year=None,
             url="https://example.com/no-year",
@@ -174,16 +199,24 @@ class TestYearRangeCalculation:
         # Link both sources to entity
         await relation_service.create(RelationWrite(
             source_id=source_with_year.id,
+            kind="association",
             direction="supports",
             confidence=0.8,
-            roles=[RoleRevisionWrite(entity_id=entity.id, role_type="agent")]
+            roles=[
+                RoleRevisionWrite(entity_id=entity.id, role_type="agent"),
+                RoleRevisionWrite(entity_id=target.id, role_type="target"),
+            ]
         ))
 
         await relation_service.create(RelationWrite(
             source_id=source_without_year.id,
+            kind="association",
             direction="supports",
             confidence=0.7,
-            roles=[RoleRevisionWrite(entity_id=entity.id, role_type="agent")]
+            roles=[
+                RoleRevisionWrite(entity_id=entity.id, role_type="agent"),
+                RoleRevisionWrite(entity_id=target.id, role_type="target"),
+            ]
         ))
 
         # Act

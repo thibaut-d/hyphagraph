@@ -74,7 +74,7 @@ class TestRegistrationEndpoint:
 
                 response = await client.post(
                     "/api/auth/register",
-                    json={"email": "newuser@example.com", "password": "password123"}
+                    json={"email": "newuser@example.com", "password": "password123", "password_confirmation": "password123"}
                 )
 
                 assert response.status_code == status.HTTP_201_CREATED
@@ -100,7 +100,7 @@ class TestRegistrationEndpoint:
 
                 response = await client.post(
                     "/api/auth/register",
-                    json={"email": "existing@example.com", "password": "password123"}
+                    json={"email": "existing@example.com", "password": "password123", "password_confirmation": "password123"}
                 )
 
                 assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -112,7 +112,7 @@ class TestRegistrationEndpoint:
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.post(
                 "/api/auth/register",
-                json={"email": "not-an-email", "password": "password123"}
+                json={"email": "not-an-email", "password": "password123", "password_confirmation": "password123"}
             )
 
             assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
@@ -123,7 +123,7 @@ class TestRegistrationEndpoint:
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.post(
                 "/api/auth/register",
-                json={"email": "test@example.com", "password": "123"}
+                json={"email": "test@example.com", "password": "123", "password_confirmation": "123"}
             )
 
             assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT

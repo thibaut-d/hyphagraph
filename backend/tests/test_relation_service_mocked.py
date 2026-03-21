@@ -81,9 +81,13 @@ class TestRelationServiceMocked:
         different_source_id = uuid4()
         payload = RelationWrite(
             source_id=str(different_source_id),
+            kind="association",
             direction="positive",
             confidence=0.9,
-            roles=[RoleWrite(role_type="drug", entity_id=str(uuid4()))]
+            roles=[
+                RoleWrite(role_type="drug", entity_id=str(uuid4())),
+                RoleWrite(role_type="condition", entity_id=str(uuid4())),
+            ]
         )
 
         # Act & Assert
@@ -102,9 +106,13 @@ class TestRelationServiceMocked:
 
         payload = RelationWrite(
             source_id=str(uuid4()),
+            kind="association",
             direction="positive",
             confidence=0.9,
-            roles=[RoleWrite(role_type="drug", entity_id=str(uuid4()))]
+            roles=[
+                RoleWrite(role_type="drug", entity_id=str(uuid4())),
+                RoleWrite(role_type="condition", entity_id=str(uuid4())),
+            ]
         )
 
         # Act & Assert
@@ -122,6 +130,21 @@ class TestRelationServiceMocked:
         source_id = uuid4()
         mock_relations = [MagicMock(), MagicMock()]
         mock_repo.list_by_source.return_value = mock_relations
+
+        # Mock get_current_revision to return a mock revision with roles
+        mock_revision = MagicMock()
+        mock_revision.roles = []
+
+        async def mock_get_current_revision(**kwargs):
+            return mock_revision
+
+        monkeypatch.setattr("app.services.relation_service.get_current_revision", mock_get_current_revision)
+
+        # Mock resolve_entity_slugs
+        async def mock_resolve_entity_slugs(db, entity_ids):
+            return {}
+
+        monkeypatch.setattr("app.services.relation_service.resolve_entity_slugs", mock_resolve_entity_slugs)
 
         # Mock relation_to_read
         mock_to_read = MagicMock()

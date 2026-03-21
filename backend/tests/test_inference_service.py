@@ -44,23 +44,32 @@ class TestInferenceService:
         inference_service = InferenceService(db_session)
 
         entity = await entity_service.create(EntityWrite(slug=ScientificEntities.PREGABALIN["slug"]))
+        condition = await entity_service.create(EntityWrite(slug=ScientificEntities.FIBROMYALGIA["slug"]))
         source = await source_service.create(SourceWrite(kind="study", title="Test", url="https://example.com/test"))
 
         # Create two relations of same kind
         await relation_service.create(
             RelationWrite(
                 source_id=str(source.id),
+                kind="effect",
                 confidence=0.9,
                 direction="positive",
-                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
+                roles=[
+                    RoleWrite(role_type="drug", entity_id=str(entity.id)),
+                    RoleWrite(role_type="condition", entity_id=str(condition.id)),
+                ],
             )
         )
         await relation_service.create(
             RelationWrite(
                 source_id=str(source.id),
+                kind="effect",
                 confidence=0.9,
                 direction="negative",
-                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
+                roles=[
+                    RoleWrite(role_type="drug", entity_id=str(entity.id)),
+                    RoleWrite(role_type="condition", entity_id=str(condition.id)),
+                ],
             )
         )
 
@@ -81,31 +90,44 @@ class TestInferenceService:
         inference_service = InferenceService(db_session)
 
         entity = await entity_service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"]))
+        condition = await entity_service.create(EntityWrite(slug=ScientificEntities.FIBROMYALGIA["slug"]))
         source = await source_service.create(SourceWrite(kind="study", title="Test", url="https://example.com/test"))
 
         # Create relations of different kinds
         await relation_service.create(
             RelationWrite(
                 source_id=str(source.id),
+                kind="effect",
                 confidence=0.9,
                 direction="positive",
-                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
+                roles=[
+                    RoleWrite(role_type="drug", entity_id=str(entity.id)),
+                    RoleWrite(role_type="condition", entity_id=str(condition.id)),
+                ],
             )
         )
         await relation_service.create(
             RelationWrite(
                 source_id=str(source.id),
+                kind="mechanism",
                 confidence=0.9,
                 direction="positive",
-                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
+                roles=[
+                    RoleWrite(role_type="drug", entity_id=str(entity.id)),
+                    RoleWrite(role_type="condition", entity_id=str(condition.id)),
+                ],
             )
         )
         await relation_service.create(
             RelationWrite(
                 source_id=str(source.id),
+                kind="contraindication",
                 confidence=0.9,
                 direction="negative",
-                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
+                roles=[
+                    RoleWrite(role_type="drug", entity_id=str(entity.id)),
+                    RoleWrite(role_type="condition", entity_id=str(condition.id)),
+                ],
             )
         )
 
@@ -149,16 +171,21 @@ class TestScopeFiltering:
         inference_service = InferenceService(db_session)
 
         entity = await entity_service.create(EntityWrite(slug=ScientificEntities.PREGABALIN["slug"]))
+        condition = await entity_service.create(EntityWrite(slug=ScientificEntities.FIBROMYALGIA["slug"]))
         source = await source_service.create(SourceWrite(kind="study", title="Test", url="https://example.com/test"))
 
         # Create relation with adults scope
         await relation_service.create(
             RelationWrite(
                 source_id=str(source.id),
+                kind="effect",
                 confidence=0.9,
                 direction="positive",
                 scope={"population": "adults"},
-                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
+                roles=[
+                    RoleWrite(role_type="drug", entity_id=str(entity.id)),
+                    RoleWrite(role_type="condition", entity_id=str(condition.id)),
+                ],
             )
         )
 
@@ -166,10 +193,14 @@ class TestScopeFiltering:
         await relation_service.create(
             RelationWrite(
                 source_id=str(source.id),
+                kind="effect",
                 confidence=0.8,
                 direction="positive",
                 scope={"population": "children"},
-                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
+                roles=[
+                    RoleWrite(role_type="drug", entity_id=str(entity.id)),
+                    RoleWrite(role_type="condition", entity_id=str(condition.id)),
+                ],
             )
         )
 
@@ -194,16 +225,21 @@ class TestScopeFiltering:
         inference_service = InferenceService(db_session)
 
         entity = await entity_service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"]))
+        condition = await entity_service.create(EntityWrite(slug=ScientificEntities.FIBROMYALGIA["slug"]))
         source = await source_service.create(SourceWrite(kind="study", title="Test", url="https://example.com/test"))
 
         # Create relation with multiple scope attributes
         await relation_service.create(
             RelationWrite(
                 source_id=str(source.id),
+                kind="effect",
                 confidence=0.9,
                 direction="positive",
                 scope={"population": "adults", "condition": "chronic_pain", "dosage": "high"},
-                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
+                roles=[
+                    RoleWrite(role_type="drug", entity_id=str(entity.id)),
+                    RoleWrite(role_type="condition", entity_id=str(condition.id)),
+                ],
             )
         )
 
@@ -211,10 +247,14 @@ class TestScopeFiltering:
         await relation_service.create(
             RelationWrite(
                 source_id=str(source.id),
+                kind="effect",
                 confidence=0.7,
                 direction="positive",
                 scope={"population": "adults", "condition": "acute_pain"},
-                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
+                roles=[
+                    RoleWrite(role_type="drug", entity_id=str(entity.id)),
+                    RoleWrite(role_type="condition", entity_id=str(condition.id)),
+                ],
             )
         )
 
@@ -237,16 +277,21 @@ class TestScopeFiltering:
         inference_service = InferenceService(db_session)
 
         entity = await entity_service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"]))
+        condition = await entity_service.create(EntityWrite(slug=ScientificEntities.FIBROMYALGIA["slug"]))
         source = await source_service.create(SourceWrite(kind="study", title="Test", url="https://example.com/test"))
 
         # Create relation with no scope (general applicability)
         await relation_service.create(
             RelationWrite(
                 source_id=str(source.id),
+                kind="effect",
                 confidence=0.9,
                 direction="positive",
                 scope=None,
-                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
+                roles=[
+                    RoleWrite(role_type="drug", entity_id=str(entity.id)),
+                    RoleWrite(role_type="condition", entity_id=str(condition.id)),
+                ],
             )
         )
 
@@ -254,10 +299,14 @@ class TestScopeFiltering:
         await relation_service.create(
             RelationWrite(
                 source_id=str(source.id),
+                kind="effect",
                 confidence=0.8,
                 direction="positive",
                 scope={"population": "adults"},
-                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
+                roles=[
+                    RoleWrite(role_type="drug", entity_id=str(entity.id)),
+                    RoleWrite(role_type="condition", entity_id=str(condition.id)),
+                ],
             )
         )
 
@@ -285,16 +334,21 @@ class TestScopeFiltering:
         inference_service = InferenceService(db_session)
 
         entity = await entity_service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"]))
+        condition = await entity_service.create(EntityWrite(slug=ScientificEntities.FIBROMYALGIA["slug"]))
         source = await source_service.create(SourceWrite(kind="study", title="Test", url="https://example.com/test"))
 
         # Relation 1: adults + chronic
         await relation_service.create(
             RelationWrite(
                 source_id=str(source.id),
+                kind="effect",
                 confidence=0.9,
                 direction="positive",
                 scope={"population": "adults", "condition": "chronic_pain"},
-                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
+                roles=[
+                    RoleWrite(role_type="drug", entity_id=str(entity.id)),
+                    RoleWrite(role_type="condition", entity_id=str(condition.id)),
+                ],
             )
         )
 
@@ -302,10 +356,14 @@ class TestScopeFiltering:
         await relation_service.create(
             RelationWrite(
                 source_id=str(source.id),
+                kind="effect",
                 confidence=0.8,
                 direction="positive",
                 scope={"population": "adults", "condition": "acute_pain"},
-                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
+                roles=[
+                    RoleWrite(role_type="drug", entity_id=str(entity.id)),
+                    RoleWrite(role_type="condition", entity_id=str(condition.id)),
+                ],
             )
         )
 
@@ -313,10 +371,14 @@ class TestScopeFiltering:
         await relation_service.create(
             RelationWrite(
                 source_id=str(source.id),
+                kind="effect",
                 confidence=0.7,
                 direction="positive",
                 scope={"population": "children", "condition": "chronic_pain"},
-                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
+                roles=[
+                    RoleWrite(role_type="drug", entity_id=str(entity.id)),
+                    RoleWrite(role_type="condition", entity_id=str(condition.id)),
+                ],
             )
         )
 
@@ -339,16 +401,21 @@ class TestScopeFiltering:
         inference_service = InferenceService(db_session)
 
         entity = await entity_service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"]))
+        condition = await entity_service.create(EntityWrite(slug=ScientificEntities.FIBROMYALGIA["slug"]))
         source = await source_service.create(SourceWrite(kind="study", title="Test", url="https://example.com/test"))
 
         # Create positive relation for adults
         await relation_service.create(
             RelationWrite(
                 source_id=str(source.id),
+                kind="effect",
                 confidence=0.9,
                 direction="positive",
                 scope={"population": "adults"},
-                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id), weight=0.8)],
+                roles=[
+                    RoleWrite(role_type="drug", entity_id=str(entity.id), weight=0.8),
+                    RoleWrite(role_type="condition", entity_id=str(condition.id)),
+                ],
             )
         )
 
@@ -356,10 +423,14 @@ class TestScopeFiltering:
         await relation_service.create(
             RelationWrite(
                 source_id=str(source.id),
+                kind="effect",
                 confidence=0.9,
                 direction="negative",
                 scope={"population": "children"},
-                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id), weight=-0.7)],
+                roles=[
+                    RoleWrite(role_type="drug", entity_id=str(entity.id), weight=-0.7),
+                    RoleWrite(role_type="condition", entity_id=str(condition.id)),
+                ],
             )
         )
 

@@ -69,7 +69,7 @@ class TestUserCreation:
 
         mock_db.refresh.side_effect = mock_refresh_side_effect
 
-        payload = UserRegister(email="new@example.com", password="password123")
+        payload = UserRegister(email="new@example.com", password="password123", password_confirmation="password123")
 
         with patch("app.services.user_service.hash_password") as mock_hash:
             mock_hash.return_value = "hashed_password"
@@ -87,13 +87,13 @@ class TestUserCreation:
         """Creating user with existing email should fail."""
         mock_user_repo.get_by_email.return_value = sample_user
 
-        payload = UserRegister(email="test@example.com", password="password123")
+        payload = UserRegister(email="test@example.com", password="password123", password_confirmation="password123")
 
         with pytest.raises(HTTPException) as exc_info:
             await user_service.create(payload)
 
         assert exc_info.value.status_code == 400
-        assert "already registered" in exc_info.value.detail.lower()
+        assert "registration failed" in exc_info.value.detail.lower()
 
 
 class TestAuthentication:

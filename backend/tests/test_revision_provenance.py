@@ -82,9 +82,13 @@ class TestEntityMergeProvenance:
         await relation_service.create(
             RelationWrite(
                 source_id=str(source.id),
+                kind="association",
                 confidence=0.8,
                 direction="supports",
-                roles=[RoleWrite(role_type="subject", entity_id=str(source_entity.id))],
+                roles=[
+                    RoleWrite(role_type="subject", entity_id=str(source_entity.id)),
+                    RoleWrite(role_type="object", entity_id=str(target_entity.id)),
+                ],
             )
         )
 
