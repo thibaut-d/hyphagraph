@@ -48,17 +48,23 @@ test.describe('Registration Flow', () => {
 
     await page.goto('/account');
 
-    // Fill in registration form
     await page.getByLabel(/email/i).fill(invalidEmail);
     await page.getByLabel(/password/i).fill(password);
-
-    // Click register button
     await page.getByRole('button', { name: /register/i }).click();
 
-    // Should show error or validation message
-    // (either client-side or server-side validation)
-    const url = page.url();
-    expect(url).toContain('/account');
+    // A validation error must be visible — either from client-side HTML5 validation
+    // (field stays invalid) or from a rendered error message
+    const errorMsg = page.locator('[class*="MuiTypography-root"]').filter({ hasText: /invalid|not.*valid|email/i })
+      .or(page.locator('[role="alert"]'))
+      .first();
+    const fieldInvalid = page.getByLabel(/email/i);
+
+    const hasError = await errorMsg.isVisible({ timeout: 3000 }).catch(() => false);
+    const isInvalidField = await fieldInvalid.evaluate(
+      (el) => (el as HTMLInputElement).validity?.valid === false
+    ).catch(() => false);
+
+    expect(hasError || isInvalidField).toBe(true);
   });
 
   test('should show error when registering with weak password', async ({ page }) => {
@@ -74,9 +80,11 @@ test.describe('Registration Flow', () => {
     // Click register button
     await page.getByRole('button', { name: /register/i }).click();
 
-    // Should show error message (displayed as Typography with color="error")
+    // Should show a user-facing error message about password length
     await expect(
-      page.locator('[class*="MuiTypography-root"]').filter({ hasText: /string_too_short|too short|at least/i })
+      page.locator('[class*="MuiTypography-root"]').filter({ hasText: /too short|at least|minimum/i })
+        .or(page.locator('[role="alert"]').filter({ hasText: /password/i }))
+        .first()
     ).toBeVisible({ timeout: 5000 });
   });
 
@@ -95,13 +103,16 @@ test.describe('Registration Flow', () => {
     await page.goto('/account');
     await loginViaUI(page, email, password);
 
-    // Should be logged in (if email verification is disabled)
-    // Or should show error about unverified email
-    const loggedIn = await page.locator('text=Logged in as').isVisible();
-    const needsVerification = await page
-      .locator('text=/verify|verification/i').first()
-      .isVisible();
-
-    expect(loggedIn || needsVerification).toBeTruthy();
+    // Either the user is logged in, or a specific email-verification message is shown.
+    // We check both explicitly so one false-positive cannot mask a third failure mode.
+    const loggedIn = await page.locator('text=Logged in as').isVisible({ timeout: 5000 }).catch(() => false);
+    if (loggedIn) {
+      await expect(page.locator('text=Logged in as')).toBeVisible();
+      return;
+    }
+    // Email verification required — must show a specific verification prompt, not a generic error
+    await expect(
+      page.locator('text=/check your email|verification email|please verify/i').first()
+    ).toBeVisible({ timeout: 5000 });
   });
 });

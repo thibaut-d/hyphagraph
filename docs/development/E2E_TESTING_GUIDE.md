@@ -204,8 +204,8 @@ npx playwright install --force  # Force reinstall
 
 Key settings in `playwright.config.ts`:
 
-- **Base URL**: `http://localhost:3000` (override with `BASE_URL`)
+- **Base URL**: `http://localhost` (override with `BASE_URL`; e2e Docker compose exposes frontend on port 3001 — set `BASE_URL=http://localhost:3001`)
 - **Timeout**: 30 seconds per test
-- **Retries**: 2 on CI, 0 locally
-- **Workers**: 6 parallel
-- **Browsers**: Chromium, Firefox, WebKit
+- **Retries**: 2 on CI, 1 locally
+- **Workers**: 1 (sequential to avoid database conflicts)
+- **Browsers**: Chromium only (Firefox/WebKit commented out; uncomment in `playwright.config.ts` for cross-browser runs)

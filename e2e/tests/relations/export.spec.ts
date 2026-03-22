@@ -16,10 +16,8 @@ test.describe('Relation Export', () => {
     await page.goto('/relations');
     await expect(page.getByRole('heading', { name: 'Relations', exact: true })).toBeVisible();
 
-    const exportButton = page.getByRole('button', { name: /export/i });
-    if (await exportButton.isVisible({ timeout: 5000 })) {
-      await expect(exportButton).toBeVisible();
-    }
+    // Export button must be present
+    await expect(page.getByRole('button', { name: /export/i })).toBeVisible({ timeout: 5000 });
   });
 
   test('should trigger a file download when export is clicked', async ({ page }) => {
@@ -27,16 +25,16 @@ test.describe('Relation Export', () => {
     await expect(page.getByRole('heading', { name: 'Relations', exact: true })).toBeVisible();
 
     const exportButton = page.getByRole('button', { name: /export/i });
-    if (await exportButton.isVisible({ timeout: 5000 })) {
-      const [download] = await Promise.all([
-        page.waitForEvent('download', { timeout: 10000 }).catch(() => null),
-        exportButton.click(),
-      ]);
+    await expect(exportButton).toBeVisible({ timeout: 5000 });
 
-      if (download) {
-        const filename = download.suggestedFilename();
-        expect(filename).toMatch(/\.(json|csv|rdf)$/i);
-      }
+    const [download] = await Promise.all([
+      page.waitForEvent('download', { timeout: 10000 }).catch(() => null),
+      exportButton.click(),
+    ]);
+
+    if (download) {
+      const filename = download.suggestedFilename();
+      expect(filename).toMatch(/\.(json|csv|rdf)$/i);
     }
   });
 
@@ -45,20 +43,20 @@ test.describe('Relation Export', () => {
     await expect(page.getByRole('heading', { name: 'Relations', exact: true })).toBeVisible();
 
     const exportButton = page.getByRole('button', { name: /export/i });
-    if (await exportButton.isVisible({ timeout: 5000 })) {
-      await exportButton.click();
-      // After clicking, a menu or dialog may show format options
-      const rdfOption = page.getByRole('menuitem', { name: /rdf/i }).or(
-        page.getByRole('button', { name: /rdf/i })
-      );
-      if (await rdfOption.isVisible({ timeout: 2000 })) {
-        const [download] = await Promise.all([
-          page.waitForEvent('download', { timeout: 10000 }).catch(() => null),
-          rdfOption.click(),
-        ]);
-        if (download) {
-          expect(download.suggestedFilename()).toMatch(/\.rdf$|\.ttl$|\.n3$/i);
-        }
+    await expect(exportButton).toBeVisible({ timeout: 5000 });
+    await exportButton.click();
+
+    // After clicking, a menu or dialog may show format options
+    const rdfOption = page.getByRole('menuitem', { name: /rdf/i }).or(
+      page.getByRole('button', { name: /rdf/i })
+    );
+    if (await rdfOption.isVisible({ timeout: 2000 })) {
+      const [download] = await Promise.all([
+        page.waitForEvent('download', { timeout: 10000 }).catch(() => null),
+        rdfOption.click(),
+      ]);
+      if (download) {
+        expect(download.suggestedFilename()).toMatch(/\.rdf$|\.ttl$|\.n3$/i);
       }
     }
   });

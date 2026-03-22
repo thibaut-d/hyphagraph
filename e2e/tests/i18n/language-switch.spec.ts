@@ -25,22 +25,6 @@ test.describe('Language Switch (i18n)', () => {
     }
   });
 
-  test('should show language switcher in the mobile drawer', async ({ page, viewport }) => {
-    // Only run on mobile viewport
-    if (!viewport || viewport.width >= 900) {
-      test.skip();
-    }
-
-    await page.goto('/');
-    await page.getByRole('button', { name: /open menu/i }).click();
-    await page.waitForTimeout(300);
-
-    const langSwitcher = page.locator('[aria-label*="language"], text=/en|fr/i').first();
-    if (await langSwitcher.isVisible({ timeout: 2000 })) {
-      await expect(langSwitcher).toBeVisible();
-    }
-  });
-
   test('should switch UI language to French', async ({ page }) => {
     await page.goto('/entities');
     await page.waitForLoadState('networkidle');

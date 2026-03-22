@@ -14,7 +14,7 @@ dotenv.config({ path: path.resolve(__dirname, '.env') });
  * - On-demand execution (not CI/CD yet)
  * - Parallel execution enabled
  * - Screenshots/videos on failure
- * - English only (no i18n testing)
+ * - i18n: language-switch tests exist but only cover the English-language switch UI (no translated-content assertions)
  * - Global setup cleans database before all tests
  */
 export default defineConfig({

@@ -1,11 +1,14 @@
 import { test, expect } from '@playwright/test';
-import { loginAsAdminViaAPI } from '../../fixtures/auth-helpers';
+import { loginAsAdminViaAPI, clearAuthState } from '../../fixtures/auth-helpers';
 import { generateEntityName } from '../../fixtures/test-data';
 
 test.describe('Entity CRUD Operations', () => {
   test.beforeEach(async ({ page }) => {
-    // Login before each test
     await loginAsAdminViaAPI(page);
+  });
+
+  test.afterEach(async ({ page }) => {
+    await clearAuthState(page);
   });
 
   test('should create a new entity', async ({ page }) => {
@@ -109,9 +112,6 @@ test.describe('Entity CRUD Operations', () => {
 
     // Wait for page to fully load
     await page.waitForLoadState('networkidle');
-
-    // Wait a bit more for any async operations
-    await page.waitForTimeout(1000);
 
     // Click delete button - find it specifically (should be near Edit button)
     const deleteButton = page.getByRole('button', { name: 'Delete' });
@@ -236,5 +236,19 @@ test.describe('Entity CRUD Operations', () => {
     // Should be on detail page again
     await expect(page).toHaveURL(/\/entities\/[a-f0-9-]+/, { timeout: 10000 });
     await expect(page.locator(`text=${entitySlug}`)).toBeVisible();
+  });
+
+  // E2E-G9 — Unknown ID 404 handling
+  test('should show a not-found state for an unknown entity ID', async ({ page }) => {
+    const nonExistentId = '00000000-0000-0000-0000-000000000000';
+
+    await page.goto(`/entities/${nonExistentId}`);
+    await page.waitForLoadState('networkidle');
+
+    // Must show a user-facing not-found message — must NOT show a blank/broken page or JS error
+    await expect(
+      page.locator('text=/not found|does not exist|couldn\'t find|no entity/i').first()
+        .or(page.getByRole('heading', { name: /404/i }))
+    ).toBeVisible({ timeout: 5000 });
   });
 });

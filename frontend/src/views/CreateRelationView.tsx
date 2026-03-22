@@ -257,7 +257,7 @@ export function CreateRelationView() {
               sx={{ flex: 2 }}
             />
 
-            <IconButton onClick={() => removeRole(index)}>
+            <IconButton onClick={() => removeRole(index)} aria-label="Remove role">
               <DeleteIcon />
             </IconButton>
           </Stack>

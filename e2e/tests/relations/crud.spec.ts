@@ -1,47 +1,13 @@
 import { test, expect } from '@playwright/test';
 import { loginAsAdminViaAPI, clearAuthState } from '../../fixtures/auth-helpers';
-import { generateEntityName, generateSourceName } from '../../fixtures/test-data';
+import { generateEntityName } from '../../fixtures/test-data';
 
 test.describe('Relation CRUD Operations', () => {
-  let sourceId: string;
-  let entity1Id: string;
-  let entity2Id: string;
-
   test.beforeEach(async ({ page }) => {
-    // Login before each test
     await loginAsAdminViaAPI(page);
-
-    // Create prerequisite data: source and entities
-    // Create a source (sources use Title and URL, not slug)
-    const sourceTitle = generateSourceName('rel-source');
-    await page.goto('/sources/new');
-    await page.getByRole('textbox', { name: 'Title' }).fill(sourceTitle);
-    await page.getByRole('textbox', { name: 'URL' }).fill('https://example.com/rel-source');
-    await page.getByRole('button', { name: /create|submit/i }).click();
-    await page.waitForURL(/\/sources\/([a-f0-9-]+)/);
-    sourceId = page.url().match(/\/sources\/([a-f0-9-]+)/)?.[1] || '';
-
-    // Create first entity
-    const entity1Slug = generateEntityName('rel-entity-1').toLowerCase().replace(/\s+/g, '-');
-    await page.goto('/entities/new');
-    await page.getByRole('textbox', { name: 'Slug' }).fill(entity1Slug);
-    await page.getByRole('textbox', { name: /summary.*english/i }).fill('First entity for relations');
-    await page.getByRole('button', { name: /create|submit/i }).click();
-    await page.waitForURL(/\/entities\/([a-f0-9-]+)/);
-    entity1Id = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1] || '';
-
-    // Create second entity
-    const entity2Slug = generateEntityName('rel-entity-2').toLowerCase().replace(/\s+/g, '-');
-    await page.goto('/entities/new');
-    await page.getByRole('textbox', { name: 'Slug' }).fill(entity2Slug);
-    await page.getByRole('textbox', { name: /summary.*english/i }).fill('Second entity for relations');
-    await page.getByRole('button', { name: /create|submit/i }).click();
-    await page.waitForURL(/\/entities\/([a-f0-9-]+)/);
-    entity2Id = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1] || '';
   });
 
   test.afterEach(async ({ page }) => {
-    // Clear auth state to avoid polluting other tests
     await clearAuthState(page);
   });
 
@@ -132,24 +98,10 @@ test.describe('Relation CRUD Operations', () => {
     let roleTypeFields = page.getByLabel(/role type|role/i);
     await expect(roleTypeFields).toHaveCount(2);
 
-    // Wait a moment for UI to settle
-    await page.waitForTimeout(500);
+    // Click Remove role on the first role entry
+    await page.getByRole('button', { name: /remove role/i }).first().click();
 
-    // Click delete button on first role - look for delete buttons in the Roles section
-    // MUI IconButtons with DeleteIcon are rendered as buttons but without text
-    const allButtons = await page.getByRole('button').all();
-    // Find buttons that are likely delete buttons (no accessible name, likely positioned after role fields)
-    for (const button of allButtons) {
-      const ariaLabel = await button.getAttribute('aria-label');
-      const text = await button.textContent();
-      // Delete button has no text and is not the "ADD ROLE" button
-      if (!text && !ariaLabel) {
-        await button.click();
-        break;
-      }
-    }
-
-    // Should now have only 1 role after a moment
+    // Should now have only 1 role
     await page.waitForTimeout(300);
     roleTypeFields = page.getByLabel(/role type|role/i);
     await expect(roleTypeFields).toHaveCount(1);

@@ -110,10 +110,10 @@ test.describe('Source CRUD Operations', () => {
     // Click delete button
     await page.getByRole('button', { name: /delete/i }).click();
 
-    // Confirm deletion (if there's a confirmation dialog)
-    const confirmButton = page.getByRole('button', { name: /confirm|yes|delete/i });
-    if (await confirmButton.isVisible({ timeout: 2000 })) {
-      await confirmButton.click();
+    // Confirm deletion — scoped to the dialog to avoid matching other Delete buttons
+    const dialog = page.locator('[role="dialog"]');
+    if (await dialog.isVisible({ timeout: 2000 })) {
+      await dialog.getByRole('button', { name: /confirm|yes|delete/i }).click();
     }
 
     // Should navigate back to sources list

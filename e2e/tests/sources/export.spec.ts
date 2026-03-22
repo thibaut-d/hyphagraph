@@ -17,11 +17,8 @@ test.describe('Source Export', () => {
     await page.goto('/sources');
     await expect(page.getByRole('heading', { name: 'Sources' })).toBeVisible();
 
-    // Look for the Export Sources button (page also has Export Relations)
-    const exportButton = page.getByRole('button', { name: /export sources/i });
-    if (await exportButton.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await expect(exportButton).toBeVisible();
-    }
+    // Export Sources button must be present
+    await expect(page.getByRole('button', { name: /export sources/i })).toBeVisible({ timeout: 5000 });
   });
 
   test('should offer JSON download when export is triggered', async ({ page }) => {
@@ -38,17 +35,50 @@ test.describe('Source Export', () => {
     await expect(page.getByRole('heading', { name: 'Sources' })).toBeVisible();
 
     const exportButton = page.getByRole('button', { name: /export sources/i });
-    if (await exportButton.isVisible({ timeout: 5000 }).catch(() => false)) {
-      // Listen for the download event
-      const [download] = await Promise.all([
-        page.waitForEvent('download', { timeout: 10000 }).catch(() => null),
-        exportButton.click(),
-      ]);
+    await expect(exportButton).toBeVisible({ timeout: 5000 });
 
-      if (download) {
-        // File should be named with .json or .csv extension
-        const filename = download.suggestedFilename();
-        expect(filename).toMatch(/\.(json|csv)$/i);
+    const [download] = await Promise.all([
+      page.waitForEvent('download', { timeout: 10000 }).catch(() => null),
+      exportButton.click(),
+    ]);
+
+    if (download) {
+      const filename = download.suggestedFilename();
+      expect(filename).toMatch(/\.(json|csv)$/i);
+    }
+  });
+
+  // E2E-G7 — Export content validation: downloaded file must contain the seeded source
+  test('should include seeded source title in exported JSON content', async ({ page }) => {
+    const sourceTitle = generateSourceName('export-content');
+    await page.goto('/sources/new');
+    await page.waitForLoadState('domcontentloaded');
+    await page.getByRole('textbox', { name: 'Title' }).fill(sourceTitle);
+    await page.getByRole('textbox', { name: 'URL' }).fill('https://example.com/export-content');
+    await page.getByRole('button', { name: /create|submit/i }).click();
+    await page.waitForURL(/\/sources\/[a-f0-9-]+/);
+
+    await page.goto('/sources');
+    await expect(page.getByRole('heading', { name: 'Sources' })).toBeVisible();
+
+    const exportButton = page.getByRole('button', { name: /export sources/i });
+    await expect(exportButton).toBeVisible({ timeout: 5000 });
+
+    const [download] = await Promise.all([
+      page.waitForEvent('download', { timeout: 10000 }).catch(() => null),
+      exportButton.click(),
+    ]);
+
+    if (download) {
+      const filename = download.suggestedFilename();
+      if (filename.endsWith('.json')) {
+        const stream = await download.createReadStream();
+        const chunks: Buffer[] = [];
+        for await (const chunk of stream) {
+          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+        }
+        const content = Buffer.concat(chunks).toString('utf-8');
+        expect(content).toContain(sourceTitle);
       }
     }
   });
@@ -58,20 +88,20 @@ test.describe('Source Export', () => {
     await expect(page.getByRole('heading', { name: 'Sources' })).toBeVisible();
 
     const exportButton = page.getByRole('button', { name: /export sources/i });
-    if (await exportButton.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await exportButton.click();
-      // After clicking, a format menu or dialog may appear with CSV option
-      const csvOption = page.getByRole('menuitem', { name: /csv/i }).or(
-        page.getByRole('button', { name: /csv/i })
-      );
-      if (await csvOption.isVisible({ timeout: 2000 }).catch(() => false)) {
-        const [download] = await Promise.all([
-          page.waitForEvent('download', { timeout: 10000 }).catch(() => null),
-          csvOption.click(),
-        ]);
-        if (download) {
-          expect(download.suggestedFilename()).toMatch(/\.csv$/i);
-        }
+    await expect(exportButton).toBeVisible({ timeout: 5000 });
+    await exportButton.click();
+
+    // After clicking, a format menu or dialog may appear with CSV option
+    const csvOption = page.getByRole('menuitem', { name: /csv/i }).or(
+      page.getByRole('button', { name: /csv/i })
+    );
+    if (await csvOption.isVisible({ timeout: 2000 })) {
+      const [download] = await Promise.all([
+        page.waitForEvent('download', { timeout: 10000 }).catch(() => null),
+        csvOption.click(),
+      ]);
+      if (download) {
+        expect(download.suggestedFilename()).toMatch(/\.csv$/i);
       }
     }
   });

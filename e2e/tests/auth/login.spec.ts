@@ -58,9 +58,10 @@ test.describe('Login Flow', () => {
     // Click login button without filling credentials
     await page.getByRole('button', { name: /login/i }).click();
 
-    // Should still be on login page (validation should prevent submission)
-    const url = page.url();
-    expect(url).toContain('/account');
+    // Login form must still be visible and no token must have been issued
+    await expect(page.getByRole('button', { name: /login/i })).toBeVisible();
+    const authenticated = await isAuthenticated(page);
+    expect(authenticated).toBe(false);
   });
 
   test('should logout successfully', async ({ page }) => {
@@ -112,12 +113,7 @@ test.describe('Login Flow', () => {
     // Try to access a protected route
     await page.goto('/entities/new');
 
-    // Should show login form or be blocked
-    // (ProtectedRoute component should handle this)
-    const url = page.url();
-    const hasLoginForm = await page.getByRole('button', { name: /login/i }).isVisible();
-
-    // Either redirected to login or shows login prompt
-    expect(hasLoginForm || url.includes('account')).toBeTruthy();
+    // ProtectedRoute must block access — the login form must be visible
+    await expect(page.getByRole('button', { name: /login/i })).toBeVisible({ timeout: 5000 });
   });
 });

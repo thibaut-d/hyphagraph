@@ -59,10 +59,11 @@ test.describe('Relation Edit and Delete', () => {
         ],
       },
     });
-    if (resp.ok()) {
-      const data = await resp.json();
-      relationId = data.id;
+    if (!resp.ok()) {
+      throw new Error(`beforeEach relation creation failed: ${resp.status()} ${await resp.text()}`);
     }
+    const data = await resp.json();
+    relationId = data.id;
   });
 
   test.afterEach(async ({ page }) => {
@@ -96,25 +97,41 @@ test.describe('Relation Edit and Delete', () => {
   });
 
   test('should save a relation update and create a new revision', async ({ page }) => {
-    if (!relationId) test.skip();
+    const API_URL = process.env.API_URL || 'http://localhost:8001';
+    const token = await page.evaluate(() => localStorage.getItem('auth_token'));
+
+    // Capture the updated_at before edit
+    const beforeResp = await page.request.get(`${API_URL}/api/relations/${relationId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(beforeResp.ok()).toBe(true);
+    const beforeData = await beforeResp.json();
 
     await page.goto(`/relations/${relationId}/edit`);
     await page.waitForLoadState('domcontentloaded');
 
     const kindField = page.getByLabel(/relation kind|kind/i);
-    if (await kindField.isVisible({ timeout: 3000 })) {
-      await kindField.clear();
-      await kindField.fill('updated-mention');
+    await expect(kindField).toBeVisible({ timeout: 5000 });
+    await kindField.clear();
+    await kindField.fill('updated-mention');
 
-      await page.getByRole('button', { name: /save|update/i }).click();
-      await page.waitForTimeout(2000);
+    await page.getByRole('button', { name: /save|update/i }).click();
+    await page.waitForTimeout(1500);
 
-      // Should navigate away from edit page or show a success indicator
-      const url = page.url();
-      const notOnEditPage = !url.includes('/edit');
-      const successAlert = await page.getByRole('alert').isVisible({ timeout: 1000 }).catch(() => false);
-      expect(notOnEditPage || successAlert).toBeTruthy();
-    }
+    // Must navigate away from edit page
+    await expect(page).not.toHaveURL(/\/edit$/);
+
+    // Verify via API that the relation was actually updated
+    const afterResp = await page.request.get(`${API_URL}/api/relations/${relationId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(afterResp.ok()).toBe(true);
+    const afterData = await afterResp.json();
+
+    // The kind must reflect the update
+    expect(afterData.kind).toBe('updated-mention');
+    // updated_at must have advanced (new revision)
+    expect(afterData.updated_at).not.toBe(beforeData.updated_at);
   });
 
   // US-REL-04 — Delete Relation

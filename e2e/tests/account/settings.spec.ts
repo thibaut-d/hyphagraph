@@ -95,7 +95,12 @@ test.describe('Account Settings', () => {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       form: { username: testEmail, password: originalPassword },
     });
-    if (!resp.ok()) return;
+    if (!resp.ok()) {
+      // Email verification is likely required for new users in this environment.
+      // Skip with an explicit message rather than silently passing.
+      test.skip(true, 'Login failed for new user — email verification may be required; seed a verified user to run this test');
+      return;
+    }
     const { access_token } = await resp.json();
 
     const BASE_URL = process.env.BASE_URL || 'http://localhost:3001';
@@ -109,22 +114,22 @@ test.describe('Account Settings', () => {
     const newPasswordField = page.getByLabel('New Password', { exact: true });
     const confirmPasswordField = page.getByLabel('Confirm New Password', { exact: true });
 
-    if (await newPasswordField.isVisible({ timeout: 3000 })) {
-      if (await currentPasswordField.isVisible({ timeout: 1000 })) {
-        await currentPasswordField.fill(originalPassword);
-      }
-      await newPasswordField.fill(newPassword);
-      if (await confirmPasswordField.isVisible({ timeout: 1000 })) {
-        await confirmPasswordField.fill(newPassword);
-      }
+    // Form fields must be present
+    await expect(newPasswordField).toBeVisible({ timeout: 5000 });
 
-      await page.getByRole('button', { name: 'Change Password' }).click();
-
-      // Should show a success feedback
-      const success = page.locator('text=/success|updated|changed/i').first();
-      if (await success.isVisible({ timeout: 5000 })) {
-        await expect(success).toBeVisible();
-      }
+    if (await currentPasswordField.isVisible({ timeout: 1000 })) {
+      await currentPasswordField.fill(originalPassword);
     }
+    await newPasswordField.fill(newPassword);
+    if (await confirmPasswordField.isVisible({ timeout: 1000 })) {
+      await confirmPasswordField.fill(newPassword);
+    }
+
+    await page.getByRole('button', { name: 'Change Password' }).click();
+
+    // Success feedback must be visible
+    await expect(
+      page.locator('text=/success|updated|changed/i').first()
+    ).toBeVisible({ timeout: 5000 });
   });
 });

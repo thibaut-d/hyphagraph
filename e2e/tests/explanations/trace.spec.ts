@@ -53,9 +53,11 @@ test.describe('Explanation Trace', () => {
     // Navigate to explanation
     await page.goto(`/explain/${entityId}/subject`);
 
-    // Look for explanation components — conditional, test passes regardless
-    const explanationContent = page.locator('text=/Explanation|Evidence|Trace|Path/i').first();
-    await explanationContent.isVisible({ timeout: 3000 }).catch(() => false);
+    // The explanation page must load without crashing
+    await expect(page).toHaveURL(/\/explain\/[a-f0-9-]+\//);
+    // Either explanation content or an empty/no-data state must be visible
+    const explanationContent = page.locator('text=/Explanation|Evidence|Trace|Path|no data|not found/i').first();
+    await expect(explanationContent).toBeVisible({ timeout: 5000 });
   });
 
   test('should show evidence paths', async ({ page }) => {

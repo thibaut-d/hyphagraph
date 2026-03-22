@@ -123,6 +123,55 @@ test.describe('Admin Panel', () => {
     expect(adminResp.status()).toBe(403);
   });
 
+  // E2E-G5 — Non-admin frontend authorization
+  test('should show admin UI to authenticated regular user but deny API access', async ({ page }) => {
+    const API_URL = process.env.API_URL || 'http://localhost:8001';
+    const testEmail = generateTestEmail();
+    const testPassword = 'TestPass123!';
+
+    // Register a regular (non-superuser) account
+    const regResp = await page.request.post(`${API_URL}/api/auth/register`, {
+      headers: { 'Content-Type': 'application/json' },
+      data: { email: testEmail, password: testPassword },
+    });
+    if (!regResp.ok()) {
+      test.skip(true, 'Regular user registration failed — email verification may be required');
+      return;
+    }
+
+    // Login as the regular user via API
+    const loginResp = await page.request.post(`${API_URL}/api/auth/login`, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      form: { username: testEmail, password: testPassword },
+    });
+    if (!loginResp.ok()) {
+      test.skip(true, 'Regular user login failed — email verification may be required');
+      return;
+    }
+    const { access_token: regularToken } = await loginResp.json();
+
+    // Set auth state as the regular user
+    const BASE_URL = process.env.BASE_URL || 'http://localhost';
+    await page.goto(BASE_URL);
+    await page.evaluate((token) => localStorage.setItem('auth_token', token), regularToken);
+
+    // Navigate to admin panel as regular user
+    await page.goto('/admin');
+    await page.waitForLoadState('networkidle');
+
+    // The frontend ProtectedRoute only checks authentication — regular users can reach the page.
+    // They must see the admin UI shell (i.e. no generic 404), but admin API calls will return 403.
+    const isNotFound = await page.locator('text=/404|not found|page not found/i').first()
+      .isVisible({ timeout: 3000 }).catch(() => false);
+    expect(isNotFound).toBe(false);
+
+    // The admin API must still deny regular users (API-level enforcement)
+    const adminResp = await page.request.get(`${API_URL}/api/admin/users`, {
+      headers: { Authorization: `Bearer ${regularToken}` },
+    });
+    expect(adminResp.status()).toBe(403);
+  });
+
   // US-ADM-02 — Manage UI Categories (accessible via admin or settings)
 
   test('should show UI categories section or link in settings', async ({ page }) => {

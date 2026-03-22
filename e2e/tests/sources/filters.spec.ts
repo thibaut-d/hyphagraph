@@ -16,73 +16,65 @@ test.describe('Source Filters', () => {
     await expect(page.getByRole('heading', { name: 'Sources' })).toBeVisible();
 
     const filterButton = page.getByRole('button', { name: /filter/i });
-    if (await filterButton.isVisible({ timeout: 3000 })) {
-      await filterButton.click();
-      await page.waitForTimeout(300);
-      const drawer = page.locator('[role="presentation"]').or(page.locator('.MuiDrawer-root'));
-      if (await drawer.isVisible({ timeout: 2000 })) {
-        await expect(drawer).toBeVisible();
-      }
-    }
+    await expect(filterButton).toBeVisible({ timeout: 5000 });
+    await filterButton.click();
+
+    const drawer = page.locator('[role="presentation"]').or(page.locator('.MuiDrawer-root')).first();
+    await expect(drawer).toBeVisible({ timeout: 3000 });
   });
 
   test('should show study type filter option', async ({ page }) => {
     await page.goto('/sources');
+    await expect(page.getByRole('heading', { name: 'Sources' })).toBeVisible();
 
     const filterButton = page.getByRole('button', { name: /filter/i });
-    if (await filterButton.isVisible({ timeout: 3000 })) {
-      await filterButton.click();
-      await page.waitForTimeout(300);
-      const studyTypeFilter = page.locator('text=/study type|kind/i').first();
-      if (await studyTypeFilter.isVisible({ timeout: 2000 })) {
-        await expect(studyTypeFilter).toBeVisible();
-      }
-    }
+    await expect(filterButton).toBeVisible({ timeout: 5000 });
+    await filterButton.click();
+    await page.waitForTimeout(300);
+
+    const studyTypeFilter = page.locator('text=/study type|kind/i').first();
+    await expect(studyTypeFilter).toBeVisible({ timeout: 3000 });
   });
 
   test('should show publication year filter option', async ({ page }) => {
     await page.goto('/sources');
+    await expect(page.getByRole('heading', { name: 'Sources' })).toBeVisible();
 
     const filterButton = page.getByRole('button', { name: /filter/i });
-    if (await filterButton.isVisible({ timeout: 3000 })) {
-      await filterButton.click();
-      await page.waitForTimeout(300);
-      const yearFilter = page.locator('text=/year/i').first();
-      if (await yearFilter.isVisible({ timeout: 2000 })) {
-        await expect(yearFilter).toBeVisible();
-      }
-    }
+    await expect(filterButton).toBeVisible({ timeout: 5000 });
+    await filterButton.click();
+    await page.waitForTimeout(300);
+
+    const yearFilter = page.locator('text=/year/i').first();
+    await expect(yearFilter).toBeVisible({ timeout: 3000 });
   });
 
-  test('should show active filter indicator when filter is applied', async ({ page }) => {
+  test('should show filter button on sources list', async ({ page }) => {
     await page.goto('/sources');
     await page.waitForLoadState('networkidle');
 
-    // Applying a filter should make a visual indicator appear.
-    // Verify the list page loads and filter UI is accessible.
     await expect(page.getByRole('heading', { name: 'Sources' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /filter/i })).toBeVisible({ timeout: 5000 });
   });
 
   test('should update source list when filter is applied', async ({ page }) => {
     await page.goto('/sources');
     await page.waitForLoadState('networkidle');
-
-    // Get initial count of visible source items
     await expect(page.getByRole('heading', { name: 'Sources' })).toBeVisible();
 
     const filterButton = page.getByRole('button', { name: /filter/i });
-    if (await filterButton.isVisible({ timeout: 3000 })) {
-      await filterButton.click();
-      await page.waitForTimeout(300);
+    await expect(filterButton).toBeVisible({ timeout: 5000 });
+    await filterButton.click();
+    await page.waitForTimeout(300);
 
-      // Look for an authority/trust level slider or input and change it to a high value
-      const authorityInput = page.getByLabel(/authority|trust/i).first();
-      if (await authorityInput.isVisible({ timeout: 2000 })) {
-        await authorityInput.fill('1.0');
-        await page.waitForTimeout(500); // wait for debounced filter
-        // Page should still show sources heading (list may now be empty or filtered)
-        await expect(page.getByRole('heading', { name: 'Sources' })).toBeVisible();
-      }
+    // If an authority/trust filter exists, interact with it
+    const authorityInput = page.getByLabel(/authority|trust/i).first();
+    if (await authorityInput.isVisible({ timeout: 2000 })) {
+      await authorityInput.fill('1.0');
+      await page.waitForTimeout(500);
     }
+
+    // Page must remain functional after filter interaction
+    await expect(page.getByRole('heading', { name: 'Sources' })).toBeVisible();
   });
 });
