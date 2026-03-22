@@ -30,7 +30,6 @@ test.describe('Source Filters', () => {
     const filterButton = page.getByRole('button', { name: /filter/i });
     await expect(filterButton).toBeVisible({ timeout: 5000 });
     await filterButton.click();
-    await page.waitForTimeout(300);
 
     const studyTypeFilter = page.locator('text=/study type|kind/i').first();
     await expect(studyTypeFilter).toBeVisible({ timeout: 3000 });
@@ -43,7 +42,6 @@ test.describe('Source Filters', () => {
     const filterButton = page.getByRole('button', { name: /filter/i });
     await expect(filterButton).toBeVisible({ timeout: 5000 });
     await filterButton.click();
-    await page.waitForTimeout(300);
 
     const yearFilter = page.locator('text=/year/i').first();
     await expect(yearFilter).toBeVisible({ timeout: 3000 });
@@ -65,13 +63,11 @@ test.describe('Source Filters', () => {
     const filterButton = page.getByRole('button', { name: /filter/i });
     await expect(filterButton).toBeVisible({ timeout: 5000 });
     await filterButton.click();
-    await page.waitForTimeout(300);
 
     // If an authority/trust filter exists, interact with it
     const authorityInput = page.getByLabel(/authority|trust/i).first();
     if (await authorityInput.isVisible({ timeout: 2000 })) {
       await authorityInput.fill('1.0');
-      await page.waitForTimeout(500);
     }
 
     // Page must remain functional after filter interaction

@@ -24,25 +24,21 @@ test.describe('Account Settings', () => {
   test('should show the current user email on the account page', async ({ page }) => {
     await page.goto('/account');
     await page.waitForLoadState('networkidle');
-    // Admin email is admin@example.com
-    const emailText = page.locator('text=admin@example.com');
-    if (await emailText.isVisible({ timeout: 3000 })) {
-      await expect(emailText).toBeVisible();
-    }
+    // Admin email must be visible on the account page
+    await expect(page.locator('text=admin@example.com')).toBeVisible({ timeout: 5000 });
   });
 
   test('should provide access to change password', async ({ page }) => {
     await page.goto('/account');
     await page.waitForLoadState('networkidle');
 
-    // There should be a change password link or form
+    // A change-password link or button must be present and navigable
     const changePasswordLink = page.getByRole('link', { name: /change.*password|password/i }).or(
       page.getByRole('button', { name: /change.*password/i })
     );
-    if (await changePasswordLink.first().isVisible({ timeout: 3000 })) {
-      await changePasswordLink.first().click();
-      await expect(page).toHaveURL(/\/change-password|\/account/);
-    }
+    await expect(changePasswordLink.first()).toBeVisible({ timeout: 5000 });
+    await changePasswordLink.first().click();
+    await expect(page).toHaveURL(/\/change-password|\/account/);
   });
 
   test('should load the change password page', async ({ page }) => {
@@ -62,23 +58,20 @@ test.describe('Account Settings', () => {
     const newPasswordField = page.getByLabel('New Password', { exact: true });
     const confirmPasswordField = page.getByLabel('Confirm New Password', { exact: true });
 
-    if (await newPasswordField.isVisible({ timeout: 3000 })) {
-      if (await currentPasswordField.isVisible({ timeout: 1000 })) {
-        await currentPasswordField.fill('changeme123');
-      }
-      await newPasswordField.fill('NewPassword123!');
-      if (await confirmPasswordField.isVisible({ timeout: 1000 })) {
-        await confirmPasswordField.fill('DifferentPassword456!');
-      }
-
-      await page.getByRole('button', { name: 'Change Password' }).click();
-
-      // Should show mismatch error
-      const errorMessage = page.locator('text=/match|same|confirm/i').first();
-      if (await errorMessage.isVisible({ timeout: 3000 })) {
-        await expect(errorMessage).toBeVisible();
-      }
+    // New password field must be present on /change-password
+    await expect(newPasswordField).toBeVisible({ timeout: 5000 });
+    if (await currentPasswordField.isVisible({ timeout: 1000 })) {
+      await currentPasswordField.fill('changeme123');
     }
+    await newPasswordField.fill('NewPassword123!');
+    if (await confirmPasswordField.isVisible({ timeout: 1000 })) {
+      await confirmPasswordField.fill('DifferentPassword456!');
+    }
+
+    await page.getByRole('button', { name: 'Change Password' }).click();
+
+    // Mismatch error must be visible
+    await expect(page.locator('text=/match|same|confirm/i').first()).toBeVisible({ timeout: 5000 });
   });
 
   test('should successfully change password for a test user', async ({ page }) => {

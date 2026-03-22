@@ -45,6 +45,8 @@ test.describe('Revision History', () => {
 
     await page.getByRole('button', { name: /save|update/i }).click();
     await page.waitForURL(/\/entities\/[a-f0-9-]+$/, { timeout: 10000 });
+    // Settle before API check — waitForURL fires on navigation start, not after backend write commits
+    await page.waitForLoadState('networkidle');
 
     // Verify via API that updated_at advanced (new revision created)
     const afterResp = await page.request.get(`${API_URL}/api/entities/${entityId}`, {
@@ -125,8 +127,9 @@ test.describe('Revision History', () => {
     await kindField.fill('involves-revised');
 
     await page.getByRole('button', { name: /save|update/i }).click();
-    await page.waitForTimeout(1500);
-    await expect(page).not.toHaveURL(/\/edit$/);
+    await page.waitForURL(/\/relations\/[a-f0-9-]+$/, { timeout: 10000 });
+    // Settle before API check — waitForURL fires on navigation start, not after backend write commits
+    await page.waitForLoadState('networkidle');
 
     // Verify via API that updated_at advanced (new revision created)
     const afterResp = await page.request.get(`${API_URL}/api/relations/${relationId}`, {

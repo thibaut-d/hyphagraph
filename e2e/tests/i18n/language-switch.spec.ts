@@ -36,17 +36,15 @@ test.describe('Language Switch (i18n)', () => {
     const frButton = page.getByRole('button', { name: /fr|français/i }).or(
       page.locator('[data-lang="fr"]')
     );
-    if (await frButton.first().isVisible({ timeout: 3000 })) {
-      await frButton.first().click();
-      await page.waitForTimeout(500);
-
-      // After switching to French, the heading text should change
-      // (French translation of "Entities" in i18n strings)
-      const headingText = await page.getByRole('heading').first().innerText();
-      // The heading should now be in French — at minimum it should have changed
-      // (exact value depends on i18n translation)
-      expect(headingText).toBeTruthy();
+    if (!await frButton.first().isVisible({ timeout: 3000 })) {
+      test.skip(true, 'French language button not visible — language switcher may not be implemented');
+      return;
     }
+    await frButton.first().click();
+    await page.waitForTimeout(500); // allow i18n state to propagate
+
+    // After switching to French the heading must no longer read "Entities" in English
+    await expect(page.getByRole('heading', { name: 'Entities', exact: true })).not.toBeVisible({ timeout: 3000 });
   });
 
   test('should switch UI language back to English', async ({ page }) => {
@@ -91,13 +89,8 @@ test.describe('Language Switch (i18n)', () => {
       await page.goto('/sources');
       await page.waitForLoadState('networkidle');
 
-      // Language should still be French — check that "Entities" in English is NOT the heading
-      // (the heading should now be French equivalent)
-      const heading = page.getByRole('heading').first();
-      const headingText = await heading.innerText().catch(() => '');
-      // If language persisted, the heading should not be the default English "Sources"
-      // (or it could remain the same if FR translation is identical — that's acceptable)
-      expect(headingText).toBeTruthy();
+      // Language should still be French — the Sources heading must not be the default English text
+      await expect(page.getByRole('heading', { name: 'Sources', exact: true })).not.toBeVisible({ timeout: 3000 });
     }
   });
 });

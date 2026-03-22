@@ -33,7 +33,6 @@ test.describe('Entity Filters', () => {
       const filterButton = page.getByRole('button', { name: /filter/i });
       await expect(filterButton).toBeVisible({ timeout: 5000 });
       await filterButton.click();
-      await page.waitForTimeout(300);
 
       const categoryFilter = page.locator('text=/category|type|kind/i').first();
       await expect(categoryFilter).toBeVisible({ timeout: 3000 });
@@ -80,7 +79,6 @@ test.describe('Entity Filters', () => {
       const filterButton = page.getByRole('button', { name: /filter/i }).first();
       await expect(filterButton).toBeVisible({ timeout: 5000 });
       await filterButton.click();
-      await page.waitForTimeout(300);
 
       // Filter panel or drawer must open
       const filterPanel = page.locator('[role="presentation"]')

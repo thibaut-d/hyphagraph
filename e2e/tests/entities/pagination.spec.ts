@@ -23,7 +23,7 @@ test.describe('Entity List Pagination', () => {
     });
     expect(countResp.ok()).toBe(true);
     const countData = await countResp.json();
-    const existingCount = countData.total ?? (Array.isArray(countData) ? countData.length : 0);
+    const existingCount = countData.total ?? countData.count ?? 0;
 
     const needed = Math.max(0, PAGE_SIZE + 1 - existingCount);
     const prefix = `pagtest-${Date.now()}`;
@@ -44,8 +44,10 @@ test.describe('Entity List Pagination', () => {
     await expect(page.getByRole('heading', { name: 'Entities' })).toBeVisible();
     await page.waitForLoadState('networkidle');
 
-    // Collect entity rows visible on first load
-    const rows = page.getByRole('listitem').or(page.locator('[data-testid="entity-row"]'));
+    // Collect entity rows visible on first load.
+    // Scope to <main> to exclude nav/sidebar <li> elements; entities render as ListItems inside the
+    // main content List (not inside role="banner" or role="navigation").
+    const rows = page.locator('main').getByRole('listitem');
     const firstPageCount = await rows.count();
 
     // "Load More" button must be present when total > PAGE_SIZE

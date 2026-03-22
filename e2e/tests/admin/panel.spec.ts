@@ -27,14 +27,12 @@ test.describe('Admin Panel', () => {
     // Stats cards load asynchronously via /admin/stats — wait for heading first
     await expect(page.locator('text=Administration Panel')).toBeVisible({ timeout: 10000 });
 
-    // Then check stats (conditional: stats API may be slow)
-    const totalUsers = page.locator('text=Total Users');
-    if (await totalUsers.isVisible({ timeout: 15000 }).catch(() => false)) {
-      // Use paragraph role to avoid matching status chips in the users table
-      await expect(page.getByRole('paragraph').filter({ hasText: 'Active' }).first()).toBeVisible({ timeout: 5000 });
-      await expect(page.locator('text=Superusers').first()).toBeVisible({ timeout: 5000 });
-      await expect(page.locator('text=Verified').first()).toBeVisible({ timeout: 5000 });
-    }
+    // Stats cards load asynchronously from /admin/stats — use a generous timeout
+    await expect(page.locator('text=Total Users')).toBeVisible({ timeout: 15000 });
+    // Use paragraph role to avoid matching status chips in the users table
+    await expect(page.getByRole('paragraph').filter({ hasText: 'Active' }).first()).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=Superusers').first()).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=Verified').first()).toBeVisible({ timeout: 5000 });
   });
 
   test('should show users table with email column', async ({ page }) => {
@@ -53,14 +51,8 @@ test.describe('Admin Panel', () => {
 
     await expect(page.locator('text=Administration Panel')).toBeVisible({ timeout: 10000 });
 
-    // Table data loads asynchronously — conditional check
-    const adminRow = page.locator('text=admin@example.com');
-    if (await adminRow.isVisible({ timeout: 20000 }).catch(() => false)) {
-      await expect(adminRow).toBeVisible();
-    } else {
-      // Fallback: verify table structure exists even if data is slow
-      await expect(page.getByRole('columnheader', { name: /email/i })).toBeVisible({ timeout: 5000 });
-    }
+    // Table data loads asynchronously — the admin user must appear within a generous timeout
+    await expect(page.locator('text=admin@example.com')).toBeVisible({ timeout: 20000 });
   });
 
   test('should show edit and delete buttons for each user', async ({ page }) => {
@@ -69,16 +61,10 @@ test.describe('Admin Panel', () => {
 
     await expect(page.locator('text=Administration Panel')).toBeVisible({ timeout: 10000 });
 
-    // Only assert action buttons if table data loaded
-    const adminRow = page.locator('text=admin@example.com');
-    if (await adminRow.isVisible({ timeout: 20000 }).catch(() => false)) {
-      const editButtonByTitle = page.locator('[title="Edit user"]').first();
-      const deleteButtonByTitle = page.locator('[title="Delete user"]').first();
-      const hasEdit = await editButtonByTitle.isVisible({ timeout: 3000 }).catch(() => false);
-      const hasDelete = await deleteButtonByTitle.isVisible({ timeout: 3000 }).catch(() => false);
-      expect(hasEdit).toBeTruthy();
-      expect(hasDelete).toBeTruthy();
-    }
+    // Wait for table data, then assert action buttons are rendered
+    await expect(page.locator('text=admin@example.com')).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('[title="Edit user"]').first()).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('[title="Delete user"]').first()).toBeVisible({ timeout: 5000 });
   });
 
   test('should open edit dialog when edit button is clicked', async ({ page }) => {
@@ -86,11 +72,9 @@ test.describe('Admin Panel', () => {
     await page.waitForLoadState('domcontentloaded');
 
     const editButton = page.locator('[title="Edit user"]').first();
-    if (await editButton.isVisible({ timeout: 10000 })) {
-      await editButton.click();
-      // Edit dialog should open
-      await expect(page.locator('[role="dialog"]')).toBeVisible({ timeout: 3000 });
-    }
+    await expect(editButton).toBeVisible({ timeout: 10000 });
+    await editButton.click();
+    await expect(page.locator('[role="dialog"]')).toBeVisible({ timeout: 3000 });
   });
 
   test('should restrict admin API to superusers only', async ({ page }) => {

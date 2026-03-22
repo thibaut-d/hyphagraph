@@ -44,7 +44,6 @@ test.describe('Email Verification Flow', () => {
     });
     if (!regResp.ok()) {
       test.skip(true, 'Registration failed — cannot proceed with verification test');
-      return;
     }
 
     // Try to login as the unverified user via API
@@ -57,7 +56,6 @@ test.describe('Email Verification Flow', () => {
       // Verification not enforced in this environment — skip assertion
       // (acceptable for dev/test environments that don't require verification)
       test.skip(true, 'Email verification is not enforced in this environment');
-      return;
     }
 
     // When verification IS enforced, login must return a 401/403 with a descriptive message
@@ -71,19 +69,14 @@ test.describe('Email Verification Flow', () => {
     // In CI with a real mail service, set this to the verification URL extracted from the email.
     if (!process.env.VERIFY_EMAIL_URL) {
       test.skip(true, 'VERIFY_EMAIL_URL not set — skipping full verification link test');
-      return;
     }
 
     await page.goto(process.env.VERIFY_EMAIL_URL);
     await page.waitForLoadState('networkidle');
 
-    // After verification, the user should be shown a success state or redirected to login
+    // After verification, the app must show either a success message or the login form
     const success = page.locator('text=/verified|success|confirmed/i').first();
     const loginForm = page.getByRole('button', { name: /login/i });
-
-    const hasSuccess = await success.isVisible({ timeout: 5000 }).catch(() => false);
-    const hasLoginForm = await loginForm.isVisible({ timeout: 5000 }).catch(() => false);
-
-    expect(hasSuccess || hasLoginForm).toBe(true);
+    await expect(success.or(loginForm)).toBeVisible({ timeout: 5000 });
   });
 });

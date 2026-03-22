@@ -70,11 +70,11 @@ test.describe('Inference Viewing', () => {
     // The entity detail page must render at minimum the entity slug
     await expect(page.locator(`text=${entity1Slug}`)).toBeVisible();
 
-    // The inference section (Relations/Inferences/Roles) should be visible now there is data
-    const inferencesSection = page.locator('text=/Inferences|Computed Relations|Roles/i').first();
-    if (await inferencesSection.isVisible({ timeout: 5000 })) {
-      await expect(inferencesSection).toBeVisible();
-    }
+    // The inference section must be visible now that a relation was seeded.
+    // Inference computation may be async; use a generous timeout.
+    await expect(
+      page.locator('text=/Inferences|Computed Relations|Roles/i').first()
+    ).toBeVisible({ timeout: 10000 });
   });
 
   // C1 fix: replace tautological URL check with a real assertion
@@ -82,15 +82,8 @@ test.describe('Inference Viewing', () => {
     await page.goto('/inferences');
     await page.waitForLoadState('networkidle');
 
-    // The page must actually load — either a heading or the URL itself must resolve
-    const heading = page.getByRole('heading').first();
-    const headingVisible = await heading.isVisible({ timeout: 5000 }).catch(() => false);
-    if (headingVisible) {
-      await expect(heading).toBeVisible();
-    } else {
-      // Fallback: assert we are on a page that isn't an error (no 404/500 text)
-      await expect(page.locator('text=/404|page not found|server error/i').first()).not.toBeVisible();
-    }
+    // The page must render a heading — blank page or JS error is a failure
+    await expect(page.getByRole('heading').first()).toBeVisible({ timeout: 5000 });
   });
 
   // C2 fix: add heading assertion after filter interaction

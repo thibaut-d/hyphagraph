@@ -65,21 +65,21 @@ test.describe('Source Export', () => {
     await expect(exportButton).toBeVisible({ timeout: 5000 });
 
     const [download] = await Promise.all([
-      page.waitForEvent('download', { timeout: 10000 }).catch(() => null),
+      page.waitForEvent('download', { timeout: 10000 }),
       exportButton.click(),
     ]);
 
-    if (download) {
-      const filename = download.suggestedFilename();
-      if (filename.endsWith('.json')) {
-        const stream = await download.createReadStream();
-        const chunks: Buffer[] = [];
-        for await (const chunk of stream) {
-          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-        }
-        const content = Buffer.concat(chunks).toString('utf-8');
-        expect(content).toContain(sourceTitle);
+    // Download must have fired — a null download means the export button is broken
+    expect(download).not.toBeNull();
+    const filename = download.suggestedFilename();
+    if (filename.endsWith('.json')) {
+      const stream = await download.createReadStream();
+      const chunks: Buffer[] = [];
+      for await (const chunk of stream) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
       }
+      const content = Buffer.concat(chunks).toString('utf-8');
+      expect(content).toContain(sourceTitle);
     }
   });
 

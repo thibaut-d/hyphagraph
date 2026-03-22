@@ -103,11 +103,9 @@ test.describe('Navigation', () => {
     test('should provide entry points to Entities and Sources', async ({ page }) => {
       await page.goto('/');
       await page.waitForLoadState('networkidle');
-      // Somewhere on the page there should be links/buttons leading to entities and sources
-      const bodyText = await page.locator('body').innerText();
-      const hasEntities = /entities/i.test(bodyText);
-      const hasSources = /sources/i.test(bodyText);
-      expect(hasEntities || hasSources).toBeTruthy();
+      // The app must expose navigable links to Entities and Sources (not just text on the page)
+      await expect(page.getByRole('link', { name: /entities/i }).first()).toBeVisible({ timeout: 5000 });
+      await expect(page.getByRole('link', { name: /sources/i }).first()).toBeVisible({ timeout: 5000 });
     });
   });
 });

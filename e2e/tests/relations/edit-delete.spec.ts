@@ -116,10 +116,9 @@ test.describe('Relation Edit and Delete', () => {
     await kindField.fill('updated-mention');
 
     await page.getByRole('button', { name: /save|update/i }).click();
-    await page.waitForTimeout(1500);
-
-    // Must navigate away from edit page
-    await expect(page).not.toHaveURL(/\/edit$/);
+    // Wait for navigation away from the edit page and for the backend write to commit
+    await page.waitForURL(/\/relations\/[a-f0-9-]+$/, { timeout: 10000 });
+    await page.waitForLoadState('networkidle');
 
     // Verify via API that the relation was actually updated
     const afterResp = await page.request.get(`${API_URL}/api/relations/${relationId}`, {
