@@ -240,3 +240,78 @@ class TestEntityService:
 
         assert exc_info.value.status_code == 409
         assert "already exists" in exc_info.value.detail.lower()
+
+    async def test_update_entity_duplicate_slug_rejected(self, db_session):
+        """Updating an entity to a slug already used by another entity returns 409."""
+        service = EntityService(db_session)
+        await service.create(EntityWrite(slug="ibuprofen"))
+        second = await service.create(EntityWrite(slug="naproxen"))
+
+        with pytest.raises(HTTPException) as exc_info:
+            await service.update(second.id, EntityWrite(slug="ibuprofen"))
+
+        assert exc_info.value.status_code == 409
+        assert "already exists" in exc_info.value.detail.lower()
+
+    async def test_delete_entity_with_relations_rejected(self, db_session):
+        """Deleting an entity referenced by a relation returns 409."""
+        from app.models.source import Source
+        from app.models.relation import Relation
+        from app.models.relation_revision import RelationRevision
+        from app.models.relation_role_revision import RelationRoleRevision
+
+        service = EntityService(db_session)
+        entity = await service.create(EntityWrite(slug="ketamine"))
+
+        # Build minimal source → relation → revision → role chain
+        source = Source()
+        db_session.add(source)
+        await db_session.flush()
+
+        relation = Relation(source_id=source.id)
+        db_session.add(relation)
+        await db_session.flush()
+
+        revision = RelationRevision(
+            relation_id=relation.id,
+            kind="treats",
+            confidence=0.8,
+            is_current=True,
+        )
+        db_session.add(revision)
+        await db_session.flush()
+
+        db_session.add(RelationRoleRevision(
+            relation_revision_id=revision.id,
+            entity_id=entity.id,
+            role_type="target",
+        ))
+        await db_session.commit()
+
+        with pytest.raises(HTTPException) as exc_info:
+            await service.delete(entity.id)
+
+        assert exc_info.value.status_code == 409
+        assert "relation" in exc_info.value.detail.lower()
+
+    async def test_update_marks_old_revision_as_not_current(self, db_session):
+        """After update(), the previous revision must have is_current=False."""
+        from sqlalchemy import select
+        from app.models.entity_revision import EntityRevision
+
+        service = EntityService(db_session)
+        created = await service.create(EntityWrite(slug="metformin", summary={"en": "v1"}))
+        await service.update(created.id, EntityWrite(slug="metformin", summary={"en": "v2"}))
+
+        result = await db_session.execute(
+            select(EntityRevision)
+            .where(EntityRevision.entity_id == created.id)
+            .order_by(EntityRevision.created_at)
+        )
+        revisions = result.scalars().all()
+
+        assert len(revisions) == 2
+        assert revisions[0].is_current is False
+        assert revisions[0].summary == {"en": "v1"}
+        assert revisions[1].is_current is True
+        assert revisions[1].summary == {"en": "v2"}

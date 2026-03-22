@@ -18,13 +18,10 @@ from app.models.relation_role_revision import RelationRoleRevision
 from app.llm.schemas import ExtractedEntity, ExtractedRelation
 from app.schemas.common_types import SlugEntityMap
 from app.utils.revision_helpers import create_new_revision
+from app.utils.confidence import CONFIDENCE_FLOAT
 from app.config import settings
 
 logger = logging.getLogger(__name__)
-
-# Canonical mapping from LLM confidence level to the float stored in RelationRevision.confidence.
-# Kept at module scope so callers can reference the same values without magic numbers.
-_CONFIDENCE_FLOAT: dict[str, float] = {"high": 0.8, "medium": 0.6, "low": 0.4}
 
 
 class BulkCreationService:
@@ -46,7 +43,6 @@ class BulkCreationService:
     async def bulk_create_entities(
         self,
         entities: list[ExtractedEntity],
-        source_id: UUID,
         user_id: UUID | None = None
     ) -> tuple[SlugEntityMap, list[str]]:
         """
@@ -57,7 +53,6 @@ class BulkCreationService:
 
         Args:
             entities: List of extracted entities to create
-            source_id: Source ID to associate with entities
             user_id: User creating the entities (for provenance)
 
         Returns:
@@ -132,8 +127,9 @@ class BulkCreationService:
                 raise
 
         logger.info(
-            f"Bulk created {len(entity_mapping)} entities, "
-            f"skipped {len(warnings)} duplicates"
+            "Bulk created %d entities, skipped %d duplicates",
+            len(entity_mapping),
+            len(warnings),
         )
 
         return entity_mapping, warnings
@@ -212,7 +208,7 @@ class BulkCreationService:
                     # Map extraction schema to database schema
                     revision_data = {
                         "kind": extracted.relation_type,  # "treats", "causes", etc.
-                        "confidence": _CONFIDENCE_FLOAT.get(extracted.confidence, 0.4),
+                        "confidence": CONFIDENCE_FLOAT.get(extracted.confidence, CONFIDENCE_FLOAT["low"]),
                         "notes": {"en": extracted.notes} if extracted.notes else None,
                         "created_with_llm": settings.OPENAI_MODEL,
                         "created_by_user_id": user_id,
@@ -268,8 +264,9 @@ class BulkCreationService:
                 raise
 
         logger.info(
-            f"Bulk created {len(relation_ids)} relations, "
-            f"skipped {len(warnings)} with errors/missing entities"
+            "Bulk created %d relations, skipped %d with errors/missing entities",
+            len(relation_ids),
+            len(warnings),
         )
 
         return created_relations, relation_ids, warnings

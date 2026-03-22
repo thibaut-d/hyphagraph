@@ -34,13 +34,13 @@ async def get_entity_filter_options(
     return await service.get_filter_options()
 
 
-@router.post("/", response_model=EntityRead)
+@router.post("/", response_model=EntityRead, status_code=201)
 async def create_entity(
     payload: EntityWrite,
     service: EntityService = Depends(get_entity_service),
     user=Depends(get_current_user),
 ):
-    return await service.create(payload, user_id=user.id if user else None)
+    return await service.create(payload, user_id=user.id)
 
 @router.get("/", response_model=PaginatedResponse[EntityRead])
 async def list_entities(
@@ -107,7 +107,7 @@ async def update_entity(
     service: EntityService = Depends(get_entity_service),
     user=Depends(get_current_user),
 ):
-    return await service.update(entity_id, payload, user_id=user.id if user else None)
+    return await service.update(entity_id, payload, user_id=user.id)
 
 @router.delete("/{entity_id}", status_code=204)
 async def delete_entity(

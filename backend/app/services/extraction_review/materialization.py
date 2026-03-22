@@ -1,8 +1,8 @@
 import logging
 from uuid import UUID
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from app.llm.schemas import ExtractedClaim, ExtractedEntity, ExtractedRelation
 from app.models.entity import Entity
@@ -11,6 +11,8 @@ from app.models.relation import Relation
 from app.models.relation_revision import RelationRevision
 from app.models.relation_role_revision import RelationRoleRevision
 from app.models.staged_extraction import StagedExtraction
+from app.utils.confidence import CONFIDENCE_FLOAT
+from app.utils.revision_helpers import create_new_revision
 
 logger = logging.getLogger(__name__)
 
@@ -22,16 +24,19 @@ async def materialize_entity(db: AsyncSession, staged: StagedExtraction) -> UUID
     db.add(entity)
     await db.flush()
 
-    db.add(
-        EntityRevision(
-            entity_id=entity.id,
-            slug=entity_data.slug,
-            summary={"en": entity_data.summary} if entity_data.summary else None,
-            is_current=True,
-            created_with_llm=staged.llm_model,
-        )
+    await create_new_revision(
+        db=db,
+        revision_class=EntityRevision,
+        parent_id_field="entity_id",
+        parent_id=entity.id,
+        revision_data={
+            "slug": entity_data.slug,
+            "summary": {"en": entity_data.summary} if entity_data.summary else None,
+            "status": "draft",
+            "created_with_llm": staged.llm_model,
+        },
+        set_as_current=True,
     )
-    await db.flush()
 
     logger.info("Materialized entity %s from staged extraction %s", entity.id, staged.id)
     return entity.id
@@ -44,25 +49,28 @@ async def materialize_relation(db: AsyncSession, staged: StagedExtraction) -> UU
     db.add(relation)
     await db.flush()
 
-    confidence_map = {"high": 0.9, "medium": 0.7, "low": 0.5}
-    final_confidence = confidence_map.get(relation_data.confidence, 0.7) * staged.confidence_adjustment
+    final_confidence = CONFIDENCE_FLOAT.get(relation_data.confidence, CONFIDENCE_FLOAT["medium"]) * staged.confidence_adjustment
 
-    revision = RelationRevision(
-        relation_id=relation.id,
-        kind=relation_data.relation_type,
-        confidence=final_confidence,
-        notes={"en": relation_data.text_span} if relation_data.text_span else None,
-        is_current=True,
-        created_with_llm=staged.llm_model,
+    revision = await create_new_revision(
+        db=db,
+        revision_class=RelationRevision,
+        parent_id_field="relation_id",
+        parent_id=relation.id,
+        revision_data={
+            "kind": relation_data.relation_type,
+            "confidence": final_confidence,
+            "notes": {"en": relation_data.text_span} if relation_data.text_span else None,
+            "status": "draft",
+            "created_with_llm": staged.llm_model,
+        },
+        set_as_current=True,
     )
-    db.add(revision)
-    await db.flush()
 
     for role_data in relation_data.roles:
         entity_result = await db.execute(
             select(EntityRevision)
             .where(EntityRevision.slug == role_data.entity_slug)
-            .where(EntityRevision.is_current == True)
+            .where(EntityRevision.is_current == True)  # noqa: E712
             .limit(1)
         )
         entity_revision = entity_result.scalar_one_or_none()
@@ -103,20 +111,23 @@ async def materialize_claim(db: AsyncSession, staged: StagedExtraction) -> UUID:
     db.add(relation)
     await db.flush()
 
-    confidence_map = {"high": 0.9, "medium": 0.7, "low": 0.5}
-    final_confidence = confidence_map.get(claim_data.confidence, 0.7) * staged.confidence_adjustment
+    final_confidence = CONFIDENCE_FLOAT.get(claim_data.confidence, CONFIDENCE_FLOAT["medium"]) * staged.confidence_adjustment
 
-    revision = RelationRevision(
-        relation_id=relation.id,
-        kind=claim_data.claim_type,
-        confidence=final_confidence,
-        notes={"en": claim_data.claim_text},
-        scope={"evidence_strength": claim_data.evidence_strength},
-        is_current=True,
-        created_with_llm=staged.llm_model,
+    revision = await create_new_revision(
+        db=db,
+        revision_class=RelationRevision,
+        parent_id_field="relation_id",
+        parent_id=relation.id,
+        revision_data={
+            "kind": claim_data.claim_type,
+            "confidence": final_confidence,
+            "notes": {"en": claim_data.claim_text},
+            "scope": {"evidence_strength": claim_data.evidence_strength},
+            "status": "draft",
+            "created_with_llm": staged.llm_model,
+        },
+        set_as_current=True,
     )
-    db.add(revision)
-    await db.flush()
 
     for slug in claim_data.entities_involved:
         entity_result = await db.execute(

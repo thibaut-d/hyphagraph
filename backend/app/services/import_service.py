@@ -43,6 +43,10 @@ logger = logging.getLogger(__name__)
 
 MAX_IMPORT_ROWS = 500
 
+# Same pattern as EntityWrite.slug — enforced here so invalid slugs are
+# rejected at preview time rather than silently stored via the ORM path.
+_SLUG_RE = re.compile(r"^[a-z][a-z0-9-]*$")
+
 # ---------------------------------------------------------------------------
 # BibTeX entry-type → SourceRevision kind mapping
 # ---------------------------------------------------------------------------
@@ -177,6 +181,18 @@ class ImportService:
                         slug="",
                         status="invalid",
                         error="slug is required",
+                    )
+                )
+                invalid_count += 1
+                continue
+
+            if not _SLUG_RE.match(slug):
+                preview_rows.append(
+                    EntityImportPreviewRow(
+                        row=i,
+                        slug=slug,
+                        status="invalid",
+                        error="slug must match ^[a-z][a-z0-9-]*$ (lowercase, start with letter, hyphens only)",
                     )
                 )
                 invalid_count += 1

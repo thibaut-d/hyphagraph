@@ -42,13 +42,12 @@ class TestEntityEndpoints:
     """Test entity API endpoints."""
 
     async def test_list_entities_no_auth(self, override_get_db):
-        """Test listing entities without authentication (should succeed)."""
+        """Test listing entities without authentication (should succeed — list is public)."""
         app.dependency_overrides[get_db] = override_get_db
         try:
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
                 response = await client.get("/api/entities/")
-                # List endpoint is public
-                assert response.status_code in [status.HTTP_200_OK, status.HTTP_401_UNAUTHORIZED]
+                assert response.status_code == status.HTTP_200_OK
         finally:
             app.dependency_overrides.clear()
 
@@ -65,36 +64,25 @@ class TestEntityEndpoints:
         finally:
             app.dependency_overrides.clear()
 
-    async def test_create_entity_with_auth(self, mock_current_user, override_get_db):
-        """Test creating entity with authentication."""
+    async def test_create_entity_with_auth(self, mock_current_user, override_get_db, db_session):
+        """Test creating entity with authentication returns 201."""
+        from app.dependencies.auth import get_current_user
+
+        # Persist the user so the FK on EntityRevision.created_by_user_id resolves
+        db_session.add(mock_current_user)
+        await db_session.commit()
+
         app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_current_user] = lambda: mock_current_user
         try:
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-                with patch("app.api.entities.get_current_user") as mock_get_user:
-                    with patch("app.api.entities.EntityService") as MockService:
-                        # Mock authentication
-                        mock_get_user.return_value = mock_current_user
-
-                        # Mock service
-                        mock_service = AsyncMock()
-                        MockService.return_value = mock_service
-
-                        mock_entity = AsyncMock()
-                        mock_entity.id = uuid4()
-                        mock_entity.slug = "aspirin"
-                        mock_entity.summaries = {}
-                        mock_entity.created_at = datetime.now(timezone.utc)
-
-                        mock_service.create.return_value = mock_entity
-
-                        response = await client.post(
-                            "/api/entities/",
-                            json={"slug": "aspirin"}
-                        )
-
-                        # Note: Authentication is mocked, so response may vary
-                        # In real integration test with DB, this would be 201
-                        assert response.status_code in [status.HTTP_200_OK, status.HTTP_201_CREATED, status.HTTP_401_UNAUTHORIZED]
+                response = await client.post(
+                    "/api/entities/",
+                    json={"slug": "aspirin"},
+                )
+                assert response.status_code == status.HTTP_201_CREATED
+                data = response.json()
+                assert data["slug"] == "aspirin"
         finally:
             app.dependency_overrides.clear()
 

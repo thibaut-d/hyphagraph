@@ -37,6 +37,22 @@ class EntityService:
         self.query_builder = EntityQueryBuilder(db)
         self.derived_properties_service = derived_properties_service or DerivedPropertiesService(db)
 
+    @staticmethod
+    def _raise_if_slug_conflict(e: IntegrityError, slug: str) -> None:
+        """Re-raise e as a structured 409 if it is a slug uniqueness violation."""
+        error_msg = str(e.orig).lower()
+        if ('ix_entity_revisions_slug_current_unique' in error_msg or
+                'unique constraint failed: entity_revisions.slug' in error_msg):
+            raise AppException(
+                status_code=409,
+                error_code=ErrorCode.ENTITY_SLUG_CONFLICT,
+                message="Entity slug already exists",
+                field="slug",
+                details=f"An entity with slug '{slug}' already exists",
+                context={"slug": slug},
+            )
+        raise e
+
     async def create(self, payload: EntityWrite, user_id: UUID | None = None) -> EntityRead:
         """
         Create a new entity with its first revision.
@@ -75,20 +91,7 @@ class EntityService:
 
         except IntegrityError as e:
             await self.db.rollback()
-            # Check if it's a duplicate slug error (both PostgreSQL and SQLite)
-            error_msg = str(e.orig).lower()
-            if ('ix_entity_revisions_slug_current_unique' in error_msg or
-                'unique constraint failed: entity_revisions.slug' in error_msg):
-                raise AppException(
-                    status_code=409,
-                    error_code=ErrorCode.ENTITY_SLUG_CONFLICT,
-                    message="Entity slug already exists",
-                    field="slug",
-                    details=f"An entity with slug '{payload.slug}' already exists",
-                    context={"slug": payload.slug}
-                )
-            # Re-raise other integrity errors
-            raise
+            self._raise_if_slug_conflict(e, payload.slug)
         except Exception as e:
             logger.error("Failed to create entity '%s': %s", payload.slug, e, exc_info=True)
             await self.db.rollback()
@@ -109,6 +112,8 @@ class EntityService:
             parent_id_field='entity_id',
             parent_id=entity.id,
         )
+        if current_revision is None:
+            raise EntityNotFoundException(entity_id=str(entity_id))
 
         result = entity_to_read(entity, current_revision)
         result.consensus_level = await self.derived_properties_service.get_entity_consensus_level(entity.id)
@@ -193,18 +198,7 @@ class EntityService:
             raise
         except IntegrityError as e:
             await self.db.rollback()
-            error_msg = str(e.orig).lower()
-            if ('ix_entity_revisions_slug_current_unique' in error_msg or
-                    'unique constraint failed: entity_revisions.slug' in error_msg):
-                raise AppException(
-                    status_code=409,
-                    error_code=ErrorCode.ENTITY_SLUG_CONFLICT,
-                    message="Entity slug already exists",
-                    field="slug",
-                    details=f"An entity with slug '{payload.slug}' already exists",
-                    context={"slug": payload.slug}
-                )
-            raise
+            self._raise_if_slug_conflict(e, payload.slug)
         except Exception as e:
             logger.error("Failed to update entity %s: %s", entity_id, e, exc_info=True)
             await self.db.rollback()

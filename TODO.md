@@ -1,12 +1,12 @@
 # Current Work
 
-**Last updated**: 2026-03-22 (ORM audit — all findings resolved)
+**Last updated**: 2026-03-22 (entity write flow audit — all findings resolved)
 
 ---
 
 ## Open Findings
 
-_(none — ORM audit C1/M1/M2/m1–m4 all resolved 2026-03-22)_
+_(none — entity write flow audit C1/C2/M1–M3/m1–m6 all resolved 2026-03-22)_
 
 ---
 
@@ -36,6 +36,7 @@ From completed audits — low priority, no blocking risk.
 
 ## Audit Reports Index
 
+- `.temp/audit_entity_write_flow_2026-03-22.md`
 - `.temp/audit_entity_creation_2026-03-22.md`
 - `.temp/audit_relation_creation_2026-03-22.md`
 - `.temp/audit_llm_integration_2026-03-22.md`

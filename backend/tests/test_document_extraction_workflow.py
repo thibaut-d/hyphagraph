@@ -246,8 +246,7 @@ class TestSaveExtractionToGraph:
             def __init__(self, db):
                 self.db = db
 
-            async def bulk_create_entities(self, *, entities, source_id, user_id):
-                assert source_id == source.id
+            async def bulk_create_entities(self, *, entities, user_id):
                 return ({entities[0].slug: created_entity_id}, [])
 
             async def bulk_create_relations(self, *, relations, entity_mapping, source_id, user_id):

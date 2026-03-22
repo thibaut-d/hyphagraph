@@ -151,7 +151,6 @@ class BulkCreationServiceProtocol(Protocol):
         self,
         *,
         entities: list[ExtractedEntity],
-        source_id: UUID,
         user_id: UUID | None,
     ) -> tuple[SlugEntityMap, list[str]]: ...
 
@@ -724,7 +723,6 @@ async def save_extraction_to_graph(
     if request.entities_to_create:
         entity_mapping, entity_warnings = await bulk_service.bulk_create_entities(
             entities=request.entities_to_create,
-            source_id=source_id,
             user_id=user_id,
         )
         all_warnings.extend(entity_warnings)
