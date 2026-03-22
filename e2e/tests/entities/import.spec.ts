@@ -119,9 +119,11 @@ test.describe('Entity Bulk Import', () => {
     const importLink = page.getByRole('link', { name: /import/i }).or(
       page.getByRole('button', { name: /import/i })
     );
-    if (await importLink.first().isVisible({ timeout: 3000 })) {
-      await importLink.first().click();
-      await expect(page).toHaveURL(/\/entities\/import/);
+    if (!await importLink.first().isVisible({ timeout: 3000 })) {
+      test.skip(true, 'Import link not present in the entities toolbar in this environment');
+      return;
     }
+    await importLink.first().click();
+    await expect(page).toHaveURL(/\/entities\/import/);
   });
 });

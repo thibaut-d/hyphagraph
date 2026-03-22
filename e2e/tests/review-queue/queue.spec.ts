@@ -27,10 +27,8 @@ test.describe('LLM Extraction Review Queue', () => {
 
     await expect(page.getByRole('heading', { name: 'Review Queue' })).toBeVisible({ timeout: 10000 });
 
-    const pendingCard = page.locator('text=/pending/i').first();
-    if (await pendingCard.isVisible({ timeout: 3000 })) {
-      await expect(pendingCard).toBeVisible();
-    }
+    // Stats cards are always rendered regardless of queue content — must be visible
+    await expect(page.locator('text=/pending/i').first()).toBeVisible({ timeout: 5000 });
   });
 
   test('should show empty state or items list', async ({ page }) => {

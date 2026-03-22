@@ -94,7 +94,6 @@ test.describe('Inference Viewing', () => {
     const filterButton = page.getByRole('button', { name: /filter/i });
     if (await filterButton.isVisible({ timeout: 2000 })) {
       await filterButton.click();
-      await page.waitForTimeout(300);
     }
 
     // Page must remain functional regardless of filter state

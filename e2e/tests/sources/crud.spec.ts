@@ -150,11 +150,13 @@ test.describe('Source CRUD Operations', () => {
 
     // Search for specific source
     const searchInput = page.getByPlaceholder(/search/i);
-    if (await searchInput.isVisible({ timeout: 2000 })) {
-      await searchInput.fill(source1);
-
-      // Should show matching source
-      await expect(page.locator(`text=${source1}`)).toBeVisible();
+    if (!await searchInput.isVisible({ timeout: 2000 })) {
+      test.skip(true, 'Search input not present in sources list in this environment');
+      return;
     }
+    await searchInput.fill(source1);
+
+    // Should show matching source
+    await expect(page.locator(`text=${source1}`)).toBeVisible();
   });
 });

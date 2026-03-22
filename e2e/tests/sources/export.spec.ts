@@ -38,14 +38,14 @@ test.describe('Source Export', () => {
     await expect(exportButton).toBeVisible({ timeout: 5000 });
 
     const [download] = await Promise.all([
-      page.waitForEvent('download', { timeout: 10000 }).catch(() => null),
+      page.waitForEvent('download', { timeout: 10000 }),
       exportButton.click(),
     ]);
 
-    if (download) {
-      const filename = download.suggestedFilename();
-      expect(filename).toMatch(/\.(json|csv)$/i);
-    }
+    // Download must have fired — a null download means the export button is broken
+    expect(download).not.toBeNull();
+    const filename = download.suggestedFilename();
+    expect(filename).toMatch(/\.(json|csv)$/i);
   });
 
   // E2E-G7 — Export content validation: downloaded file must contain the seeded source
@@ -91,18 +91,20 @@ test.describe('Source Export', () => {
     await expect(exportButton).toBeVisible({ timeout: 5000 });
     await exportButton.click();
 
-    // After clicking, a format menu or dialog may appear with CSV option
+    // After clicking, a format menu or dialog may appear with CSV option.
+    // CSV is an optional export format — skip if not present.
     const csvOption = page.getByRole('menuitem', { name: /csv/i }).or(
       page.getByRole('button', { name: /csv/i })
     );
-    if (await csvOption.isVisible({ timeout: 2000 })) {
-      const [download] = await Promise.all([
-        page.waitForEvent('download', { timeout: 10000 }).catch(() => null),
-        csvOption.click(),
-      ]);
-      if (download) {
-        expect(download.suggestedFilename()).toMatch(/\.csv$/i);
-      }
+    if (!await csvOption.isVisible({ timeout: 2000 })) {
+      test.skip(true, 'CSV export option not present in this environment');
+      return;
     }
+    const [download] = await Promise.all([
+      page.waitForEvent('download', { timeout: 10000 }),
+      csvOption.click(),
+    ]);
+    expect(download).not.toBeNull();
+    expect(download.suggestedFilename()).toMatch(/\.csv$/i);
   });
 });

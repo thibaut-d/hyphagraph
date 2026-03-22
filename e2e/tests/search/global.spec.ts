@@ -50,9 +50,8 @@ test.describe('Global Search', () => {
     const searchInput = page.getByRole('searchbox').or(page.getByPlaceholder(/search/i)).first();
     await expect(searchInput).toBeVisible({ timeout: 5000 });
     await searchInput.fill(entitySlug);
-    await page.waitForTimeout(800); // debounce
 
-    // Should show results containing the entity
+    // Should show results containing the entity (assertion timeout covers debounce)
     await expect(page.locator(`text=${entitySlug}`).first()).toBeVisible({ timeout: 10000 });
   });
 
@@ -71,7 +70,6 @@ test.describe('Global Search', () => {
     const searchInput = page.getByRole('searchbox').or(page.getByPlaceholder(/search/i)).first();
     await expect(searchInput).toBeVisible({ timeout: 5000 });
     await searchInput.fill(entitySlug);
-    await page.waitForTimeout(800);
 
     const result = page.locator(`text=${entitySlug}`).first();
     await expect(result).toBeVisible({ timeout: 10000 });
@@ -95,23 +93,21 @@ test.describe('Global Search', () => {
     const searchInput = page.getByRole('searchbox').or(page.getByPlaceholder(/search/i)).first();
     await expect(searchInput).toBeVisible({ timeout: 5000 });
     await searchInput.fill(sourceTitle.substring(0, 20));
-    await page.waitForTimeout(800);
 
-    // Source must appear in results
+    // Source must appear in results (assertion timeout covers debounce)
     await expect(page.locator(`text=${sourceTitle}`).first()).toBeVisible({ timeout: 10000 });
   });
 
   test('should show autocomplete results from the nav search bar', async ({ page }) => {
-    // Entities list has an autocomplete search in its toolbar
+    // Entities list has an autocomplete search in its toolbar — must always be present
     await page.goto('/entities');
+    await expect(page.getByRole('heading', { name: 'Entities' })).toBeVisible();
+
     const searchInput = page.getByPlaceholder(/search/i).first();
-    if (await searchInput.isVisible({ timeout: 3000 })) {
-      await searchInput.fill('test');
-      await page.waitForTimeout(500);
-      const listbox = page.getByRole('listbox');
-      if (await listbox.isVisible({ timeout: 2000 })) {
-        await expect(listbox).toBeVisible();
-      }
-    }
+    await expect(searchInput).toBeVisible({ timeout: 5000 });
+    await searchInput.fill('test');
+
+    // Listbox must appear when text is typed into the autocomplete
+    await expect(page.getByRole('listbox')).toBeVisible({ timeout: 5000 });
   });
 });
