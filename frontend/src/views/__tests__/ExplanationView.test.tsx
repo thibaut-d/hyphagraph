@@ -14,6 +14,7 @@ import type { ExplanationRead } from '../../api/explanations';
 // Mock the explanations API
 vi.mock('../../api/explanations', () => ({
   getExplanation: vi.fn(),
+  formatExplanationSummary: vi.fn((summary) => `Based on ${summary?.source_count ?? 0} sources`),
 }));
 
 vi.mock('react-i18next', () => ({

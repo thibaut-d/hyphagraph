@@ -23,7 +23,7 @@ export interface UseReviewDialogReturn {
   setDecision: (decision: "approve" | "reject") => void;
   openDialog: (decision: "approve" | "reject") => void;
   closeDialog: () => void;
-  submitReview: (extractionId: string, onSuccess?: () => void) => Promise<void>;
+  submitReview: (extractionId: string, onSuccess?: () => void, decisionOverride?: "approve" | "reject") => Promise<void>;
   submitBatchReview: (extractionIds: Set<string>, onSuccess?: () => void) => Promise<void>;
   isSubmitting: boolean;
 }
@@ -48,16 +48,17 @@ export function useReviewDialog(): UseReviewDialogReturn {
   }, []);
 
   const submitReview = useCallback(
-    async (extractionId: string, onSuccess?: () => void) => {
+    async (extractionId: string, onSuccess?: () => void, decisionOverride?: "approve" | "reject") => {
+      const effectiveDecision = decisionOverride ?? decision;
       setIsSubmitting(true);
       try {
         await reviewExtraction(extractionId, {
-          decision: decision as ReviewDecision,
+          decision: effectiveDecision as ReviewDecision,
           notes: notes || undefined,
         });
 
         const message =
-          decision === "approve"
+          effectiveDecision === "approve"
             ? "Extraction approved"
             : "Extraction rejected";
         showSuccess(message);

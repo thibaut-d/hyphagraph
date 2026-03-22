@@ -89,8 +89,7 @@ export function ReviewQueueView() {
   };
 
   const handleSingleReview = async (extractionId: string, decision: "approve" | "reject") => {
-    setReviewDecision(decision);
-    await submitReview(extractionId, handleRefresh);
+    await submitReview(extractionId, handleRefresh, decision);
   };
 
   const handleBatchReview = async () => {

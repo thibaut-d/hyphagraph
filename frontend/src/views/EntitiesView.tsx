@@ -3,6 +3,7 @@ import { listEntities, EntityFilters, getEntityFilterOptions, EntityFilterOption
 import { EntityRead } from "../types/entity";
 import { Link as RouterLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useNotification } from "../notifications/NotificationContext";
 
 import {
   Typography,
@@ -36,6 +37,7 @@ const PAGE_SIZE = 50;
 
 export function EntitiesView() {
   const { t, i18n } = useTranslation();
+  const { showError } = useNotification();
   const [entities, setEntities] = useState<EntityRead[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -84,9 +86,9 @@ export function EntitiesView() {
 
     return filterOptions.clinical_effects.map(effect => ({
       value: effect.type_id,
-      label: effect.label[currentLanguage] || effect.label.en || effect.type_id
+      label: t(`filters.relation_kind_${effect.type_id}`, effect.label[currentLanguage] || effect.label.en || effect.type_id)
     }));
-  }, [filterOptions, i18n.language]);
+  }, [filterOptions, i18n.language, t]);
 
   // Consensus level options (static)
   const consensusOptions = useMemo(() => [
@@ -173,10 +175,13 @@ export function EntitiesView() {
 
       setTotal(response.total);
       setHasMore(currentOffset + response.items.length < response.total);
+    } catch (err) {
+      showError(err);
     } finally {
       setIsLoading(false);
     }
   }, [
+    showError,
     debouncedSearch,
     filters.ui_category_id,
     filters.clinical_effects,

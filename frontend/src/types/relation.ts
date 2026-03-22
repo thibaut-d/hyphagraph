@@ -17,4 +17,5 @@ export interface RelationRead {
   scope?: Record<string, unknown> | null;
   roles: RoleRead[];
   notes?: string | Record<string, string> | null;
+  status?: "draft" | "confirmed";
 }

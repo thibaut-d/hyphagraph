@@ -142,6 +142,9 @@ describe("PropertyDetailView", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(explanationsApi, "formatExplanationSummary").mockReturnValue(
+      "This medication is highly effective for pain management.",
+    );
   });
 
   it("shows loading message initially", () => {

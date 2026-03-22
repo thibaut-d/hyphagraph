@@ -72,7 +72,7 @@ export function PropertyDetailView() {
       .finally(() => {
         setLoading(false);
       });
-  }, [handlePageError, id, roleType, t]);
+  }, [handlePageError, id, roleType]);
 
   if (loading) {
     return (

@@ -5,4 +5,5 @@ export interface EntityRead {
   summary?: { [lang: string]: string };
   ui_category_id?: string;
   consensus_level?: string | null;
+  status?: "draft" | "confirmed";
 }

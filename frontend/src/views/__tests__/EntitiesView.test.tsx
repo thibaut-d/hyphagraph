@@ -7,7 +7,17 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router';
 import { EntitiesView } from '../EntitiesView';
+import { NotificationProvider } from '../../notifications/NotificationContext';
 import * as entityApi from '../../api/entities';
+
+const renderView = () =>
+  render(
+    <NotificationProvider>
+      <BrowserRouter>
+        <EntitiesView />
+      </BrowserRouter>
+    </NotificationProvider>
+  );
 
 // Mock the API module
 vi.mock('../../api/entities');
@@ -118,11 +128,7 @@ describe('EntitiesView', () => {
   });
 
   it('renders entity list', async () => {
-    render(
-      <BrowserRouter>
-        <EntitiesView />
-      </BrowserRouter>
-    );
+    renderView();
 
     await waitFor(() => {
       expect(screen.getByText('aspirin')).toBeInTheDocument();
@@ -135,21 +141,13 @@ describe('EntitiesView', () => {
     vi.mocked(entityApi.listEntities).mockImplementation(() => new Promise(() => {}));
     vi.mocked(entityApi.getEntityFilterOptions).mockImplementation(() => new Promise(() => {}));
 
-    render(
-      <BrowserRouter>
-        <EntitiesView />
-      </BrowserRouter>
-    );
+    renderView();
 
     expect(screen.getByRole('progressbar')).toBeInTheDocument();
   });
 
   it('displays entity summaries', async () => {
-    render(
-      <BrowserRouter>
-        <EntitiesView />
-      </BrowserRouter>
-    );
+    renderView();
 
     await waitFor(() => {
       expect(screen.getByText('Analgesic drug')).toBeInTheDocument();
@@ -159,11 +157,7 @@ describe('EntitiesView', () => {
   });
 
   it('displays category badges for entities with categories', async () => {
-    render(
-      <BrowserRouter>
-        <EntitiesView />
-      </BrowserRouter>
-    );
+    renderView();
 
     await waitFor(() => {
       // Check that category chips are displayed
@@ -173,11 +167,7 @@ describe('EntitiesView', () => {
   });
 
   it('does not display category badge for entities without category', async () => {
-    render(
-      <BrowserRouter>
-        <EntitiesView />
-      </BrowserRouter>
-    );
+    renderView();
 
     await waitFor(() => {
       // The entity 'fever' has no category, so no extra badge should appear
@@ -191,11 +181,7 @@ describe('EntitiesView', () => {
   });
 
   it('displays category badges with correct language labels', async () => {
-    render(
-      <BrowserRouter>
-        <EntitiesView />
-      </BrowserRouter>
-    );
+    renderView();
 
     // Should use English labels by default
     await waitFor(() => {
@@ -205,11 +191,7 @@ describe('EntitiesView', () => {
   });
 
   it('renders create entity button', async () => {
-    render(
-      <BrowserRouter>
-        <EntitiesView />
-      </BrowserRouter>
-    );
+    renderView();
 
     await waitFor(() => {
       expect(screen.getByRole('link', { name: /create entity/i })).toBeInTheDocument();
@@ -217,11 +199,7 @@ describe('EntitiesView', () => {
   });
 
   it('renders filter button', async () => {
-    render(
-      <BrowserRouter>
-        <EntitiesView />
-      </BrowserRouter>
-    );
+    renderView();
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /filters/i })).toBeInTheDocument();
@@ -232,11 +210,7 @@ describe('EntitiesView', () => {
     // Clear localStorage to ensure cache miss
     localStorage.clear();
 
-    render(
-      <BrowserRouter>
-        <EntitiesView />
-      </BrowserRouter>
-    );
+    renderView();
 
     await waitFor(() => {
       expect(entityApi.getEntityFilterOptions).toHaveBeenCalled();
@@ -244,11 +218,7 @@ describe('EntitiesView', () => {
   });
 
   it('fetches entities on mount', async () => {
-    render(
-      <BrowserRouter>
-        <EntitiesView />
-      </BrowserRouter>
-    );
+    renderView();
 
     await waitFor(() => {
       expect(entityApi.listEntities).toHaveBeenCalled();
@@ -263,11 +233,7 @@ describe('EntitiesView', () => {
       offset: 0,
     });
 
-    render(
-      <BrowserRouter>
-        <EntitiesView />
-      </BrowserRouter>
-    );
+    renderView();
 
     await waitFor(() => {
       expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();

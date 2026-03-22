@@ -78,6 +78,11 @@ export function CreateEntityView() {
       setValidationMessage(t("create_entity.slug_required", "Slug is required"), "slug");
       return;
     }
+    const SLUG_PATTERN = /^[a-z][a-z0-9-]*$/;
+    if (slug.trim().length < 3 || slug.trim().length > 100 || !SLUG_PATTERN.test(slug.trim())) {
+      setValidationMessage(t("create_entity.slug_format", "Slug must be 3–100 lowercase letters, digits, or hyphens, starting with a letter"), "slug");
+      return;
+    }
 
     const result = await run(async () => {
       const summary: Record<string, string> = {};
