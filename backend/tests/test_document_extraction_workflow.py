@@ -248,14 +248,14 @@ class TestSaveExtractionToGraph:
 
             async def bulk_create_entities(self, *, entities, source_id, user_id):
                 assert source_id == source.id
-                return {entities[0].slug: created_entity_id}
+                return ({entities[0].slug: created_entity_id}, [])
 
             async def bulk_create_relations(self, *, relations, entity_mapping, source_id, user_id):
                 assert source_id == source.id
                 assert entity_mapping["aspirin"] == created_entity_id
                 assert entity_mapping["pain"] == linked_entity_id
                 assert relations[0].relation_type == "treats"
-                return (relations, [created_relation_id])
+                return (relations, [created_relation_id], [])
 
         request = SimpleNamespace(
             entities_to_create=[build_extracted_entity("aspirin")],

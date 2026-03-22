@@ -29,11 +29,13 @@ class RelationService:
 
     async def _validate_entity_ids(self, roles) -> None:
         """Raise ValidationException if any role references a non-existent entity."""
+        entity_ids = [role_data.entity_id for role_data in roles]
+        result = await self.db.execute(
+            select(Entity.id).where(Entity.id.in_(entity_ids))
+        )
+        found_ids = {row[0] for row in result.all()}
         for role_data in roles:
-            result = await self.db.execute(
-                select(Entity.id).where(Entity.id == role_data.entity_id)
-            )
-            if result.scalar_one_or_none() is None:
+            if role_data.entity_id not in found_ids:
                 raise ValidationException(
                     message="Entity not found",
                     field="roles",
@@ -139,16 +141,16 @@ class RelationService:
             source_id = UUID(source_id)
         relations = await self.repo.list_by_source(source_id)
 
-        # Get current revisions for all relations with roles eagerly loaded
+        # The repo eagerly loads Relation.revisions + RelationRevision.roles.
+        # Filter to the current revision in Python to avoid N+1 queries.
         revisions = []
         for relation in relations:
-            current_revision = await get_current_revision(
-                db=self.db,
-                revision_class=RelationRevision,
-                parent_id_field='relation_id',
-                parent_id=relation.id,
-                load_relationships=['roles'],
+            current_revision = next(
+                (r for r in relation.revisions if r.is_current), None
             )
+            if current_revision is None:
+                logger.warning("Relation %s has no current revision, skipping", relation.id)
+                continue
             revisions.append((relation, current_revision))
 
         # Resolve entity slugs in one batch query
@@ -164,7 +166,7 @@ class RelationService:
             for relation, revision in revisions
         ]
 
-    async def update(self, relation_id: str, payload: RelationWrite, user_id: UUID | None = None) -> RelationRead:
+    async def update(self, relation_id: UUID, payload: RelationWrite, user_id: UUID | None = None) -> RelationRead:
         """
         Update a relation by creating a new revision.
 
@@ -173,9 +175,8 @@ class RelationService:
 
         Note: The source_id in the base Relation cannot be changed.
         """
-        # 1. Structural validation
+        # 1. Structural validation (no DB)
         validate_relation(payload)
-        await self._validate_entity_ids(payload.roles)
 
         try:
             # 2. Verify relation exists
@@ -185,7 +186,7 @@ class RelationService:
                     relation_id=str(relation_id)
                 )
 
-            # Verify source_id hasn't changed (it's immutable)
+            # Verify source_id hasn't changed (immutable; check before DB entity lookup)
             if payload.source_id != relation.source_id:
                 raise ValidationException(
                     message="Cannot change source_id of existing relation",
@@ -194,7 +195,10 @@ class RelationService:
                     context={"relation_id": str(relation_id), "current_source_id": str(relation.source_id), "attempted_source_id": str(payload.source_id)}
                 )
 
-            # 3. Capture old entity IDs for cache invalidation before revision changes
+            # 3. Validate referenced entity IDs exist
+            await self._validate_entity_ids(payload.roles)
+
+            # 4. Capture old entity IDs for cache invalidation before revision changes
             old_revision = await get_current_revision(
                 db=self.db,
                 revision_class=RelationRevision,
@@ -204,7 +208,7 @@ class RelationService:
             )
             old_entity_ids = {role.entity_id for role in old_revision.roles}
 
-            # 4. Create new revision with updated data
+            # 5. Create new revision with updated data
             revision_data = relation_revision_from_write(payload)
             if not user_id:
                 logger.warning("Updating relation revision without user attribution (user_id=None) for relation_id=%s", relation_id)
@@ -259,7 +263,7 @@ class RelationService:
             await self.db.rollback()
             raise
 
-    async def delete(self, relation_id: str) -> None:
+    async def delete(self, relation_id: UUID) -> None:
         """
         Delete a relation and all its revisions.
 
@@ -273,15 +277,16 @@ class RelationService:
                     relation_id=str(relation_id)
                 )
 
-            # Capture entity IDs before deleting (cascade will remove the revisions)
-            current_rev = await get_current_revision(
-                db=self.db,
-                revision_class=RelationRevision,
-                parent_id_field='relation_id',
-                parent_id=relation.id,
-                load_relationships=['roles'],
+            # Capture entity IDs from ALL revisions before deleting — the cascade
+            # will remove all revisions, not just the current one.  An entity that
+            # appeared in a historical revision may still have stale ComputedRelations.
+            all_entity_ids_stmt = (
+                select(RelationRoleRevision.entity_id)
+                .join(RelationRevision, RelationRoleRevision.relation_revision_id == RelationRevision.id)
+                .where(RelationRevision.relation_id == relation.id)
             )
-            entity_ids_to_invalidate = {role.entity_id for role in current_rev.roles}
+            all_entity_ids_result = await self.db.execute(all_entity_ids_stmt)
+            entity_ids_to_invalidate = {row[0] for row in all_entity_ids_result.all()}
 
             # Delete the relation (cascade should handle revisions and role revisions)
             await self.repo.delete(relation)

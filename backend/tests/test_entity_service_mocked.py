@@ -184,9 +184,7 @@ class TestEntityServiceMocked:
     ):
         """Test filter options use the injected derived properties collaborator."""
         derived_service = AsyncMock()
-        derived_service.get_all_clinical_effects.return_value = [
-            {"type_id": "supports", "label": {"en": "Supports"}}
-        ]
+        derived_service.get_all_clinical_effects.return_value = ["supports"]
         derived_service.get_evidence_quality_range.return_value = (0.2, 0.9)
         derived_service.get_entity_year_range.return_value = (2010, 2024)
 

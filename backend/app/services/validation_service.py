@@ -1,7 +1,6 @@
 from fastapi import HTTPException, status
 
-from app.schemas.relation import RelationWrite
-from app.schemas.role import RoleWrite
+from app.schemas.relation import RelationWrite, RoleRevisionWrite
 
 
 class ValidationError(HTTPException):
@@ -41,7 +40,7 @@ def validate_relation(payload: RelationWrite) -> None:
         validate_role(role)
 
 
-def validate_role(role: RoleWrite) -> None:
+def validate_role(role: RoleRevisionWrite) -> None:
     if not role.entity_id:
         _fail("role.entity_id is required")
 

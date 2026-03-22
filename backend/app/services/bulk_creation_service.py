@@ -250,13 +250,22 @@ class BulkCreationService:
                     created_relations.append(extracted)
                     relation_ids.append(relation.id)
 
-            except Exception as e:
+            except IntegrityError as e:
                 # Savepoint was already rolled back; outer transaction is intact.
+                # Treat DB constraint violations as skippable (e.g. duplicate FK).
                 role_summary = " + ".join([f"{r['entity_slug']}({r['role_type']})" for r in resolved_roles[:3]])
-                warning = f"Skipping relation {extracted.relation_type} [{role_summary}]: {str(e)}"
+                warning = f"Skipping relation {extracted.relation_type} [{role_summary}]: integrity error: {str(e.orig)}"
                 warnings.append(warning)
                 logger.warning(warning)
                 continue
+            except Exception as e:
+                logger.error(
+                    "Unexpected error creating relation %s: %s",
+                    extracted.relation_type,
+                    e,
+                    exc_info=True,
+                )
+                raise
 
         logger.info(
             f"Bulk created {len(relation_ids)} relations, "

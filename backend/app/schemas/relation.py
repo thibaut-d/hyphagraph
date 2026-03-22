@@ -70,6 +70,7 @@ class RelationRead(Schema):
     scope: Optional[ScopeFilter] = None
     notes: Optional[I18nText] = None
     created_with_llm: Optional[str] = None
+    status: str = "confirmed"  # "draft" for LLM-created, "confirmed" for manually entered/reviewed
     roles: List[RoleRevisionRead]
 
 

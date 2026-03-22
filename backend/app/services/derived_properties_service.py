@@ -20,7 +20,6 @@ from app.models.relation import Relation
 from app.models.relation_revision import RelationRevision
 from app.models.relation_role_revision import RelationRoleRevision
 from app.models.source_revision import SourceRevision
-from app.models.relation_type import RelationType
 
 
 class DerivedPropertiesService:
@@ -46,15 +45,15 @@ class DerivedPropertiesService:
         Returns:
             List of relation type IDs (e.g., ["treats", "causes"])
         """
-        # Get all relation types where this entity is involved
+        # Get all relation kinds where this entity is involved
         query = (
-            select(distinct(RelationType.type_id))
-            .join(RelationRoleRevision, RelationType.type_id == RelationRoleRevision.relation_type_id)
-            .join(RelationRevision, RelationRoleRevision.relation_revision_id == RelationRevision.id)
+            select(distinct(RelationRevision.kind))
+            .join(RelationRoleRevision, RelationRevision.id == RelationRoleRevision.relation_revision_id)
             .where(
                 and_(
                     RelationRevision.is_current == True,
                     RelationRoleRevision.entity_id == entity_id,
+                    RelationRevision.kind.is_not(None),
                 )
             )
         )
@@ -233,12 +232,12 @@ class DerivedPropertiesService:
         relation_count = row.relation_count
         has_contradictory = (row.contradictory_count or 0) > 0
 
-        if has_contradictory:
-            return "contradictory"
-        elif relation_count > 5:
+        if relation_count > 5:
             return "pillar"
         elif relation_count >= 2:
             return "supporting"
+        elif has_contradictory:
+            return "contradictory"
         else:
             return "single"
 
@@ -304,27 +303,23 @@ class DerivedPropertiesService:
     # Bulk operations for filter options
     # =========================================================================
 
-    async def get_all_clinical_effects(self) -> List[Dict[str, str]]:
+    async def get_all_clinical_effects(self) -> List[str]:
         """
-        Get all unique clinical effects (relation types) in the graph.
+        Get all unique relation kinds actually present in current relation revisions.
 
         Returns:
-            List of dicts with type_id and label for each effect
+            Sorted list of kind strings (e.g., ["association", "effect", "mechanism"])
         """
         query = (
-            select(
-                RelationType.type_id,
-                RelationType.label
+            select(distinct(RelationRevision.kind))
+            .where(
+                and_(RelationRevision.is_current == True, RelationRevision.kind.is_not(None))
             )
-            .where(RelationType.is_active == True)
-            .order_by(RelationType.usage_count.desc())
+            .order_by(RelationRevision.kind)
         )
 
         result = await self.db.execute(query)
-        return [
-            {"type_id": row.type_id, "label": row.label}
-            for row in result.all()
-        ]
+        return [row[0] for row in result.all()]
 
     async def get_evidence_quality_range(self) -> Optional[Tuple[float, float]]:
         """

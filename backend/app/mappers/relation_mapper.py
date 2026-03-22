@@ -77,6 +77,7 @@ def relation_to_read(
         scope=current_revision.scope,
         notes=current_revision.notes,
         created_with_llm=current_revision.created_with_llm,
+        status=current_revision.status,
         roles=roles,
     )
 

@@ -1,4 +1,3 @@
-import json
 import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -156,7 +155,7 @@ class EntityService:
 
         return items, total
 
-    async def update(self, entity_id: str, payload: EntityWrite, user_id: UUID | None = None) -> EntityRead:
+    async def update(self, entity_id: UUID, payload: EntityWrite, user_id: UUID | None = None) -> EntityRead:
         """
         Update an entity by creating a new revision.
 
@@ -192,12 +191,26 @@ class EntityService:
 
         except (EntityNotFoundException, ValidationException):
             raise
+        except IntegrityError as e:
+            await self.db.rollback()
+            error_msg = str(e.orig).lower()
+            if ('ix_entity_revisions_slug_current_unique' in error_msg or
+                    'unique constraint failed: entity_revisions.slug' in error_msg):
+                raise AppException(
+                    status_code=409,
+                    error_code=ErrorCode.ENTITY_SLUG_CONFLICT,
+                    message="Entity slug already exists",
+                    field="slug",
+                    details=f"An entity with slug '{payload.slug}' already exists",
+                    context={"slug": payload.slug}
+                )
+            raise
         except Exception as e:
             logger.error("Failed to update entity %s: %s", entity_id, e, exc_info=True)
             await self.db.rollback()
             raise
 
-    async def delete(self, entity_id: str) -> None:
+    async def delete(self, entity_id: UUID) -> None:
         """
         Delete an entity and all its revisions.
 
@@ -268,11 +281,8 @@ class EntityService:
         # Get clinical effects (relation types)
         clinical_effects_data = await self.derived_properties_service.get_all_clinical_effects()
         clinical_effects = [
-            ClinicalEffectOption(
-                type_id=effect["type_id"],
-                label=json.loads(effect["label"]) if isinstance(effect["label"], str) else effect["label"]
-            )
-            for effect in clinical_effects_data
+            ClinicalEffectOption(type_id=kind, label={"en": kind})
+            for kind in clinical_effects_data
         ] if clinical_effects_data else None
 
         # Get evidence quality range

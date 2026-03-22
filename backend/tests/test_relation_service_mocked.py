@@ -19,6 +19,10 @@ def mock_db():
     db = AsyncMock()
     db.commit = AsyncMock()
     db.rollback = AsyncMock()
+    # Make result.all() synchronously iterable (needed by _validate_entity_ids)
+    execute_result = MagicMock()
+    execute_result.all.return_value = []
+    db.execute.return_value = execute_result
     return db
 
 
@@ -128,17 +132,16 @@ class TestRelationServiceMocked:
         service.repo = mock_repo
 
         source_id = uuid4()
-        mock_relations = [MagicMock(), MagicMock()]
-        mock_repo.list_by_source.return_value = mock_relations
 
-        # Mock get_current_revision to return a mock revision with roles
+        # Build mock relations with a current revision (list_by_source now filters in Python)
         mock_revision = MagicMock()
+        mock_revision.is_current = True
         mock_revision.roles = []
 
-        async def mock_get_current_revision(**kwargs):
-            return mock_revision
-
-        monkeypatch.setattr("app.services.relation_service.get_current_revision", mock_get_current_revision)
+        mock_rel1, mock_rel2 = MagicMock(), MagicMock()
+        mock_rel1.revisions = [mock_revision]
+        mock_rel2.revisions = [mock_revision]
+        mock_repo.list_by_source.return_value = [mock_rel1, mock_rel2]
 
         # Mock resolve_entity_slugs
         async def mock_resolve_entity_slugs(db, entity_ids):

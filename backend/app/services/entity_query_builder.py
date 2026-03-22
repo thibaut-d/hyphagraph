@@ -97,7 +97,7 @@ class EntityQueryBuilder:
             .where(
                 and_(
                     RelationRevision.is_current == True,
-                    RelationRoleRevision.relation_type_id.in_(filters.clinical_effects)
+                    RelationRevision.kind.in_(filters.clinical_effects)
                 )
             )
         )
