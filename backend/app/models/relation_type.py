@@ -4,7 +4,7 @@ RelationType model - Dynamic relation type vocabulary.
 Stores the controlled vocabulary of relation types used in the knowledge graph.
 Allows evolution of relation types over time while maintaining consistency.
 """
-from sqlalchemy import String, Boolean, Text, Index
+from sqlalchemy import JSON, String, Boolean, Index
 from sqlalchemy.orm import Mapped, mapped_column
 from app.models.base import Base, TimestampMixin
 
@@ -26,16 +26,16 @@ class RelationType(Base, TimestampMixin):
     type_id: Mapped[str] = mapped_column(String(50), primary_key=True)
 
     # Human-readable label (i18n)
-    label: Mapped[dict[str, str]] = mapped_column(Text)  # {"en": "Treats", "fr": "Traite"}
+    label: Mapped[dict[str, str]] = mapped_column(JSON)  # {"en": "Treats", "fr": "Traite"}
 
     # Description for LLM guidance
-    description: Mapped[str] = mapped_column(Text)  # "Drug/treatment treats disease/symptom"
+    description: Mapped[str] = mapped_column(JSON)  # "Drug/treatment treats disease/symptom"
 
     # Examples for LLM
-    examples: Mapped[str | None] = mapped_column(Text, nullable=True)  # "aspirin treats migraine"
+    examples: Mapped[str | None] = mapped_column(JSON, nullable=True)  # "aspirin treats migraine"
 
     # Synonyms/aliases to prevent duplicates
-    aliases: Mapped[list[str] | None] = mapped_column(Text, nullable=True)  # ["cures", "heals"]
+    aliases: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)  # ["cures", "heals"]
 
     # Whether this type is active/available
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)

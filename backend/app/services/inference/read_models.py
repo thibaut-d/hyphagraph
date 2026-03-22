@@ -106,14 +106,16 @@ async def build_grouped_inference_read(
     grouped = defaultdict(list)
     for relation in relations:
         current_rev = next((revision for revision in relation.revisions if revision.is_current), None)
+        if not current_rev:
+            logger.warning("Relation %s has no current revision; skipping in inference grouping", relation.id)
+            continue
         relation_read = relation_to_read(
             relation,
             current_revision=current_rev,
             entity_slug_map=entity_slug_map,
         )
-        kind = current_rev.kind if current_rev else relation.kind
-        if kind:
-            grouped[kind].append(relation_read)
+        if current_rev.kind:
+            grouped[current_rev.kind].append(relation_read)
 
     return InferenceRead(
         entity_id=entity_id,

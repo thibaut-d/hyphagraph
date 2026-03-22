@@ -251,26 +251,29 @@ class ImportService:
                 summary = {**(summary or {}), "fr": row.summary_fr}
 
             try:
-                entity = Entity()
-                self.db.add(entity)
-                await self.db.flush()
+                async with self.db.begin_nested():
+                    entity = Entity()
+                    self.db.add(entity)
+                    await self.db.flush()
 
-                await create_new_revision(
-                    db=self.db,
-                    revision_class=EntityRevision,
-                    parent_id_field="entity_id",
-                    parent_id=entity.id,
-                    revision_data={
-                        "slug": slug,
-                        "summary": summary,
-                        "created_by_user_id": user_id,
-                    },
-                    set_as_current=True,
-                )
+                    await create_new_revision(
+                        db=self.db,
+                        revision_class=EntityRevision,
+                        parent_id_field="entity_id",
+                        parent_id=entity.id,
+                        revision_data={
+                            "slug": slug,
+                            "summary": summary,
+                            "created_by_user_id": user_id,
+                        },
+                        set_as_current=True,
+                    )
 
+                # Only reached if the savepoint committed successfully
                 created_ids.append(entity.id)
 
             except IntegrityError as e:
+                # Savepoint already rolled back; outer transaction is intact
                 error_msg = str(e.orig).lower() if e.orig else str(e).lower()
                 if (
                     "ix_entity_revisions_slug_current_unique" in error_msg
@@ -278,13 +281,10 @@ class ImportService:
                 ):
                     skipped_duplicates += 1
                     logger.debug("Skipping duplicate slug on import: %s", slug)
-                    await self.db.rollback()
                 else:
-                    await self.db.rollback()
                     logger.error("IntegrityError importing slug '%s': %s", slug, e, exc_info=True)
                     invalid_count += 1
             except Exception as e:
-                await self.db.rollback()
                 logger.error("Failed to import slug '%s': %s", slug, e, exc_info=True)
                 invalid_count += 1
 
@@ -714,29 +714,31 @@ class ImportService:
                 summary = {"en": row.summary_en}
 
             try:
-                source = Source()
-                self.db.add(source)
-                await self.db.flush()
+                async with self.db.begin_nested():
+                    source = Source()
+                    self.db.add(source)
+                    await self.db.flush()
 
-                await create_new_revision(
-                    db=self.db,
-                    revision_class=SourceRevision,
-                    parent_id_field="source_id",
-                    parent_id=source.id,
-                    revision_data={
-                        "title": title,
-                        "kind": row.kind or "article",
-                        "authors": row.authors,
-                        "year": row.year,
-                        "origin": row.origin,
-                        "url": url,
-                        "summary": summary,
-                        "source_metadata": row.source_metadata,
-                        "created_by_user_id": user_id,
-                    },
-                    set_as_current=True,
-                )
+                    await create_new_revision(
+                        db=self.db,
+                        revision_class=SourceRevision,
+                        parent_id_field="source_id",
+                        parent_id=source.id,
+                        revision_data={
+                            "title": title,
+                            "kind": row.kind or "article",
+                            "authors": row.authors,
+                            "year": row.year,
+                            "origin": row.origin,
+                            "url": url,
+                            "summary": summary,
+                            "source_metadata": row.source_metadata,
+                            "created_by_user_id": user_id,
+                        },
+                        set_as_current=True,
+                    )
 
+                # Only reached if the savepoint committed successfully
                 created_ids.append(source.id)
 
                 # Track for within-batch duplicate detection
@@ -748,11 +750,10 @@ class ImportService:
                 existing_titles.add(title_lower)
 
             except IntegrityError as e:
-                await self.db.rollback()
+                # Savepoint already rolled back; outer transaction is intact
                 logger.error("IntegrityError importing source '%s': %s", title, e, exc_info=True)
                 invalid_count += 1
             except Exception as e:
-                await self.db.rollback()
                 logger.error("Failed to import source '%s': %s", title, e, exc_info=True)
                 invalid_count += 1
 

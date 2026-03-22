@@ -65,4 +65,4 @@ class SourceRevision(Base, UUIDMixin):
     is_current: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     # Relationships
-    source = relationship("Source", back_populates="revisions")
+    source = relationship("Source", back_populates="revisions", lazy="raise")

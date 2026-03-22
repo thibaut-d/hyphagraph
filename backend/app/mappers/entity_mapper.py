@@ -4,7 +4,7 @@ from typing import TypedDict
 from uuid import UUID
 from app.models.entity import Entity
 from app.models.entity_revision import EntityRevision
-from app.schemas.entity import EntityWrite, EntityRead, EntityRevisionRead
+from app.schemas.entity import EntityWrite, EntityRead
 
 
 class EntityRevisionPayload(TypedDict, total=False):
@@ -61,17 +61,3 @@ def entity_to_read(entity: Entity, current_revision: EntityRevision) -> EntityRe
     )
 
 
-def entity_revision_to_read(revision: EntityRevision) -> EntityRevisionRead:
-    """Convert EntityRevision ORM to EntityRevisionRead schema."""
-    return EntityRevisionRead(
-        id=revision.id,
-        entity_id=revision.entity_id,
-        slug=revision.slug,
-        summary=_parse_summary(revision.summary),
-        ui_category_id=revision.ui_category_id,
-        created_with_llm=revision.created_with_llm,
-        created_by_user_id=revision.created_by_user_id,
-        created_at=revision.created_at,
-        is_current=revision.is_current,
-        status=revision.status,
-    )

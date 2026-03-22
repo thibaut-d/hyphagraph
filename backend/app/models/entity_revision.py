@@ -64,4 +64,4 @@ class EntityRevision(Base, UUIDMixin):
     is_current: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     # Relationships
-    entity = relationship("Entity", back_populates="revisions")
+    entity = relationship("Entity", back_populates="revisions", lazy="raise")

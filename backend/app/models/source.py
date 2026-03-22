@@ -25,17 +25,22 @@ class Source(Base, UUIDMixin):
         back_populates="source",
         cascade="all, delete-orphan",
         order_by="SourceRevision.created_at.desc()",
-        lazy="immediate",
+        lazy="selectin",
+        passive_deletes=True,
     )
 
     relations = relationship(
         "Relation",
         back_populates="source",
         cascade="all, delete-orphan",
+        lazy="raise",
+        passive_deletes=True,
     )
 
     staged_extractions = relationship(
         "StagedExtraction",
         back_populates="source",
         cascade="all, delete-orphan",
+        lazy="raise",
+        passive_deletes=True,
     )

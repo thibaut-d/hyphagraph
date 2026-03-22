@@ -53,9 +53,11 @@ class RelationRevision(Base, UUIDMixin):
     is_current: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     # Relationships
-    relation = relationship("Relation", back_populates="revisions")
+    relation = relationship("Relation", back_populates="revisions", lazy="raise")
     roles = relationship(
         "RelationRoleRevision",
         back_populates="relation_revision",
         cascade="all, delete-orphan",
+        lazy="raise",
+        passive_deletes=True,
     )

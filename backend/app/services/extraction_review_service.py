@@ -180,20 +180,33 @@ class ExtractionReviewService:
                 error=f"Extraction already {staged.status.value}",
             )
 
-        apply_review_metadata(staged, reviewer_id, notes, approved=True)
-        await self.db.commit()
+        # If already materialized, just update status and commit atomically
+        if staged.materialized_entity_id or staged.materialized_relation_id:
+            apply_review_metadata(staged, reviewer_id, notes, approved=True)
+            await self.db.commit()
+            return MaterializationResult(
+                success=True,
+                extraction_id=extraction_id,
+                extraction_type=staged.extraction_type.value,
+                materialized_entity_id=staged.materialized_entity_id,
+                materialized_relation_id=staged.materialized_relation_id,
+            )
 
         if auto_materialize:
-            if staged.materialized_entity_id or staged.materialized_relation_id:
-                return MaterializationResult(
-                    success=True,
-                    extraction_id=extraction_id,
-                    extraction_type=staged.extraction_type.value,
-                    materialized_entity_id=staged.materialized_entity_id,
-                    materialized_relation_id=staged.materialized_relation_id,
-                )
-            return await self.materialize_extraction(extraction_id)
+            # Keep status change and materialization in the same transaction so that
+            # a materialization failure never leaves the extraction stuck in APPROVED.
+            apply_review_metadata(staged, reviewer_id, notes, approved=True)
+            result = await self.materialize_extraction(extraction_id)
+            if not result.success:
+                # materialize_extraction rolled back; undo the in-memory status change
+                staged.status = ExtractionStatus.PENDING
+                staged.reviewed_by = None
+                staged.reviewed_at = None
+                staged.review_notes = None
+            return result
 
+        apply_review_metadata(staged, reviewer_id, notes, approved=True)
+        await self.db.commit()
         return MaterializationResult(
             success=True,
             extraction_id=extraction_id,

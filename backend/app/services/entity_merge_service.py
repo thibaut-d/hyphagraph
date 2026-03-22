@@ -133,59 +133,74 @@ class EntityMergeService:
             f"Merging entity '{source_revision.slug}' into '{target_revision.slug}'"
         )
 
-        # Count relations before merge
-        stmt = select(func.count()).select_from(RelationRoleRevision).where(
-            RelationRoleRevision.entity_id == source_entity_id
-        )
-        result = await self.db.execute(stmt)
-        relations_count = result.scalar()
-
-        # Move all relation roles from source to target
-        await self.db.execute(
-            update(RelationRoleRevision)
-            .where(RelationRoleRevision.entity_id == source_entity_id)
-            .values(entity_id=target_entity_id)
-        )
-
-        # Add source slug as term to target entity
-        if preserve_source_slug_as_term:
-            # Check if term already exists
-            stmt = select(EntityTerm).where(
-                EntityTerm.entity_id == target_entity_id,
-                EntityTerm.term == source_revision.slug
-            )
+        try:
+            # Count current-revision roles before merge (for result reporting)
+            stmt = select(func.count()).select_from(RelationRoleRevision).where(
+                RelationRoleRevision.entity_id == source_entity_id
+            ).join(
+                RelationRevision,
+                RelationRoleRevision.relation_revision_id == RelationRevision.id,
+            ).where(RelationRevision.is_current == True)  # noqa: E712
             result = await self.db.execute(stmt)
-            existing_term = result.scalar_one_or_none()
+            relations_count = result.scalar()
 
-            if not existing_term:
-                term = EntityTerm(
-                    entity_id=target_entity_id,
-                    term=source_revision.slug,
-                    language="en",  # Default language
-                    display_order=None
+            # Move roles from source to target — only in current revisions.
+            # Historical revisions are immutable snapshots and must not be changed.
+            current_revision_ids_stmt = (
+                select(RelationRevision.id).where(RelationRevision.is_current == True)  # noqa: E712
+            )
+            await self.db.execute(
+                update(RelationRoleRevision)
+                .where(
+                    RelationRoleRevision.entity_id == source_entity_id,
+                    RelationRoleRevision.relation_revision_id.in_(current_revision_ids_stmt),
                 )
-                self.db.add(term)
+                .values(entity_id=target_entity_id)
+            )
 
-                logger.info(f"Added term '{source_revision.slug}' to entity '{target_revision.slug}'")
+            # Add source slug as term to target entity
+            if preserve_source_slug_as_term:
+                # Check if term already exists
+                stmt = select(EntityTerm).where(
+                    EntityTerm.entity_id == target_entity_id,
+                    EntityTerm.term == source_revision.slug
+                )
+                result = await self.db.execute(stmt)
+                existing_term = result.scalar_one_or_none()
 
-        merge_record = EntityMergeRecord(
-            source_entity_id=source_entity_id,
-            target_entity_id=target_entity_id,
-            merged_by_user_id=merged_by_user_id,
-            source_slug=source_revision.slug,
-            target_slug=target_revision.slug,
-        )
-        self.db.add(merge_record)
+                if not existing_term:
+                    term = EntityTerm(
+                        entity_id=target_entity_id,
+                        term=source_revision.slug,
+                        language="en",
+                        display_order=None
+                    )
+                    self.db.add(term)
 
-        # Mark source entity as merged (by setting is_current = False on revision)
-        # The explicit merge record preserves the provenance of this state change.
-        await self.db.execute(
-            update(EntityRevision)
-            .where(EntityRevision.entity_id == source_entity_id)
-            .values(is_current=False)
-        )
+                    logger.info(f"Added term '{source_revision.slug}' to entity '{target_revision.slug}'")
 
-        await self.db.commit()
+            merge_record = EntityMergeRecord(
+                source_entity_id=source_entity_id,
+                target_entity_id=target_entity_id,
+                merged_by_user_id=merged_by_user_id,
+                source_slug=source_revision.slug,
+                target_slug=target_revision.slug,
+            )
+            self.db.add(merge_record)
+
+            # Mark source entity as merged (by setting is_current = False on revision).
+            # The explicit merge record preserves the provenance of this state change.
+            await self.db.execute(
+                update(EntityRevision)
+                .where(EntityRevision.entity_id == source_entity_id)
+                .values(is_current=False)
+            )
+
+            await self.db.commit()
+
+        except Exception:
+            await self.db.rollback()
+            raise
 
         logger.info(
             f"Merge complete: {relations_count} relations moved, "

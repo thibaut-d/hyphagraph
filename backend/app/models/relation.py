@@ -27,13 +27,15 @@ class Relation(Base, UUIDMixin):
     )
 
     # Relationships
-    source = relationship("Source", back_populates="relations")
+    source = relationship("Source", back_populates="relations", lazy="raise")
 
     revisions = relationship(
         "RelationRevision",
         back_populates="relation",
         cascade="all, delete-orphan",
         order_by="RelationRevision.created_at.desc()",
+        lazy="raise",
+        passive_deletes=True,
     )
 
     source_extraction = relationship(
@@ -41,4 +43,5 @@ class Relation(Base, UUIDMixin):
         foreign_keys="StagedExtraction.materialized_relation_id",
         back_populates="materialized_relation",
         uselist=False,
+        lazy="raise",
     )

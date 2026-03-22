@@ -37,4 +37,4 @@ class ComputedRelation(Base):
     )
 
     # Relationship to the base relation
-    relation = relationship("Relation", foreign_keys=[relation_id])
+    relation = relationship("Relation", foreign_keys=[relation_id], lazy="raise")

@@ -50,17 +50,13 @@ async def run_auto_commit(db: AsyncSession, auto_commit_threshold: float) -> Aut
     failed_count = 0
 
     for staged in eligible:
-        try:
-            if await _materialize_approved(db, staged):
-                materialized_count += 1
-            else:
-                failed_count += 1
-                logger.warning("Failed to materialize auto-approved extraction %s", staged.id)
-
-        except Exception as e:
+        # _materialize_approved handles all exceptions internally and never raises;
+        # a False return means the extraction was left in PENDING (retryable).
+        if await _materialize_approved(db, staged):
+            materialized_count += 1
+        else:
             failed_count += 1
-            logger.error("Failed to auto-commit extraction %s: %s", staged.id, e, exc_info=True)
-            await db.rollback()
+            logger.warning("Failed to materialize auto-approved extraction %s", staged.id)
 
     logger.info(
         "Auto-committed %d/%d eligible extractions (%d failed)",

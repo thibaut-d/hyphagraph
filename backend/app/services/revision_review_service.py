@@ -9,8 +9,11 @@ from uuid import UUID
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.entity import Entity
 from app.models.entity_revision import EntityRevision
+from app.models.relation import Relation
 from app.models.relation_revision import RelationRevision
+from app.models.source import Source
 from app.models.source_revision import SourceRevision
 from app.schemas.review import DraftRevisionRead, DraftRevisionListResponse
 
@@ -129,6 +132,7 @@ class RevisionReviewService:
 
         revision.status = "confirmed"
         await self.db.flush()
+        await self.db.commit()
         logger.info(
             "Confirmed %s revision %s (llm=%s)",
             revision_kind,
@@ -144,7 +148,12 @@ class RevisionReviewService:
     async def discard(
         self, revision_kind: str, revision_id: UUID
     ) -> bool:
-        """Delete a draft revision.  Returns False if not found."""
+        """Delete a draft revision.  Returns False if not found.
+
+        If the discarded revision is the only revision for its parent object,
+        the parent (Entity/Relation/Source) is also deleted so no orphan base
+        row is left with zero revisions.
+        """
         model = self._model_for(revision_kind)
         result = await self.db.execute(
             select(model).where(model.id == revision_id, model.status == "draft")
@@ -153,8 +162,25 @@ class RevisionReviewService:
         if not revision:
             return False
 
+        parent_id_field, parent_model = self._parent_for(revision_kind)
+        parent_id = getattr(revision, parent_id_field)
+
         await self.db.delete(revision)
         await self.db.flush()
+
+        # If there are no remaining revisions, delete the parent base row too.
+        # Without this, the Entity/Relation/Source row is unreachable (queries
+        # join through revisions) but wastes space and crashes if accessed by ID.
+        sibling_count = await self.db.scalar(
+            select(func.count()).where(getattr(model, parent_id_field) == parent_id)
+        ) or 0
+        if sibling_count == 0:
+            parent = await self.db.get(parent_model, parent_id)
+            if parent:
+                await self.db.delete(parent)
+                await self.db.flush()
+
+        await self.db.commit()
         logger.info(
             "Discarded %s revision %s (llm=%s)",
             revision_kind,
@@ -200,3 +226,16 @@ class RevisionReviewService:
         if not model:
             raise ValueError(f"Unknown revision_kind: {revision_kind!r}")
         return model
+
+    @staticmethod
+    def _parent_for(revision_kind: str) -> tuple[str, type]:
+        """Return (parent_id_field_name, parent_model_class) for a revision kind."""
+        mapping = {
+            "entity": ("entity_id", Entity),
+            "relation": ("relation_id", Relation),
+            "source": ("source_id", Source),
+        }
+        result = mapping.get(revision_kind)
+        if not result:
+            raise ValueError(f"Unknown revision_kind: {revision_kind!r}")
+        return result

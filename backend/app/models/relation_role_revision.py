@@ -31,4 +31,4 @@ class RelationRoleRevision(Base, UUIDMixin):
     disagreement: Mapped[float | None] = mapped_column(Float)  # For computed relations: contradiction measure ∈ [0, 1]
 
     # Relationships
-    relation_revision = relationship("RelationRevision", back_populates="roles")
+    relation_revision = relationship("RelationRevision", back_populates="roles", lazy="raise")

@@ -174,17 +174,23 @@ class StagedExtraction(Base, UUIDMixin, TimestampMixin):
     )
 
     # Relationships
-    source: Mapped["Source"] = relationship("Source", back_populates="staged_extractions")
-    reviewer: Mapped["User | None"] = relationship("User", foreign_keys=[reviewed_by])
+    source: Mapped["Source"] = relationship(
+        "Source", back_populates="staged_extractions", lazy="raise"
+    )
+    reviewer: Mapped["User | None"] = relationship(
+        "User", foreign_keys=[reviewed_by], lazy="raise"
+    )
     materialized_entity: Mapped["Entity | None"] = relationship(
         "Entity",
         foreign_keys=[materialized_entity_id],
-        back_populates="source_extraction"
+        back_populates="source_extraction",
+        lazy="raise",
     )
     materialized_relation: Mapped["Relation | None"] = relationship(
         "Relation",
         foreign_keys=[materialized_relation_id],
-        back_populates="source_extraction"
+        back_populates="source_extraction",
+        lazy="raise",
     )
 
     def __repr__(self) -> str:

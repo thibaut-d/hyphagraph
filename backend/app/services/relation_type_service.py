@@ -10,7 +10,7 @@ Provides:
 """
 from datetime import datetime, timezone
 import difflib
-import json
+import logging
 from typing import List
 
 from sqlalchemy import select
@@ -18,6 +18,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.relation_type import RelationType
 from app.schemas.relation_type import RelationTypeStatisticsRead, SuggestNewTypeResponse, relation_type_to_read
+
+logger = logging.getLogger(__name__)
 
 
 class RelationTypeService:
@@ -75,7 +77,7 @@ class RelationTypeService:
             label=label,
             description=description,
             examples=examples,
-            aliases=json.dumps(aliases) if aliases else None,
+            aliases=aliases,
             is_active=True,
             is_system=is_system,
             usage_count=0,
@@ -112,7 +114,7 @@ class RelationTypeService:
                 return existing_type
 
             # Check if type_id matches any alias
-            aliases = json.loads(existing_type.aliases) if existing_type.aliases else []
+            aliases = existing_type.aliases or []
             if type_id.lower() in [a.lower() for a in aliases]:
                 return existing_type
 
@@ -131,7 +133,11 @@ class RelationTypeService:
         relation_type = await self.get_by_id(type_id)
         if relation_type:
             relation_type.usage_count += 1
-            await self.db.commit()
+            try:
+                await self.db.commit()
+            except Exception:
+                logger.warning("Failed to increment usage count for relation type %s", type_id)
+                await self.db.rollback()
 
     async def get_for_llm_prompt(self) -> str:
         """

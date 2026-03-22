@@ -1,12 +1,12 @@
 # Current Work
 
-**Last updated**: 2026-03-22 (LLM integration audit — all findings resolved)
+**Last updated**: 2026-03-22 (ORM audit — all findings resolved)
 
 ---
 
 ## Open Findings
 
-_(none — all LLM integration audit findings resolved 2026-03-22)_
+_(none — ORM audit C1/M1/M2/m1–m4 all resolved 2026-03-22)_
 
 ---
 
@@ -36,6 +36,8 @@ From completed audits — low priority, no blocking risk.
 
 ## Audit Reports Index
 
+- `.temp/audit_entity_creation_2026-03-22.md`
+- `.temp/audit_relation_creation_2026-03-22.md`
 - `.temp/audit_llm_integration_2026-03-22.md`
 - `.temp/audit_relation_extraction_2026-03-22.md`
 - `.temp/audit_login_2026-03-22.md`
@@ -44,6 +46,8 @@ From completed audits — low priority, no blocking risk.
 - `.temp/full_audit_report_2026-03-21_prev.md`
 - `.temp/audit_inference_pipeline_2026-03-21.md`
 - `.temp/audit_smart_discovery_2026-03-22.md`
+- `.temp/audit_orm_2026-03-22.md`
+- `.temp/audit_database_operations_2026-03-22.md`
 - `.temp/audit_smart_discovery_2026-03-20.md`
 - `.temp/full_audit_report_2026-03-18.md`
 - `.temp/knowledge_integrity_report_v1.md`

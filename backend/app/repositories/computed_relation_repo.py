@@ -1,6 +1,6 @@
 """Repository for computed relation cache management."""
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import delete as sql_delete, select
 from sqlalchemy.orm import selectinload
 from uuid import UUID
 
@@ -65,12 +65,9 @@ class ComputedRelationRepository:
         Args:
             scope_hash: Scope hash to invalidate
         """
-        stmt = select(ComputedRelation).where(ComputedRelation.scope_hash == scope_hash)
-        result = await self.db.execute(stmt)
-        computed_relations = result.scalars().all()
-
-        for cr in computed_relations:
-            await self.db.delete(cr)
+        await self.db.execute(
+            sql_delete(ComputedRelation).where(ComputedRelation.scope_hash == scope_hash)
+        )
 
     async def delete_by_entity_id(self, entity_id: UUID) -> None:
         """
@@ -83,8 +80,9 @@ class ComputedRelationRepository:
         Call this whenever a source relation is created, updated, or deleted so
         that the entity's next inference request re-runs the math.
         """
-        stmt = (
-            select(ComputedRelation)
+        # Collect IDs to delete via a SELECT with joins, then bulk-delete.
+        id_stmt = (
+            select(ComputedRelation.relation_id)
             .join(Relation, ComputedRelation.relation_id == Relation.id)
             .join(
                 RelationRevision,
@@ -98,9 +96,12 @@ class ComputedRelationRepository:
             .where(RelationRoleRevision.entity_id == entity_id)
             .distinct()
         )
-        result = await self.db.execute(stmt)
-        for cr in result.scalars().all():
-            await self.db.delete(cr)
+        result = await self.db.execute(id_stmt)
+        ids = [row[0] for row in result.all()]
+        if ids:
+            await self.db.execute(
+                sql_delete(ComputedRelation).where(ComputedRelation.relation_id.in_(ids))
+            )
 
     async def delete_by_relation_id(self, relation_id: UUID) -> None:
         """

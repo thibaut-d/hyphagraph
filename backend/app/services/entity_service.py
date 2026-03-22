@@ -224,14 +224,13 @@ class EntityService:
                     entity_id=str(entity_id)
                 )
 
-            # Block deletion if current relation revisions reference this entity
+            # Block deletion if ANY relation revision (current or historical) references
+            # this entity.  Historical revisions are immutable snapshots — cascade-deleting
+            # their RelationRoleRevision rows would silently destroy audit history.
             rel_count_result = await self.db.execute(
                 select(func.count(func.distinct(RelationRevision.relation_id)))
                 .join(RelationRoleRevision, RelationRoleRevision.relation_revision_id == RelationRevision.id)
-                .where(
-                    RelationRoleRevision.entity_id == entity.id,
-                    RelationRevision.is_current == True,  # noqa: E712
-                )
+                .where(RelationRoleRevision.entity_id == entity.id)
             )
             rel_count = rel_count_result.scalar() or 0
             if rel_count > 0:
@@ -240,7 +239,8 @@ class EntityService:
                     error_code=ErrorCode.ENTITY_HAS_RELATIONS,
                     message="Entity has dependent relations",
                     details=(
-                        f"This entity is referenced by {rel_count} relation(s). "
+                        f"This entity is referenced by {rel_count} relation(s) "
+                        "(including historical revisions). "
                         "Delete those relations before deleting the entity."
                     ),
                     context={"relation_count": rel_count},

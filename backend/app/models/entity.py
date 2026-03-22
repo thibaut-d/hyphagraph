@@ -25,6 +25,8 @@ class Entity(Base, UUIDMixin):
         back_populates="entity",
         cascade="all, delete-orphan",
         order_by="EntityRevision.created_at.desc()",
+        lazy="raise",
+        passive_deletes=True,
     )
 
     source_extraction = relationship(
@@ -32,4 +34,5 @@ class Entity(Base, UUIDMixin):
         foreign_keys="StagedExtraction.materialized_entity_id",
         back_populates="materialized_entity",
         uselist=False,
+        lazy="raise",
     )
