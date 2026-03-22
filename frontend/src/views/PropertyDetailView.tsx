@@ -31,7 +31,7 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import WarningIcon from "@mui/icons-material/Warning";
 import ErrorIcon from "@mui/icons-material/Error";
 
-import { getExplanation, ExplanationRead } from "../api/explanations";
+import { getExplanation, ExplanationRead, formatExplanationSummary } from "../api/explanations";
 import { getEntity } from "../api/entities";
 import type { EntityRead } from "../types/entity";
 import { EvidenceTrace } from "../components/EvidenceTrace";
@@ -240,7 +240,7 @@ export function PropertyDetailView() {
           )}
 
           <Typography variant="body1" sx={{ fontStyle: "italic", color: "text.secondary" }}>
-            {explanation.summary}
+            {formatExplanationSummary(explanation.summary, t)}
           </Typography>
           <Typography variant="caption" display="block" sx={{ mt: 1 }}>
             {t("property.summary_disclaimer", "Generated summary. Use evidence below for auditability.")}

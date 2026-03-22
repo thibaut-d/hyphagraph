@@ -27,6 +27,7 @@ import { DesktopNavigation } from "./layout/DesktopNavigation";
 import { MobileDrawer } from "./layout/MobileDrawer";
 import { MobileSearchDialog } from "./layout/MobileSearchDialog";
 import { useAuthContext } from "../auth/AuthContext";
+import { usePageErrorHandler } from "../hooks/usePageErrorHandler";
 import { getEntityFilterOptions } from "../api/entities";
 import type { UICategoryOption } from "../api/entities";
 const menuItems = [
@@ -42,6 +43,7 @@ export function Layout() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { user } = useAuthContext();
+  const handlePageError = usePageErrorHandler();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -61,7 +63,7 @@ export function Layout() {
         }
       })
       .catch((error) => {
-        console.error("Failed to fetch UI categories:", error);
+        handlePageError(error, "Failed to fetch UI categories");
       });
   }, []);
 

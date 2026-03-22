@@ -153,7 +153,7 @@ class BulkCreationServiceProtocol(Protocol):
         entities: list[ExtractedEntity],
         source_id: UUID,
         user_id: UUID | None,
-    ) -> SlugEntityMap: ...
+    ) -> tuple[SlugEntityMap, list[str]]: ...
 
     async def bulk_create_relations(
         self,
@@ -162,7 +162,7 @@ class BulkCreationServiceProtocol(Protocol):
         entity_mapping: SlugEntityMap,
         source_id: UUID,
         user_id: UUID | None,
-    ) -> tuple[list[ExtractedRelation], list[UUID]]: ...
+    ) -> tuple[list[ExtractedRelation], list[UUID], list[str]]: ...
 
 
 class BulkCreationServiceFactory(Protocol):
@@ -359,7 +359,7 @@ async def stage_review_batch(
         claims=list(zip(extracted_batch.claims, extracted_batch.claim_results)),
         source_id=source_id,
         llm_model=settings.OPENAI_MODEL,
-        llm_provider="openai",
+        llm_provider=settings.LLM_PROVIDER,
         auto_materialize=False,
     )
 
@@ -596,7 +596,9 @@ async def _update_source_revision_from_pubmed(
         revision_data=revision_data,
         set_as_current=True,
     )
-    await db.commit()
+    # No commit here — the caller owns the transaction boundary.
+    # The flushed revision will be committed by store_document_in_source
+    # (via SourceService.add_document_to_source) in the enclosing workflow.
 
 
 def _relation_match_key(rel: ExtractedRelation) -> tuple:
@@ -650,6 +652,8 @@ async def reconcile_staged_extractions(
         key = _relation_match_key(rel)
         relation_key_to_idx.setdefault(key, idx)
 
+    skipped_relations = 0
+
     for staged in staged_items:
         if staged.extraction_type == ExtractionType.ENTITY:
             slug = staged.extraction_data.get("slug")
@@ -674,7 +678,19 @@ async def reconcile_staged_extractions(
                     staged.reviewed_by = user_id
                     staged.reviewed_at = now
             except Exception:
-                logger.warning("Could not parse staged relation data for extraction %s", staged.id)
+                skipped_relations += 1
+                logger.error(
+                    "Could not parse staged relation data for extraction %s — skipping",
+                    staged.id,
+                    exc_info=True,
+                )
+
+    if skipped_relations:
+        logger.error(
+            "Skipped %d staged relation(s) due to parse errors for source %s",
+            skipped_relations,
+            source_id,
+        )
 
     await db.flush()
 
@@ -703,25 +719,28 @@ async def save_extraction_to_graph(
 
     bulk_service = bulk_creation_service_factory(db)
     entity_mapping: SlugEntityMap = {}
+    all_warnings: list[str] = []
 
     if request.entities_to_create:
-        entity_mapping = await bulk_service.bulk_create_entities(
+        entity_mapping, entity_warnings = await bulk_service.bulk_create_entities(
             entities=request.entities_to_create,
             source_id=source_id,
             user_id=user_id,
         )
+        all_warnings.extend(entity_warnings)
 
     entity_mapping.update(request.entity_links)
 
     created_relations: list[ExtractedRelation] = []
     relation_ids: list[UUID] = []
     if request.relations_to_create:
-        created_relations, relation_ids = await bulk_service.bulk_create_relations(
+        created_relations, relation_ids, relation_warnings = await bulk_service.bulk_create_relations(
             relations=request.relations_to_create,
             entity_mapping=entity_mapping,
             source_id=source_id,
             user_id=user_id,
         )
+        all_warnings.extend(relation_warnings)
 
     await db.commit()
 
@@ -751,5 +770,5 @@ async def save_extraction_to_graph(
         relations_created=len(relation_ids),
         created_entity_ids=list(entity_mapping.values()),
         created_relation_ids=relation_ids,
-        warnings=[],
+        warnings=all_warnings,
     )

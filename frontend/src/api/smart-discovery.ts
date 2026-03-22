@@ -34,9 +34,9 @@ export function smartDiscovery(request: SmartDiscoveryRequest): Promise<SmartDis
     method: "POST",
     body: JSON.stringify({
       entity_slugs: request.entity_slugs,
-      max_results: request.max_results || 20,
-      min_quality: request.min_quality || 0.5,
-      databases: request.databases || ["pubmed"],
+      max_results: request.max_results ?? 20,
+      min_quality: request.min_quality ?? 0.5,
+      databases: request.databases ?? ["pubmed"],
     }),
   });
 }

@@ -126,7 +126,15 @@ describe("PropertyDetailView", () => {
     score: 0.75,
     confidence: 0.85,
     disagreement: 0.1,
-    summary: "Paracetamol is commonly used for pain relief.",
+    summary: {
+      source_count: 5,
+      score: 0.75,
+      direction: "strong_positive" as const,
+      confidence_level: "high" as const,
+      confidence_pct: 85,
+      disagreement_level: "none" as const,
+      role_type: "therapeutic_use",
+    },
     confidence_factors: [],
     source_chain: mockSourceChain,
     ...overrides,
@@ -161,7 +169,15 @@ describe("PropertyDetailView", () => {
     vi.spyOn(entitiesApi, "getEntity").mockResolvedValue(mockEntity);
     vi.spyOn(explanationsApi, "getExplanation").mockResolvedValue(
       createMockExplanation({
-        summary: "This medication is highly effective for pain management.",
+        summary: {
+          source_count: 2,
+          score: 0.9,
+          direction: "strong_positive" as const,
+          confidence_level: "high" as const,
+          confidence_pct: 90,
+          disagreement_level: "none" as const,
+          role_type: "therapeutic_use",
+        },
       }),
     );
 

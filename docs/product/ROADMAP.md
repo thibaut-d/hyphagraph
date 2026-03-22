@@ -1,6 +1,6 @@
 # HyphaGraph TODO
 
-**Last Updated**: 2026-03-18 (Staged extractions pipeline integration)
+**Last Updated**: 2026-03-21 (M3 LLM draft review; all audit findings resolved; test debt cleared)
 
 ---
 
@@ -8,10 +8,10 @@
 
 | Area | Status | Details |
 |------|--------|---------|
-| **Backend tests** | ✅ 538/538 | All passing (+6 reconcile_staged_extractions tests) |
+| **Backend tests** | ✅ 651/651 | All passing |
 | **Frontend tests** | ✅ 613/613 | All passing (+16 BatchCreateRelationsView tests) |
-| **E2E tests** | ✅ **72/72** | **🎉 All passing!** |
-| **Technical debt** | ✅ Minimal | All test issues resolved |
+| **E2E tests** | ✅ **166/167** | 1 skipped (mobile drawer `.skip`), 0 failed |
+| **Technical debt** | ✅ None | All audit findings resolved, all test debt cleared |
 
 ### Completed Phases
 
@@ -20,6 +20,8 @@
 **Phase 2 — Enhanced Usability**: Filter drawers, UX-critical views (PropertyDetail, Evidence, Synthesis, Disagreements), unified search, i18n (EN/FR).
 
 **Phase 3**: Entity terms & UI categories, **complete E2E test coverage**, async bcrypt, responsive design, admin panel, consensus level filtering, year range filtering, E2E database reset infrastructure.
+
+**Phase 4**: Full-system audit (payload flows, inference engine, security, API boundaries), M3 LLM draft/review workflow (status field on revisions, review queue UI, confirm/discard API), complete test debt elimination (651 backend tests clean).
 
 ### E2E Test Status (2026-03-07) - ✅ COMPLETE
 

@@ -136,13 +136,12 @@ class DocumentService:
 
         except (ValidationException, AppException):
             raise
-        except Exception as e:
-            logger.error(f"PDF text extraction failed: {e}")
+        except Exception:
+            logger.exception("PDF text extraction failed for %s", file.filename)
             raise AppException(
                 status_code=500,
                 error_code=ErrorCode.DOCUMENT_PARSE_ERROR,
                 message="Failed to extract text from PDF",
-                details=str(e),
                 context={"filename": file.filename}
             )
 
@@ -192,13 +191,12 @@ class DocumentService:
 
         except (ValidationException, AppException):
             raise
-        except Exception as e:
-            logger.error(f"Text file reading failed: {e}")
+        except Exception:
+            logger.exception("Text file reading failed for %s", file.filename)
             raise AppException(
                 status_code=500,
                 error_code=ErrorCode.DOCUMENT_PARSE_ERROR,
                 message="Failed to read text file",
-                details=str(e),
                 context={"filename": file.filename}
             )
 

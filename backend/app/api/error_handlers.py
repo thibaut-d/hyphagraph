@@ -48,16 +48,15 @@ def handle_extraction_errors(
         except AppException:
             # Re-raise AppExceptions to preserve error details
             raise
-        except Exception as e:
-            # Log the error
-            logger.error(f"Extraction operation failed in {func.__name__}: {e}")
+        except Exception:
+            # Log with full traceback for server-side diagnostics
+            logger.exception("Extraction operation failed in %s", func.__name__)
 
-            # Convert to standard AppException
+            # Convert to standard AppException — do not leak exception details to client
             raise AppException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 error_code=ErrorCode.EXTRACTION_FAILED,
                 message=f"{func.__name__.replace('_', ' ').title()} failed",
-                details=str(e)
             )
 
     return wrapper

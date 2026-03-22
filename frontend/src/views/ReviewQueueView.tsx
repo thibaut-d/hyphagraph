@@ -4,6 +4,7 @@ import { useReviewQueue } from "../hooks/useReviewQueue";
 import { useSelection } from "../hooks/useSelection";
 import { useReviewDialog } from "../hooks/useReviewDialog";
 import { ExtractionCard } from "../components/extraction/ExtractionCard";
+import { LlmDraftsPanel } from "../components/review/LlmDraftsPanel";
 import type { ExtractionType } from "../api/extractionReview";
 
 import {
@@ -24,6 +25,8 @@ import {
   TextField,
   ToggleButton,
   ToggleButtonGroup,
+  Tabs,
+  Tab,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
@@ -36,6 +39,9 @@ const PAGE_SIZE = 20;
 
 export function ReviewQueueView() {
   const { t } = useTranslation();
+
+  // Tab state: 0 = staged extractions, 1 = LLM drafts
+  const [activeTab, setActiveTab] = useState(0);
 
   // Filters state (kept in component for TextField binding)
   const [minScore, setMinScore] = useState<number | undefined>(undefined);
@@ -105,14 +111,28 @@ export function ReviewQueueView() {
         {/* Header */}
         <Stack direction="row" justifyContent="space-between" alignItems="center">
           <Typography variant="h4">{t("menu.review_queue")}</Typography>
-          <Button
-            startIcon={<RefreshIcon />}
-            onClick={handleRefresh}
-            disabled={isLoading}
-          >
-            {t("review_queue.refresh")}
-          </Button>
+          {activeTab === 0 && (
+            <Button
+              startIcon={<RefreshIcon />}
+              onClick={handleRefresh}
+              disabled={isLoading}
+            >
+              {t("review_queue.refresh")}
+            </Button>
+          )}
         </Stack>
+
+        {/* Tabs */}
+        <Tabs value={activeTab} onChange={(_e, v) => setActiveTab(v as number)}>
+          <Tab label={t("review_queue.type_all")} />
+          <Tab label={t("llm_drafts.tab_label")} />
+        </Tabs>
+
+        {/* LLM Drafts tab */}
+        {activeTab === 1 && <LlmDraftsPanel />}
+
+        {/* Staged Extractions tab content */}
+        {activeTab === 0 && <>
 
         {/* Statistics Cards */}
         {stats && (
@@ -284,6 +304,8 @@ export function ReviewQueueView() {
             </Button>
           </Box>
         )}
+
+        </>}
       </Stack>
 
       {/* Batch Review Dialog */}

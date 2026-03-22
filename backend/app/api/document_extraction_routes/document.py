@@ -55,11 +55,10 @@ async def extract_from_document(
         return preview
     except (AppException, SourceNotFoundException, ValidationException):
         raise
-    except Exception as error:
-        logger.error(f"Document extraction failed: {error}")
+    except Exception:
+        logger.exception("Document extraction failed for source %s", source_id)
         raise_internal_api_exception(
             message="Failed to extract from document",
-            details=str(error),
             context={"source_id": str(source_id)},
         )
 
@@ -98,11 +97,10 @@ async def save_extraction(
         return result
     except (AppException, SourceNotFoundException, ValidationException):
         raise
-    except Exception as error:
-        logger.error(f"Save extraction failed: {error}")
+    except Exception:
+        logger.exception("Save extraction failed for source %s", source_id)
         raise_internal_api_exception(
             message="Failed to save extraction",
-            details=str(error),
             context={"source_id": str(source_id)},
         )
 
@@ -147,11 +145,10 @@ async def upload_and_extract(
         return preview
     except (AppException, SourceNotFoundException, ValidationException):
         raise
-    except Exception as error:
-        logger.error(f"Upload and extract failed: {error}")
+    except Exception:
+        logger.exception("Upload and extract failed for source %s", source_id)
         raise_internal_api_exception(
             message="Failed to upload and extract",
-            details=str(error),
             context={"source_id": str(source_id)},
         )
 
@@ -200,10 +197,9 @@ async def extract_from_url(
         return preview
     except (AppException, SourceNotFoundException, ValidationException):
         raise
-    except Exception as error:
-        logger.error(f"URL extraction failed: {error}")
+    except Exception:
+        logger.exception("URL extraction failed for source %s", source_id)
         raise_internal_api_exception(
             message="Failed to extract from URL",
-            details=str(error),
             context={"source_id": str(source_id), "url": request.url},
         )

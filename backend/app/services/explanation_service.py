@@ -12,6 +12,7 @@ from app.schemas.explanation import (
     ExplanationRead,
     SourceContribution,
     ConfidenceFactor,
+    SummaryData,
 )
 from app.services.explanation_read_models import (
     attach_contradiction_sources,
@@ -122,63 +123,57 @@ class ExplanationService:
         role_inference: RoleInference,
         contributing_evidence: List[RoleEvidenceRead],
         role_type: str,
-    ) -> str:
+    ) -> SummaryData:
         """
-        Generate natural language summary of the inference.
+        Return structured summary data for the inference.
 
-        Example outputs:
-        - "Based on 5 sources, this shows a strong positive effect (score: 0.75)
-          with high confidence (92%). One source contradicts this finding."
-        - "Based on 2 sources, this shows a weak negative effect (score: -0.25)
-          with moderate confidence (65%). No contradictions detected."
+        The frontend composes the natural-language prose using these keys with
+        i18n, avoiding hardcoded English strings in the API response.
         """
         num_sources = self._count_unique_sources(contributing_evidence)
         score = role_inference.score
         confidence = role_inference.confidence
         disagreement = role_inference.disagreement
 
-        # Determine direction
+        # Direction key
         if score is None:
-            direction = "no clear indication"
+            direction = "none"
         elif score > 0.5:
-            direction = "a strong positive effect"
+            direction = "strong_positive"
         elif score > 0.0:
-            direction = "a weak positive effect"
+            direction = "weak_positive"
         elif score == 0.0:
-            direction = "a neutral effect"
+            direction = "neutral"
         elif score > -0.5:
-            direction = "a weak negative effect"
+            direction = "weak_negative"
         else:
-            direction = "a strong negative effect"
+            direction = "strong_negative"
 
-        # Determine confidence level
+        # Confidence tier key
         if confidence > 0.8:
-            conf_level = "high"
+            confidence_level = "high"
         elif confidence > 0.5:
-            conf_level = "moderate"
+            confidence_level = "moderate"
         else:
-            conf_level = "low"
+            confidence_level = "low"
 
-        # Score display
-        score_display = f"{score:.2f}" if score is not None else "N/A"
-
-        # Base summary
-        source_word = "source" if num_sources == 1 else "sources"
-        summary = (
-            f"Based on {num_sources} {source_word}, "
-            f"this '{role_type}' shows {direction} (score: {score_display}) "
-            f"with {conf_level} confidence ({confidence * 100:.0f}%)."
-        )
-
-        # Add contradiction note
+        # Disagreement tier key
         if disagreement > 0.5:
-            summary += " Significant contradictions detected among sources."
+            disagreement_level = "significant"
         elif disagreement > 0.2:
-            summary += " Some contradictions detected among sources."
+            disagreement_level = "some"
         else:
-            summary += " No significant contradictions detected."
+            disagreement_level = "none"
 
-        return summary
+        return SummaryData(
+            source_count=num_sources,
+            score=score,
+            direction=direction,
+            confidence_level=confidence_level,
+            confidence_pct=round(confidence * 100),
+            disagreement_level=disagreement_level,
+            role_type=role_type,
+        )
 
     async def _build_confidence_breakdown(
         self,

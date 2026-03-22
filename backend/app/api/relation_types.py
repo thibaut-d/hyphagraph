@@ -65,10 +65,9 @@ async def create_relation_type(
 
         return relation_type_to_read(new_type)
 
-    except ValueError as e:
+    except ValueError:
         raise ValidationException(
             message="Invalid relation type data",
-            details=str(e),
             context={"type_id": payload.type_id}
         )
 

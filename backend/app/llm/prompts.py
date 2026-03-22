@@ -67,9 +67,10 @@ Categories:
 Text to analyze:
 {text}
 
-Respond with a JSON array of entities. Example format:
+Respond with a JSON object containing an "entities" key. Example format:
 ```json
-[
+{{
+  "entities": [
   {{
     "slug": "aspirin",
     "summary": "Aspirin is a nonsteroidal anti-inflammatory drug (NSAID) used for pain relief, fever reduction, and anti-platelet effects.",
@@ -91,7 +92,8 @@ Respond with a JSON array of entities. Example format:
     "confidence": "high",
     "text_span": "irreversibly inhibiting cyclooxygenase (COX) enzymes"
   }}
-]
+  ]
+}}
 ```
 
 Only extract entities that are explicitly mentioned or clearly implied in the text.
@@ -181,13 +183,14 @@ IMPORTANT: Do NOT create new relation types. If a relationship doesn't fit the a
 Do NOT use types like: "has", "integrates_with", "diagnosed_by", "correlates_with", "associated_with", etc.
 
 Example roles in output:
-- {"entity_slug": "aspirin", "role_type": "agent"}
-- {"entity_slug": "migraine", "role_type": "target"}
-- {"entity_slug": "325-650mg", "role_type": "dosage"}
+- {{"entity_slug": "aspirin", "role_type": "agent"}}
+- {{"entity_slug": "migraine", "role_type": "target"}}
+- {{"entity_slug": "325-650mg", "role_type": "dosage"}}
 
-Respond with a JSON array of relations:
+Respond with a JSON object containing a "relations" key:
 ```json
-[
+{{
+  "relations": [
   {{
     "relation_type": "treats",
     "roles": [
@@ -210,7 +213,8 @@ Respond with a JSON array of relations:
     "text_span": "aspirin commonly causes stomach irritation",
     "notes": "Risk increases with higher doses and prolonged use"
   }}
-]
+  ]
+}}
 ```
 
 Only extract relations that are explicitly stated or strongly implied in the text.
@@ -248,9 +252,10 @@ Evidence strength indicators:
 - weak: Case reports, small studies, expert opinion
 - anecdotal: Individual experiences, isolated reports
 
-Respond with a JSON array of claims:
+Respond with a JSON object containing a "claims" key:
 ```json
-[
+{{
+  "claims": [
   {{
     "claim_text": "Aspirin reduces the risk of heart attack in adults with cardiovascular disease",
     "entities_involved": ["drug-aspirin", "outcome-heart-attack", "population-cvd-adults"],
@@ -259,7 +264,8 @@ Respond with a JSON array of claims:
     "confidence": "high",
     "text_span": "In adults with cardiovascular disease, daily aspirin therapy reduced the risk of myocardial infarction by 25% (RR 0.75, 95% CI 0.68-0.82)"
   }}
-]
+  ]
+}}
 ```
 
 Focus on:

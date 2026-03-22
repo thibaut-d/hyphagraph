@@ -38,7 +38,7 @@ class OpenAIProvider(LLMProvider):
         """
         self.api_key = api_key or settings.OPENAI_API_KEY
         self.model = model or settings.OPENAI_MODEL
-        self.default_temperature = temperature or settings.OPENAI_TEMPERATURE
+        self.default_temperature = temperature if temperature is not None else settings.OPENAI_TEMPERATURE
 
         if not self.api_key:
             logger.warning("OpenAI API key not configured")
@@ -128,11 +128,11 @@ class OpenAIProvider(LLMProvider):
             )
 
         except OpenAIError as e:
-            logger.error(f"OpenAI API error: {e}")
-            raise LLMError(f"OpenAI API error: {str(e)}") from e
+            logger.exception("OpenAI API error")
+            raise LLMError("OpenAI API call failed") from e
         except Exception as e:
-            logger.error(f"Unexpected error calling OpenAI: {e}")
-            raise LLMError(f"Unexpected error: {str(e)}") from e
+            logger.exception("Unexpected error calling OpenAI")
+            raise LLMError("Unexpected LLM provider error") from e
 
     async def generate_json(
         self,
@@ -188,6 +188,6 @@ class OpenAIProvider(LLMProvider):
             logger.info(f"Successfully parsed JSON response from OpenAI")
             return result
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse JSON from OpenAI response: {e}")
-            logger.error(f"Response content: {response.content[:500]}")
-            raise LLMError(f"Invalid JSON in response: {str(e)}") from e
+            logger.exception("Failed to parse JSON from OpenAI response")
+            logger.error("Response content (first 500 chars): %s", response.content[:500])
+            raise LLMError("LLM response could not be parsed as JSON") from e

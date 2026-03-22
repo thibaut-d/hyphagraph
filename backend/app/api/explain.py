@@ -5,9 +5,13 @@ Provides detailed explanations of computed inferences,
 allowing users to trace inference scores back to source documents.
 """
 
+import logging
+
 from fastapi import APIRouter, Depends, Query
 from uuid import UUID
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 from app.api.inference_dependencies import get_explanation_service, parse_scope_filter
 from app.schemas.explanation import ExplanationRead
@@ -61,21 +65,20 @@ async def explain_inference(
 
     try:
         return await service.explain_inference(entity_id, role_type, scope_filter)
-    except ValueError as e:
+    except ValueError:
         # Role type not found
         raise AppException(
             status_code=404,
             error_code=ErrorCode.NOT_FOUND,
             message="Role type not found",
-            details=str(e),
             context={"entity_id": str(entity_id), "role_type": role_type}
         )
-    except Exception as e:
+    except Exception:
         # Unexpected error
+        logger.exception("Failed to generate explanation for entity %s role %s", entity_id, role_type)
         raise AppException(
             status_code=500,
             error_code=ErrorCode.INTERNAL_SERVER_ERROR,
             message="Failed to generate explanation",
-            details=str(e),
             context={"entity_id": str(entity_id), "role_type": role_type}
         )

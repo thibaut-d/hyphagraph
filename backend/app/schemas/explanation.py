@@ -82,6 +82,37 @@ class ConfidenceFactor(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class SummaryData(BaseModel):
+    """
+    Structured data for generating a localised inference summary.
+
+    The frontend assembles natural-language prose from these keys using i18n,
+    avoiding hardcoded English in the API response.
+    """
+
+    source_count: int = Field(..., description="Number of contributing sources")
+    score: Optional[float] = Field(None, description="Inference score in [-1, 1]")
+    direction: str = Field(
+        ...,
+        description=(
+            "Effect direction key: 'strong_positive' | 'weak_positive' | 'neutral' "
+            "| 'weak_negative' | 'strong_negative' | 'none'"
+        ),
+    )
+    confidence_level: str = Field(
+        ...,
+        description="Confidence tier key: 'high' | 'moderate' | 'low'",
+    )
+    confidence_pct: int = Field(..., description="Confidence as an integer percentage (0–100)")
+    disagreement_level: str = Field(
+        ...,
+        description="Contradiction tier key: 'significant' | 'some' | 'none'",
+    )
+    role_type: str = Field(..., description="Role being explained")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class ExplanationRead(BaseModel):
     """Comprehensive explanation of a computed inference."""
 
@@ -102,9 +133,9 @@ class ExplanationRead(BaseModel):
     )
 
     # Explanation components
-    summary: str = Field(
+    summary: SummaryData = Field(
         ...,
-        description="Natural language summary of the inference",
+        description="Structured data for composing a localised summary in the frontend",
     )
     confidence_factors: List[ConfidenceFactor] = Field(
         default_factory=list,

@@ -5,23 +5,32 @@ All functions are pure (no I/O, no side effects) and operate on normalised
 numerical values in the range [-1, 1] for scores and [0, 1] for confidence /
 disagreement. The aggregation model is documented in docs/architecture/COMPUTED_RELATIONS.md.
 """
+import logging
 import math
 from typing import Optional
+
+logger = logging.getLogger(__name__)
+
+CANONICAL_DIRECTIONS = {"supports", "contradicts", "neutral"}
 
 
 def normalize_direction(direction: str | None) -> str:
     """
     Normalise legacy direction values to canonical form.
 
-    "positive" → "supports"
-    "negative" → "contradicts"
-    All other values (including None) → "neutral" or the value unchanged.
+    "positive" / "supports"   → "supports"
+    "negative" / "contradicts" → "contradicts"
+    "neutral" / None / ""     → "neutral"
+    Any other value           → "neutral" (logged as warning)
     """
     if direction in {"positive", "supports"}:
         return "supports"
     if direction in {"negative", "contradicts"}:
         return "contradicts"
-    return direction or "neutral"
+    if not direction or direction == "neutral":
+        return "neutral"
+    logger.warning("normalize_direction: unrecognised value %r — treating as neutral", direction)
+    return "neutral"
 
 
 def compute_claim_score(polarity: int, intensity: float) -> float:

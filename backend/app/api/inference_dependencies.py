@@ -21,7 +21,7 @@ def parse_scope_filter(scope: str | None) -> ScopeFilter | None:
         raise ValidationException(
             message="Invalid JSON in scope parameter",
             field="scope",
-            details=str(error),
+            details="Scope must be valid JSON",
         ) from error
 
     if not isinstance(scope_filter, dict):

@@ -15,6 +15,7 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
+import CheckIcon from "@mui/icons-material/Check";
 import DownloadIcon from "@mui/icons-material/Download";
 import InfoIcon from "@mui/icons-material/Info";
 import { useTranslation } from "react-i18next";
@@ -64,6 +65,9 @@ export function SmartDiscoveryResultsSection({
   getQualityColor,
 }: SmartDiscoveryResultsSectionProps) {
   const { t } = useTranslation();
+  // The selectable budget is the smaller of the non-imported count and maxResults,
+  // because handleSelectAll caps selection to maxResults items.
+  const budgetedCount = Math.min(notImportedCount, maxResults);
 
   if (results.length === 0) {
     return null;
@@ -92,7 +96,7 @@ export function SmartDiscoveryResultsSection({
 
         {importSuccess && (
           <Alert severity="success" sx={{ mt: 2 }}>
-            <strong>{"✓ " + t("smart_discovery.import_complete")}</strong>
+            <strong>{t("smart_discovery.import_complete")}</strong>
             <br />
             {t("smart_discovery.sources_created", { count: importSuccess.created })}
             {importSuccess.failed > 0 && `, ${t("smart_discovery.sources_failed", { count: importSuccess.failed })}`}
@@ -109,7 +113,7 @@ export function SmartDiscoveryResultsSection({
           <Typography variant="h6">{t("smart_discovery.discovered_sources_title", { count: results.length })}</Typography>
           <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
             <Button variant="outlined" size="small" onClick={onSelectAll} disabled={importing}>
-              {selectedPmids.size === notImportedCount ? t("smart_discovery.deselect_all") : t("smart_discovery.select_all")}
+              {selectedPmids.size === budgetedCount && budgetedCount > 0 ? t("smart_discovery.deselect_all") : t("smart_discovery.select_all")}
             </Button>
             <Chip
               label={t("smart_discovery.selected_count", { selected: selectedCount, total: notImportedCount })}
@@ -126,8 +130,8 @@ export function SmartDiscoveryResultsSection({
               <TableRow>
                 <TableCell padding="checkbox" sx={{ width: 50 }}>
                   <Checkbox
-                    checked={selectedPmids.size > 0 && selectedPmids.size === notImportedCount}
-                    indeterminate={selectedPmids.size > 0 && selectedPmids.size < notImportedCount}
+                    checked={selectedPmids.size > 0 && selectedPmids.size === budgetedCount}
+                    indeterminate={selectedPmids.size > 0 && selectedPmids.size < budgetedCount}
                     onChange={onSelectAll}
                     disabled={importing}
                   />
@@ -162,7 +166,7 @@ export function SmartDiscoveryResultsSection({
                           disabled={importing}
                         />
                       )}
-                      {isImported && <span>✓</span>}
+                      {isImported && <CheckIcon fontSize="small" aria-label="already imported" />}
                     </TableCell>
                     <TableCell>
                       <Chip
@@ -214,9 +218,9 @@ export function SmartDiscoveryResultsSection({
         <Box sx={{ mt: 3, display: "flex", gap: 2, justifyContent: "space-between", alignItems: "center" }}>
           <Typography variant="body2" color="text.secondary">
             {selectedCount > maxResults
-              ? `⚠️ ${t("smart_discovery.over_budget", { count: selectedCount, max: maxResults })}`
+              ? t("smart_discovery.over_budget", { count: selectedCount, max: maxResults })
               : selectedCount > 0
-                ? `✓ ${t("smart_discovery.ready_to_import", { count: selectedCount })}`
+                ? t("smart_discovery.ready_to_import", { count: selectedCount })
                 : t("smart_discovery.select_sources_hint")}
           </Typography>
 

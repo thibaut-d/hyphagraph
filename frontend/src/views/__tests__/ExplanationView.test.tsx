@@ -55,7 +55,15 @@ describe('ExplanationView', () => {
     score: 0.75,
     confidence: 0.85,
     disagreement: 0.15,
-    summary: 'Based on 3 sources, this shows a strong positive effect (score: 0.75) with high confidence (85%). Some contradictions detected among sources.',
+    summary: {
+      source_count: 3,
+      score: 0.75,
+      direction: "strong_positive",
+      confidence_level: "high",
+      confidence_pct: 85,
+      disagreement_level: "some",
+      role_type: "drug",
+    },
     confidence_factors: [
       {
         factor: 'Coverage',

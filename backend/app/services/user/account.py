@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import bcrypt as _bcrypt
 import logging
 from datetime import datetime, timezone
 from typing import Protocol
@@ -12,6 +13,11 @@ from app.utils.errors import UnauthorizedException, ValidationException
 from app.services.user.common import load_active_refresh_tokens, to_user_read, user_not_found
 
 logger = logging.getLogger(__name__)
+
+# Pre-computed dummy hash used to ensure bcrypt always runs during authentication,
+# preventing timing side-channel attacks that would reveal whether an email exists.
+# Rounds=4 is intentionally fast (startup cost only); the real auth path uses rounds=12.
+_DUMMY_PASSWORD_HASH: str = _bcrypt.hashpw(b"_hyphagraph_dummy_", _bcrypt.gensalt(4)).decode()
 
 
 class UserServiceContext(Protocol):
@@ -30,7 +36,7 @@ async def create_user(
         raise ValidationException(
             message="Registration failed",
             field="email",
-            details="If this email is not already registered, please try again.",
+            details="An account with this email address already exists.",
         )
 
     hashed_password = await hash_password_fn(payload.password)
@@ -156,7 +162,11 @@ async def authenticate_user(
     verify_password_fn=verify_password,
 ) -> User:
     user = await service.repo.get_by_email(email)
-    if not user or not await verify_password_fn(password, user.hashed_password):
+    # Always run bcrypt — even for unknown emails — to prevent timing side-channel
+    # attacks that would let attackers enumerate registered email addresses.
+    hash_to_check = user.hashed_password if user else _DUMMY_PASSWORD_HASH
+    password_ok = await verify_password_fn(password, hash_to_check)
+    if not user or not password_ok:
         raise UnauthorizedException(
             message="Incorrect email or password",
             details="Invalid credentials provided",
@@ -193,6 +203,14 @@ async def change_password(
     try:
         user.hashed_password = await hash_password_fn(new_password)
         await service.repo.update(user)
+
+        # Revoke all active refresh tokens so existing sessions are invalidated
+        # after a password change (prevents session fixation attacks).
+        active_tokens = await load_active_refresh_tokens(service.db, user_id)
+        for token in active_tokens:
+            token.is_revoked = True
+            token.revoked_at = datetime.now(timezone.utc)
+
         await service.db.commit()
     except Exception as e:
         logger.error("Failed to change password for user %s: %s", user_id, e, exc_info=True)

@@ -232,6 +232,7 @@ async def existing_source(db_session):
 
     rev = SourceRevision(
         source_id=src.id,
+        kind="study",
         title="Aspirin in cardiology",
         url="https://doi.org/10.1234/aspirin",
         is_current=True,

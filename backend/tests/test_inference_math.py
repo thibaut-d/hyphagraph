@@ -43,8 +43,12 @@ class TestNormalizeDirection:
     def test_neutral_stays_neutral(self):
         assert normalize_direction("neutral") == "neutral"
 
-    def test_unknown_value_passes_through(self):
-        assert normalize_direction("unknown_value") == "unknown_value"
+    def test_unknown_value_defaults_to_neutral(self):
+        # Since M8 fix: unrecognised values are warned + normalised to "neutral"
+        assert normalize_direction("unknown_value") == "neutral"
+
+    def test_empty_string_maps_to_neutral(self):
+        assert normalize_direction("") == "neutral"
 
 
 # ---------------------------------------------------------------------------

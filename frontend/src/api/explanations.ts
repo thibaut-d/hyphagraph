@@ -44,6 +44,35 @@ export interface ConfidenceFactor {
 }
 
 
+export interface SummaryData {
+  source_count: number;
+  score: number | null;
+  direction: "strong_positive" | "weak_positive" | "neutral" | "weak_negative" | "strong_negative" | "none";
+  confidence_level: "high" | "moderate" | "low";
+  confidence_pct: number;
+  disagreement_level: "significant" | "some" | "none";
+  role_type: string;
+}
+
+/** Compose localised prose from a SummaryData value. */
+export function formatExplanationSummary(
+  summary: SummaryData,
+  t: (key: string, opts?: Record<string, unknown>) => string,
+): string {
+  const direction = t(`explanation.summary_direction_${summary.direction}`);
+  const confidenceLevel = t(`explanation.summary_confidence_${summary.confidence_level}`);
+  const intro = t("explanation.summary_intro", {
+    count: summary.source_count,
+    role: summary.role_type,
+    direction,
+    confidence_level: confidenceLevel,
+    pct: summary.confidence_pct,
+  });
+  const disagreement = t(`explanation.summary_disagreement_${summary.disagreement_level}`);
+  return `${intro} ${disagreement}`;
+}
+
+
 export interface ExplanationRead {
   entity_id: string;
   role_type: string;
@@ -51,7 +80,7 @@ export interface ExplanationRead {
   confidence: number;
   disagreement: number;
 
-  summary: string;
+  summary: SummaryData;
   confidence_factors: ConfidenceFactor[];
   contradictions?: ContradictionDetail;
   source_chain: SourceContribution[];

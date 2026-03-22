@@ -27,6 +27,7 @@ class EntityRevisionRead(Schema):
     created_by_user_id: Optional[UUID] = None
     created_at: datetime
     is_current: bool
+    status: str = "confirmed"
 
 
 class EntityRead(Schema):

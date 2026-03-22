@@ -134,7 +134,7 @@ export function SmartDiscoveryConfigSection({
           disabled={searchDisabled}
           sx={{ py: 2, fontSize: "1.1rem", fontWeight: 600 }}
         >
-          {searching ? t("smart_discovery.searching") : "🔍 " + t("smart_discovery.discover_button")}
+          {searching ? t("smart_discovery.searching") : t("smart_discovery.discover_button")}
         </Button>
 
         {searchError && <Alert severity="error">{searchError}</Alert>}

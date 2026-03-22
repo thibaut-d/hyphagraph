@@ -9,9 +9,12 @@ Boundary rules:
 - Slug resolution reads current EntityRevision rows; slugs reflect the latest revision
   at query time and are not stored in the inference cache itself.
 """
+import logging
 from collections import defaultdict
 from uuid import UUID, uuid4
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -247,6 +250,7 @@ async def cache_computed_inference(
     # is skipped entirely. In development/test environments without this setting, inference
     # will re-run on every request and results will NOT accumulate in the database.
     if not settings.SYSTEM_SOURCE_ID:
+        logger.debug("Skipping inference cache: SYSTEM_SOURCE_ID not configured")
         return
 
     scope_hash = compute_scope_hash(entity_id, scope_filter)

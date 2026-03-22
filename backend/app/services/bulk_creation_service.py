@@ -22,6 +22,10 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
+# Canonical mapping from LLM confidence level to the float stored in RelationRevision.confidence.
+# Kept at module scope so callers can reference the same values without magic numbers.
+_CONFIDENCE_FLOAT: dict[str, float] = {"high": 0.8, "medium": 0.6, "low": 0.4}
+
 
 class BulkCreationService:
     """
@@ -44,7 +48,7 @@ class BulkCreationService:
         entities: list[ExtractedEntity],
         source_id: UUID,
         user_id: UUID | None = None
-    ) -> SlugEntityMap:
+    ) -> tuple[SlugEntityMap, list[str]]:
         """
         Bulk create entities with their first revisions.
 
@@ -57,7 +61,8 @@ class BulkCreationService:
             user_id: User creating the entities (for provenance)
 
         Returns:
-            Dict mapping entity slug -> entity_id for successfully created entities
+            Tuple of (slug→entity_id mapping for created entities, list of warning strings
+            describing any skipped entities)
 
         Raises:
             Exception: On database errors other than duplicate slugs
@@ -82,6 +87,8 @@ class BulkCreationService:
                         "ui_category_id": None,  # Will be set by frontend/user later
                         "created_with_llm": settings.OPENAI_MODEL,  # Track LLM provenance
                         "created_by_user_id": user_id,
+                        # LLM-created revisions start as drafts pending human review
+                        "status": "draft",
                     }
 
                     # Create first revision
@@ -129,7 +136,7 @@ class BulkCreationService:
             f"skipped {len(warnings)} duplicates"
         )
 
-        return entity_mapping
+        return entity_mapping, warnings
 
     async def bulk_create_relations(
         self,
@@ -137,7 +144,7 @@ class BulkCreationService:
         entity_mapping: SlugEntityMap,
         source_id: UUID,
         user_id: UUID | None = None
-    ) -> tuple[list[ExtractedRelation], list[UUID]]:
+    ) -> tuple[list[ExtractedRelation], list[UUID], list[str]]:
         """
         Bulk create relations with their first revisions and role revisions.
 
@@ -151,10 +158,10 @@ class BulkCreationService:
             user_id: User creating the relations (for provenance)
 
         Returns:
-            List of created relation IDs
+            Tuple of (created ExtractedRelation list, created relation ID list,
+            list of warning strings describing skipped relations)
 
         Raises:
-            ValueError: If subject/object slug not found in entity_mapping
             Exception: On database errors
         """
         created_relations: list[ExtractedRelation] = []
@@ -205,10 +212,12 @@ class BulkCreationService:
                     # Map extraction schema to database schema
                     revision_data = {
                         "kind": extracted.relation_type,  # "treats", "causes", etc.
-                        "confidence": 0.8 if extracted.confidence == "high" else 0.6 if extracted.confidence == "medium" else 0.4,
+                        "confidence": _CONFIDENCE_FLOAT.get(extracted.confidence, 0.4),
                         "notes": {"en": extracted.notes} if extracted.notes else None,
                         "created_with_llm": settings.OPENAI_MODEL,
                         "created_by_user_id": user_id,
+                        # LLM-created revisions start as drafts pending human review
+                        "status": "draft",
                     }
 
                     # Create first revision
@@ -254,4 +263,4 @@ class BulkCreationService:
             f"skipped {len(warnings)} with errors/missing entities"
         )
 
-        return created_relations, relation_ids
+        return created_relations, relation_ids, warnings

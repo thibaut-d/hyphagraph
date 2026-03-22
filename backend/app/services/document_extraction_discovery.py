@@ -277,12 +277,12 @@ async def run_smart_discovery(
         all_results,
         key=lambda item: (item.trust_level, item.relevance_score),
         reverse=True,
-    )[:max_results]
+    )
     return SmartDiscoverySummary(
         entity_slugs=entity_slugs,
         query_used=query,
         total_found=len(sorted_results),
-        results=sorted_results,
+        results=sorted_results[:max_results],
         databases_searched=databases_searched,
     )
 
@@ -360,20 +360,14 @@ async def _find_existing_pmids(
     if not pmids:
         return set()
 
-    requested = {str(p) for p in pmids}
-    # Filter to the current user's sources that have a pmid key — avoids a full table scan
-    # and cross-user contamination. PMID value matching is done in Python for DB portability.
-    stmt = select(SourceRevision.source_metadata).where(
+    requested = [str(p) for p in pmids]
+    # Push both the user scope and the PMID membership filter into SQL to avoid
+    # loading all of the user's sources into Python memory on each discovery call.
+    pmid_col = SourceRevision.source_metadata["pmid"].as_string()
+    stmt = select(pmid_col).where(
         SourceRevision.is_current == True,
         SourceRevision.created_by_user_id == user_id,
-        SourceRevision.source_metadata["pmid"].is_not(None),
+        pmid_col.in_(requested),
     )
     result = await db.execute(stmt)
-    existing_pmids: set[str] = set()
-    for row in result:
-        metadata = row[0]
-        if metadata and isinstance(metadata, dict):
-            pmid = metadata.get("pmid")
-            if pmid and str(pmid) in requested:
-                existing_pmids.add(str(pmid))
-    return existing_pmids
+    return {row[0] for row in result if row[0]}

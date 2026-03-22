@@ -33,6 +33,7 @@ from app.schemas.auth import (
     TokenPair,
     UserRead,
     UserRegister,
+    UserSelfUpdate,
     UserUpdate,
     VerifyEmail,
 )
@@ -143,7 +144,7 @@ async def change_password(
 
 @router.put("/me", response_model=UserRead)
 async def update_profile(
-    payload: UserUpdate,
+    payload: UserSelfUpdate,
     current_user: User = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service),
 ):

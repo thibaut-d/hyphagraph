@@ -44,7 +44,7 @@ class LLMProvider(ABC):
         self,
         prompt: str,
         system_prompt: str | None = None,
-        temperature: float = 0.3,
+        temperature: float | None = None,
         max_tokens: int = 2000,
         **kwargs: JsonValue,
     ) -> LLMResponse:
@@ -71,7 +71,7 @@ class LLMProvider(ABC):
         self,
         prompt: str,
         system_prompt: str | None = None,
-        temperature: float = 0.3,
+        temperature: float | None = None,
         max_tokens: int = 2000,
         **kwargs: JsonValue,
     ) -> JsonObject:

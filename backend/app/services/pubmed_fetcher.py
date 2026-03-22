@@ -174,24 +174,23 @@ class PubMedFetcher:
                 details=f"Request timeout after {self.TIMEOUT_SECONDS}s for PMID {pmid}",
                 context={"pmid": pmid, "timeout_seconds": self.TIMEOUT_SECONDS}
             )
-        except httpx.RequestError as e:
-            logger.error(f"Request error fetching PMID {pmid}: {e}")
+        except httpx.RequestError:
+            logger.exception("Request error fetching PMID %s", pmid)
             raise AppException(
                 status_code=502,
                 error_code=ErrorCode.DOCUMENT_FETCH_FAILED,
                 message="Failed to fetch PubMed article",
-                details=f"Network error: {str(e)}",
+                details="Network connection error",
                 context={"pmid": pmid}
             )
         except AppException:
             raise
-        except Exception as e:
-            logger.error(f"Unexpected error fetching PMID {pmid}: {e}")
+        except Exception:
+            logger.exception("Unexpected error fetching PMID %s", pmid)
             raise AppException(
                 status_code=500,
                 error_code=ErrorCode.INTERNAL_SERVER_ERROR,
                 message="Failed to process PubMed article",
-                details=str(e),
                 context={"pmid": pmid}
             )
 
@@ -325,24 +324,23 @@ class PubMedFetcher:
                 full_text=full_text
             )
 
-        except ET.ParseError as e:
-            logger.error(f"XML parse error for PMID {pmid}: {e}")
+        except ET.ParseError:
+            logger.exception("XML parse error for PMID %s", pmid)
             raise AppException(
                 status_code=500,
                 error_code=ErrorCode.DOCUMENT_PARSE_ERROR,
                 message="Failed to parse PubMed XML",
-                details=str(e),
+                details="Failed to parse response data",
                 context={"pmid": pmid}
             )
         except AppException:
             raise
-        except Exception as e:
-            logger.error(f"Error parsing PubMed XML for PMID {pmid}: {e}")
+        except Exception:
+            logger.exception("Error parsing PubMed XML for PMID %s", pmid)
             raise AppException(
                 status_code=500,
                 error_code=ErrorCode.DOCUMENT_PARSE_ERROR,
                 message="Failed to extract article data",
-                details=str(e),
                 context={"pmid": pmid}
             )
 
@@ -455,24 +453,23 @@ class PubMedFetcher:
                 details=f"Request timeout after {self.TIMEOUT_SECONDS}s",
                 context={"query": query, "timeout_seconds": self.TIMEOUT_SECONDS}
             )
-        except httpx.RequestError as e:
-            logger.error(f"Request error searching PubMed: {e}")
+        except httpx.RequestError:
+            logger.exception("Request error searching PubMed for query %r", query)
             raise AppException(
                 status_code=502,
                 error_code=ErrorCode.DOCUMENT_FETCH_FAILED,
                 message="Failed to search PubMed",
-                details=str(e),
+                details="Network connection error",
                 context={"query": query}
             )
         except AppException:
             raise
-        except Exception as e:
-            logger.error(f"Unexpected error searching PubMed: {e}")
+        except Exception:
+            logger.exception("Unexpected error searching PubMed for query %r", query)
             raise AppException(
                 status_code=500,
                 error_code=ErrorCode.INTERNAL_SERVER_ERROR,
                 message="Failed to process PubMed search",
-                details=str(e),
                 context={"query": query}
             )
 

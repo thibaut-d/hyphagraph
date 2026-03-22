@@ -60,10 +60,20 @@ class UserRead(Schema):
 
 
 class UserUpdate(Schema):
-    """Schema for updating user information."""
+    """Schema for updating user information (admin use only)."""
     email: EmailStr | None = None
     password: str | None = Field(None, min_length=8)
     is_active: bool | None = None
+
+
+class UserSelfUpdate(Schema):
+    """Schema for user self-service profile update.
+
+    Intentionally limited to email only — password changes require
+    current-password verification via POST /auth/change-password, and
+    is_active is an admin-only field.
+    """
+    email: EmailStr | None = None
 
 
 class ChangePassword(Schema):

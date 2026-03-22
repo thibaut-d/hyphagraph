@@ -118,24 +118,23 @@ class UrlFetcher:
                 details=f"Request timeout after {self.TIMEOUT_SECONDS}s",
                 context={"url": url, "timeout_seconds": self.TIMEOUT_SECONDS}
             )
-        except httpx.RequestError as e:
-            logger.error(f"Request error fetching {url}: {e}")
+        except httpx.RequestError:
+            logger.exception("Request error fetching %s", url)
             raise AppException(
                 status_code=502,
                 error_code=ErrorCode.DOCUMENT_FETCH_FAILED,
                 message="Failed to fetch URL",
-                details=str(e),
+                details="Network connection error",
                 context={"url": url}
             )
         except AppException:
             raise
-        except Exception as e:
-            logger.error(f"Unexpected error fetching {url}: {e}")
+        except Exception:
+            logger.exception("Unexpected error fetching %s", url)
             raise AppException(
                 status_code=500,
                 error_code=ErrorCode.INTERNAL_SERVER_ERROR,
                 message="Failed to process URL",
-                details=str(e),
                 context={"url": url}
             )
 

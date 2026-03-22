@@ -13,7 +13,7 @@ from app.schemas.auth import UserRead
 from app.utils.auth import hash_password
 from app.utils.email import generate_verification_token
 from app.utils.errors import ValidationException
-from app.services.user.common import to_user_read, user_not_found
+from app.services.user.common import load_active_refresh_tokens, to_user_read, user_not_found
 
 logger = logging.getLogger(__name__)
 
@@ -131,6 +131,14 @@ async def reset_password(
         user.reset_token = None
         user.reset_token_expires_at = None
         await service.repo.update(user)
+
+        # Revoke all active refresh tokens so existing sessions are invalidated
+        # after a password reset (prevents session fixation attacks).
+        active_tokens = await load_active_refresh_tokens(service.db, user.id)
+        for token in active_tokens:
+            token.is_revoked = True
+            token.revoked_at = datetime.now(timezone.utc)
+
         await service.db.commit()
         await service.db.refresh(user)
         return to_user_read(user)

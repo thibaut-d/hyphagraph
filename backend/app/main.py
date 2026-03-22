@@ -17,6 +17,7 @@ from app.api import (
     inferences,
     relations,
     relation_types,
+    revision_review,
     search,
     sources,
     users,
@@ -114,6 +115,7 @@ app.include_router(relation_types.router, prefix="/api/relation-types", tags=["r
 app.include_router(export.router, prefix="/api/export", tags=["export"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 app.include_router(extraction_review.router, prefix="/api")
+app.include_router(revision_review.router, prefix="/api")
 app.include_router(import_routes.router, prefix="/api")
 
 # --- Test Helpers (only in testing mode) ---

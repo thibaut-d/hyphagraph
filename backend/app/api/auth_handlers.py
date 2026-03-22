@@ -15,6 +15,7 @@ from app.schemas.auth import (
     TokenPair,
     UserRead,
     UserRegister,
+    UserSelfUpdate,
     UserUpdate,
     VerifyEmail,
 )
@@ -180,8 +181,11 @@ async def change_current_password(
         raise
 
 
-async def update_current_profile(payload: UserUpdate, current_user: User, user_service: UserService) -> UserRead:
-    return await user_service.update(current_user.id, payload)
+async def update_current_profile(payload: UserSelfUpdate, current_user: User, user_service: UserService) -> UserRead:
+    # Construct a UserUpdate with only the email field — password and is_active
+    # are admin-only and must not be changeable through the self-service endpoint.
+    admin_payload = UserUpdate(email=payload.email)
+    return await user_service.update(current_user.id, admin_payload)
 
 
 async def deactivate_current_account(current_user: User, user_service: UserService) -> None:
@@ -219,20 +223,10 @@ async def resend_verification(
     send_verification_email,
 ) -> None:
     user = await user_service.get_by_email(payload.email)
-    if not user:
-        raise AppException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            error_code=ErrorCode.USER_NOT_FOUND,
-            message="User not found",
-            details=f"No user found with email '{payload.email}'",
-            context={"email": payload.email},
-        )
-
-    if user.is_verified:
-        raise ValidationException(
-            message="Email already verified",
-            details="This email address has already been verified",
-        )
+    # Silent no-op for unknown emails and already-verified accounts — mirrors
+    # the password-reset flow and prevents email enumeration via differing responses.
+    if not user or user.is_verified:
+        return None
 
     token = await user_service.create_verification_token(user.id)
     if settings.EMAIL_ENABLED:

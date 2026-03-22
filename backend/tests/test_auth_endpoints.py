@@ -489,20 +489,12 @@ class TestEmailVerification:
 
     @pytest.mark.asyncio
     async def test_resend_verification_already_verified(self):
-        """Resend verification for already verified user should fail."""
+        """Resend verification for already verified user is silently ignored (prevents enumeration)."""
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             with patch("app.api.auth.UserService") as mock_service_class:
                 mock_service = AsyncMock()
                 mock_service_class.return_value = mock_service
 
-                verified_user = User(
-                    id=uuid4(),
-                    email="test@example.com",
-                    is_verified=True,
-                    is_active=True,
-                    is_superuser=False,
-                    created_at=datetime.now(timezone.utc),
-                )
                 # Mock is_verified check - need to return actual User object
                 user_obj = MagicMock()
                 user_obj.is_verified = True
@@ -510,10 +502,29 @@ class TestEmailVerification:
 
                 response = await client.post(
                     "/api/auth/resend-verification",
-                    json={"email": "test@example.com"}
+                    json={"email": "verified@example.com"}
                 )
 
-                assert response.status_code == status.HTTP_400_BAD_REQUEST
+                assert response.status_code == status.HTTP_204_NO_CONTENT
+                mock_service.create_verification_token.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_resend_verification_unknown_email(self):
+        """Resend verification for unknown email is silently ignored (prevents enumeration)."""
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            with patch("app.api.auth.UserService") as mock_service_class:
+                mock_service = AsyncMock()
+                mock_service_class.return_value = mock_service
+
+                mock_service.get_by_email.return_value = None
+
+                response = await client.post(
+                    "/api/auth/resend-verification",
+                    json={"email": "unknown@example.com"}
+                )
+
+                assert response.status_code == status.HTTP_204_NO_CONTENT
+                mock_service.create_verification_token.assert_not_called()
 
 
 class TestPasswordReset:

@@ -255,7 +255,7 @@ class TestSaveExtractionToGraph:
                 assert entity_mapping["aspirin"] == created_entity_id
                 assert entity_mapping["pain"] == linked_entity_id
                 assert relations[0].relation_type == "treats"
-                return [created_relation_id]
+                return (relations, [created_relation_id])
 
         request = SimpleNamespace(
             entities_to_create=[build_extracted_entity("aspirin")],

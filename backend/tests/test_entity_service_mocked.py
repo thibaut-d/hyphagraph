@@ -48,7 +48,7 @@ def sample_revision():
     revision.id = uuid4()
     revision.entity_id = uuid4()
     revision.slug = "aspirin"
-    revision.kind = "drug"
+
     revision.summary = {"en": "Pain reliever"}
     revision.is_current = True
     revision.created_at = datetime.now(timezone.utc)
@@ -86,7 +86,6 @@ class TestEntityServiceMocked:
 
         # Assert
         assert result.slug == "aspirin"
-        assert result.kind == "drug"
         assert mock_db.commit.called
         assert mock_db.add.called
 
@@ -151,7 +150,6 @@ class TestEntityServiceMocked:
         mock_to_read = MagicMock(return_value=EntityRead(
             id=sample_entity.id,
             slug=sample_revision.slug,
-            kind=sample_revision.kind,
             summary=sample_revision.summary,
             created_at=sample_entity.created_at,
         ))

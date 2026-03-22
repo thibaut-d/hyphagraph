@@ -8,6 +8,7 @@ import logging
 
 from app.llm.client import get_llm_provider
 from app.utils.confidence_filter import filter_by_confidence
+from app.services.batch_extraction_orchestrator import BatchExtractionOrchestrator
 from app.llm.prompts import (
     MEDICAL_KNOWLEDGE_SYSTEM_PROMPT,
     RelationPromptEntity,
@@ -23,6 +24,7 @@ from app.llm.schemas import (
     validate_relation_extraction,
     validate_claim_extraction,
 )
+from app.services.extraction_validation_service import ValidationResult
 from app.services.extraction_validation_service import (
     ExtractionValidationService,
     ValidationLevel,
@@ -31,6 +33,22 @@ from app.services.relation_type_service import RelationTypeService
 from app.services.semantic_role_service import SemanticRoleService
 
 logger = logging.getLogger(__name__)
+
+# Module-level cache for relation types prompt text. Populated on first DB hit and
+# reused for the lifetime of the process. Invalidate by restarting the server after
+# relation type changes (acceptable for an admin-only configuration surface).
+_RELATION_TYPES_PROMPT_CACHE: str | None = None
+
+# Static fallback used when the DB is unavailable. Lists every type from RelationType
+# in llm/schemas.py so the LLM always has an explicit, coherent enumeration.
+_STATIC_RELATION_TYPES_FALLBACK = """\
+Available relation_type values (use exactly one):
+  treats, causes, prevents, increases_risk, decreases_risk, mechanism,
+  contraindicated, interacts_with, metabolized_by, biomarker_for,
+  affects_population, measures, other
+
+CRITICAL: relation_type MUST be one of the values listed above. If unsure, use 'other'.\
+"""
 
 
 class ExtractionService:
@@ -71,7 +89,6 @@ class ExtractionService:
         self.max_tokens = max_tokens
         self.system_prompt = MEDICAL_KNOWLEDGE_SYSTEM_PROMPT
         self.db = db
-        self._relation_types_cache = None  # Cache relation types for this service instance
         self.relation_type_service = (
             relation_type_service or RelationTypeService(db)
             if db else relation_type_service
@@ -93,26 +110,28 @@ class ExtractionService:
         Generate dynamic relation types prompt from database.
 
         Returns formatted string with all active relation types from DB.
-        Falls back to hardcoded types if database not available.
+        Uses a module-level cache so the DB is only hit once per process lifetime.
+        Falls back to a static enumeration if the database is unavailable.
         """
-        if self._relation_types_cache:
-            return self._relation_types_cache
+        global _RELATION_TYPES_PROMPT_CACHE
+
+        if _RELATION_TYPES_PROMPT_CACHE:
+            return _RELATION_TYPES_PROMPT_CACHE
 
         if self.db:
             try:
                 if not self.relation_type_service:
                     raise RuntimeError("Relation type service unavailable")
                 prompt_text = await self.relation_type_service.get_for_llm_prompt()
-                self._relation_types_cache = prompt_text
+                _RELATION_TYPES_PROMPT_CACHE = prompt_text
                 logger.info("Using DYNAMIC relation types from database")
                 return prompt_text
             except Exception as e:
                 logger.warning(f"Failed to load dynamic relation types, using fallback: {e}")
 
-        # Fallback to static prompt if database not available
+        # Fallback: explicit static enumeration so the LLM always has a valid list.
         logger.warning("Using STATIC relation types (database not available)")
-        return """CRITICAL: relation_type MUST be one of the types in the list above.
-   If unsure, use 'other'."""
+        return _STATIC_RELATION_TYPES_FALLBACK
 
     async def _get_semantic_roles_prompt(self) -> str:
         """
@@ -290,3 +309,57 @@ class ExtractionService:
         except Exception as e:
             logger.error(f"Claim extraction failed: {e}")
             raise
+
+    async def extract_batch(
+        self,
+        text: str,
+        min_confidence: str | None = None,
+        min_evidence_strength: str | None = None,
+    ) -> tuple[list[ExtractedEntity], list[ExtractedRelation], list[ExtractedClaim]]:
+        """
+        Extract entities, relations, and claims in one batch.
+
+        Delegates to BatchExtractionOrchestrator for efficient single-pass LLM extraction.
+        """
+        orchestrator = BatchExtractionOrchestrator(
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
+            enable_validation=self.enable_validation,
+            db=self.db,
+        )
+        return await orchestrator.extract_batch(
+            text=text,
+            min_confidence=min_confidence,
+            min_evidence_strength=min_evidence_strength,
+        )
+
+    async def extract_batch_with_validation_results(
+        self,
+        text: str,
+        min_confidence: str | None = None,
+        min_evidence_strength: str | None = None,
+    ) -> tuple[
+        list[ExtractedEntity],
+        list[ExtractedRelation],
+        list[ExtractedClaim],
+        list[ValidationResult],
+        list[ValidationResult],
+        list[ValidationResult],
+    ]:
+        """
+        Extract entities, relations, and claims with per-item validation results.
+
+        Delegates to BatchExtractionOrchestrator. Used by the human-in-the-loop
+        review workflow where validation metadata must be stored alongside each item.
+        """
+        orchestrator = BatchExtractionOrchestrator(
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
+            enable_validation=self.enable_validation,
+            db=self.db,
+        )
+        return await orchestrator.extract_batch_with_validation_results(
+            text=text,
+            min_confidence=min_confidence,
+            min_evidence_strength=min_evidence_strength,
+        )

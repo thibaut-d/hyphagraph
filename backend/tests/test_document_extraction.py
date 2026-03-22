@@ -496,61 +496,35 @@ class TestUrlExtraction:
             mock_fetcher.extract_pmid_from_url = MagicMock(return_value="17333346")
             mock_fetcher.fetch_by_pmid = AsyncMock(return_value=MOCK_PREGABALIN_ARTICLE)
 
-            # Mock extraction service
-            with patch("app.api.document_extraction_routes.document.ExtractionService") as mock_extraction_class:
-                mock_extraction = mock_extraction_class.return_value
-                mock_extraction.extract_batch_with_validation_results = AsyncMock(
-                    return_value=(
-                        [
-                            {
-                                "slug": "pregabalin",
-                                "summary": "Anticonvulsant drug",
-                                "category": "drug",
-                                "confidence": "high",
-                                "text_span": "Pregabalin",
-                            }
-                        ],
-                        [
-                            {
-                                "relation_type": "treats",
-                                "roles": [
-                                    {"entity_slug": "pregabalin", "role_type": "agent"},
-                                    {"entity_slug": "fibromyalgia", "role_type": "target"},
-                                ],
-                                "confidence": "high",
-                                "text_span": "Pregabalin treats fibromyalgia",
-                            }
-                        ],
-                        [],
-                        [],
-                        [],
-                        [],
-                    )
+            # Mock build_extraction_preview to avoid real LLM extraction
+            from app.llm.schemas import ExtractedEntity as EE, ExtractedRelation as ER, ExtractedRole as ERo
+            from app.schemas.source import DocumentExtractionPreview
+            from app.schemas.source import EntityLinkMatch
+            mock_preview = DocumentExtractionPreview(
+                source_id=mock_source.id,
+                entities=[EE(slug="pregabalin", summary="Anticonvulsant drug", category="drug", confidence="high", text_span="Pregabalin")],
+                relations=[ER(relation_type="treats", roles=[ERo(entity_slug="pregabalin", role_type="agent"), ERo(entity_slug="fibromyalgia", role_type="target")], confidence="high", text_span="Pregabalin treats fibromyalgia")],
+                entity_count=1,
+                relation_count=1,
+                link_suggestions=[],
+                needs_review_count=0,
+                auto_verified_count=1,
+                avg_validation_score=1.0,
+            )
+            with patch(
+                "app.api.document_extraction_routes.document.build_extraction_preview",
+                new=AsyncMock(return_value=mock_preview),
+            ):
+                # Act
+                request = UrlExtractionRequest(
+                    url="https://pubmed.ncbi.nlm.nih.gov/17333346/"
                 )
-
-                with patch(
-                    "app.services.extraction_review_service.ExtractionReviewService"
-                ) as mock_review_class:
-                    mock_review = mock_review_class.return_value
-                    mock_review.stage_batch = AsyncMock(return_value=[])
-
-                    # Mock entity linking service
-                    with patch(
-                        "app.api.document_extraction_routes.document.EntityLinkingService"
-                    ) as mock_linking_class:
-                        mock_linking = mock_linking_class.return_value
-                        mock_linking.find_entity_matches = AsyncMock(return_value=[])
-
-                        # Act
-                        request = UrlExtractionRequest(
-                            url="https://pubmed.ncbi.nlm.nih.gov/17333346/"
-                        )
-                        response = await extract_from_url(
-                            source_id=mock_source.id,
-                            request=request,
-                            db=db_session,
-                            current_user=test_user,
-                        )
+                response = await extract_from_url(
+                    source_id=mock_source.id,
+                    request=request,
+                    db=db_session,
+                    current_user=test_user,
+                )
 
         # Assert
         assert response.source_id == mock_source.id

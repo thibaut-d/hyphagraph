@@ -146,11 +146,10 @@ async def smart_discovery(
         )
     except (AppException, ValidationException):
         raise
-    except Exception as error:
-        logger.error(f"Smart discovery failed: {error}")
+    except Exception:
+        logger.exception("Smart discovery failed for entities %s", request.entity_slugs)
         raise_internal_api_exception(
             message="Failed to perform smart discovery",
-            details=str(error),
             context={"entity_slugs": request.entity_slugs},
         )
 
@@ -196,11 +195,10 @@ async def bulk_search_pubmed(
         )
     except (AppException, ValidationException):
         raise
-    except Exception as error:
-        logger.error(f"PubMed bulk search failed: {error}")
+    except Exception:
+        logger.exception("PubMed bulk search failed for query %r", query)
         raise_internal_api_exception(
             message="Failed to search PubMed",
-            details=str(error),
             context={"query": query},
         )
 
@@ -250,10 +248,9 @@ async def bulk_import_pubmed(
         )
     except (AppException, ValidationException):
         raise
-    except Exception as error:
-        logger.error(f"PubMed bulk import failed: {error}")
+    except Exception:
+        logger.exception("PubMed bulk import failed for %d PMIDs", len(request.pmids))
         raise_internal_api_exception(
             message="Failed to import PubMed articles",
-            details=str(error),
             context={"pmid_count": len(request.pmids)},
         )

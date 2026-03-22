@@ -52,6 +52,14 @@ Command workflows:
 - `docs/commands/review.md` for review work
 - `docs/commands/audit.md` for structured audits
 
+Release gates (non-negotiable):
+
+- **Never declare, label, tag, or otherwise call this project "v1", "v1.0", "stable", "production-ready", or any equivalent milestone** unless the user has explicitly stated both of the following in the same conversation:
+  1. "I have tested it myself" (or equivalent confirmation of extensive personal hands-on testing), AND
+  2. "Human review is complete" (or equivalent confirmation that a human code/UX review has been conducted).
+- AI-generated test results, passing CI, and audit sign-offs do **not** satisfy these gates. They are necessary but not sufficient.
+- If asked to prepare a release, cut a changelog, bump a version, or write release notes toward v1, remind the user of these gates before proceeding.
+
 Execution notes:
 
 - For non-trivial work, identify impacted modules, make a short plan, and state validation.

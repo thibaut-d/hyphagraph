@@ -126,13 +126,18 @@ class TestAuthentication:
 
     @pytest.mark.asyncio
     async def test_authenticate_nonexistent_user(self, user_service, mock_user_repo):
-        """Authentication with non-existent user should fail."""
+        """Authentication with non-existent user should fail; bcrypt still runs (timing protection)."""
         mock_user_repo.get_by_email.return_value = None
 
-        with pytest.raises(HTTPException) as exc_info:
-            await user_service.authenticate("nonexistent@example.com", "password")
+        # verify_password is still called (against the dummy hash) to prevent timing attacks
+        with patch("app.services.user_service.verify_password") as mock_verify:
+            mock_verify.return_value = False
+
+            with pytest.raises(HTTPException) as exc_info:
+                await user_service.authenticate("nonexistent@example.com", "password")
 
         assert exc_info.value.status_code == 401
+        mock_verify.assert_called_once()  # Must always be called, even for unknown users
 
     @pytest.mark.asyncio
     async def test_authenticate_inactive_user(self, user_service, mock_user_repo, sample_user, mock_db):
@@ -153,13 +158,15 @@ class TestPasswordManagement:
 
     @pytest.mark.asyncio
     async def test_change_password_success(self, user_service, mock_user_repo, sample_user, mock_db):
-        """Successfully change password with correct current password."""
+        """Successfully change password with correct current password; active tokens are revoked."""
         mock_user_repo.get_by_id.return_value = sample_user
 
         with patch("app.services.user_service.verify_password") as mock_verify, \
-             patch("app.services.user_service.hash_password") as mock_hash:
+             patch("app.services.user_service.hash_password") as mock_hash, \
+             patch("app.services.user.account.load_active_refresh_tokens", new_callable=AsyncMock) as mock_load_tokens:
             mock_verify.return_value = True
             mock_hash.return_value = "new_hashed_password"
+            mock_load_tokens.return_value = []  # No active tokens to revoke
 
             await user_service.change_password(
                 sample_user.id,
@@ -169,6 +176,7 @@ class TestPasswordManagement:
 
         mock_db.commit.assert_called_once()
         mock_user_repo.update.assert_called_once()
+        mock_load_tokens.assert_called_once()  # Revocation must always be attempted
 
     @pytest.mark.asyncio
     async def test_change_password_wrong_current(self, user_service, mock_user_repo, sample_user):

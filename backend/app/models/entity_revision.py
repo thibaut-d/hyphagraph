@@ -51,6 +51,10 @@ class EntityRevision(Base, UUIDMixin):
         nullable=True,
     )
 
+    # Review status: 'draft' for LLM-created revisions pending human confirmation,
+    # 'confirmed' for manually-entered or reviewed revisions.
+    status: Mapped[str] = mapped_column(String, nullable=False, default="confirmed")
+
     # Revision metadata
     created_at: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True),

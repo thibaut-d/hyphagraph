@@ -39,6 +39,7 @@ class TestExplainEndpoint:
         relation_service = RelationService(db_session)
 
         entity = await entity_service.create(EntityWrite(slug=ScientificEntities.PREGABALIN["slug"]))
+        condition_entity = await entity_service.create(EntityWrite(slug="neuropathic-pain"))
         source = await source_service.create(
             SourceWrite(
                 kind="study",
@@ -53,9 +54,13 @@ class TestExplainEndpoint:
         await relation_service.create(
             RelationWrite(
                 source_id=str(source.id),
+                kind="effect",
                 confidence=0.9,
                 direction="supports",
-                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
+                roles=[
+                    RoleWrite(role_type="drug", entity_id=str(entity.id)),
+                    RoleWrite(role_type="condition", entity_id=str(condition_entity.id)),
+                ],
             )
         )
 
@@ -97,6 +102,7 @@ class TestExplainEndpoint:
         relation_service = RelationService(db_session)
 
         entity = await entity_service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"]))
+        condition_entity = await entity_service.create(EntityWrite(slug="pain-adults"))
         source = await source_service.create(
             SourceWrite(kind="study", title="Test", url="https://example.com/test")
         )
@@ -105,10 +111,14 @@ class TestExplainEndpoint:
         await relation_service.create(
             RelationWrite(
                 source_id=str(source.id),
+                kind="effect",
                 confidence=0.9,
                 direction="supports",
                 scope={"population": "adults"},
-                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
+                roles=[
+                    RoleWrite(role_type="drug", entity_id=str(entity.id)),
+                    RoleWrite(role_type="condition", entity_id=str(condition_entity.id)),
+                ],
             )
         )
 
@@ -138,6 +148,7 @@ class TestExplainEndpoint:
         relation_service = RelationService(db_session)
 
         entity = await entity_service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"]))
+        condition_entity = await entity_service.create(EntityWrite(slug="pain-children"))
         source = await source_service.create(
             SourceWrite(kind="study", title="Test", url="https://example.com/test")
         )
@@ -146,10 +157,14 @@ class TestExplainEndpoint:
         await relation_service.create(
             RelationWrite(
                 source_id=str(source.id),
+                kind="effect",
                 confidence=0.9,
                 direction="supports",
                 scope={"population": "adults"},
-                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
+                roles=[
+                    RoleWrite(role_type="drug", entity_id=str(entity.id)),
+                    RoleWrite(role_type="condition", entity_id=str(condition_entity.id)),
+                ],
             )
         )
 
@@ -176,6 +191,7 @@ class TestExplainEndpoint:
         relation_service = RelationService(db_session)
 
         entity = await entity_service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"]))
+        condition_entity = await entity_service.create(EntityWrite(slug="test-condition-json"))
         source = await source_service.create(
             SourceWrite(kind="study", title="Test", url="https://example.com/test")
         )
@@ -183,9 +199,13 @@ class TestExplainEndpoint:
         await relation_service.create(
             RelationWrite(
                 source_id=str(source.id),
+                kind="effect",
                 confidence=0.9,
                 direction="supports",
-                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
+                roles=[
+                    RoleWrite(role_type="drug", entity_id=str(entity.id)),
+                    RoleWrite(role_type="condition", entity_id=str(condition_entity.id)),
+                ],
             )
         )
 
@@ -212,6 +232,7 @@ class TestExplainEndpoint:
         relation_service = RelationService(db_session)
 
         entity = await entity_service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"]))
+        condition_entity = await entity_service.create(EntityWrite(slug="test-condition-dict"))
         source = await source_service.create(
             SourceWrite(kind="study", title="Test", url="https://example.com/test")
         )
@@ -219,9 +240,13 @@ class TestExplainEndpoint:
         await relation_service.create(
             RelationWrite(
                 source_id=str(source.id),
+                kind="effect",
                 confidence=0.9,
                 direction="supports",
-                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
+                roles=[
+                    RoleWrite(role_type="drug", entity_id=str(entity.id)),
+                    RoleWrite(role_type="condition", entity_id=str(condition_entity.id)),
+                ],
             )
         )
 
@@ -248,6 +273,7 @@ class TestExplainEndpoint:
         relation_service = RelationService(db_session)
 
         entity = await entity_service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"]))
+        condition_entity = await entity_service.create(EntityWrite(slug="test-condition-role"))
         source = await source_service.create(
             SourceWrite(kind="study", title="Test", url="https://example.com/test")
         )
@@ -256,9 +282,13 @@ class TestExplainEndpoint:
         await relation_service.create(
             RelationWrite(
                 source_id=str(source.id),
+                kind="effect",
                 confidence=0.9,
                 direction="supports",
-                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
+                roles=[
+                    RoleWrite(role_type="drug", entity_id=str(entity.id)),
+                    RoleWrite(role_type="condition", entity_id=str(condition_entity.id)),
+                ],
             )
         )
 
@@ -312,6 +342,7 @@ class TestExplainEndpoint:
         relation_service = RelationService(db_session)
 
         entity = await entity_service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"]))
+        condition_entity = await entity_service.create(EntityWrite(slug="test-condition-multi"))
 
         # Create 3 sources
         for i in range(3):
@@ -323,9 +354,13 @@ class TestExplainEndpoint:
             await relation_service.create(
                 RelationWrite(
                     source_id=str(source.id),
+                    kind="effect",
                     confidence=0.8,
                     direction="supports",
-                    roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
+                    roles=[
+                        RoleWrite(role_type="drug", entity_id=str(entity.id)),
+                        RoleWrite(role_type="condition", entity_id=str(condition_entity.id)),
+                    ],
                 )
             )
 
@@ -356,6 +391,7 @@ class TestExplainEndpoint:
         relation_service = RelationService(db_session)
 
         entity = await entity_service.create(EntityWrite(slug=ScientificEntities.GABAPENTIN["slug"]))
+        condition_entity = await entity_service.create(EntityWrite(slug="test-condition-struct"))
         source = await source_service.create(
             SourceWrite(kind="study", title="Test", url="https://example.com/test")
         )
@@ -363,9 +399,13 @@ class TestExplainEndpoint:
         await relation_service.create(
             RelationWrite(
                 source_id=str(source.id),
+                kind="effect",
                 confidence=0.9,
                 direction="supports",
-                roles=[RoleWrite(role_type="drug", entity_id=str(entity.id))],
+                roles=[
+                    RoleWrite(role_type="drug", entity_id=str(entity.id)),
+                    RoleWrite(role_type="condition", entity_id=str(condition_entity.id)),
+                ],
             )
         )
 

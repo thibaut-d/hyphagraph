@@ -30,7 +30,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import WarningIcon from "@mui/icons-material/Warning";
 import InfoIcon from "@mui/icons-material/Info";
 
-import { getExplanation, ExplanationRead } from "../api/explanations";
+import { getExplanation, ExplanationRead, formatExplanationSummary } from "../api/explanations";
 import { EvidenceTrace } from "../components/EvidenceTrace";
 import { useNotification } from "../notifications/NotificationContext";
 import { useAsyncResource } from "../hooks/useAsyncResource";
@@ -179,7 +179,7 @@ export function ExplanationView() {
             {t("explanation.summary_title", "Summary")}
           </Typography>
         </Stack>
-        <Typography variant="body1">{explanation.summary}</Typography>
+        <Typography variant="body1">{formatExplanationSummary(explanation.summary, t)}</Typography>
       </Paper>
 
       {/* Confidence Breakdown */}

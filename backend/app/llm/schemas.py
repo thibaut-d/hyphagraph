@@ -273,14 +273,12 @@ class EntityLinkingResponse(BaseModel):
 # Helper Functions for Validation
 # =============================================================================
 
-def validate_entity_extraction(
-    data: JsonObject | list[JsonValue],
-) -> EntityExtractionResponse:
+def validate_entity_extraction(data: JsonObject) -> EntityExtractionResponse:
     """
     Validate and parse entity extraction response from LLM.
 
     Args:
-        data: Raw JSON response from LLM
+        data: Raw JSON response from LLM (must be a JSON object with "entities" key)
 
     Returns:
         Validated EntityExtractionResponse
@@ -288,28 +286,16 @@ def validate_entity_extraction(
     Raises:
         ValidationError: If data doesn't match schema
     """
-    # Handle case where LLM returns array directly instead of {"entities": [...]}
-    if isinstance(data, list):
-        data = {"entities": data}
-
     return EntityExtractionResponse.model_validate(data)
 
 
-def validate_relation_extraction(
-    data: JsonObject | list[JsonValue],
-) -> RelationExtractionResponse:
+def validate_relation_extraction(data: JsonObject) -> RelationExtractionResponse:
     """Validate and parse relation extraction response from LLM."""
-    if isinstance(data, list):
-        data = {"relations": data}
-
     return RelationExtractionResponse.model_validate(data)
 
 
-def validate_claim_extraction(data: JsonObject | list[JsonValue]) -> ClaimExtractionResponse:
+def validate_claim_extraction(data: JsonObject) -> ClaimExtractionResponse:
     """Validate and parse claim extraction response from LLM."""
-    if isinstance(data, list):
-        data = {"claims": data}
-
     return ClaimExtractionResponse.model_validate(data)
 
 
