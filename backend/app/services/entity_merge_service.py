@@ -16,6 +16,7 @@ from app.models.entity import Entity
 from app.models.entity_merge_record import EntityMergeRecord
 from app.models.entity_revision import EntityRevision
 from app.models.entity_term import EntityTerm
+from app.models.relation_revision import RelationRevision
 from app.models.relation_role_revision import RelationRoleRevision
 from app.schemas.entity_merge import AutoMergeAction, EntityMergeResult
 
