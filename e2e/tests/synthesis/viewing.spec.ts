@@ -62,14 +62,16 @@ test.describe('Synthesis View', () => {
     await page.goto(`/entities/${entityId}`);
     await page.waitForLoadState('networkidle');
 
-    // There should be a link to the synthesis view
+    // Synthesis link must be reachable from entity detail — if absent, use skip with reason
     const synthesisLink = page.getByRole('link', { name: /synthesis/i }).or(
       page.getByRole('button', { name: /synthesis/i })
     );
-    if (await synthesisLink.isVisible({ timeout: 3000 })) {
-      await synthesisLink.click();
-      await expect(page).toHaveURL(new RegExp(`/entities/${entityId}/synthesis`));
+    if (!await synthesisLink.isVisible({ timeout: 3000 })) {
+      test.skip(true, 'Synthesis link not present on entity detail page');
+      return;
     }
+    await synthesisLink.click();
+    await expect(page).toHaveURL(new RegExp(`/entities/${entityId}/synthesis`));
   });
 
   test('should label synthesis as computed, not authored', async ({ page }) => {
@@ -103,9 +105,11 @@ test.describe('Synthesis View', () => {
     const backButton = page.getByRole('button', { name: /back/i }).or(
       page.getByRole('link', { name: /back|entity/i })
     );
-    if (await backButton.first().isVisible({ timeout: 3000 })) {
-      await backButton.first().click();
-      await expect(page).toHaveURL(new RegExp(`/entities/${entityId}$`));
+    if (!await backButton.first().isVisible({ timeout: 3000 })) {
+      test.skip(true, 'Back button not present on synthesis page');
+      return;
     }
+    await backButton.first().click();
+    await expect(page).toHaveURL(new RegExp(`/entities/${entityId}$`));
   });
 });

@@ -36,9 +36,11 @@ test.describe('Source Bulk Import', () => {
     await page.waitForLoadState('domcontentloaded');
 
     const bibtexOption = page.locator('text=/bibtex|bib/i').first();
-    if (await bibtexOption.isVisible({ timeout: 3000 })) {
-      await expect(bibtexOption).toBeVisible();
+    if (!await bibtexOption.isVisible({ timeout: 3000 })) {
+      test.skip(true, 'BibTeX format option not present in this environment');
+      return;
     }
+    await expect(bibtexOption).toBeVisible();
   });
 
   test('should support RIS format selection', async ({ page }) => {
@@ -46,9 +48,11 @@ test.describe('Source Bulk Import', () => {
     await page.waitForLoadState('domcontentloaded');
 
     const risOption = page.locator('text=/ris/i').first();
-    if (await risOption.isVisible({ timeout: 3000 })) {
-      await expect(risOption).toBeVisible();
+    if (!await risOption.isVisible({ timeout: 3000 })) {
+      test.skip(true, 'RIS format option not present in this environment');
+      return;
     }
+    await expect(risOption).toBeVisible();
   });
 
   test('should support JSON format selection', async ({ page }) => {
@@ -56,9 +60,11 @@ test.describe('Source Bulk Import', () => {
     await page.waitForLoadState('domcontentloaded');
 
     const jsonOption = page.locator('text=/json/i').first();
-    if (await jsonOption.isVisible({ timeout: 3000 })) {
-      await expect(jsonOption).toBeVisible();
+    if (!await jsonOption.isVisible({ timeout: 3000 })) {
+      test.skip(true, 'JSON format option not present in this environment');
+      return;
     }
+    await expect(jsonOption).toBeVisible();
   });
 
   test('should preview a valid JSON file before committing', async ({ page }) => {

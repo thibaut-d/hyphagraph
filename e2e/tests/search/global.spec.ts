@@ -24,12 +24,14 @@ test.describe('Global Search', () => {
 
   test('should be accessible from the main navigation', async ({ page }) => {
     await page.goto('/');
-    // Search link or icon in the nav
+    // Search link or icon in the nav — optional UI element, skip if not present
     const searchNavLink = page.getByRole('link', { name: /search/i }).first();
-    if (await searchNavLink.isVisible({ timeout: 3000 })) {
-      await searchNavLink.click();
-      await expect(page).toHaveURL(/\/search/);
+    if (!await searchNavLink.isVisible({ timeout: 3000 })) {
+      test.skip(true, 'Search nav link not present in this environment');
+      return;
     }
+    await searchNavLink.click();
+    await expect(page).toHaveURL(/\/search/);
   });
 
   test('should return entity results matching a query', async ({ page }) => {
@@ -44,15 +46,14 @@ test.describe('Global Search', () => {
     await page.goto('/search');
     await page.waitForLoadState('networkidle');
 
+    // Search input must always be present at /search
     const searchInput = page.getByRole('searchbox').or(page.getByPlaceholder(/search/i)).first();
-    if (await searchInput.isVisible({ timeout: 5000 })) {
-      await searchInput.fill(entitySlug);
-      await page.waitForTimeout(800); // debounce
+    await expect(searchInput).toBeVisible({ timeout: 5000 });
+    await searchInput.fill(entitySlug);
+    await page.waitForTimeout(800); // debounce
 
-      // Should show results containing the entity
-      const result = page.locator(`text=${entitySlug}`).first();
-      await expect(result).toBeVisible({ timeout: 10000 });
-    }
+    // Should show results containing the entity
+    await expect(page.locator(`text=${entitySlug}`).first()).toBeVisible({ timeout: 10000 });
   });
 
   test('should navigate to entity detail when result is clicked', async ({ page }) => {
@@ -66,17 +67,16 @@ test.describe('Global Search', () => {
     await page.goto('/search');
     await page.waitForLoadState('networkidle');
 
+    // Search input must always be present at /search
     const searchInput = page.getByRole('searchbox').or(page.getByPlaceholder(/search/i)).first();
-    if (await searchInput.isVisible({ timeout: 5000 })) {
-      await searchInput.fill(entitySlug);
-      await page.waitForTimeout(800);
+    await expect(searchInput).toBeVisible({ timeout: 5000 });
+    await searchInput.fill(entitySlug);
+    await page.waitForTimeout(800);
 
-      const result = page.locator(`text=${entitySlug}`).first();
-      if (await result.isVisible({ timeout: 5000 })) {
-        await result.click();
-        await expect(page).toHaveURL(/\/entities\/[a-f0-9-]+/);
-      }
-    }
+    const result = page.locator(`text=${entitySlug}`).first();
+    await expect(result).toBeVisible({ timeout: 10000 });
+    await result.click();
+    await expect(page).toHaveURL(/\/entities\/[a-f0-9-]+/);
   });
 
   test('should return source results matching a query', async ({ page }) => {
@@ -91,16 +91,14 @@ test.describe('Global Search', () => {
     await page.goto('/search');
     await page.waitForLoadState('networkidle');
 
+    // Search input must always be present at /search
     const searchInput = page.getByRole('searchbox').or(page.getByPlaceholder(/search/i)).first();
-    if (await searchInput.isVisible({ timeout: 5000 })) {
-      await searchInput.fill(sourceTitle.substring(0, 20));
-      await page.waitForTimeout(800);
+    await expect(searchInput).toBeVisible({ timeout: 5000 });
+    await searchInput.fill(sourceTitle.substring(0, 20));
+    await page.waitForTimeout(800);
 
-      const result = page.locator(`text=${sourceTitle}`).first();
-      if (await result.isVisible({ timeout: 5000 })) {
-        await expect(result).toBeVisible();
-      }
-    }
+    // Source must appear in results
+    await expect(page.locator(`text=${sourceTitle}`).first()).toBeVisible({ timeout: 10000 });
   });
 
   test('should show autocomplete results from the nav search bar', async ({ page }) => {

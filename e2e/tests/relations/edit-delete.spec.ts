@@ -89,11 +89,10 @@ test.describe('Relation Edit and Delete', () => {
     await page.goto(`/relations/${relationId}/edit`);
     await page.waitForLoadState('domcontentloaded');
 
-    // The kind field should be pre-filled
+    // The kind field must be pre-filled — relation was seeded with kind='mentions'
     const kindField = page.getByLabel(/relation kind|kind/i);
-    if (await kindField.isVisible({ timeout: 3000 })) {
-      await expect(kindField).toHaveValue('mentions');
-    }
+    await expect(kindField).toBeVisible({ timeout: 5000 });
+    await expect(kindField).toHaveValue('mentions');
   });
 
   test('should save a relation update and create a new revision', async ({ page }) => {
@@ -140,20 +139,18 @@ test.describe('Relation Edit and Delete', () => {
     await page.goto('/relations');
     await expect(page.getByRole('heading', { name: 'Relations', exact: true })).toBeVisible();
 
-    // Find a delete button for our relation
+    // A delete button must be present — relation was seeded in beforeEach
     const deleteButton = page.getByRole('button', { name: /delete/i }).first();
-    if (await deleteButton.isVisible({ timeout: 5000 })) {
-      await deleteButton.click();
+    await expect(deleteButton).toBeVisible({ timeout: 5000 });
+    await deleteButton.click();
 
-      // Confirmation dialog
-      const confirmButton = page.locator('[role="dialog"]').getByRole('button', { name: /delete|confirm/i });
-      if (await confirmButton.isVisible({ timeout: 2000 })) {
-        await confirmButton.click();
-        await page.waitForTimeout(1000);
-      }
+    // Confirmation dialog must appear
+    const confirmButton = page.locator('[role="dialog"]').getByRole('button', { name: /delete|confirm/i });
+    await expect(confirmButton).toBeVisible({ timeout: 3000 });
+    await confirmButton.click();
+    await page.waitForLoadState('networkidle');
 
-      // Should still be on relations page
-      await expect(page.getByRole('heading', { name: 'Relations', exact: true })).toBeVisible();
-    }
+    // Should still be on relations page
+    await expect(page.getByRole('heading', { name: 'Relations', exact: true })).toBeVisible();
   });
 });

@@ -35,9 +35,11 @@ test.describe('Entity Bulk Import', () => {
 
     // Format toggle: CSV and JSON options
     const csvOption = page.locator('text=/csv/i').first();
-    if (await csvOption.isVisible({ timeout: 3000 })) {
-      await expect(csvOption).toBeVisible();
+    if (!await csvOption.isVisible({ timeout: 3000 })) {
+      test.skip(true, 'CSV format option not present in this environment');
+      return;
     }
+    await expect(csvOption).toBeVisible();
   });
 
   test('should show JSON format toggle option', async ({ page }) => {
@@ -45,9 +47,11 @@ test.describe('Entity Bulk Import', () => {
     await page.waitForLoadState('domcontentloaded');
 
     const jsonOption = page.locator('text=/json/i').first();
-    if (await jsonOption.isVisible({ timeout: 3000 })) {
-      await expect(jsonOption).toBeVisible();
+    if (!await jsonOption.isVisible({ timeout: 3000 })) {
+      test.skip(true, 'JSON format option not present in this environment');
+      return;
     }
+    await expect(jsonOption).toBeVisible();
   });
 
   test('should preview a valid CSV file before committing', async ({ page }) => {

@@ -46,9 +46,17 @@ test.describe('Password Reset Flow', () => {
     // Submit form
     await page.getByRole('button', { name: /submit|send|reset/i }).click();
 
-    // Should show error or stay on page
-    const url = page.url();
-    expect(url).toContain('forgot-password');
+    // Must stay on the forgot-password page AND show a validation error or mark the field invalid.
+    // Simply staying on the page is not sufficient — a silent no-op would also satisfy that.
+    await expect(page).toHaveURL(/forgot-password/);
+    const errorMsg = page.locator('[role="alert"], [class*="error"], [class*="Error"]')
+      .filter({ hasText: /invalid|not.*valid|email/i })
+      .first();
+    const fieldInvalid = await page.getByRole('textbox', { name: /email/i })
+      .evaluate((el) => (el as HTMLInputElement).validity?.valid === false)
+      .catch(() => false);
+    const hasError = await errorMsg.isVisible({ timeout: 3000 }).catch(() => false);
+    expect(hasError || fieldInvalid).toBe(true);
   });
 
   test('should navigate to reset password page with token', async ({ page }) => {

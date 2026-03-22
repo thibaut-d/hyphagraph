@@ -71,18 +71,14 @@ test.describe('Explanation Trace', () => {
 
     const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1];
 
-    // Navigate to explanation
+    // Navigate to explanation — page must load without crashing
     await page.goto(`/explain/${entityId}/subject`);
+    await page.waitForLoadState('networkidle');
 
-    // Look for evidence path visualization
-    // Might be a tree, list, or graph
-    const evidencePath = page.locator('[data-testid="evidence-path"]').or(
-      page.locator('text=/Evidence|Path|Chain/i')
-    );
-
-    if (await evidencePath.isVisible({ timeout: 3000 })) {
-      await expect(evidencePath).toBeVisible();
-    }
+    // The explanation page must render at minimum some content (data or empty-state)
+    await expect(
+      page.locator('text=/Explanation|Evidence|Trace|Path|Chain|no data|not found/i').first()
+    ).toBeVisible({ timeout: 5000 });
   });
 
   test('should expand/collapse evidence nodes', async ({ page }) => {
@@ -96,20 +92,20 @@ test.describe('Explanation Trace', () => {
     const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1];
 
     await page.goto(`/explain/${entityId}/subject`);
+    await page.waitForLoadState('networkidle');
 
-    // Look for expand/collapse buttons
+    // Page must render content regardless of expand state
+    await expect(
+      page.locator('text=/Explanation|Evidence|Trace|Path|no data|not found/i').first()
+    ).toBeVisible({ timeout: 5000 });
+
+    // Expand/collapse is an optional UI feature — if buttons are present they must be interactive
     const expandButton = page.getByRole('button', { name: /expand|show more/i });
     if (await expandButton.first().isVisible({ timeout: 2000 })) {
       await expandButton.first().click();
-
-      // Should show more details
       await page.waitForLoadState('networkidle');
-
-      // Look for collapse button
-      const collapseButton = page.getByRole('button', { name: /collapse|hide|show less/i });
-      if (await collapseButton.first().isVisible({ timeout: 1000 })) {
-        await collapseButton.first().click();
-      }
+      // Page must remain functional after expanding
+      await expect(page.getByRole('heading').or(page.locator('main')).first()).toBeVisible();
     }
   });
 
@@ -124,12 +120,12 @@ test.describe('Explanation Trace', () => {
     const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1];
 
     await page.goto(`/explain/${entityId}/subject`);
+    await page.waitForLoadState('networkidle');
 
-    // Look for score display
-    const scoreDisplay = page.locator('text=/%|score|confidence|probability/i');
-    if (await scoreDisplay.isVisible({ timeout: 3000 })) {
-      await expect(scoreDisplay).toBeVisible();
-    }
+    // Explanation page must render (scores appear only when inference data exists)
+    await expect(
+      page.locator('text=/Explanation|Evidence|Trace|no data|not found/i').first()
+    ).toBeVisible({ timeout: 5000 });
   });
 
   test('should navigate between entity detail and explanation', async ({ page }) => {
@@ -143,22 +139,23 @@ test.describe('Explanation Trace', () => {
     const entityUrl = page.url();
     const entityId = entityUrl.match(/\/entities\/([a-f0-9-]+)/)?.[1];
 
-    // Go to explanation
+    // Go to explanation — must load without crashing
     await page.goto(`/explain/${entityId}/subject`);
-
-    // Should be on explanation page
+    await page.waitForLoadState('networkidle');
     await expect(page).toHaveURL(/\/explain/);
 
-    // Look for back button or link to entity
+    // Back navigation is optional UI — if present it must work; if absent the page must still be valid
     const backButton = page.getByRole('button', { name: /back/i }).or(
       page.getByRole('link', { name: /back|entity/i })
     );
-
     if (await backButton.isVisible({ timeout: 2000 })) {
       await backButton.click();
-
-      // Should navigate back to entity detail
       await expect(page).toHaveURL(/\/entities\/[a-f0-9-]+$/);
+    } else {
+      // No back button — verify page is still functional
+      await expect(
+        page.locator('text=/Explanation|Evidence|Trace|no data|not found/i').first()
+      ).toBeVisible({ timeout: 5000 });
     }
   });
 
@@ -172,14 +169,14 @@ test.describe('Explanation Trace', () => {
 
     const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1];
 
-    // Try to explain a role that doesn't exist
+    // Try to explain a role that doesn't exist — page must not crash
     await page.goto(`/explain/${entityId}/non-existent-role`);
+    await page.waitForLoadState('networkidle');
 
-    // Should show error or empty state
-    const errorMessages = page.locator('text=/not found|no data|error|empty/i');
-    if (await errorMessages.first().isVisible({ timeout: 3000 })) {
-      await expect(errorMessages.first()).toBeVisible();
-    }
+    // Must show an error or empty-state — a blank/crashed page is a failure
+    await expect(
+      page.locator('text=/not found|no data|error|empty|Explanation/i').first()
+    ).toBeVisible({ timeout: 5000 });
   });
 
   test('should display a parsed rate-limit error when explanation loading is throttled', async ({ page }) => {
@@ -199,12 +196,11 @@ test.describe('Explanation Trace', () => {
 
     await page.goto('/explain/00000000-0000-0000-0000-000000000000/test-role');
 
-    // Should show some error indication (exact message rendering depends on implementation)
-    const errorIndicator = page.locator('[role="alert"]').or(
-      page.getByText(/too many requests|rate limit|try again later/i)
-    );
-    if (await errorIndicator.first().isVisible({ timeout: 5000 })) {
-      await expect(errorIndicator.first()).toBeVisible();
-    }
+    // Must show an error indication — a blank page or JS error is not acceptable
+    await expect(
+      page.locator('[role="alert"]').or(
+        page.getByText(/too many requests|rate limit|try again later/i)
+      ).first()
+    ).toBeVisible({ timeout: 5000 });
   });
 });

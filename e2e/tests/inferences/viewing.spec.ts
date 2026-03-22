@@ -141,13 +141,13 @@ test.describe('Inference Viewing', () => {
     await page.goto(`/entities/${entityId}`);
     await page.waitForLoadState('networkidle');
 
-    // Entity detail page must load
+    // Entity detail page must load and show the slug
     await expect(page.locator(`text=${entitySlug}`)).toBeVisible();
 
-    const scoreElement = page.locator('text=/%|score|confidence/i').first();
-    if (await scoreElement.isVisible({ timeout: 3000 })) {
-      await expect(scoreElement).toBeVisible();
-    }
+    // Score elements are computed — if the inference engine produced output, a score must be visible.
+    // If no score element appears within 5 s the page is still valid (entity has no inferences yet).
+    // We assert the page did not crash rather than requiring a score with no guaranteed data.
+    await expect(page.getByRole('heading').first()).toBeVisible({ timeout: 5000 });
   });
 
   test('should view inference details', async ({ page }) => {
@@ -157,11 +157,18 @@ test.describe('Inference Viewing', () => {
     await page.getByLabel(/summary \(english\)/i).fill('Entity for inference details');
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/entities\/[a-f0-9-]+/);
+    await page.waitForLoadState('networkidle');
 
+    // Entity detail page must render the slug
+    await expect(page.locator(`text=${entitySlug}`)).toBeVisible();
+
+    // If a details/expand button is present, it must be clickable and the page must remain functional
     const viewDetailsButton = page.getByRole('button', { name: /details|more|expand/i });
     if (await viewDetailsButton.first().isVisible({ timeout: 2000 })) {
       await viewDetailsButton.first().click();
       await page.waitForLoadState('networkidle');
+      // Page must still be rendering the entity after expansion
+      await expect(page.locator(`text=${entitySlug}`)).toBeVisible();
     }
   });
 
@@ -169,10 +176,15 @@ test.describe('Inference Viewing', () => {
     await page.goto('/inferences');
     await page.waitForLoadState('networkidle');
 
+    // The inferences page must render a heading regardless of pagination state
+    await expect(page.getByRole('heading').first()).toBeVisible({ timeout: 5000 });
+
     const nextButton = page.getByRole('button', { name: /next/i });
     if (await nextButton.isVisible({ timeout: 2000 })) {
       await nextButton.click();
       await page.waitForLoadState('networkidle');
+      // After pagination, page must still be functional
+      await expect(page.getByRole('heading').first()).toBeVisible();
     }
   });
 });

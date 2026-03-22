@@ -101,8 +101,7 @@ test.describe('Relation CRUD Operations', () => {
     // Click Remove role on the first role entry
     await page.getByRole('button', { name: /remove role/i }).first().click();
 
-    // Should now have only 1 role
-    await page.waitForTimeout(300);
+    // Should now have only 1 role — Playwright retries until count matches
     roleTypeFields = page.getByLabel(/role type|role/i);
     await expect(roleTypeFields).toHaveCount(1);
   });

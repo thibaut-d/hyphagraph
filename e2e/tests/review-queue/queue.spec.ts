@@ -39,9 +39,10 @@ test.describe('LLM Extraction Review Queue', () => {
 
     await expect(page.getByRole('heading', { name: 'Review Queue' })).toBeVisible({ timeout: 10000 });
 
-    // Either the empty state or extraction cards must be present — one must be visible
+    // Either the empty state or extraction cards must be present — one must be visible.
+    // Scope to <main> to avoid matching nav/sidebar list elements.
     const emptyState = page.locator('text=/no pending|queue.*empty|all.*reviewed/i').first();
-    const hasItems = page.locator('[role="list"], [role="listitem"]').first();
+    const hasItems = page.locator('main').locator('[role="list"], [role="listitem"]').first();
 
     const emptyVisible = await emptyState.isVisible({ timeout: 5000 }).catch(() => false);
     const itemsVisible = await hasItems.isVisible({ timeout: 1000 }).catch(() => false);

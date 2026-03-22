@@ -91,7 +91,7 @@ test.describe('Batch Relation Creation', () => {
     const submitButton = page.getByRole('button', { name: /submit|create all/i });
     await expect(submitButton).toBeVisible({ timeout: 3000 });
     await submitButton.click();
-    await page.waitForTimeout(2000);
+    await page.waitForLoadState('networkidle');
 
     // Per-row result (success chip or error) must appear
     await expect(

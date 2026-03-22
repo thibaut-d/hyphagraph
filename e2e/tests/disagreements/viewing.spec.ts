@@ -66,10 +66,12 @@ test.describe('Disagreements View', () => {
     const disagreementsLink = page.getByRole('link', { name: /disagree/i }).or(
       page.getByRole('button', { name: /disagree/i })
     );
-    if (await disagreementsLink.isVisible({ timeout: 3000 })) {
-      await disagreementsLink.click();
-      await expect(page).toHaveURL(new RegExp(`/entities/${entityId}/disagreements`));
+    if (!await disagreementsLink.isVisible({ timeout: 3000 })) {
+      test.skip(true, 'Disagreements link not present on entity detail page');
+      return;
     }
+    await disagreementsLink.click();
+    await expect(page).toHaveURL(new RegExp(`/entities/${entityId}/disagreements`));
   });
 
   test('should provide a back navigation to entity detail', async ({ page }) => {
@@ -87,10 +89,12 @@ test.describe('Disagreements View', () => {
     const backButton = page.getByRole('button', { name: /back/i }).or(
       page.getByRole('link', { name: /back|entity/i })
     );
-    if (await backButton.first().isVisible({ timeout: 3000 })) {
-      await backButton.first().click();
-      await expect(page).toHaveURL(new RegExp(`/entities/${entityId}$`));
+    if (!await backButton.first().isVisible({ timeout: 3000 })) {
+      test.skip(true, 'Back button not present on disagreements page');
+      return;
     }
+    await backButton.first().click();
+    await expect(page).toHaveURL(new RegExp(`/entities/${entityId}$`));
   });
 
   test('should provide navigation to synthesis view', async ({ page }) => {
@@ -108,10 +112,12 @@ test.describe('Disagreements View', () => {
     const synthButton = page.getByRole('button', { name: /synthesis/i }).or(
       page.getByRole('link', { name: /synthesis/i })
     );
-    if (await synthButton.first().isVisible({ timeout: 3000 })) {
-      await synthButton.first().click();
-      await expect(page).toHaveURL(new RegExp(`/entities/${entityId}/synthesis`));
+    if (!await synthButton.first().isVisible({ timeout: 3000 })) {
+      test.skip(true, 'Synthesis button not present on disagreements page');
+      return;
     }
+    await synthButton.first().click();
+    await expect(page).toHaveURL(new RegExp(`/entities/${entityId}/synthesis`));
   });
 
   // G2 + G4 — contradiction visibility with seeded contradictory data

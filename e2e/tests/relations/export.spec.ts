@@ -28,14 +28,14 @@ test.describe('Relation Export', () => {
     await expect(exportButton).toBeVisible({ timeout: 5000 });
 
     const [download] = await Promise.all([
-      page.waitForEvent('download', { timeout: 10000 }).catch(() => null),
+      page.waitForEvent('download', { timeout: 10000 }),
       exportButton.click(),
     ]);
 
-    if (download) {
-      const filename = download.suggestedFilename();
-      expect(filename).toMatch(/\.(json|csv|rdf)$/i);
-    }
+    // Download must have fired — a null download means the export button is broken
+    expect(download).not.toBeNull();
+    const filename = download.suggestedFilename();
+    expect(filename).toMatch(/\.(json|csv|rdf)$/i);
   });
 
   test('should offer RDF export format', async ({ page }) => {
@@ -46,18 +46,20 @@ test.describe('Relation Export', () => {
     await expect(exportButton).toBeVisible({ timeout: 5000 });
     await exportButton.click();
 
-    // After clicking, a menu or dialog may show format options
+    // After clicking, a menu or dialog may show format options.
+    // RDF is an optional export format — skip if the option is not present.
     const rdfOption = page.getByRole('menuitem', { name: /rdf/i }).or(
       page.getByRole('button', { name: /rdf/i })
     );
-    if (await rdfOption.isVisible({ timeout: 2000 })) {
-      const [download] = await Promise.all([
-        page.waitForEvent('download', { timeout: 10000 }).catch(() => null),
-        rdfOption.click(),
-      ]);
-      if (download) {
-        expect(download.suggestedFilename()).toMatch(/\.rdf$|\.ttl$|\.n3$/i);
-      }
+    if (!await rdfOption.isVisible({ timeout: 2000 })) {
+      test.skip(true, 'RDF export option not present in this environment');
+      return;
     }
+    const [download] = await Promise.all([
+      page.waitForEvent('download', { timeout: 10000 }),
+      rdfOption.click(),
+    ]);
+    expect(download).not.toBeNull();
+    expect(download.suggestedFilename()).toMatch(/\.rdf$|\.ttl$|\.n3$/i);
   });
 });
