@@ -47,6 +47,7 @@ PACT_DIR = Path(__file__).parent.parent.parent / "pacts"
 
 # Stable IDs that match every consumer test file
 KNOWN_ENTITY_ID = UUID("123e4567-e89b-42d3-a456-426614174000")
+KNOWN_ENTITY_ID_2 = UUID("223e4567-e89b-42d3-a456-426614174001")
 KNOWN_CATEGORY_ID = UUID("123e4567-e89b-42d3-a456-426614174001")
 KNOWN_SOURCE_ID = UUID("223e4567-e89b-42d3-a456-426614174000")
 KNOWN_RELATION_ID = UUID("323e4567-e89b-42d3-a456-426614174000")
@@ -128,6 +129,15 @@ async def _ensure_entity(db: AsyncSession) -> None:
     db.add(Entity(id=KNOWN_ENTITY_ID))
     await db.flush()
     db.add(EntityRevision(entity_id=KNOWN_ENTITY_ID, slug="aspirin", is_current=True))
+    await db.commit()
+
+
+async def _ensure_second_entity(db: AsyncSession) -> None:
+    if await db.get(Entity, KNOWN_ENTITY_ID_2):
+        return
+    db.add(Entity(id=KNOWN_ENTITY_ID_2))
+    await db.flush()
+    db.add(EntityRevision(entity_id=KNOWN_ENTITY_ID_2, slug="fibromyalgia", is_current=True))
     await db.commit()
 
 
@@ -254,7 +264,11 @@ async def _setup_state(state: str, db: AsyncSession) -> None:
         await _ensure_category(db)
     elif "staged extraction" in s or "extraction" in s:
         await _ensure_staged_extraction(db)
-    # "user is authenticated" → handled by dependency override; no DB work needed.
+    elif "user is authenticated" in s:
+        # Ensure entities + source exist so write endpoints (e.g. create relation) work.
+        await _ensure_entity(db)
+        await _ensure_second_entity(db)
+        await _ensure_source(db)
     # "no user with email ... exists" → registration test; no pre-existing user needed.
 
 
