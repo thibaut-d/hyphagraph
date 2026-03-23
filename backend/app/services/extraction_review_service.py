@@ -77,6 +77,7 @@ class ExtractionReviewService:
         llm_model: str | None = None,
         llm_provider: str | None = None,
         auto_materialize: bool = True,
+        commit: bool = True,
     ) -> tuple[StagedExtraction, UUID | None]:
         """
         Create extraction metadata and optionally materialize.
@@ -102,6 +103,7 @@ class ExtractionReviewService:
             is_high_confidence=is_high_confidence,
             auto_commit_threshold=threshold,
             auto_materialize=auto_materialize,
+            commit=commit,
         )
 
     async def stage_batch(
@@ -113,6 +115,7 @@ class ExtractionReviewService:
         llm_model: str | None = None,
         llm_provider: str | None = None,
         auto_materialize: bool = True,
+        commit: bool = True,
     ) -> list[StagedExtraction]:
         """Stage a batch of extractions.
 
@@ -127,6 +130,7 @@ class ExtractionReviewService:
             staged, _ = await self.stage_extraction(
                 ExtractionType.ENTITY, entity, source_id, validation_result,
                 llm_model, llm_provider, auto_materialize=auto_materialize,
+                commit=commit,
             )
             staged_extractions.append(staged)
 
@@ -134,6 +138,7 @@ class ExtractionReviewService:
             staged, _ = await self.stage_extraction(
                 ExtractionType.RELATION, relation, source_id, validation_result,
                 llm_model, llm_provider, auto_materialize=auto_materialize,
+                commit=commit,
             )
             staged_extractions.append(staged)
 
@@ -141,6 +146,7 @@ class ExtractionReviewService:
             staged, _ = await self.stage_extraction(
                 ExtractionType.CLAIM, claim, source_id, validation_result,
                 llm_model, llm_provider, auto_materialize=auto_materialize,
+                commit=commit,
             )
             staged_extractions.append(staged)
 

@@ -360,6 +360,7 @@ async def stage_review_batch(
         llm_model=settings.OPENAI_MODEL,
         llm_provider=settings.LLM_PROVIDER,
         auto_materialize=False,
+        commit=False,
     )
 
     validation_scores = [
@@ -432,6 +433,9 @@ async def build_extraction_preview(
         entities=extracted_batch.entities,
         linking_service_factory=linking_service_factory,
     )
+    # Single commit after all pipeline steps succeed.  If any step above raises,
+    # the staged items are never committed and no orphaned records accumulate.
+    await db.commit()
 
     return DocumentExtractionPreview(
         source_id=source_id,

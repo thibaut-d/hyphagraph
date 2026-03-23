@@ -126,6 +126,14 @@ async def upload_and_extract(
 
     try:
         extraction_result = await document_service.extract_text_from_file(file)
+        # Run extraction first; store the document only if it succeeds.
+        # This prevents a stored revision with no corresponding preview when
+        # the LLM pipeline fails.
+        preview = await build_extraction_preview(
+            db,
+            source_id=source_id,
+            text=extraction_result.text,
+        )
         await store_document_in_source(
             db,
             source_id=source_id,
@@ -133,11 +141,6 @@ async def upload_and_extract(
             document_format=extraction_result.format,
             file_name=extraction_result.filename,
             user_id=current_user.id if current_user else None,
-        )
-        preview = await build_extraction_preview(
-            db,
-            source_id=source_id,
-            text=extraction_result.text,
         )
         logger.info(
             f"Extracted {preview.entity_count} entities and {preview.relation_count} relations"
@@ -178,6 +181,14 @@ async def extract_from_url(
             pubmed_fetcher_factory=PubMedFetcher,
             url_fetcher_factory=UrlFetcher,
         )
+        # Run extraction first; store the document only if it succeeds.
+        # This prevents a stored revision with no corresponding preview when
+        # the LLM pipeline fails.
+        preview = await build_extraction_preview(
+            db,
+            source_id=source_id,
+            text=fetched_document.text,
+        )
         await store_document_in_source(
             db,
             source_id=source_id,
@@ -185,11 +196,6 @@ async def extract_from_url(
             document_format=fetched_document.document_format,
             file_name=fetched_document.file_name,
             user_id=current_user.id if current_user else None,
-        )
-        preview = await build_extraction_preview(
-            db,
-            source_id=source_id,
-            text=fetched_document.text,
         )
         logger.info(
             f"Extracted {preview.entity_count} entities and {preview.relation_count} relations"

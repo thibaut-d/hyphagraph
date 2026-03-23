@@ -24,6 +24,7 @@ async def create_staged_extraction(
     is_high_confidence: bool,
     auto_commit_threshold: float | None,
     auto_materialize: bool,
+    commit: bool = True,
 ) -> tuple[StagedExtraction, UUID | None]:
     """Create a staged extraction record and optionally materialize it immediately."""
     # AUTO_VERIFIED only when materializing inline; deferred high-confidence items stay PENDING
@@ -48,26 +49,32 @@ async def create_staged_extraction(
         auto_commit_threshold=auto_commit_threshold,
     )
 
-    db.add(staged)
-    await db.flush()
-
     materialized_id = None
-    if auto_materialize:
-        if extraction_type == ExtractionType.ENTITY:
-            entity_id = await materialize_entity(db, staged)
-            staged.materialized_entity_id = entity_id
-            materialized_id = entity_id
-        elif extraction_type == ExtractionType.RELATION:
-            relation_id = await materialize_relation(db, staged)
-            staged.materialized_relation_id = relation_id
-            materialized_id = relation_id
-        elif extraction_type == ExtractionType.CLAIM:
-            relation_id = await materialize_claim(db, staged)
-            staged.materialized_relation_id = relation_id
-            materialized_id = relation_id
+    try:
+        db.add(staged)
+        await db.flush()
 
-    await db.commit()
-    await db.refresh(staged)
+        if auto_materialize:
+            if extraction_type == ExtractionType.ENTITY:
+                entity_id = await materialize_entity(db, staged)
+                staged.materialized_entity_id = entity_id
+                materialized_id = entity_id
+            elif extraction_type == ExtractionType.RELATION:
+                relation_id = await materialize_relation(db, staged)
+                staged.materialized_relation_id = relation_id
+                materialized_id = relation_id
+            elif extraction_type == ExtractionType.CLAIM:
+                relation_id = await materialize_claim(db, staged)
+                staged.materialized_relation_id = relation_id
+                materialized_id = relation_id
+
+        if commit:
+            await db.commit()
+            await db.refresh(staged)
+    except Exception:
+        if commit:
+            await db.rollback()
+        raise
 
     logger.info(
         "Created %s extraction (ID: %s, status: %s, score: %.2f, materialized: %s)",
