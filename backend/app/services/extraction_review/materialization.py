@@ -109,7 +109,9 @@ async def materialize_claim(
     - claim_type → relation kind
     - claim_text → notes (i18n)
     - evidence_strength → scope metadata
-    - entities_involved → participant roles (skipped if entity not found)
+    - entities_involved → participant roles
+
+    Raises ValueError if any entity slug in entities_involved cannot be resolved.
     """
     claim_data = ExtractedClaim(**staged.extraction_data)
 
@@ -146,12 +148,10 @@ async def materialize_claim(
         entity_revision = entity_result.scalar_one_or_none()
 
         if not entity_revision:
-            logger.warning(
-                "Entity with slug '%s' not found, skipping participant in claim %s",
-                slug,
-                relation.id,
+            raise ValueError(
+                f"Entity with slug '{slug}' not found; "
+                f"cannot materialize claim {relation.id}"
             )
-            continue
 
         db.add(
             RelationRoleRevision(

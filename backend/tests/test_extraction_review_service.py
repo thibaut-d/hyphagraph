@@ -1253,7 +1253,7 @@ async def test_materialize_extraction_after_manual_approval(
 
 @pytest.mark.asyncio
 async def test_materialize_claim_creates_relation(
-    review_service, sample_source, uncertain_validation, sample_user
+    review_service, sample_source, entity_slugs_in_db, uncertain_validation, sample_user
 ):
     """Materializing a claim creates a relation with claim_type as kind and claim_text in notes."""
     from app.llm.schemas import ExtractedClaim
@@ -1262,7 +1262,7 @@ async def test_materialize_claim_creates_relation(
 
     claim = ExtractedClaim(
         claim_text="Some factual claim about a drug with sufficient length",
-        entities_involved=["duloxetine"],
+        entities_involved=["drug-agent"],
         claim_type="efficacy",
         evidence_strength="moderate",
         confidence="medium",
@@ -1305,14 +1305,14 @@ async def test_materialize_claim_creates_relation(
 
 @pytest.mark.asyncio
 async def test_stage_claim_auto_materializes_when_high_confidence(
-    review_service, sample_source, high_confidence_validation
+    review_service, sample_source, entity_slugs_in_db, high_confidence_validation
 ):
     """High-confidence claims are auto-materialized as relations on staging."""
     from app.llm.schemas import ExtractedClaim
 
     claim = ExtractedClaim(
-        claim_text="Aspirin significantly reduces risk of cardiovascular events in high-risk patients",
-        entities_involved=["aspirin"],
+        claim_text="Drug-agent significantly reduces risk of pain-condition in high-risk patients",
+        entities_involved=["drug-agent"],
         claim_type="efficacy",
         evidence_strength="strong",
         confidence="high",
@@ -1333,10 +1333,10 @@ async def test_stage_claim_auto_materializes_when_high_confidence(
 
 
 @pytest.mark.asyncio
-async def test_materialize_claim_skips_missing_entities(
-    review_service, sample_source, uncertain_validation, sample_user
+async def test_materialize_claim_raises_on_missing_entities(
+    review_service, sample_source, uncertain_validation
 ):
-    """Claim materialization proceeds even when entities_involved slugs are not in DB."""
+    """Claim with unknown entity slugs raises ValueError during materialization (DF-EXT-M1)."""
     from app.llm.schemas import ExtractedClaim
 
     claim = ExtractedClaim(
@@ -1348,24 +1348,14 @@ async def test_materialize_claim_skips_missing_entities(
         text_span="reduces some-unknown-condition symptoms",
     )
 
-    staged, _ = await review_service.stage_extraction(
-        extraction_type=ExtractionType.CLAIM,
-        extraction_data=claim,
-        source_id=sample_source.id,
-        validation_result=uncertain_validation,
-        auto_materialize=False,
-    )
-
-    await review_service.approve_extraction(
-        extraction_id=staged.id,
-        reviewer_id=sample_user.id,
-        auto_materialize=False,
-    )
-
-    # Should succeed even though no entity slugs resolve
-    result = await review_service.materialize_extraction(staged.id)
-    assert result.success is True
-    assert result.materialized_relation_id is not None
+    with pytest.raises(ValueError, match="not found"):
+        await review_service.stage_extraction(
+            extraction_type=ExtractionType.CLAIM,
+            extraction_data=claim,
+            source_id=sample_source.id,
+            validation_result=uncertain_validation,
+            auto_materialize=True,
+        )
 
 
 @pytest.mark.asyncio
