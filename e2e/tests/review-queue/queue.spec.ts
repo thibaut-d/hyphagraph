@@ -93,7 +93,6 @@ test.describe('LLM Extraction Review Queue', () => {
     const entityToggle = page.getByRole('button', { name: /^entity$/i });
     await expect(entityToggle).toBeVisible({ timeout: 5000 });
     await entityToggle.click();
-    await page.waitForTimeout(500);
 
     await expect(page.getByRole('heading', { name: 'Review Queue' })).toBeVisible();
   });

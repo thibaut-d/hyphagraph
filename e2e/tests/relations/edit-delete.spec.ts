@@ -72,7 +72,7 @@ test.describe('Relation Edit and Delete', () => {
 
   // US-REL-03 — Edit Relation
   test('should navigate to the relation edit page', async ({ page }) => {
-    if (!relationId) test.skip();
+    if (!relationId) test.skip(true, 'No relation was created in beforeEach — seed relation data to run this test');
 
     await page.goto(`/relations/${relationId}/edit`);
     await expect(page).toHaveURL(`/relations/${relationId}/edit`);
@@ -134,7 +134,7 @@ test.describe('Relation Edit and Delete', () => {
 
   // US-REL-04 — Delete Relation
   test('should delete a relation from the relations list', async ({ page }) => {
-    if (!relationId) test.skip();
+    if (!relationId) test.skip(true, 'No relation was created in beforeEach — seed relation data to run this test');
 
     await page.goto('/relations');
     await expect(page.getByRole('heading', { name: 'Relations', exact: true })).toBeVisible();
