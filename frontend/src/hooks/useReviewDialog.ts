@@ -85,17 +85,31 @@ export function useReviewDialog(): UseReviewDialogReturn {
 
       setIsSubmitting(true);
       try {
-        await batchReview({
+        const response = await batchReview({
           extraction_ids: Array.from(extractionIds),
           decision: decision as ReviewDecision,
           notes: notes || undefined,
         });
 
-        const message =
-          decision === "approve"
-            ? `${extractionIds.size} extractions approved`
-            : `${extractionIds.size} extractions rejected`;
-        showSuccess(message);
+        if (response.failed > 0 && response.succeeded === 0) {
+          showError(
+            `Batch review failed: all ${response.failed} extractions could not be processed`
+          );
+          return;
+        }
+
+        if (response.failed > 0) {
+          const verb = decision === "approve" ? "approved" : "rejected";
+          showError(
+            `Partial success: ${response.succeeded} extractions ${verb}, ${response.failed} failed`
+          );
+        } else {
+          const message =
+            decision === "approve"
+              ? `${response.succeeded} extractions approved`
+              : `${response.succeeded} extractions rejected`;
+          showSuccess(message);
+        }
 
         closeDialog();
         if (onSuccess) {

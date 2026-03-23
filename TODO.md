@@ -60,7 +60,7 @@ Source: Parallel agent audit session 2026-03-23.
 - [x] **DF-RVW-C1** `backend/app/api/extraction_review.py:145-150,196-201` — Single and batch review endpoints use `get_current_user`, not `get_current_active_superuser`. Any authenticated user can approve/reject knowledge graph extractions. Add superuser guard.
 - [x] **DF-RVW-C2** `backend/app/services/extraction_review/materialization.py:27-39,54-66,116-130` — `created_by_user_id` on `EntityRevision`/`RelationRevision` is never populated during materialization. All LLM-extracted items lack human attribution. Pass `reviewed_by` through to `create_new_revision()`.
 - [x] **DF-RVW-C3** `backend/app/services/extraction_review/auto_commit.py:84-86` — Auto-approved extractions do not set `reviewed_by`; field remains NULL. Added `auto_approved: bool` column (migration 011) set to `True` in `_materialize_approved`; exposed in schema and filters.
-- [ ] **DF-RVW-C4** `frontend/src/hooks/useReviewDialog.ts:79-109` — `submitBatchReview()` does not inspect `response.failed`. Shows a single success message even when half the batch failed silently. Inspect `failed > 0` and show a detailed warning.
+- [x] **DF-RVW-C4** `frontend/src/hooks/useReviewDialog.ts:79-109` — `submitBatchReview()` does not inspect `response.failed`. Shows a single success message even when half the batch failed silently. Inspect `failed > 0` and show a detailed warning.
 
 ##### Major
 
