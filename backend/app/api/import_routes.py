@@ -30,9 +30,24 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/import", tags=["import"])
 
+_MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
+
+
+def _check_file_size(file: UploadFile) -> None:
+    """Raise HTTP 413 if the upload exceeds the size limit."""
+    file.file.seek(0, 2)
+    size = file.file.tell()
+    file.file.seek(0)
+    if size > _MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File exceeds the {_MAX_UPLOAD_BYTES // (1024 * 1024)} MB limit.",
+        )
+
 
 def _parse_entity_rows(service: ImportService, file: UploadFile, format: str):
     """Parse uploaded file into EntityImportRow list."""
+    _check_file_size(file)
     content = file.file.read().decode("utf-8")
     if format == "csv":
         return service.parse_csv(content)
@@ -47,6 +62,7 @@ def _parse_entity_rows(service: ImportService, file: UploadFile, format: str):
 
 def _parse_source_rows(service: ImportService, file: UploadFile, format: str):
     """Parse uploaded file into SourceImportRow list."""
+    _check_file_size(file)
     content = file.file.read().decode("utf-8")
     if format == "bibtex":
         return service.parse_bibtex(content)

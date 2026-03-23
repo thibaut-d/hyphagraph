@@ -47,6 +47,8 @@ class EntityRead(Schema):
     created_with_llm: Optional[str] = None
     status: str = "confirmed"  # "draft" for LLM-created, "confirmed" for manually entered/reviewed
 
+    created_by_user_id: Optional[UUID] = None
+
     # Computed fields (populated by service on detail views; None in list views)
     consensus_level: Optional[str] = None
 

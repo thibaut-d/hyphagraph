@@ -104,11 +104,13 @@ class UserService:
             verify_refresh_token_fn=verify_refresh_token,
         )
 
-    async def refresh_access_token_with_user(self, refresh_token: str) -> tuple[str, User]:
+    async def refresh_access_token_with_user(self, refresh_token: str) -> tuple[str, str, User]:
         return await refresh_token_access_token_with_user(
             self,
             refresh_token,
             create_access_token_fn=create_access_token,
+            generate_refresh_token_fn=generate_refresh_token,
+            hash_refresh_token_fn=hash_refresh_token,
             hash_token_for_lookup_fn=hash_token_for_lookup,
             verify_refresh_token_fn=verify_refresh_token,
         )

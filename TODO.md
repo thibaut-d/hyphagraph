@@ -1,10 +1,235 @@
 # Current Work
 
-**Last updated**: 2026-03-22 (E2E test suite review — all findings resolved)
+**Last updated**: 2026-03-23 (Data flow audit — database to frontend, 12 flows)
 
 ---
 
 ## Open Findings
+
+### Data Flow Audit — Database to Frontend (2026-03-23)
+
+Review identified correctness, security, and provenance problems across 12 data flows.
+Source: Parallel agent audit session 2026-03-23.
+
+---
+
+#### AUTH
+
+##### Critical
+
+- [ ] **DF-AUT-C1** `backend/app/models/user.py:29,36` — `reset_token` and `verification_token` stored as plaintext. Hash with SHA256 before storage (same pattern as refresh tokens). *(Supersedes deferred item "Plaintext reset/verification token storage".)*
+- [ ] **DF-AUT-C2** `backend/app/services/user/tokens.py:65-95` — Refresh token not rotated after use. Same token can be replayed indefinitely until expiry. Invalidate the old token and issue a new one on every refresh.
+
+##### Major
+
+- [ ] **DF-AUT-M1** `backend/app/dependencies/auth.py:23-82` — `get_current_user` checks `is_active` but not `is_verified`. When `EMAIL_VERIFICATION_REQUIRED=True`, unverified users can access all protected resources. Add `is_verified` check when the setting is enabled.
+- [ ] **DF-AUT-M2** `frontend/src/auth/authStorage.ts:28-34` — Access and refresh tokens stored in `localStorage`, readable by any XSS payload. Migrate to `httpOnly` cookies or a BFF proxy.
+- [ ] **DF-AUT-M3** `backend/app/services/user/account.py:137-150` — Deleting a user revokes refresh tokens but not access tokens; deleted users retain API access for up to 30 minutes. Add token version or blacklist checked at auth time.
+- [ ] **DF-AUT-M4** `frontend/src/api/client.tsx:243-315` — Cross-tab refresh lock uses a 10-second timeout; stale lock allows concurrent refresh requests. Server-side rotation (C2 above) eliminates the replay risk; also replace the localStorage busy-poll with a `StorageEvent` listener.
+- [ ] **DF-AUT-M5** `backend/app/api/admin.py:31-38` — Admin status is read from the JWT, not re-checked against DB on each request. Revoked admin privileges take up to 30 min to take effect. Re-fetch user on admin operations, or invalidate tokens on role change.
+- [ ] **DF-AUT-M6** `frontend/src/api/client.tsx:317-321` — On 401 after failed refresh, unconditional `window.location.href = "/account"` redirect can loop if `AccountView` itself triggers auth. Guard with a check that the current path is not already `/account`.
+
+---
+
+#### SEARCH
+
+##### Critical
+
+- [ ] **DF-SCH-C1** `backend/app/api/search.py:25-29,78-82` — Neither `POST /search` nor `POST /search/suggestions` declares an auth dependency. The entire knowledge graph is readable by unauthenticated HTTP requests. Add `get_current_user` dependency to both handlers.
+- [ ] **DF-SCH-C2** `backend/app/services/search_service.py:121-188` — Suggestions query filters on `is_current` but not `status == "confirmed"`. Draft revisions (LLM-created, pending review) are exposed to unauthenticated callers via autocomplete. Add `status == "confirmed"` filter.
+
+##### Major
+
+- [ ] **DF-SCH-M1** `entity_search.py:23`, `source_search.py:19`, `relation_search.py:20` — Main search queries filter on `is_current` only, not `status`. Draft entities, sources, and relations appear in authenticated search results. Add `status == "confirmed"` filter to all three sub-searchers.
+- [ ] **DF-SCH-M2** `backend/app/services/search_service.py:76-78` + `common.py:55-56` — DB-level `limit`/`offset` is applied per type, then a second in-memory slice is applied to the merged list. Cross-type pagination is unsound: page 2 returns the wrong items. Remove the second slice or fetch all matches before paginating once.
+- [ ] **DF-SCH-M3** `backend/app/services/search/relation_search.py:39-44` — `map_row` issues a separate `SELECT` per relation result row to fetch `entity_ids`. N+1 queries. Batch-load role revisions with `WHERE relation_revision_id IN (...)` after collecting all IDs.
+- [ ] **DF-SCH-M4** `frontend/src/views/SearchView.tsx:91-93,104-107` — No debounce and no `AbortController`: a new request fires on every keystroke; the last response wins regardless of order, producing stale results. Add 300ms debounce and cancel in-flight requests.
+- [ ] **DF-SCH-M5** `backend/app/schemas/search.py:43` — `source_kind` is `Optional[List[str]]` with no enum validation. Unknown values silently return zero results. Change to a `SourceKind` literal/enum.
+
+##### Minor
+
+- [ ] **DF-SCH-m1** `backend/app/services/search/common.py:17-21` — All queries use `ILIKE`/`LIKE`, no trigram or full-text index exists. The docstring claims "PostgreSQL full-text search" — this is false. Add `pg_trgm` GIN indexes on searched columns.
+- [ ] **DF-SCH-m2** `frontend/src/views/SearchView.tsx:123-124` — Entity links use `result.id` (UUID); verify the entity detail route accepts UUID not slug, or change to `result.slug`.
+
+---
+
+#### EXTRACTION REVIEW
+
+##### Critical
+
+- [ ] **DF-RVW-C1** `backend/app/api/extraction_review.py:145-150,196-201` — Single and batch review endpoints use `get_current_user`, not `get_current_active_superuser`. Any authenticated user can approve/reject knowledge graph extractions. Add superuser guard.
+- [ ] **DF-RVW-C2** `backend/app/services/extraction_review/materialization.py:27-39,54-66,116-130` — `created_by_user_id` on `EntityRevision`/`RelationRevision` is never populated during materialization. All LLM-extracted items lack human attribution. Pass `reviewed_by` through to `create_new_revision()`.
+- [ ] **DF-RVW-C3** `backend/app/services/extraction_review/auto_commit.py:84-86` — Auto-approved extractions do not set `reviewed_by`; field remains NULL. Set a sentinel system user ID (or a dedicated `auto_approved` flag) to distinguish automated from human approvals.
+- [ ] **DF-RVW-C4** `frontend/src/hooks/useReviewDialog.ts:79-109` — `submitBatchReview()` does not inspect `response.failed`. Shows a single success message even when half the batch failed silently. Inspect `failed > 0` and show a detailed warning.
+
+##### Major
+
+- [ ] **DF-RVW-M1** `backend/app/models/staged_extraction.py:12,38` — Rejecting a staged extraction only sets `status = "rejected"`; materialized entities/relations remain fully visible in the knowledge graph. Implement soft-delete (mark `is_active=False`) on rejection, or document that rejection does not remove items.
+- [ ] **DF-RVW-M2** `backend/app/services/extraction_review_service.py:175` vs `222` — `approve_extraction()` only accepts `PENDING`; `reject_extraction()` accepts `PENDING` and `AUTO_VERIFIED`. Asymmetry prevents re-approval of auto-verified items. Align the status guards to a consistent policy.
+- [ ] **DF-RVW-M3** No mechanism to distinguish auto-approved items from human-reviewed items in queries or the UI. Add `auto_approved: bool` field to `StagedExtraction` and expose it in the review queue.
+
+---
+
+#### REVISION REVIEW (Draft Confirm/Discard)
+
+##### Critical
+
+- [ ] **DF-DRV-C1** `backend/app/services/revision_review_service.py:121-142` — `confirm()` sets `status = "confirmed"` but never touches `is_current`. If a prior confirmed revision exists with `is_current=True`, two revisions end up with `is_current=True`, violating the single-current-revision invariant. Fix: set confirmed revision to `is_current=True` and flip all sibling revisions to `is_current=False`.
+- [ ] **DF-DRV-C2** `backend/app/services/revision_review_service.py:121-142` — No `confirmed_by_user_id` or `confirmed_at` fields exist on revision models. Cannot audit who confirmed a draft. Add both columns and populate in `confirm()`.
+- [ ] **DF-DRV-C3** No DB constraint prevents multiple draft revisions for the same entity/source/relation. Add a partial unique index `UNIQUE (entity_id, status) WHERE status='draft'` (and equivalents) to enforce single-draft-per-parent.
+- [ ] **DF-DRV-C4** `backend/app/services/revision_review_service.py:121-142` — Two concurrent admin confirms of the same draft both succeed (no locking). Use `SELECT FOR UPDATE` or an atomic `UPDATE ... WHERE status='draft'` with rows-affected check.
+
+##### Major
+
+- [ ] **DF-DRV-M1** `backend/app/api/revision_review.py:61-108` — All four revision-review endpoints use `get_current_user`, not `get_current_active_superuser`. Any authenticated user can confirm or discard LLM drafts. Add superuser guard.
+- [ ] **DF-DRV-M2** `backend/app/services/revision_review_service.py:62-115` — `_list_*_drafts()` methods filter on `status == "draft"` but not `is_current == True`. Non-current drafts appear in the review queue. Add `is_current=True` filter or document the intent.
+- [ ] **DF-DRV-M3** `frontend/src/components/review/LlmDraftsPanel.tsx:73-97` — After confirm/discard, `load()` is called unconditionally. On slow networks, if `load()` fails, the success message is contradicted by an error. Optimistically remove the item on API success; show refresh failure separately.
+
+---
+
+#### EXTRACTION PIPELINE
+
+##### Critical
+
+- [ ] **DF-EXT-C1** `backend/app/schemas/source.py:126-137` vs `frontend/src/types/extraction.ts:121-129` — `DocumentExtractionPreview` backend schema includes `needs_review_count`, `auto_verified_count`, and `avg_validation_score`; frontend type omits all three. Add missing fields to the TypeScript interface.
+
+##### Major
+
+- [ ] **DF-EXT-M1** `backend/app/services/extraction_review/materialization.py:78-84` — When an entity referenced in an extracted role cannot be found, the code logs a warning and silently creates the relation without that role. Relation is returned as successfully materialized. Treat missing entity references as a fatal error or return a structured failure result.
+- [ ] **DF-EXT-M2** `backend/app/services/extraction_review/staging.py:54-69` — Auto-materialization path: `db.flush()` succeeds for each materialization call but a final `db.commit()` failure leaves the in-memory `staged` object in a different state than the DB. Wrap all materializations in explicit transaction with rollback on any failure.
+- [ ] **DF-EXT-M3** `backend/app/services/document_extraction_processing.py:419-446` — No explicit transaction boundary wraps the full extraction pipeline (`run_validated_extraction` → `stage_review_batch` → `build_link_suggestions`). A mid-pipeline crash orphans `StagedExtraction` records. Wrap the full preview-build operation in a single `async with db.begin()`.
+- [ ] **DF-EXT-M4** `backend/app/api/document_extraction_routes/document.py:114-153` — If `build_extraction_preview()` fails after `store_document_in_source()` succeeds, the document is persisted but the extraction returns an error. Clean up the stored document on extraction failure (or defer storage until after successful extraction).
+- [ ] **DF-EXT-M5** `backend/app/services/batch_extraction_orchestrator.py:202-214` — Parallel filtering operations on `entities`/`entity_results` arrays may lose index alignment when both arrays are filtered independently. Use a unified list-of-tuples structure throughout the pipeline.
+- [ ] **DF-EXT-M6** `backend/app/services/batch_extraction_orchestrator.py:223-249` — Semantic validation of LLM output is absent: relation `entity_slug` values are not checked against the extracted entity list; text spans are not verified against source text. Add cross-field semantic validation after schema validation.
+- [ ] **DF-EXT-M7** `backend/app/api/extraction.py:248-258` — Status endpoint hardcodes `provider="OpenAI"` regardless of actual configured LLM provider. Query the actual provider from `get_llm_provider()`.
+
+---
+
+#### INFERENCES / COMPUTED RELATIONS
+
+##### Critical
+
+- [ ] **DF-INF-C1** `backend/app/services/explanation_read_models.py:23-29` — `build_contradiction_detail()` returns a `ContradictionDetail` with empty source lists, expecting `attach_contradiction_sources()` to fill them. If `attach_contradiction_sources()` returns `None` (because only one direction is present), the contradiction detail is discarded entirely. Frontend shows "Disagreement: 45%" with no contradiction section. Fix: report contradictions whenever `disagreement > threshold`, even when only one direction is represented.
+- [ ] **DF-INF-C2** `backend/app/services/explanation_read_models.py:33-49` — Contradiction logic requires both supporting and contradicting sources to be non-empty. This is backwards: the disagreement metric can be >0 with unidirectional evidence (internal magnitude cancellation). Decouple contradiction visibility from bidirectional-source requirement.
+- [ ] **DF-INF-C3** `backend/app/services/inference/read_models.py:299-309` — Inference cache stores a global average disagreement in `ComputedRelation.uncertainty` but per-role disagreement values differ. When cached inferences are read back, all roles receive the same (incorrect) disagreement value. Store per-role disagreement in `RelationRoleRevision.disagreement`.
+
+##### Major
+
+- [ ] **DF-INF-M1** `backend/app/services/inference/read_models.py:212-216` — Cached confidence is stored as `1.0` globally, while live inferences compute accurate per-role confidence. Store per-role confidence in `RelationRoleRevision` to keep cached and live inferences consistent.
+- [ ] **DF-INF-M2** `backend/app/services/relation_service.py` — Inference cache is invalidated on relation create/update but not on source update (trust_level change). Add cache invalidation for all entities linked to a source when that source is updated.
+- [ ] **DF-INF-M3** `backend/app/services/inference/detail_views.py:82` — `zip(source_ids, results, strict=False)` silently accepts mismatched lengths. A failed source fetch drops source metadata without warning. Change to `strict=True` and handle the resulting ValueError explicitly.
+- [ ] **DF-INF-M4** `frontend/src/views/InferencesView.tsx:206-234` — Inferences fetched in a loop read `items.length` from stale closure for index calculation; concurrent async updates can assign inferences to wrong positions. Use functional state updates with explicit index tracking.
+- [ ] **DF-INF-M5** `backend/app/services/inference/evidence_views.py:33-47` — `if role.weight:` treats explicit `0.0` as absent, falling back to relation direction. A role weight of 0 (neutral contribution) should be distinct from unset. Check `role.weight is not None` instead.
+
+##### Minor
+
+- [ ] **DF-INF-m1** `backend/app/schemas/inference.py:14` — `score: Optional[float]` has no bounds constraint. Add `Field(..., ge=-1.0, le=1.0)` to catch out-of-range math errors before they reach the frontend.
+- [ ] **DF-INF-m2** `backend/app/repositories/inference_repo.py` — `InferenceRepository` class is never instantiated; cache is managed by `ComputedRelationRepository`. Remove dead class to avoid confusion.
+
+---
+
+#### ENTITY MERGE
+
+##### Critical
+
+- [ ] **DF-MRG-C1** `backend/app/services/entity_merge_service.py` — No check prevents circular merges (A→B then B→A). Validate against `EntityMergeRecord` before proceeding: reject if either entity appears as a `source_entity_id` in any existing record.
+- [ ] **DF-MRG-C2** `backend/app/repositories/relation_repo.py:37-61` — `list_by_entity()` does not filter `RelationRevision.is_current == True`. After merge, stale role revisions from the deactivated entity's old revisions can pollute inference calculations. Add `is_current=True` filter to the join.
+- [ ] **DF-MRG-C3** `backend/app/services/entity_merge_service.py` — After merge, the source entity's revisions have `is_current=False` but the Entity row itself is not flagged. Direct entity queries can encounter an entity with no current revision in an ambiguous state. Add an `is_merged` flag (or `merged_into_entity_id` FK) to the `Entity` model and filter merged entities out of standard queries.
+
+##### Major
+
+- [ ] **DF-MRG-M1** `backend/app/services/entity_merge_service.py` — No `source_entity_id != target_entity_id` guard. Self-merge partially succeeds and corrupts the entity. Add explicit validation before any DB operations.
+- [ ] **DF-MRG-M2** `backend/app/services/entity_merge_service.py` — After merge, `ComputedRelation` cache entries for the target entity are not invalidated. Subsequent inference reads return stale data. Delete cached computed relations for the target entity on merge.
+- [ ] **DF-MRG-M3** `backend/app/services/entity_merge_service.py:139-146` — The count query for `relations_moved` counts roles from all revisions, but the move operation only moves current-revision roles. `EntityMergeResult.relations_moved` is inflated. Add `is_current=True` filter to the count query.
+
+---
+
+#### RELATIONS
+
+##### Critical
+
+- [ ] **DF-REL-C1** `backend/app/schemas/relation.py:16-20` + `backend/app/mappers/relation_mapper.py:55-67` — `RelationRoleRevision.disagreement` field exists in the DB model but is absent from `RoleRevisionRead` schema and mapper. Computed disagreement is silently dropped on every relation read. Add field to schema and mapper.
+- [ ] **DF-REL-C2** `backend/app/repositories/relation_repo.py:16-19` — `get_by_id()` does not eagerly load `revisions` or `roles`. Accessing these on the returned object triggers N+1 queries or a `lazy="raise"` error. Add `selectinload(Relation.revisions).selectinload(RelationRevision.roles)` to the query.
+
+##### Major
+
+- [ ] **DF-REL-M1** `backend/app/services/validation_service.py:27-28` vs `backend/app/schemas/relation.py:32` — Schema marks `confidence` as `Optional[float] = None` but the validator rejects null confidence. Either make confidence required in the schema or remove the null check in the validator.
+- [ ] **DF-REL-M2** `backend/app/api/relation_types.py:26-27,39` — `active_only: bool = True` query parameter is declared but never used; the service always returns active types. Either wire the parameter or remove it.
+- [ ] **DF-REL-M3** `backend/app/models/relation_type.py:32` vs `backend/app/schemas/relation_type.py:13` — `description` is mapped as `JSON` in the model but expected as `str` in the schema. Standardize to `String` in the model.
+- [ ] **DF-REL-M4** `frontend/src/types/relation.ts:13` — `entity_id?: string` field exists in the frontend `RelationRead` type but is not sent by the backend schema. Remove the orphaned field or add it to the backend if needed.
+- [ ] **DF-REL-M5** `frontend/src/types/relation.ts:9-21` — `created_by_user_id` is present in backend `RelationRevisionRead` but absent from the frontend type. Add `created_by_user_id?: string | null`.
+
+---
+
+#### SOURCES
+
+##### Critical
+
+- [ ] **DF-SRC-C1** `backend/app/schemas/source.py:86-101` vs `frontend/src/api/sources.ts:41-52` — `SourceMetadataSuggestion.summary` is `Optional[I18nText]` (nested dict) on the backend but the frontend type declares flat `summary_en?: string | null` and `summary_fr?: string | null`. Metadata autofill will fail to populate summary fields after URL extraction. Align frontend type to `summary?: Record<string, string>` and update the form mapping.
+
+##### Major
+
+- [ ] **DF-SRC-M1** `backend/app/schemas/source.py:56-75` + `backend/app/mappers/source_mapper.py` — `SourceRead` does not expose `document_format`, `document_file_name`, or `document_extracted_at` from `SourceRevision`. Frontend cannot show whether a document is attached or its format. Add optional document fields to `SourceRead` and update mapper.
+- [ ] **DF-SRC-M2** `backend/app/schemas/source.py:56-75` — `SourceRead` omits `created_with_llm` and `created_by_user_id`. Provenance is invisible to frontend consumers. Add optional fields and update mapper.
+- [ ] **DF-SRC-M3** `backend/app/mappers/source_mapper.py:66-80` — Fallback branch accesses deprecated flat fields (`kind`, `title`, etc.) directly on `Source`; these fields no longer exist in the dual-table architecture. Remove the fallback or add `hasattr()` guards to prevent `AttributeError`.
+- [ ] **DF-SRC-M4** `frontend/src/views/CreateSourceView.tsx:28-37` + `EditSourceView.tsx:25-34` — Source kinds are hardcoded arrays. Changes to allowed kinds in the DB are not reflected. Use `filterOptions?.kinds` from the cache, falling back to the hardcoded list.
+
+---
+
+#### ENTITIES
+
+##### Critical
+
+- [ ] **DF-ENT-C1** `backend/app/schemas/entity.py:34-51` — `EntityRead` does not expose `created_by_user_id` from `EntityRevision`. Audit chain of custody is invisible at the API level. Add `created_by_user_id: Optional[UUID] = None` and populate in `entity_mapper.py`.
+- [ ] **DF-ENT-C2** `backend/app/models/entity.py` — No `terms` relationship defined on `Entity`. `EntityTerm` references `entity_id` but the reverse relationship is missing, breaking cascades and making term loading require separate queries. Add `terms = relationship("EntityTerm", back_populates="entity", cascade="all, delete-orphan", lazy="raise")`.
+- [ ] **DF-ENT-C3** `backend/app/models/entity_term.py:32` — `entity = relationship("Entity")` has no `back_populates`. Change to `back_populates="terms"`.
+
+##### Major
+
+- [ ] **DF-ENT-M1** `backend/app/services/entity_service.py:254-295` — `get_filter_options()` executes multiple separate queries sequentially and can return `clinical_effects = None`. Batch aggregation queries with `asyncio.gather()`; return empty list instead of `None` for missing aggregations.
+- [ ] **DF-ENT-M2** `frontend/src/views/EntitiesView.tsx:46-79` — `filterOptions?.clinical_effects.map(...)` will throw if `clinical_effects` is null. Add null coalescing: `filterOptions?.clinical_effects?.map(...) ?? []`.
+- [ ] **DF-ENT-M3** `frontend/src/views/EntitiesView.tsx` + `EntityDetailView.tsx` — The `status` field (`draft`/`confirmed`) is sent by the backend but never displayed or filtered. LLM-created draft entities are indistinguishable from confirmed ones. Add a status badge to list items and detail view; add a draft filter.
+
+##### Minor
+
+- [ ] **DF-ENT-m1** `backend/app/services/entity_query_builder.py:154-212` — Recency filter uses INNER JOIN with a year subquery; entities whose sources have `NULL` year are excluded. Use `COALESCE` or OUTER JOIN to handle unknown years.
+- [ ] **DF-ENT-m2** `frontend/src/hooks/useEntityData.ts:23-76` — No `AbortController` on the fetch; unmounting during a request leaves a dangling promise. Add cleanup to cancel in-flight requests on unmount.
+
+---
+
+#### SMART DISCOVERY / PUBMED
+
+##### Critical
+
+- [ ] **DF-DSC-C1** `backend/app/services/document_extraction_discovery.py:166-219` — `bulk_import_pubmed_articles()` has no PMID duplicate detection. The same PubMed article can be imported multiple times, creating duplicate Source records. Call `_find_existing_pmids()` before the import loop and skip already-imported PMIDs.
+- [ ] **DF-DSC-C2** `backend/app/api/document_extraction_routes/discovery.py:41-154` — Discovery and bulk-import endpoints have no rate limiting. An authenticated user can exhaust NCBI API quota or flood the DB with parallel bulk imports. Add `@limiter.limit("5/minute")` (or equivalent) to all three endpoints.
+
+##### Major
+
+- [ ] **DF-DSC-M1** `backend/app/services/document_extraction_discovery.py:98-114` — Sources imported from PubMed store no `imported_at` timestamp or `discovery_query` provenance in metadata. Extend `source_metadata` with `imported_at`, `import_method`, and optionally `discovery_query`.
+- [ ] **DF-DSC-M2** `backend/app/services/document_extraction_discovery.py:320-325` — `trust_level` is LLM-inferred and stored directly as the canonical source trust level without any human review. Store it in a separate `calculated_trust_level` field and leave `trust_level` NULL pending user confirmation, or add a review step before bulk-import commit.
+- [ ] **DF-DSC-M3** `frontend/src/views/PubMedImportView.tsx:106-138` — No `AbortController`, no timeout, no cancel button for bulk import requests that can take 30+ seconds. Add cancellation and a progress/timeout indicator.
+- [ ] **DF-DSC-M4** `frontend/src/types/pubmed.ts:32-37` + `frontend/src/api/smart-discovery.ts:48-53` — Bulk import response type is declared twice with identical shapes. Remove the duplicate from `smart-discovery.ts` and import from `pubmed.ts`.
+
+---
+
+#### EXPORT / IMPORT
+
+##### Critical
+
+- [ ] **DF-EXP-C1** `backend/app/services/export_service.py:39-77,162-222,312-369` — Export omits the `status` field (`draft`/`confirmed`) from entity, source, and relation revisions. On re-import, all records default to `confirmed`, bypassing review workflow for LLM-created drafts. Add `status` to all exported dicts.
+- [ ] **DF-EXP-C2** `backend/app/services/export_service.py:62-77,183-222,353-368` — Revision `created_at` is never exported (only base `entity.created_at`); relation `created_by_user_id` is not exported at all. Add both fields to preserve audit trail on round-trip.
+- [ ] **DF-EXP-C3** `backend/app/api/import_routes.py:34-61` — No file size limit on `UploadFile`. A multi-GB upload is read entirely into memory before validation. Add a size check (e.g., 10 MB cap) before `file.file.read()`.
+
+##### Major
+
+- [ ] **DF-EXP-M1** `backend/app/services/export_service.py:63-67` vs `import_service.py:264-267` — JSON export serializes `summary` as `{"en": "...", "fr": "..."}` but JSON import expects flat `summary_en`/`summary_fr` keys. Round-trip import silently loses all summaries. Flatten summary in JSON export to match import expectations.
+- [ ] **DF-EXP-M2** `backend/app/schemas/import_schema.py` — `SourceImportRow` has no `trust_level` field; imported sources always get `trust_level=None`. Add `trust_level: float | None = None` and pass it through in `import_sources()`.
+- [ ] **DF-EXP-M3** `backend/app/services/export_service.py:258-273` — CSV export assumes exactly 2 roles (subject/object) per relation. N-ary relations lose extra roles silently. Store all roles as a JSON array in an additional column.
+- [ ] **DF-EXP-M4** `frontend/src/views/ImportEntitiesView.tsx` + `ImportSourcesView.tsx` — No file size validation in the UI; no progress indicator; no cancel mechanism for large imports. Add client-side size check, progress bar, and abort capability.
+- [ ] **DF-EXP-M5** `backend/app/services/export_service.py:144,298` — RDF/Turtle export does not escape quotes in string literals. Exported files fail to parse in RDF tools. Apply proper Turtle string escaping.
+
+---
 
 ### E2E Test Suite — Soundness and Coverage (2026-03-22)
 
@@ -66,7 +291,7 @@ From completed audits — low priority, no blocking risk.
 - **Entity legacy fields** (kind, label, synonyms, ontology_ref on `EntityRead`) — still consumed as fallbacks in 10+ frontend files; cannot retire until frontend migrates to slug+summary exclusively.
 - **subject_slug / object_slug on `ExtractedRelation`** — still used in CSV export and LLM backward-compat path; documented deprecated, cannot retire yet.
 - **Rejected-extraction visibility** (Audit 20 M4) — no `rejection_flagged` column; rejected extractions remain visible with status="rejected". Defer until a post-v1.0 moderation sprint.
-- **Plaintext reset/verification token storage** (Audit 22) — low risk given short expiry + single-use; defer post-v1.0.
+- **Plaintext reset/verification token storage** — elevated to DF-AUT-C1 above; no longer deferred.
 - **Expired refresh token purge** (Auth audit m2) — old expired/revoked rows accumulate in `refresh_tokens`; add a periodic cleanup job post-v1.0.
 - **Cross-tab refresh lock busy-wait** (Auth audit m3) — `client.tsx` polls every 100 ms; replace with `StorageEvent` listener post-v1.0.
 - **LLM singleton not invalidated on key rotation** (LLM audit m3) — `_llm_provider` in `llm/client.py` persists across API key changes; restart required. Add `reset_llm_provider()` for tests post-v1.0.
@@ -107,3 +332,15 @@ From completed audits — low priority, no blocking risk.
 - `.temp/dead_code_compatibility_shims_report_v2.md`
 - `.temp/typed_contract_discipline_report_v3.md`
 - `.temp/test_suite_health_report_v2.md`
+- `.temp/audit_dataflow_entities_2026-03-23.md` *(agent output)*
+- `.temp/audit_dataflow_sources_2026-03-23.md`
+- `.temp/audit_dataflow_relations_2026-03-23.md`
+- `.temp/audit_dataflow_inferences_2026-03-23.md`
+- `.temp/audit_dataflow_extraction_2026-03-23.md`
+- `.temp/audit_dataflow_extraction_review_2026-03-23.md`
+- `.temp/audit_dataflow_revision_review_2026-03-23.md`
+- `.temp/audit_dataflow_search_2026-03-23.md`
+- `.temp/audit_dataflow_auth_2026-03-23.md`
+- `.temp/audit_dataflow_smart_discovery_2026-03-23.md`
+- `.temp/audit_dataflow_entity_merge_2026-03-23.md`
+- `.temp/audit_dataflow_export_import_2026-03-23.md`

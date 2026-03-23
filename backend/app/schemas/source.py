@@ -72,6 +72,11 @@ class SourceRead(Schema):
     trust_level: Optional[float] = None
     summary: Optional[I18nText] = None
     source_metadata: Optional[JsonObject] = None
+    created_with_llm: Optional[str] = None
+    created_by_user_id: Optional[UUID] = None
+    document_format: Optional[str] = None
+    document_file_name: Optional[str] = None
+    document_extracted_at: Optional[datetime] = None
 
 
 class SourceWithHistory(SourceRead):

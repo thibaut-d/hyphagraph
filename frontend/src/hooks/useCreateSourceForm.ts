@@ -104,8 +104,8 @@ export function useCreateSourceForm() {
       if (metadata.trust_level !== undefined && metadata.trust_level !== null) {
         setTrustLevel(metadata.trust_level.toString());
       }
-      if (metadata.summary_en) setSummaryEn(metadata.summary_en);
-      if (metadata.summary_fr) setSummaryFr(metadata.summary_fr);
+      if (metadata.summary?.en) setSummaryEn(metadata.summary.en);
+      if (metadata.summary?.fr) setSummaryFr(metadata.summary.fr);
       if (metadata.source_metadata) setSourceMetadata(metadata.source_metadata);
 
       setAutofilled(true);

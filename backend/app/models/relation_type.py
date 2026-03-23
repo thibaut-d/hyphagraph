@@ -29,7 +29,7 @@ class RelationType(Base, TimestampMixin):
     label: Mapped[dict[str, str]] = mapped_column(JSON)  # {"en": "Treats", "fr": "Traite"}
 
     # Description for LLM guidance
-    description: Mapped[str] = mapped_column(JSON)  # "Drug/treatment treats disease/symptom"
+    description: Mapped[str] = mapped_column(String)  # "Drug/treatment treats disease/symptom"
 
     # Examples for LLM
     examples: Mapped[str | None] = mapped_column(JSON, nullable=True)  # "aspirin treats migraine"

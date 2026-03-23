@@ -44,6 +44,14 @@ class RelationRevision(Base, UUIDMixin):
     # 'confirmed' for manually-entered or reviewed revisions.
     status: Mapped[str] = mapped_column(String, nullable=False, default="confirmed")
 
+    # Confirmation provenance
+    confirmed_by_user_id: Mapped[PyUUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    confirmed_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
     # Revision metadata
     created_at: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True),

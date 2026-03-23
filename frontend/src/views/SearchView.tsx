@@ -87,9 +87,12 @@ export function SearchView() {
     [handlePageError]
   );
 
-  // Search when query changes
+  // Search when query changes (debounced 300ms to avoid excess requests)
   useEffect(() => {
-    performSearch(query, page, typeFilter);
+    const timer = setTimeout(() => {
+      performSearch(query, page, typeFilter);
+    }, 300);
+    return () => clearTimeout(timer);
   }, [query, page, typeFilter, performSearch]);
 
   // Update URL when query changes

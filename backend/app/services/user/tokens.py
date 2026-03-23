@@ -67,9 +67,11 @@ async def refresh_access_token_with_user(
     refresh_token: str,
     *,
     create_access_token_fn=create_access_token,
+    generate_refresh_token_fn=generate_refresh_token,
+    hash_refresh_token_fn=hash_refresh_token,
     hash_token_for_lookup_fn=hash_token_for_lookup,
     verify_refresh_token_fn=verify_refresh_token,
-) -> tuple[str, User]:
+) -> tuple[str, str, User]:
     lookup_hash = hash_token_for_lookup_fn(refresh_token)
     stmt = select(RefreshToken).where(
         RefreshToken.token_lookup_hash == lookup_hash,
@@ -92,7 +94,32 @@ async def refresh_access_token_with_user(
             details="The user associated with this token does not exist or is inactive",
         )
 
-    return create_access_token_fn(data={"sub": str(user.id)}), user
+    # Rotate: revoke the consumed token and issue a new one.
+    matched_token.is_revoked = True
+    matched_token.revoked_at = datetime.now(timezone.utc)
+
+    new_refresh_token = generate_refresh_token_fn()
+    new_token_hash = await hash_refresh_token_fn(new_refresh_token)
+    new_lookup_hash = hash_token_for_lookup_fn(new_refresh_token)
+    expires_at = matched_token.expires_at  # preserve original expiry window
+
+    try:
+        new_db_token = RefreshToken(
+            user_id=user.id,
+            token_lookup_hash=new_lookup_hash,
+            token_hash=new_token_hash,
+            expires_at=expires_at,
+            is_revoked=False,
+        )
+        service.db.add(new_db_token)
+        await service.db.commit()
+    except Exception as e:
+        logger.error("Failed to rotate refresh token for user %s: %s", user.id, e, exc_info=True)
+        await service.db.rollback()
+        raise
+
+    access_token = create_access_token_fn(data={"sub": str(user.id)})
+    return access_token, new_refresh_token, user
 
 
 async def refresh_access_token(
@@ -100,7 +127,7 @@ async def refresh_access_token(
     refresh_token: str,
     **kwargs,
 ) -> str:
-    access_token, _ = await refresh_access_token_with_user(service, refresh_token, **kwargs)
+    access_token, _, _user = await refresh_access_token_with_user(service, refresh_token, **kwargs)
     return access_token
 
 

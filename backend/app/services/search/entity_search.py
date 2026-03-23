@@ -21,6 +21,7 @@ async def search_entities(
         .join(EntityRevision, Entity.id == EntityRevision.entity_id)
         .outerjoin(EntityTerm, Entity.id == EntityTerm.entity_id)
         .where(EntityRevision.is_current == True)
+        .where(EntityRevision.status == "confirmed")
     )
 
     if filters.ui_category_id:

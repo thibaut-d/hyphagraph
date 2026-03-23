@@ -196,7 +196,7 @@ class ExtractionReviewService:
             # Keep status change and materialization in the same transaction so that
             # a materialization failure never leaves the extraction stuck in APPROVED.
             apply_review_metadata(staged, reviewer_id, notes, approved=True)
-            result = await self.materialize_extraction(extraction_id)
+            result = await self.materialize_extraction(extraction_id, user_id=reviewer_id)
             if not result.success:
                 # materialize_extraction rolled back; undo the in-memory status change
                 staged.status = ExtractionStatus.PENDING
@@ -293,7 +293,9 @@ class ExtractionReviewService:
     # Materialization
     # =========================================================================
 
-    async def materialize_extraction(self, extraction_id: UUID) -> MaterializationResult:
+    async def materialize_extraction(
+        self, extraction_id: UUID, user_id: UUID | None = None
+    ) -> MaterializationResult:
         """Materialize an approved extraction into the knowledge graph."""
         staged = await load_staged_extraction(self.db, extraction_id)
 
@@ -315,7 +317,7 @@ class ExtractionReviewService:
 
         try:
             if staged.extraction_type == ExtractionType.ENTITY:
-                entity_id = await materialize_entity(self.db, staged)
+                entity_id = await materialize_entity(self.db, staged, user_id=user_id)
                 staged.materialized_entity_id = entity_id
                 await self.db.commit()
                 return MaterializationResult(
@@ -326,7 +328,7 @@ class ExtractionReviewService:
                 )
 
             elif staged.extraction_type == ExtractionType.RELATION:
-                relation_id = await materialize_relation(self.db, staged)
+                relation_id = await materialize_relation(self.db, staged, user_id=user_id)
                 staged.materialized_relation_id = relation_id
                 await self.db.commit()
                 return MaterializationResult(
@@ -337,7 +339,7 @@ class ExtractionReviewService:
                 )
 
             else:  # CLAIM → materialized as a relation
-                relation_id = await materialize_claim(self.db, staged)
+                relation_id = await materialize_claim(self.db, staged, user_id=user_id)
                 staged.materialized_relation_id = relation_id
                 await self.db.commit()
                 return MaterializationResult(

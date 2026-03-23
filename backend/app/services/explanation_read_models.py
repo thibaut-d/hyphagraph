@@ -20,9 +20,6 @@ def build_contradiction_detail(
         elif evidence.contribution_direction == "contradicts":
             contradicting_sources.append(evidence)
 
-    if not supporting_sources or not contradicting_sources:
-        return None
-
     return ContradictionDetail(
         supporting_sources=[],
         contradicting_sources=[],
@@ -44,9 +41,6 @@ def attach_contradiction_sources(
             supporting_sources.append(source)
         elif source.relation_direction == "contradicts":
             contradicting_sources.append(source)
-
-    if not supporting_sources or not contradicting_sources:
-        return None
 
     contradiction_detail.supporting_sources = supporting_sources
     contradiction_detail.contradicting_sources = contradicting_sources

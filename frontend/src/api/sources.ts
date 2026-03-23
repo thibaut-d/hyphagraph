@@ -46,8 +46,7 @@ export interface SourceMetadataSuggestion {
   origin?: string | null;
   kind?: string | null;
   trust_level?: number | null;
-  summary_en?: string | null;
-  summary_fr?: string | null;
+  summary?: Record<string, string> | null;
   source_metadata?: JsonObject | null;
 }
 

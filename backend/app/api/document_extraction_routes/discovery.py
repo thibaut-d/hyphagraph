@@ -1,9 +1,10 @@
 import logging
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.utils.rate_limit import limiter
 from app.api.document_extraction_dependencies import (
     PubMedFetcher,
     build_pubmed_results,
@@ -43,7 +44,9 @@ router = APIRouter(tags=["document-extraction"])
     response_model=SmartDiscoveryResponse,
     summary="Intelligent multi-source discovery based on entities",
 )
+@limiter.limit("5/minute")
 async def smart_discovery(
+    http_request: Request,
     request: SmartDiscoveryRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -159,7 +162,9 @@ async def smart_discovery(
     response_model=PubMedBulkSearchResponse,
     summary="Search PubMed and get article list",
 )
+@limiter.limit("5/minute")
 async def bulk_search_pubmed(
+    http_request: Request,
     request: PubMedBulkSearchRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -208,7 +213,9 @@ async def bulk_search_pubmed(
     response_model=PubMedBulkImportResponse,
     summary="Batch import PubMed articles as sources",
 )
+@limiter.limit("5/minute")
 async def bulk_import_pubmed(
+    http_request: Request,
     request: PubMedBulkImportRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -244,6 +251,7 @@ async def bulk_import_pubmed(
             total_requested=summary.total_requested,
             sources_created=summary.sources_created,
             failed_pmids=summary.failed_pmids,
+            skipped_pmids=summary.skipped_pmids,
             source_ids=summary.source_ids,
         )
     except (AppException, ValidationException):

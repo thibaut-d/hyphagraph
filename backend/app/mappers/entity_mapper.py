@@ -57,6 +57,7 @@ def entity_to_read(entity: Entity, current_revision: EntityRevision) -> EntityRe
         summary=_parse_summary(current_revision.summary),
         ui_category_id=current_revision.ui_category_id,
         created_with_llm=current_revision.created_with_llm,
+        created_by_user_id=current_revision.created_by_user_id,
         status=current_revision.status,
     )
 

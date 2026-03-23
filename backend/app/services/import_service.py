@@ -748,6 +748,7 @@ class ImportService:
                             "origin": row.origin,
                             "url": url,
                             "summary": summary,
+                            "trust_level": row.trust_level,
                             "source_metadata": row.source_metadata,
                             "created_by_user_id": user_id,
                         },

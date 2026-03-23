@@ -62,6 +62,7 @@ class SourceImportRow(Schema):
     origin: str | None = None
     url: str = ""
     summary_en: str | None = None
+    trust_level: float | None = None
     source_metadata: JsonObject | None = None
 
 

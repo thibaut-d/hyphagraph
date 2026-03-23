@@ -61,7 +61,7 @@ class RevisionReviewService:
 
     async def _list_entity_drafts(self) -> list[DraftRevisionRead]:
         result = await self.db.execute(
-            select(EntityRevision).where(EntityRevision.status == "draft")
+            select(EntityRevision).where(EntityRevision.status == "draft", EntityRevision.is_current == True)
         )
         return [
             DraftRevisionRead(
@@ -79,7 +79,7 @@ class RevisionReviewService:
 
     async def _list_relation_drafts(self) -> list[DraftRevisionRead]:
         result = await self.db.execute(
-            select(RelationRevision).where(RelationRevision.status == "draft")
+            select(RelationRevision).where(RelationRevision.status == "draft", RelationRevision.is_current == True)
         )
         return [
             DraftRevisionRead(
@@ -97,7 +97,7 @@ class RevisionReviewService:
 
     async def _list_source_drafts(self) -> list[DraftRevisionRead]:
         result = await self.db.execute(
-            select(SourceRevision).where(SourceRevision.status == "draft")
+            select(SourceRevision).where(SourceRevision.status == "draft", SourceRevision.is_current == True)
         )
         return [
             DraftRevisionRead(
@@ -121,16 +121,31 @@ class RevisionReviewService:
     async def confirm(
         self, revision_kind: str, revision_id: UUID
     ) -> bool:
-        """Set status='confirmed' on a draft revision.  Returns False if not found."""
+        """Set status='confirmed' and is_current=True on a draft revision.  Returns False if not found."""
         model = self._model_for(revision_kind)
+        # Use SELECT FOR UPDATE to prevent concurrent confirms (DF-DRV-C4)
         result = await self.db.execute(
-            select(model).where(model.id == revision_id, model.status == "draft")
+            select(model).where(model.id == revision_id, model.status == "draft").with_for_update()
         )
         revision = result.scalar_one_or_none()
         if not revision:
             return False
 
+        parent_id_field, _ = self._parent_for(revision_kind)
+        parent_id = getattr(revision, parent_id_field)
+
+        # Clear is_current on all other revisions for this parent (DF-DRV-C1)
+        siblings_result = await self.db.execute(
+            select(model).where(
+                getattr(model, parent_id_field) == parent_id,
+                model.id != revision_id,
+            )
+        )
+        for sibling in siblings_result.scalars().all():
+            sibling.is_current = False
+
         revision.status = "confirmed"
+        revision.is_current = True
         await self.db.flush()
         await self.db.commit()
         logger.info(

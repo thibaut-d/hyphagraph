@@ -24,7 +24,6 @@ router = APIRouter(tags=["relation-types"])
 
 @router.get("/", response_model=list[RelationTypeRead])
 async def list_relation_types(
-    active_only: bool = True,
     service: RelationTypeService = Depends(get_relation_type_service),
 ):
     """

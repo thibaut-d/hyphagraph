@@ -18,6 +18,7 @@ class RoleRevisionRead(RoleRevisionWrite):
     id: UUID
     relation_revision_id: UUID
     entity_slug: Optional[str] = None  # Resolved entity slug for display
+    disagreement: Optional[float] = None  # Per-role computed disagreement
 
 
 class RelationWrite(Schema):

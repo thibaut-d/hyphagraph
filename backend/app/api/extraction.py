@@ -253,6 +253,6 @@ async def extraction_status() -> ExtractionStatusResponse:
         status="ready" if available else "unavailable",
         available=available,
         message="Extraction service is ready" if available else "LLM not configured",
-        provider="OpenAI" if available else None,
+        provider=settings.LLM_PROVIDER if available else None,
         model=settings.OPENAI_MODEL if available else None
     )

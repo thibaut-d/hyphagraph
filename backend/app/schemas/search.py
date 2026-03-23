@@ -10,6 +10,12 @@ from pydantic import BaseModel, Field
 from uuid import UUID
 
 
+SourceKind = Literal[
+    "article", "book", "website", "study", "review", "guideline",
+    "case_report", "conference_paper", "report", "thesis",
+]
+
+
 class SearchFilters(BaseModel):
     """
     Query parameters for search across entities, sources, and relations.
@@ -40,7 +46,7 @@ class SearchFilters(BaseModel):
         json_schema_extra={"example": ["drug-category-id"]}
     )
 
-    source_kind: Optional[List[str]] = Field(
+    source_kind: Optional[List[SourceKind]] = Field(
         None,
         description="Filter sources by kind (OR logic)",
         json_schema_extra={"example": ["study", "article"]}

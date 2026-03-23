@@ -25,7 +25,7 @@ class SearchService:
     """
     Service for unified search across entities, sources, and relations.
 
-    Uses PostgreSQL full-text search for performance and ranking.
+    Uses ILIKE pattern matching for search and relevance ranking.
     """
 
     def __init__(self, db: AsyncSession):
@@ -72,15 +72,10 @@ class SearchService:
         # Sort all results by relevance score (descending)
         results.sort(key=lambda r: r.relevance_score or 0, reverse=True)
 
-        # Apply global pagination across all results
-        start = filters.offset
-        end = start + filters.limit
-        paginated_results = results[start:end]
-
         total_count = entity_count + source_count + relation_count
 
         return (
-            paginated_results,
+            results,
             total_count,
             entity_count,
             source_count,
@@ -121,7 +116,7 @@ class SearchService:
             entity_stmt = (
                 select(Entity.id, EntityRevision.slug, EntityRevision.ui_category_id)
                 .join(EntityRevision, Entity.id == EntityRevision.entity_id)
-                .where(EntityRevision.is_current == True)
+                .where(EntityRevision.is_current == True, EntityRevision.status == "confirmed")
                 .where(func.lower(EntityRevision.slug).startswith(query_lower))
                 .order_by(EntityRevision.slug)
                 .limit(request.limit)
@@ -145,7 +140,7 @@ class SearchService:
                     select(Entity.id, EntityTerm.term, EntityRevision.slug)
                     .join(Entity, EntityTerm.entity_id == Entity.id)
                     .join(EntityRevision, Entity.id == EntityRevision.entity_id)
-                    .where(EntityRevision.is_current == True)
+                    .where(EntityRevision.is_current == True, EntityRevision.status == "confirmed")
                     .where(func.lower(EntityTerm.term).startswith(query_lower))
                     .order_by(EntityTerm.term)
                     .limit(remaining)
@@ -170,7 +165,7 @@ class SearchService:
                     Source.id, SourceRevision.title, SourceRevision.kind, SourceRevision.year
                 )
                 .join(SourceRevision, Source.id == SourceRevision.source_id)
-                .where(SourceRevision.is_current == True)
+                .where(SourceRevision.is_current == True, SourceRevision.status == "confirmed")
                 .where(func.lower(SourceRevision.title).startswith(query_lower))
                 .order_by(SourceRevision.year.desc().nullslast(), SourceRevision.title)
                 .limit(remaining)

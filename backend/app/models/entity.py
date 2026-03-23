@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import DateTime
+from sqlalchemy import Boolean, DateTime
 from sqlalchemy.sql import func
 from app.models.base import Base, UUIDMixin
 
@@ -25,6 +25,18 @@ class Entity(Base, UUIDMixin):
         back_populates="entity",
         cascade="all, delete-orphan",
         order_by="EntityRevision.created_at.desc()",
+        lazy="raise",
+        passive_deletes=True,
+    )
+
+    is_merged: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+
+    terms = relationship(
+        "EntityTerm",
+        back_populates="entity",
+        cascade="all, delete-orphan",
         lazy="raise",
         passive_deletes=True,
     )

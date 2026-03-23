@@ -203,31 +203,35 @@ export default function InferencesView() {
       }
 
       // Load inferences for each entity asynchronously
-      response.items.forEach(async (entity, index) => {
+      response.items.forEach(async (entity) => {
         try {
           const inference = await getInferenceForEntity(entity.id);
-          const itemIndex = currentOffset === 0 ? index : items.length + index;
 
           setItems((prev) => {
             const updated = [...prev];
-            updated[itemIndex] = {
-              entity,
-              roleInferences: inference.role_inferences || [],
-              isLoading: false,
-              error: null,
-            };
+            const idx = updated.findIndex((item) => item.entity.id === entity.id);
+            if (idx !== -1) {
+              updated[idx] = {
+                entity,
+                roleInferences: inference.role_inferences || [],
+                isLoading: false,
+                error: null,
+              };
+            }
             return updated;
           });
         } catch (error) {
-          const itemIndex = currentOffset === 0 ? index : items.length + index;
           setItems((prev) => {
             const updated = [...prev];
-            updated[itemIndex] = {
-              entity,
-              roleInferences: [],
-              isLoading: false,
-              error: "Failed to load inferences",
-            };
+            const idx = updated.findIndex((item) => item.entity.id === entity.id);
+            if (idx !== -1) {
+              updated[idx] = {
+                entity,
+                roleInferences: [],
+                isLoading: false,
+                error: "Failed to load inferences",
+              };
+            }
             return updated;
           });
         }
@@ -235,7 +239,7 @@ export default function InferencesView() {
     } finally {
       setIsLoadingPage(false);
     }
-  }, [items.length]);
+  }, []);
 
   // Initial load
   useEffect(() => {

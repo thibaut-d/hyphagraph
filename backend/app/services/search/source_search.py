@@ -17,6 +17,7 @@ async def search_sources(
         select(Source, SourceRevision)
         .join(SourceRevision, Source.id == SourceRevision.source_id)
         .where(SourceRevision.is_current == True)
+        .where(SourceRevision.status == "confirmed")
     )
 
     if filters.source_kind:

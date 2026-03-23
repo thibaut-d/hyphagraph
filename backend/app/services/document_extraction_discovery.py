@@ -36,6 +36,7 @@ class PubMedImportSummary:
     total_requested: int
     sources_created: int
     failed_pmids: list[str]
+    skipped_pmids: list[str]
     source_ids: list[UUID]
 
 
@@ -94,6 +95,7 @@ async def create_source_from_pubmed_article(
     trust_level: float,
     source_service_factory: Callable[[AsyncSession], SourceService] = SourceService,
 ) -> UUID:
+    from datetime import datetime, timezone
     source_service = source_service_factory(db)
     source_data = SourceWrite(
         kind="study",
@@ -102,13 +104,16 @@ async def create_source_from_pubmed_article(
         year=article.year,
         origin=article.journal,
         url=article.url,
-        trust_level=trust_level,
+        trust_level=None,  # not canonical; stored as calculated_trust_level in metadata
         summary={"en": article.abstract} if article.abstract else None,
         source_metadata={
             "pmid": article.pmid,
             "doi": article.doi,
             "source": "pubmed",
             "imported_via": "bulk_import",
+            "import_method": "pubmed_api",
+            "imported_at": datetime.now(timezone.utc).isoformat(),
+            "calculated_trust_level": trust_level,
         },
         created_with_llm=None,
     )
@@ -179,10 +184,17 @@ async def bulk_import_pubmed_articles(
     else:
         articles = await pubmed_fetcher_factory().bulk_fetch_articles(pmids)
 
+    # Skip PMIDs already imported for this user (DF-DSC-C1)
+    existing_pmids = await _find_existing_pmids(db, [a.pmid for a in articles], user_id)
+
     source_ids: list[UUID] = []
     failed_pmids: list[str] = []
+    skipped_pmids: list[str] = []
 
     for article in articles:
+        if article.pmid in existing_pmids:
+            skipped_pmids.append(article.pmid)
+            continue
         try:
             trust_level = trust_level_resolver(
                 article.title,
@@ -215,6 +227,7 @@ async def bulk_import_pubmed_articles(
         total_requested=len(pmids),
         sources_created=len(source_ids),
         failed_pmids=failed_pmids,
+        skipped_pmids=skipped_pmids,
         source_ids=source_ids,
     )
 

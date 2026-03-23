@@ -78,6 +78,10 @@ export function ImportSourcesView() {
 
   async function handlePreview() {
     if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      setError(t("import.fileTooLarge", "File must be under 10 MB"));
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {

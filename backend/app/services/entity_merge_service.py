@@ -111,6 +111,22 @@ class EntityMergeService:
         Returns:
             Statistics about the merge
         """
+        # Guard: self-merge is invalid (DF-MRG-M1)
+        if source_entity_id == target_entity_id:
+            raise ValueError("Cannot merge entity with itself: source and target must be different entities")
+
+        # Guard: check for circular merge — reject if either entity already appears
+        # as a source in an existing merge record involving the other (DF-MRG-C1)
+        circular_stmt = select(EntityMergeRecord).where(
+            EntityMergeRecord.source_entity_id.in_([source_entity_id, target_entity_id]),
+            EntityMergeRecord.target_entity_id.in_([source_entity_id, target_entity_id]),
+        )
+        circular_result = await self.db.execute(circular_stmt)
+        if circular_result.scalar_one_or_none():
+            raise ValueError(
+                "Circular merge detected: one of these entities has already been merged into the other"
+            )
+
         # Get source and target entities
         stmt = select(Entity, EntityRevision).join(
             EntityRevision, Entity.id == EntityRevision.entity_id

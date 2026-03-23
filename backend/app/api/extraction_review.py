@@ -147,7 +147,7 @@ async def review_extraction(
     extraction_id: UUID,
     decision: ReviewDecisionRequest,
     service: ExtractionReviewService = Depends(get_extraction_review_service),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_superuser),
 ):
     """
     Approve or reject a staged extraction.
@@ -197,7 +197,7 @@ async def review_extraction(
 async def batch_review_extractions(
     request: BatchReviewRequest,
     service: ExtractionReviewService = Depends(get_extraction_review_service),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_superuser),
 ):
     """
     Review multiple extractions at once.

@@ -6,6 +6,7 @@ import {
 } from "../utils/errorHandler";
 import {
   clearStoredAuthTokens,
+  setStoredAuthTokens,
   updateStoredAccessToken,
 } from "../auth/authStorage";
 
@@ -169,6 +170,7 @@ async function refreshToken(): Promise<string | null> {
 
     const data = await response.json();
     const newToken = data.access_token;
+    const newRefreshToken = data.refresh_token;
 
     // Guard: if the refresh token was cleared while this request was in-flight
     // (e.g. user logged out), discard the new access token so it is never
@@ -177,8 +179,12 @@ async function refreshToken(): Promise<string | null> {
       return null;
     }
 
-    // Update stored token
-    updateStoredAccessToken(newToken);
+    // Update stored tokens; persist rotated refresh token if server returned one.
+    if (newRefreshToken) {
+      setStoredAuthTokens(newToken, newRefreshToken);
+    } else {
+      updateStoredAccessToken(newToken);
+    }
 
     return newToken;
   } catch (error) {
@@ -253,54 +259,50 @@ async function apiRequest<T>(
 
     // Try to acquire refresh lock (cross-tab synchronized)
     if (!tryAcquireRefreshLock()) {
-      // Another tab is refreshing, wait for it to complete
+      // Another tab is refreshing — wait for the lock to be released via StorageEvent.
       return new Promise((resolve, reject) => {
-        const cleanup = (timeoutId: ReturnType<typeof setTimeout>) => {
-          clearInterval(checkRefresh);
+        let timeoutId: ReturnType<typeof setTimeout>;
+
+        const cleanup = () => {
           clearTimeout(timeoutId);
+          window.removeEventListener("storage", onStorage);
         };
 
-        const checkRefresh = setInterval(() => {
-          if (!isRefreshInProgress()) {
-            cleanup(timeoutId);
-
-            // Refresh completed in another tab, retry with new token
-            const newToken = localStorage.getItem("auth_token");
-            if (!newToken) {
-              reject(new Error("Session expired. Please login again."));
-              return;
-            }
-
-            const newHeaders = {
-              ...headers,
-              Authorization: `Bearer ${newToken}`,
-            };
-
-            fetch(`${API_BASE_URL}${path}`, {
-              ...options,
-              headers: newHeaders,
-            })
-              .then(async (retryRes) => {
-                if (!retryRes.ok) {
-                  const parsedAppError = await parseFailureResponse(
-                    retryRes,
-                    "API request failed",
-                  );
-                  console.error(formatErrorForLogging(parsedAppError));
-                  throw parsedAppError;
-                }
-                return returnRawResponse
-                  ? (retryRes as T)
-                  : parseSuccessResponse<T>(retryRes);
-              })
-              .then(resolve)
-              .catch(reject);
+        const retry = () => {
+          cleanup();
+          const newToken = localStorage.getItem("auth_token");
+          if (!newToken) {
+            reject(new Error("Session expired. Please login again."));
+            return;
           }
-        }, 100); // Check every 100ms
+          const newHeaders = {
+            ...headers,
+            Authorization: `Bearer ${newToken}`,
+          };
+          fetch(`${API_BASE_URL}${path}`, { ...options, headers: newHeaders })
+            .then(async (retryRes) => {
+              if (!retryRes.ok) {
+                const parsedAppError = await parseFailureResponse(retryRes, "API request failed");
+                console.error(formatErrorForLogging(parsedAppError));
+                throw parsedAppError;
+              }
+              return returnRawResponse ? (retryRes as T) : parseSuccessResponse<T>(retryRes);
+            })
+            .then(resolve)
+            .catch(reject);
+        };
 
-        // Timeout after 15 seconds
-        const timeoutId = setTimeout(() => {
-          clearInterval(checkRefresh);
+        const onStorage = (event: StorageEvent) => {
+          // The lock is released when the key is removed from localStorage.
+          if (event.key === REFRESH_LOCK_KEY && event.newValue === null) {
+            retry();
+          }
+        };
+
+        window.addEventListener("storage", onStorage);
+
+        timeoutId = setTimeout(() => {
+          cleanup();
           reject(new Error("Token refresh timeout"));
         }, 15000);
       });
@@ -315,9 +317,12 @@ async function apiRequest<T>(
     }
 
     if (!newToken) {
-      // Refresh failed, redirect to login
+      // Refresh failed — clear tokens and redirect to login, but only when not
+      // already on the login/account page to avoid a redirect loop.
       clearStoredAuthTokens();
-      window.location.href = "/account";
+      if (!window.location.pathname.startsWith("/account")) {
+        window.location.href = "/account";
+      }
       throw new Error("Session expired. Please login again.");
     }
 

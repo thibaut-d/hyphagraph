@@ -10,7 +10,7 @@ from uuid import UUID
 
 from app.database import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.dependencies.auth import get_current_user
+from app.dependencies.auth import get_current_user, get_current_active_superuser
 from app.models.user import User
 from app.services.revision_review_service import RevisionReviewService
 from app.schemas.review import (
@@ -63,7 +63,7 @@ async def confirm_revision(
     revision_kind: str,
     revision_id: UUID,
     service: RevisionReviewService = Depends(_get_service),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_superuser),
 ):
     """Confirm a draft revision, marking it as authoritative."""
     if revision_kind not in VALID_KINDS:
@@ -88,7 +88,7 @@ async def discard_revision(
     revision_kind: str,
     revision_id: UUID,
     service: RevisionReviewService = Depends(_get_service),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_superuser),
 ):
     """Discard (delete) a draft revision."""
     if revision_kind not in VALID_KINDS:

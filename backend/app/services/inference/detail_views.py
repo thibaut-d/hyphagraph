@@ -79,7 +79,7 @@ async def _load_sources(
     )
 
     source_map: dict[str, SourceRead] = {}
-    for source_id, result in zip(source_ids, results, strict=False):
+    for source_id, result in zip(source_ids, results, strict=True):
         if not isinstance(result, Exception):
             source_map[source_id] = result
     return source_map

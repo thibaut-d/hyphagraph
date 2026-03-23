@@ -17,7 +17,9 @@ from app.utils.revision_helpers import create_new_revision
 logger = logging.getLogger(__name__)
 
 
-async def materialize_entity(db: AsyncSession, staged: StagedExtraction) -> UUID:
+async def materialize_entity(
+    db: AsyncSession, staged: StagedExtraction, user_id: UUID | None = None
+) -> UUID:
     entity_data = ExtractedEntity(**staged.extraction_data)
 
     entity = Entity()
@@ -34,6 +36,7 @@ async def materialize_entity(db: AsyncSession, staged: StagedExtraction) -> UUID
             "summary": {"en": entity_data.summary} if entity_data.summary else None,
             "status": "draft",
             "created_with_llm": staged.llm_model,
+            "created_by_user_id": user_id,
         },
         set_as_current=True,
     )
@@ -42,7 +45,9 @@ async def materialize_entity(db: AsyncSession, staged: StagedExtraction) -> UUID
     return entity.id
 
 
-async def materialize_relation(db: AsyncSession, staged: StagedExtraction) -> UUID:
+async def materialize_relation(
+    db: AsyncSession, staged: StagedExtraction, user_id: UUID | None = None
+) -> UUID:
     relation_data = ExtractedRelation(**staged.extraction_data)
 
     relation = Relation(source_id=staged.source_id)
@@ -62,6 +67,7 @@ async def materialize_relation(db: AsyncSession, staged: StagedExtraction) -> UU
             "notes": {"en": relation_data.text_span} if relation_data.text_span else None,
             "status": "draft",
             "created_with_llm": staged.llm_model,
+            "created_by_user_id": user_id,
         },
         set_as_current=True,
     )
@@ -76,12 +82,10 @@ async def materialize_relation(db: AsyncSession, staged: StagedExtraction) -> UU
         entity_revision = entity_result.scalar_one_or_none()
 
         if not entity_revision:
-            logger.warning(
-                "Entity with slug '%s' not found, skipping role in relation %s",
-                role_data.entity_slug,
-                relation.id,
+            raise ValueError(
+                f"Entity with slug '{role_data.entity_slug}' not found; "
+                f"cannot materialize relation {relation.id}"
             )
-            continue
 
         db.add(
             RelationRoleRevision(
@@ -96,7 +100,9 @@ async def materialize_relation(db: AsyncSession, staged: StagedExtraction) -> UU
     return relation.id
 
 
-async def materialize_claim(db: AsyncSession, staged: StagedExtraction) -> UUID:
+async def materialize_claim(
+    db: AsyncSession, staged: StagedExtraction, user_id: UUID | None = None
+) -> UUID:
     """Materialize a claim as a relation in the knowledge graph.
 
     Claims become relations where:
@@ -125,6 +131,7 @@ async def materialize_claim(db: AsyncSession, staged: StagedExtraction) -> UUID:
             "scope": {"evidence_strength": claim_data.evidence_strength},
             "status": "draft",
             "created_with_llm": staged.llm_model,
+            "created_by_user_id": user_id,
         },
         set_as_current=True,
     )

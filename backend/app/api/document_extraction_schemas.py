@@ -38,6 +38,7 @@ class PubMedBulkImportResponse(BaseModel):
     total_requested: int
     sources_created: int
     failed_pmids: list[str]
+    skipped_pmids: list[str] = []
     source_ids: list[UUID]
 
 

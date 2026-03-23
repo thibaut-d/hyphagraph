@@ -24,10 +24,7 @@ def validate_relation(payload: RelationWrite) -> None:
     # ------------------------------------------------------------
     # 2. Confidence bounds
     # ------------------------------------------------------------
-    if payload.confidence is None:
-        _fail("confidence is required")
-
-    if not (0.0 <= payload.confidence <= 1.0):
+    if payload.confidence is not None and not (0.0 <= payload.confidence <= 1.0):
         _fail("confidence must be between 0.0 and 1.0")
 
     # ------------------------------------------------------------

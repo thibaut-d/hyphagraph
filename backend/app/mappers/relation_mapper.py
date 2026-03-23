@@ -62,6 +62,7 @@ def relation_to_read(
             weight=role.weight,
             coverage=role.coverage,
             entity_slug=entity_slug_map.get(role.entity_id) if entity_slug_map else None,
+            disagreement=getattr(role, "disagreement", None),
         )
         for role in current_revision.roles
     ]

@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from uuid import UUID
 
+from app.config import settings
 from app.database import get_db
 from app.models.user import User
 from app.utils.auth import decode_access_token
@@ -77,6 +78,13 @@ async def get_current_user(
         raise ForbiddenException(
             message="Inactive user",
             details="Your account has been deactivated"
+        )
+
+    # When verification is required, reject unverified users from protected endpoints.
+    if settings.EMAIL_VERIFICATION_REQUIRED and not user.is_verified:
+        raise ForbiddenException(
+            message="Email not verified",
+            details="Please verify your email address before accessing this resource"
         )
 
     return user

@@ -62,22 +62,14 @@ def source_to_read(
             trust_level=current_revision.trust_level,
             summary=current_revision.summary,
             source_metadata=current_revision.source_metadata,
+            created_with_llm=current_revision.created_with_llm,
+            created_by_user_id=current_revision.created_by_user_id,
+            document_format=current_revision.document_format,
+            document_file_name=current_revision.document_file_name,
+            document_extracted_at=current_revision.document_extracted_at,
         )
     else:
-        # Fallback to legacy fields (for old data)
-        return SourceRead(
-            id=source.id,
-            created_at=source.created_at,
-            kind=source.kind or "",
-            title=source.title or "",
-            authors=None,
-            year=source.year,
-            origin=source.origin,
-            url=source.url or "",
-            trust_level=source.trust_level,
-            summary=None,
-            source_metadata=None,
-        )
+        raise ValueError(f"Source {source.id} has no current revision")
 
 
 def source_revision_to_read(revision: SourceRevision) -> SourceRevisionRead:

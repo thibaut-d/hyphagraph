@@ -10,7 +10,7 @@ from sqlalchemy import select
 from app.config import settings
 from app.models.user import User
 from app.schemas.auth import UserRead
-from app.utils.auth import hash_password
+from app.utils.auth import hash_password, hash_token_for_lookup
 from app.utils.email import generate_verification_token
 from app.utils.errors import ValidationException
 from app.services.user.common import load_active_refresh_tokens, to_user_read, user_not_found
@@ -38,7 +38,7 @@ async def create_verification_token(
         expires_at = datetime.now(timezone.utc) + timedelta(
             hours=settings.EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS
         )
-        user.verification_token = token
+        user.verification_token = hash_token_for_lookup(token)
         user.verification_token_expires_at = expires_at
         await service.repo.update(user)
         await service.db.commit()
@@ -50,7 +50,7 @@ async def create_verification_token(
 
 
 async def verify_email(service: UserServiceContext, token: str) -> UserRead:
-    result = await service.db.execute(select(User).where(User.verification_token == token))
+    result = await service.db.execute(select(User).where(User.verification_token == hash_token_for_lookup(token)))
     user = result.scalar_one_or_none()
     if not user:
         raise ValidationException(
@@ -94,7 +94,7 @@ async def request_password_reset(
     try:
         token = generate_verification_token_fn()
         expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
-        user.reset_token = token
+        user.reset_token = hash_token_for_lookup(token)
         user.reset_token_expires_at = expires_at
         await service.repo.update(user)
         await service.db.commit()
@@ -112,7 +112,7 @@ async def reset_password(
     *,
     hash_password_fn=hash_password,
 ) -> UserRead:
-    result = await service.db.execute(select(User).where(User.reset_token == token))
+    result = await service.db.execute(select(User).where(User.reset_token == hash_token_for_lookup(token)))
     user = result.scalar_one_or_none()
     if not user:
         raise ValidationException(

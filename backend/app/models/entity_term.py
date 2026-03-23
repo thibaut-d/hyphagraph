@@ -29,7 +29,7 @@ class EntityTerm(Base, UUIDMixin, TimestampMixin):
     display_order: Mapped[int | None] = mapped_column(Integer)
 
     # Relationships
-    entity = relationship("Entity")
+    entity = relationship("Entity", back_populates="terms")
 
     __table_args__ = (
         # Composite unique constraint: same term can't appear twice for same entity/language

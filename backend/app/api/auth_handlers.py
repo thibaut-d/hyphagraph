@@ -118,9 +118,9 @@ async def refresh_user_token(
     db: AsyncSession,
     *,
     log_token_refresh,
-) -> Token:
+) -> TokenPair:
     try:
-        access_token, user = await user_service.refresh_access_token_with_user(payload.refresh_token)
+        access_token, new_refresh_token, user = await user_service.refresh_access_token_with_user(payload.refresh_token)
         await log_token_refresh(
             db=db,
             request=request,
@@ -128,7 +128,7 @@ async def refresh_user_token(
             user_email=user.email,
             success=True,
         )
-        return Token(access_token=access_token, token_type="bearer")
+        return TokenPair(access_token=access_token, refresh_token=new_refresh_token, token_type="bearer")
     except AppException as error:
         await log_token_refresh(
             db=db,

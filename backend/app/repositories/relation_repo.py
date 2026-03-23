@@ -14,7 +14,11 @@ class RelationRepository:
         self.db = db
 
     async def get_by_id(self, relation_id: UUID) -> Relation | None:
-        stmt = select(Relation).where(Relation.id == relation_id)
+        stmt = (
+            select(Relation)
+            .where(Relation.id == relation_id)
+            .options(selectinload(Relation.revisions).selectinload(RelationRevision.roles))
+        )
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -41,6 +45,7 @@ class RelationRepository:
             select(Relation.id)
             .join(RelationRevision)
             .join(RelationRoleRevision)
+            .where(RelationRevision.is_current == True)
             .where(RelationRoleRevision.entity_id == entity_id)
         )
         result = await self.db.execute(stmt_ids)
