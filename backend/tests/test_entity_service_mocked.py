@@ -203,3 +203,24 @@ class TestEntityServiceMocked:
         derived_service.get_all_clinical_effects.assert_awaited_once()
         derived_service.get_evidence_quality_range.assert_awaited_once()
         derived_service.get_entity_year_range.assert_awaited_once()
+
+    async def test_get_filter_options_returns_empty_list_when_no_clinical_effects(
+        self, mock_db
+    ):
+        """get_filter_options returns [] for clinical_effects when aggregation returns None (DF-ENT-M1)."""
+        derived_service = AsyncMock()
+        derived_service.get_all_clinical_effects.return_value = None
+        derived_service.get_evidence_quality_range.return_value = None
+        derived_service.get_entity_year_range.return_value = None
+
+        category_result = MagicMock()
+        category_result.all = MagicMock(return_value=[])
+        mock_db.execute = AsyncMock(return_value=category_result)
+
+        service = EntityService(mock_db, derived_properties_service=derived_service)
+
+        result = await service.get_filter_options()
+
+        assert result.clinical_effects == []
+        assert result.evidence_quality_range is None
+        assert result.year_range is None

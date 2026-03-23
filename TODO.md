@@ -186,7 +186,7 @@ Source: Parallel agent audit session 2026-03-23.
 
 ##### Major
 
-- [ ] **DF-ENT-M1** `backend/app/services/entity_service.py:254-295` — `get_filter_options()` executes multiple separate queries sequentially and can return `clinical_effects = None`. Batch aggregation queries with `asyncio.gather()`; return empty list instead of `None` for missing aggregations.
+- [x] **DF-ENT-M1** `backend/app/services/entity_service.py:254-295` — `get_filter_options()` executes multiple separate queries sequentially and can return `clinical_effects = None`. Batch aggregation queries with `asyncio.gather()`; return empty list instead of `None` for missing aggregations.
 - [x] **DF-ENT-M2** `frontend/src/views/EntitiesView.tsx:46-79` — `filterOptions?.clinical_effects.map(...)` will throw if `clinical_effects` is null. Add null coalescing: `filterOptions?.clinical_effects?.map(...) ?? []`.
 - [ ] **DF-ENT-M3** `frontend/src/views/EntitiesView.tsx` + `EntityDetailView.tsx` — The `status` field (`draft`/`confirmed`) is sent by the backend but never displayed or filtered. LLM-created draft entities are indistinguishable from confirmed ones. Add a status badge to list items and detail view; add a draft filter.
 

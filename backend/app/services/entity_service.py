@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -271,19 +272,17 @@ class EntityService:
             for cat_id, labels in categories
         ]
 
-        # Get advanced filter options using derived properties service
-        # Get clinical effects (relation types)
-        clinical_effects_data = await self.derived_properties_service.get_all_clinical_effects()
+        # Run the three aggregation queries in parallel (DF-ENT-M1)
+        clinical_effects_data, evidence_quality_range, year_range = await asyncio.gather(
+            self.derived_properties_service.get_all_clinical_effects(),
+            self.derived_properties_service.get_evidence_quality_range(),
+            self.derived_properties_service.get_entity_year_range(),
+        )
+
         clinical_effects = [
             ClinicalEffectOption(type_id=kind, label={"en": kind})
-            for kind in clinical_effects_data
-        ] if clinical_effects_data else None
-
-        # Get evidence quality range
-        evidence_quality_range = await self.derived_properties_service.get_evidence_quality_range()
-
-        # Get year range from sources that have relations with entities
-        year_range = await self.derived_properties_service.get_entity_year_range()
+            for kind in (clinical_effects_data or [])
+        ]
 
         return EntityFilterOptions(
             ui_categories=ui_categories,
