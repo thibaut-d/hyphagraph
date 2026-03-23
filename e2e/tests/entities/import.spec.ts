@@ -75,7 +75,7 @@ test.describe('Entity Bulk Import', () => {
         await previewButton.click();
         // Should show a preview table (conditional — UI may render differently)
         const previewTable = page.locator('table, [role="table"]').first();
-        if (await previewTable.isVisible({ timeout: 10000 }).catch(() => false)) {
+        if (await previewTable.isVisible({ timeout: 10000 })) {
           await expect(previewTable).toBeVisible();
         }
       }
@@ -103,10 +103,9 @@ test.describe('Entity Bulk Import', () => {
         await page.waitForTimeout(2000);
 
         // Preview table should show a status chip (new / duplicate / invalid)
-        const statusChip = page.locator('text=/new|duplicate|invalid/i').first();
-        if (await statusChip.isVisible({ timeout: 5000 })) {
-          await expect(statusChip).toBeVisible();
-        }
+        await expect(
+          page.locator('text=/new|duplicate|invalid/i').first()
+        ).toBeVisible({ timeout: 5000 });
       }
     }
   });

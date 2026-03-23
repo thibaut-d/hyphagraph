@@ -42,8 +42,8 @@ test.describe('LLM Extraction Review Queue', () => {
     const emptyState = page.locator('text=/no pending|queue.*empty|all.*reviewed/i').first();
     const hasItems = page.locator('main').locator('[role="list"], [role="listitem"]').first();
 
-    const emptyVisible = await emptyState.isVisible({ timeout: 5000 }).catch(() => false);
-    const itemsVisible = await hasItems.isVisible({ timeout: 1000 }).catch(() => false);
+    const emptyVisible = await emptyState.isVisible({ timeout: 5000 });
+    const itemsVisible = await hasItems.isVisible({ timeout: 1000 });
     expect(emptyVisible || itemsVisible).toBe(true);
   });
 

@@ -163,8 +163,10 @@ test.describe('Admin Panel', () => {
     await page.waitForLoadState('domcontentloaded');
 
     const categoriesSection = page.locator('text=/categor/i').first();
-    if (await categoriesSection.isVisible({ timeout: 3000 })) {
-      await expect(categoriesSection).toBeVisible();
+    if (!await categoriesSection.isVisible({ timeout: 3000 })) {
+      test.skip(true, 'UI categories section not present on /settings in this environment');
+      return;
     }
+    await expect(categoriesSection).toBeVisible();
   });
 });

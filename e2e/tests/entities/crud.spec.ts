@@ -187,23 +187,24 @@ test.describe('Entity CRUD Operations', () => {
 
     // Search for specific entity (autocomplete dropdown)
     const searchInput = page.getByPlaceholder(/search/i);
-    if (await searchInput.isVisible({ timeout: 2000 })) {
-      await searchInput.fill(entity1);
-      await page.waitForTimeout(500); // Wait for autocomplete dropdown to appear
-
-      // The search shows results in a listbox dropdown, not in the main list
-      const listbox = page.getByRole('listbox');
-      await expect(listbox).toBeVisible();
-
-      // Should show matching entity in autocomplete dropdown
-      await expect(listbox.getByRole('option', { name: new RegExp(entity1) })).toBeVisible();
-
-      // Click the matching result to navigate
-      await listbox.getByRole('option', { name: new RegExp(entity1) }).first().click();
-
-      // Should navigate to the entity detail page
-      await expect(page).toHaveURL(new RegExp(`/entities/.*`));
+    if (!await searchInput.isVisible({ timeout: 2000 })) {
+      test.skip(true, 'Search input not present on entities list — cannot test autocomplete');
+      return;
     }
+    await searchInput.fill(entity1);
+
+    // The search shows results in a listbox dropdown, not in the main list
+    const listbox = page.getByRole('listbox');
+    await expect(listbox).toBeVisible({ timeout: 5000 });
+
+    // Should show matching entity in autocomplete dropdown
+    await expect(listbox.getByRole('option', { name: new RegExp(entity1) })).toBeVisible();
+
+    // Click the matching result to navigate
+    await listbox.getByRole('option', { name: new RegExp(entity1) }).first().click();
+
+    // Should navigate to the entity detail page
+    await expect(page).toHaveURL(new RegExp(`/entities/.*`));
   });
 
   test('should navigate between entities list and detail', async ({ page }) => {

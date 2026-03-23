@@ -33,23 +33,25 @@ test.describe('Navigation', () => {
       const nav = page.getByRole('banner');
       const entitiesLink = nav.getByRole('link', { name: /entities/i }).first();
       const sourcesLink = nav.getByRole('link', { name: /sources/i }).first();
-      // On desktop viewport these should be visible
-      if (await entitiesLink.isVisible({ timeout: 2000 })) {
-        await entitiesLink.click();
-        await expect(page).toHaveURL(/\/entities/);
-        await page.goto('/');
-        await sourcesLink.click();
-        await expect(page).toHaveURL(/\/sources/);
-      }
+      // On the default desktop viewport these must always be visible
+      await expect(entitiesLink).toBeVisible({ timeout: 5000 });
+      await entitiesLink.click();
+      await expect(page).toHaveURL(/\/entities/);
+      await page.goto('/');
+      await expect(sourcesLink).toBeVisible({ timeout: 5000 });
+      await sourcesLink.click();
+      await expect(page).toHaveURL(/\/sources/);
     });
 
     test('should show review queue link only when authenticated', async ({ page }) => {
-      // Logged in: review queue link exists in nav or accessible
+      // Logged in: review queue link must exist in nav
       await page.goto('/');
       const reviewLink = page.getByRole('link', { name: /review/i }).first();
-      if (await reviewLink.isVisible({ timeout: 2000 })) {
-        await expect(reviewLink).toBeVisible();
+      if (!await reviewLink.isVisible({ timeout: 2000 })) {
+        test.skip(true, 'Review queue nav link not present in this environment');
+        return;
       }
+      await expect(reviewLink).toBeVisible();
     });
   });
 
@@ -76,14 +78,15 @@ test.describe('Navigation', () => {
     test('should close drawer after navigating to a link', async ({ page }) => {
       await page.goto('/');
       await page.getByRole('button', { name: /open menu/i }).click();
-      // Wait for drawer
-      await page.waitForTimeout(300);
+      await expect(page.locator('.MuiDrawer-paper')).toBeVisible({ timeout: 3000 });
       // Click a nav link in the drawer
       const entitiesLink = page.getByRole('link', { name: /entities/i }).first();
-      if (await entitiesLink.isVisible({ timeout: 2000 })) {
-        await entitiesLink.click();
-        await expect(page).toHaveURL(/\/entities/);
+      if (!await entitiesLink.isVisible({ timeout: 2000 })) {
+        test.skip(true, 'Entities link not found in mobile drawer');
+        return;
       }
+      await entitiesLink.click();
+      await expect(page).toHaveURL(/\/entities/);
     });
   });
 

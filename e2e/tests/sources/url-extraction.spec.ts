@@ -67,11 +67,10 @@ test.describe('URL-based Document Extraction', () => {
     const submitButton = page.getByRole('button', { name: /extract/i }).last();
     await submitButton.click();
 
-    // Should show error message in the dialog (conditional — exact wording varies)
-    const urlError = page.getByText(/please.*enter.*valid.*url|invalid.*url|url.*invalid/i).first();
-    if (await urlError.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await expect(urlError).toBeVisible();
-    }
+    // Should show error message in the dialog
+    await expect(
+      page.getByText(/please.*enter.*valid.*url|invalid.*url|url.*invalid/i).first()
+    ).toBeVisible({ timeout: 5000 });
   });
 
   test('should validate URL input is required', async ({ page }) => {

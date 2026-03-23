@@ -46,12 +46,14 @@ test.describe('PubMed Bulk Import', () => {
     await searchInput.fill('aspirin');
     await page.getByRole('button', { name: /search.*pubmed/i }).click();
 
-    // PubMed API may not be accessible in all environments — conditional check
+    // PubMed API requires live network — skip when unavailable
     const table = page.getByRole('table');
-    if (await table.isVisible({ timeout: 15000 })) {
-      await expect(page.getByRole('columnheader', { name: /article/i })).toBeVisible();
-      await expect(page.getByRole('columnheader', { name: /authors/i })).toBeVisible();
+    if (!await table.isVisible({ timeout: 15000 })) {
+      test.skip(true, 'PubMed API unreachable — live network required to run this test');
+      return;
     }
+    await expect(page.getByRole('columnheader', { name: /article/i })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: /authors/i })).toBeVisible();
   });
 
   test('should allow selecting/deselecting articles', async ({ page }) => {
@@ -62,15 +64,17 @@ test.describe('PubMed Bulk Import', () => {
     await page.getByRole('button', { name: /search.*pubmed/i }).click();
 
     const table = page.getByRole('table');
-    if (await table.isVisible({ timeout: 15000 })) {
-      const checkboxes = page.getByRole('checkbox');
-      const secondCheckbox = checkboxes.nth(1);
-      await expect(secondCheckbox).toBeChecked();
-      await secondCheckbox.click();
-      await expect(secondCheckbox).not.toBeChecked();
-      await secondCheckbox.click();
-      await expect(secondCheckbox).toBeChecked();
+    if (!await table.isVisible({ timeout: 15000 })) {
+      test.skip(true, 'PubMed API unreachable — live network required to run this test');
+      return;
     }
+    const checkboxes = page.getByRole('checkbox');
+    const secondCheckbox = checkboxes.nth(1);
+    await expect(secondCheckbox).toBeChecked();
+    await secondCheckbox.click();
+    await expect(secondCheckbox).not.toBeChecked();
+    await secondCheckbox.click();
+    await expect(secondCheckbox).toBeChecked();
   });
 
   test('should import selected articles and create sources', async ({ page }) => {
@@ -81,13 +85,15 @@ test.describe('PubMed Bulk Import', () => {
     await page.getByRole('button', { name: /search.*pubmed/i }).click();
 
     const table = page.getByRole('table');
-    if (await table.isVisible({ timeout: 15000 })) {
-      const importButton = page.getByRole('button', { name: /import.*article/i });
-      await expect(importButton).toBeVisible();
-      await expect(importButton).toBeEnabled();
-      await importButton.click();
-      await expect(page).toHaveURL('/sources', { timeout: 30000 });
+    if (!await table.isVisible({ timeout: 15000 })) {
+      test.skip(true, 'PubMed API unreachable — live network required to run this test');
+      return;
     }
+    const importButton = page.getByRole('button', { name: /import.*article/i });
+    await expect(importButton).toBeVisible();
+    await expect(importButton).toBeEnabled();
+    await importButton.click();
+    await expect(page).toHaveURL('/sources', { timeout: 30000 });
   });
 
   test('should handle search errors gracefully', async ({ page }) => {
@@ -108,11 +114,13 @@ test.describe('PubMed Bulk Import', () => {
     await searchInput.fill('https://pubmed.ncbi.nlm.nih.gov/?term=diabetes&filter=years.2023-2024');
     await page.getByRole('button', { name: /search.*pubmed/i }).click();
 
-    // PubMed API may not be accessible in all environments — conditional check
+    // PubMed API requires live network — skip when unavailable
     const table = page.getByRole('table');
-    if (await table.isVisible({ timeout: 15000 })) {
-      await expect(table).toBeVisible();
+    if (!await table.isVisible({ timeout: 15000 })) {
+      test.skip(true, 'PubMed API unreachable — live network required to run this test');
+      return;
     }
+    await expect(table).toBeVisible();
   });
 
   test('should adjust max results with slider', async ({ page }) => {
@@ -138,14 +146,16 @@ test.describe('PubMed Bulk Import', () => {
     await page.getByRole('button', { name: /search.*pubmed/i }).click();
 
     const table = page.getByRole('table');
-    if (await table.isVisible({ timeout: 15000 })) {
-      await expect(page.getByRole('columnheader', { name: /article/i })).toBeVisible();
-      await expect(page.getByRole('columnheader', { name: /authors/i })).toBeVisible();
-      await expect(page.getByRole('columnheader', { name: /journal/i })).toBeVisible();
-      await expect(page.getByRole('columnheader', { name: /year/i })).toBeVisible();
-      await expect(page.getByRole('columnheader', { name: /pmid/i })).toBeVisible();
-      await expect(page.getByRole('cell').first()).toBeVisible();
+    if (!await table.isVisible({ timeout: 15000 })) {
+      test.skip(true, 'PubMed API unreachable — live network required to run this test');
+      return;
     }
+    await expect(page.getByRole('columnheader', { name: /article/i })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: /authors/i })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: /journal/i })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: /year/i })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: /pmid/i })).toBeVisible();
+    await expect(page.getByRole('cell').first()).toBeVisible();
   });
 
   test('should show import button disabled when no articles selected', async ({ page }) => {
@@ -156,13 +166,15 @@ test.describe('PubMed Bulk Import', () => {
     await page.getByRole('button', { name: /search.*pubmed/i }).click();
 
     const table = page.getByRole('table');
-    if (await table.isVisible({ timeout: 15000 })) {
-      const selectAllCheckbox = page.getByRole('checkbox').first();
-      if (await selectAllCheckbox.isChecked()) {
-        await selectAllCheckbox.click();
-      }
-      const importButton = page.getByRole('button', { name: /import.*article/i });
-      await expect(importButton).toBeDisabled();
+    if (!await table.isVisible({ timeout: 15000 })) {
+      test.skip(true, 'PubMed API unreachable — live network required to run this test');
+      return;
     }
+    const selectAllCheckbox = page.getByRole('checkbox').first();
+    if (await selectAllCheckbox.isChecked()) {
+      await selectAllCheckbox.click();
+    }
+    const importButton = page.getByRole('button', { name: /import.*article/i });
+    await expect(importButton).toBeDisabled();
   });
 });
