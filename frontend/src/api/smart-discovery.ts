@@ -1,4 +1,5 @@
 import { apiFetch } from "./client";
+import type { PubMedBulkImportRequest, PubMedBulkImportResponse } from "../types/pubmed";
 
 export interface SmartDiscoveryRequest {
   entity_slugs: string[];
@@ -41,18 +42,10 @@ export function smartDiscovery(request: SmartDiscoveryRequest): Promise<SmartDis
   });
 }
 
-export interface BulkImportFromDiscoveryRequest {
-  pmids: string[];
-}
+export type { PubMedBulkImportRequest as BulkImportFromDiscoveryRequest };
+export type { PubMedBulkImportResponse as BulkImportFromDiscoveryResponse };
 
-export interface BulkImportFromDiscoveryResponse {
-  total_requested: number;
-  sources_created: number;
-  failed_pmids: string[];
-  source_ids: string[];
-}
-
-export function bulkImportFromDiscovery(pmids: string[]): Promise<BulkImportFromDiscoveryResponse> {
+export function bulkImportFromDiscovery(pmids: string[]): Promise<PubMedBulkImportResponse> {
   return apiFetch("/pubmed/bulk-import", {
     method: "POST",
     body: JSON.stringify({ pmids }),

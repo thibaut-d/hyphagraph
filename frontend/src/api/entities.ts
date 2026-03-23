@@ -40,7 +40,7 @@ export interface ClinicalEffectOption {
 
 export interface EntityFilterOptions {
   ui_categories: UICategoryOption[];
-  clinical_effects?: ClinicalEffectOption[];
+  clinical_effects?: ClinicalEffectOption[] | null;
   consensus_levels?: string[] | null;
   evidence_quality_range?: [number, number] | null;
   year_range?: [number, number] | null;

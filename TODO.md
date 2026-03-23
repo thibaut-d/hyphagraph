@@ -156,8 +156,8 @@ Source: Parallel agent audit session 2026-03-23.
 - [x] **DF-REL-M1** `backend/app/services/validation_service.py:27-28` vs `backend/app/schemas/relation.py:32` — Schema marks `confidence` as `Optional[float] = None` but the validator rejects null confidence. Either make confidence required in the schema or remove the null check in the validator.
 - [x] **DF-REL-M2** `backend/app/api/relation_types.py:26-27,39` — `active_only: bool = True` query parameter is declared but never used; the service always returns active types. Either wire the parameter or remove it.
 - [x] **DF-REL-M3** `backend/app/models/relation_type.py:32` vs `backend/app/schemas/relation_type.py:13` — `description` is mapped as `JSON` in the model but expected as `str` in the schema. Standardize to `String` in the model.
-- [ ] **DF-REL-M4** `frontend/src/types/relation.ts:13` — `entity_id?: string` field exists in the frontend `RelationRead` type but is not sent by the backend schema. Remove the orphaned field or add it to the backend if needed.
-- [ ] **DF-REL-M5** `frontend/src/types/relation.ts:9-21` — `created_by_user_id` is present in backend `RelationRevisionRead` but absent from the frontend type. Add `created_by_user_id?: string | null`.
+- [x] **DF-REL-M4** `frontend/src/types/relation.ts:13` — `entity_id?: string` field exists in the frontend `RelationRead` type but is not sent by the backend schema. Remove the orphaned field or add it to the backend if needed.
+- [x] **DF-REL-M5** `frontend/src/types/relation.ts:9-21` — `created_by_user_id` is present in backend `RelationRevisionRead` but absent from the frontend type. Add `created_by_user_id?: string | null`.
 
 ---
 
@@ -187,7 +187,7 @@ Source: Parallel agent audit session 2026-03-23.
 ##### Major
 
 - [ ] **DF-ENT-M1** `backend/app/services/entity_service.py:254-295` — `get_filter_options()` executes multiple separate queries sequentially and can return `clinical_effects = None`. Batch aggregation queries with `asyncio.gather()`; return empty list instead of `None` for missing aggregations.
-- [ ] **DF-ENT-M2** `frontend/src/views/EntitiesView.tsx:46-79` — `filterOptions?.clinical_effects.map(...)` will throw if `clinical_effects` is null. Add null coalescing: `filterOptions?.clinical_effects?.map(...) ?? []`.
+- [x] **DF-ENT-M2** `frontend/src/views/EntitiesView.tsx:46-79` — `filterOptions?.clinical_effects.map(...)` will throw if `clinical_effects` is null. Add null coalescing: `filterOptions?.clinical_effects?.map(...) ?? []`.
 - [ ] **DF-ENT-M3** `frontend/src/views/EntitiesView.tsx` + `EntityDetailView.tsx` — The `status` field (`draft`/`confirmed`) is sent by the backend but never displayed or filtered. LLM-created draft entities are indistinguishable from confirmed ones. Add a status badge to list items and detail view; add a draft filter.
 
 ##### Minor
@@ -209,7 +209,7 @@ Source: Parallel agent audit session 2026-03-23.
 - [x] **DF-DSC-M1** `backend/app/services/document_extraction_discovery.py:98-114` — Sources imported from PubMed store no `imported_at` timestamp or `discovery_query` provenance in metadata. Extend `source_metadata` with `imported_at`, `import_method`, and optionally `discovery_query`.
 - [x] **DF-DSC-M2** `backend/app/services/document_extraction_discovery.py:320-325` — `trust_level` is LLM-inferred and stored directly as the canonical source trust level without any human review. Store it in a separate `calculated_trust_level` field and leave `trust_level` NULL pending user confirmation, or add a review step before bulk-import commit.
 - [ ] **DF-DSC-M3** `frontend/src/views/PubMedImportView.tsx:106-138` — No `AbortController`, no timeout, no cancel button for bulk import requests that can take 30+ seconds. Add cancellation and a progress/timeout indicator.
-- [ ] **DF-DSC-M4** `frontend/src/types/pubmed.ts:32-37` + `frontend/src/api/smart-discovery.ts:48-53` — Bulk import response type is declared twice with identical shapes. Remove the duplicate from `smart-discovery.ts` and import from `pubmed.ts`.
+- [x] **DF-DSC-M4** `frontend/src/types/pubmed.ts:32-37` + `frontend/src/api/smart-discovery.ts:48-53` — Bulk import response type is declared twice with identical shapes. Remove the duplicate from `smart-discovery.ts` and import from `pubmed.ts`.
 
 ---
 
