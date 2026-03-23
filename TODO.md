@@ -139,8 +139,8 @@ Source: Parallel agent audit session 2026-03-23.
 ##### Major
 
 - [x] **DF-MRG-M1** `backend/app/services/entity_merge_service.py` — No `source_entity_id != target_entity_id` guard. Self-merge partially succeeds and corrupts the entity. Add explicit validation before any DB operations.
-- [ ] **DF-MRG-M2** `backend/app/services/entity_merge_service.py` — After merge, `ComputedRelation` cache entries for the target entity are not invalidated. Subsequent inference reads return stale data. Delete cached computed relations for the target entity on merge.
-- [ ] **DF-MRG-M3** `backend/app/services/entity_merge_service.py:139-146` — The count query for `relations_moved` counts roles from all revisions, but the move operation only moves current-revision roles. `EntityMergeResult.relations_moved` is inflated. Add `is_current=True` filter to the count query.
+- [x] **DF-MRG-M2** `backend/app/services/entity_merge_service.py` — After merge, `ComputedRelation` cache entries for the target entity are not invalidated. Subsequent inference reads return stale data. Delete cached computed relations for the target entity on merge.
+- [x] **DF-MRG-M3** `backend/app/services/entity_merge_service.py:139-146` — The count query for `relations_moved` counts roles from all revisions, but the move operation only moves current-revision roles. `EntityMergeResult.relations_moved` is inflated. Add `is_current=True` filter to the count query.
 
 ---
 

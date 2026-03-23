@@ -18,6 +18,7 @@ from app.models.entity_revision import EntityRevision
 from app.models.entity_term import EntityTerm
 from app.models.relation_revision import RelationRevision
 from app.models.relation_role_revision import RelationRoleRevision
+from app.repositories.computed_relation_repo import ComputedRelationRepository
 from app.schemas.entity_merge import AutoMergeAction, EntityMergeResult
 
 
@@ -151,6 +152,12 @@ class EntityMergeService:
         )
 
         try:
+            # Invalidate inference cache for both entities before moving roles (DF-MRG-M2).
+            # Must happen before the UPDATE so the join-based lookup still finds the right rows.
+            cache_repo = ComputedRelationRepository(self.db)
+            await cache_repo.delete_by_entity_id(source_entity_id)
+            await cache_repo.delete_by_entity_id(target_entity_id)
+
             # Count current-revision roles before merge (for result reporting)
             stmt = select(func.count()).select_from(RelationRoleRevision).where(
                 RelationRoleRevision.entity_id == source_entity_id
