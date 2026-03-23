@@ -72,8 +72,8 @@ export function listEntities(filters?: EntityFilters): Promise<PaginatedResponse
   return apiFetch(`/entities${buildQueryString(params)}`);
 }
 
-export function getEntity(id: string): Promise<EntityRead> {
-  return apiFetch(`/entities/${id}`);
+export function getEntity(id: string, signal?: AbortSignal): Promise<EntityRead> {
+  return apiFetch(`/entities/${id}`, { signal });
 }
 
 export function createEntity(payload: EntityWrite): Promise<EntityRead> {

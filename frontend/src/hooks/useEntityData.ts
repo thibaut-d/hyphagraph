@@ -27,7 +27,7 @@ export function useEntityData(entityId: string | undefined): UseEntityDataReturn
   const [error, setError] = useState<Error | null>(null);
   const requestIdRef = useRef(0);
 
-  const fetchEntity = async () => {
+  const fetchEntity = async (signal?: AbortSignal) => {
     const requestId = ++requestIdRef.current;
 
     if (!entityId) {
@@ -40,12 +40,16 @@ export function useEntityData(entityId: string | undefined): UseEntityDataReturn
     try {
       setLoading(true);
       setError(null);
-      const entityRes = await getEntity(entityId);
+      const entityRes = await getEntity(entityId, signal);
       if (requestId !== requestIdRef.current) {
         return;
       }
       setEntity(entityRes);
     } catch (err) {
+      // Silently ignore aborted requests — component unmounted or entityId changed
+      if (err instanceof Error && err.name === "AbortError") {
+        return;
+      }
       if (requestId !== requestIdRef.current) {
         return;
       }
@@ -64,7 +68,9 @@ export function useEntityData(entityId: string | undefined): UseEntityDataReturn
   };
 
   useEffect(() => {
-    fetchEntity();
+    const controller = new AbortController();
+    fetchEntity(controller.signal);
+    return () => controller.abort();
   }, [entityId]);
 
   return {
