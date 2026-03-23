@@ -1,6 +1,6 @@
 # HyphaGraph TODO
 
-**Last Updated**: 2026-03-21 (M3 LLM draft review; all audit findings resolved; test debt cleared)
+**Last Updated**: 2026-03-23 (full audit pass; 1 major + 2 minor open; score 95/100)
 
 ---
 
@@ -109,6 +109,15 @@ See `E2E_TEST_FIXES_SUMMARY.md` and `E2E_TEST_ANALYSIS.md` for detailed technica
 #### CI/CD Pipeline
 - ✅ GitHub Actions for automated testing (backend + frontend + E2E)
 - ✅ Coverage reporting
+
+---
+
+### Audit Follow-up (2026-03-23) — Score 95/100
+
+Full report: `.temp/full_audit_report_2026-03-23.md`
+Open actionable items tracked in `TODO.md` → **Full System Audit — 2026-03-23**:
+- ⬜ **AUD-M2** (major) — LLM revision status field on revision tables
+- ⬜ **AUD-m1** (minor) — CSV export legacy `subject_slug`/`object_slug` column headers
 
 ---
 

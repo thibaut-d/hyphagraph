@@ -1,6 +1,6 @@
 # Current Work
 
-**Last updated**: 2026-03-23 (Data flow audit — database to frontend, 12 flows)
+**Last updated**: 2026-03-23 (full audit pass — 2 new open items added)
 
 ---
 
@@ -231,6 +231,20 @@ Source: Parallel agent audit session 2026-03-23.
 
 ---
 
+### Full System Audit — 2026-03-23 (score 95/100)
+
+Source: `.temp/full_audit_report_2026-03-23.md`
+
+#### Major
+
+- [ ] **AUD-M2** `backend/app/services/bulk_creation_service.py:83` + revision tables — Once materialized, LLM-generated revisions are structurally indistinguishable from human-authored ones. `created_with_llm` records the model name but there is no status field. Add `llm_review_status: Literal["pending_review", "confirmed", "auto_verified"] | None` to `EntityRevision`, `RelationRevision`, `SourceRevision` (nullable for human-authored rows). Populate from review outcome in `bulk_creation_service` and `save_extraction_to_graph`. Surface in review queue and export. *(Architectural — plan as a dedicated sprint.)*
+
+#### Minor
+
+- [ ] **AUD-m1** `backend/app/services/export_service.py:256,264` — Relations CSV export hardcodes column headers `subject_slug` and `object_slug`. The N-ary model is correct underneath (roles_json column was added in DF-EXP-M3) but the two legacy headers imply a binary model and export `None` for non-subject/object roles. Rename to `primary_entity_slug`/`secondary_entity_slug` or drop them in favour of `roles_json`-only, and update any downstream consumers of the CSV format.
+
+---
+
 ### E2E Test Suite — Soundness and Coverage (2026-03-22)
 
 Review identified systemic correctness problems and coverage gaps across the full E2E suite.
@@ -309,6 +323,8 @@ From completed audits — low priority, no blocking risk.
 ---
 
 ## Audit Reports Index
+
+- `.temp/full_audit_report_2026-03-23.md` *(current — score 95/100, 1 major, 2 minor open)*
 
 - `.temp/audit_entity_write_flow_2026-03-22.md`
 - `.temp/audit_entity_creation_2026-03-22.md`

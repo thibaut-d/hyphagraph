@@ -14,11 +14,10 @@ Read policy:
 Default entry set:
 
 1. `README.md`
-2. `docs/ARCHITECTURE.md`
-3. `docs/CODE_GUIDE.md`
+2. `docs/architecture/ARCHITECTURE.md`
+3. `docs/development/CODE_GUIDE.md`
 4. `TODO.md`
-5. `docs/TODO.md`
-6. `docs/AUDITS.md`
+5. `docs/PLANNING_GUIDE.md`
 
 Core rules:
 
@@ -35,13 +34,13 @@ Use these detailed references by task:
 
 | Task | Read |
 |------|---------------|
-| Backend API or services | `docs/ARCHITECTURE.md`, `docs/CODE_GUIDE.md`, relevant files in `backend/app/` and `backend/tests/` |
-| Frontend views or components | `docs/ARCHITECTURE.md`, `docs/CODE_GUIDE.md`, `docs/product/UX.md`, relevant files in `frontend/src/` |
-| Database or schema changes | `docs/ARCHITECTURE.md`, `docs/architecture/DATABASE_SCHEMA.md`, relevant files in `backend/app/models/` and `backend/alembic/` |
-| Inference or explanation changes | `docs/ARCHITECTURE.md`, `docs/architecture/COMPUTED_RELATIONS.md`, relevant files in `backend/app/services/`, `backend/app/schemas/`, and affected UI surfaces |
-| Authentication or authorization | `docs/CODE_GUIDE.md`, `docs/architecture/ARCHITECTURE.md`, relevant files in `backend/app/utils/`, `backend/app/api/`, and `backend/tests/` |
-| E2E changes | `docs/CODE_GUIDE.md`, `docs/development/E2E_TESTING_GUIDE.md`, `e2e/README.md` |
-| Audit or review work | `docs/AUDITS.md`, `docs/audit.md`, `TODO.md` |
+| Backend API or services | `docs/architecture/ARCHITECTURE.md`, `docs/development/CODE_GUIDE.md`, relevant files in `backend/app/` and `backend/tests/` |
+| Frontend views or components | `docs/architecture/ARCHITECTURE.md`, `docs/development/CODE_GUIDE.md`, `docs/product/UX.md`, relevant files in `frontend/src/` |
+| Database or schema changes | `docs/architecture/ARCHITECTURE.md`, `docs/architecture/DATABASE_SCHEMA.md`, relevant files in `backend/app/models/` and `backend/alembic/` |
+| Inference or explanation changes | `docs/architecture/ARCHITECTURE.md`, `docs/architecture/COMPUTED_RELATIONS.md`, relevant files in `backend/app/services/`, `backend/app/schemas/`, and affected UI surfaces |
+| Authentication or authorization | `docs/development/CODE_GUIDE.md`, `docs/architecture/ARCHITECTURE.md`, relevant files in `backend/app/utils/`, `backend/app/api/`, and `backend/tests/` |
+| E2E changes | `docs/development/CODE_GUIDE.md`, `docs/development/E2E_TESTING_GUIDE.md`, `e2e/README.md` |
+| Audit or review work | `docs/audit.md`, `TODO.md` |
 
 Command workflows:
 
@@ -64,5 +63,12 @@ Execution notes:
 
 - For non-trivial work, identify impacted modules, make a short plan, and state validation.
 - Keep temporary notes and scratch outputs in `.temp/`.
-- Use `TODO.md` as the live work log; `docs/TODO.md` explains the planning format.
+- Use `TODO.md` as the live work log; `docs/PLANNING_GUIDE.md` explains the planning format.
 - A task is done only when architecture, provenance, contradiction visibility, and validation expectations still hold.
+
+Audit output rules:
+
+- `TODO.md` is the single source of truth for actionable findings. Audit reports in `.temp/` are reference material only.
+- After every audit, write each actionable finding as a checkbox item in `TODO.md` with: ID, file path and line number, problem statement, and concrete fix. Do not leave actionable items only in the audit report.
+- Summaries and references in `ROADMAP.md` or other docs must point to `TODO.md`, never duplicate the item list.
+- Mark items `[x]` in `TODO.md` as soon as they are resolved. Do not leave stale open checkboxes.

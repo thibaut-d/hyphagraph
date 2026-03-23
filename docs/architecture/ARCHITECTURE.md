@@ -1,5 +1,78 @@
 # Architecture
 
+## Repository Map
+
+Quick reference for navigating the codebase.
+
+### Directory shape
+
+- `backend/` — FastAPI application, domain services, repositories, models, schemas, migrations, backend tests.
+- `frontend/` — React/TypeScript application, typed API clients, views, reusable components, Vitest tests.
+- `e2e/` — Playwright end-to-end suite.
+- `docs/architecture/` — Canonical system design, database schema, inference model, and architectural constraints.
+- `docs/development/` — Workflow, code standards, and testing guides.
+- `docs/product/` — UX principles, roadmap, and product-facing constraints.
+- `.temp/` — Temporary audit reports, scratch outputs, and experiment artifacts.
+
+### What to open by task
+
+| Task | Open |
+|------|------|
+| Backend API or services | `docs/development/CODE_GUIDE.md`, files in `backend/app/api/`, `backend/app/services/`, `backend/app/schemas/`, `backend/tests/` |
+| Frontend views or components | `docs/development/CODE_GUIDE.md`, `docs/product/UX.md`, files in `frontend/src/views/`, `frontend/src/components/`, `frontend/src/hooks/`, `frontend/src/api/` |
+| Database or schema changes | `docs/architecture/DATABASE_SCHEMA.md`, files in `backend/app/models/`, `backend/alembic/`, `backend/tests/` |
+| Inference or explanation changes | `docs/architecture/COMPUTED_RELATIONS.md`, files in `backend/app/services/`, `backend/app/schemas/`, `frontend/src/views/`, `frontend/src/components/` |
+| Authentication or authorization | `docs/development/CODE_GUIDE.md`, files in `backend/app/utils/`, `backend/app/api/`, `backend/tests/` |
+| E2E work | `docs/development/E2E_TESTING_GUIDE.md`, files in `e2e/tests/`, `e2e/fixtures/`, `e2e/playwright.config.ts` |
+
+### Backend module ownership
+
+- `backend/app/api/` — request validation, auth, response shaping
+- `backend/app/services/` — domain logic and orchestration
+- `backend/app/repositories/` — persistence queries
+- `backend/app/schemas/` — I/O contracts
+- `backend/app/models/` — ORM models
+- `backend/app/utils/` — focused helpers
+- `backend/tests/` — backend behavior coverage
+
+### Frontend module ownership
+
+- `frontend/src/api/` — shared network clients
+- `frontend/src/views/` — route-level screens
+- `frontend/src/components/` — reusable UI building blocks
+- `frontend/src/hooks/` — reusable stateful logic
+- `frontend/src/types/` — frontend contract types
+- `frontend/src/i18n/` — user-visible strings
+
+### Ownership boundaries
+
+**Backend owns**: authoritative validation, domain logic, provenance recording, inference and explanation behavior, API contracts.
+**Backend must not**: let API routers absorb business logic; store human-authored or LLM-generated syntheses as facts.
+
+**Frontend owns**: presentation, editing workflows, navigation, evidence display, uncertainty and contradiction visibility.
+**Frontend must not**: duplicate backend reasoning; hide contradictions; bypass shared API clients with one-off network logic.
+
+### Preferred data flow
+
+```
+request boundary → schema → service → repository/domain logic → schema/result → boundary
+```
+
+Avoid raw nested dict contracts across module boundaries, frontend logic that recreates backend decisions, or cross-layer shortcuts.
+
+### High-risk areas
+
+Treat changes in these areas as architecture-sensitive — they need focused tests and explicit invariant review:
+
+- inference and explanation services
+- revision write paths
+- auth and permissions
+- extraction or review flows
+- synthesis, disagreement, and evidence UI
+- shared API client behavior
+
+---
+
 This document describes the **system architecture** of HyphaGraph.
 
 It focuses on:

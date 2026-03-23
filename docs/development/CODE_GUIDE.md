@@ -43,7 +43,7 @@ We do NOT use FastAPI Users, Auth0, Clerk, or complex RBAC frameworks.
 - **Dependency**: `get_current_user` extracts and validates JWT
 - **Permissions**: Explicit Python functions in `utils/permissions.py`
 
-Use `docs/ARCHITECTURE.md` and the owning backend modules for concrete patterns.
+Use `docs/architecture/ARCHITECTURE.md` and the owning backend modules for concrete patterns.
 
 ### What NOT to do
 
@@ -135,3 +135,88 @@ Before adding any dependency:
 - Use async/await for all database operations
 - Import order: stdlib, third-party, local
 - Use f-strings for formatting
+
+---
+
+## 8. Naming Rules
+
+Use names that are easy to search and review.
+
+Prefer descriptive verb-noun names:
+- `build_explanation_summary`
+- `attach_document_revision`
+- `load_relation_filters`
+
+Avoid vague public names:
+- `process`, `handle`, `run`, `data`, `tmp`, `res`
+
+---
+
+## 9. Quick Rules by Layer
+
+### Backend
+- Keep business logic in services; keep API routers thin (validate → authorize → call service → shape response).
+- Use Pydantic schemas as the I/O contract.
+- Pass `user_id` where provenance matters.
+- Preserve revision history; never mutate history in place.
+- Use `logging`, not `print()`.
+- Keep auth and permission logic explicit and readable.
+
+### Frontend
+- Keep all network behavior inside `frontend/src/api/`.
+- Keep React views thin; move reusable logic into hooks/components.
+- Match frontend types to backend contracts.
+- Route user-visible strings through i18n on primary UI flows.
+- Do not present computed output as unquestionable truth.
+- Keep contradiction, evidence, and traceability states visible.
+
+---
+
+## 10. Structured Data Preference
+
+Prefer, in order:
+
+1. Pydantic `BaseModel`
+2. `TypedDict`
+3. `dataclass`
+4. raw `dict` only when unavoidable
+
+Raw dictionaries are acceptable for very local transformations, direct library interop, or transient glue code that does not cross a public boundary.
+
+---
+
+## 11. Function Design
+
+Functions should be focused, typed, and understandable in isolation.
+
+Avoid:
+- Long multi-purpose functions
+- Behavior driven by many flags
+- Orchestration mixed with low-level implementation details
+
+---
+
+## 12. Side Effects and State
+
+- Prefer explicit state transitions.
+- Avoid hidden mutation.
+- Avoid global mutable state.
+- Do not silently swallow errors in domain flows.
+- If degraded behavior is intentional, make it visible in code and in UI.
+
+---
+
+## 13. Testing Expectations
+
+- Add or update focused tests for behavior changes.
+- Backend changes need pytest coverage for success and failure paths.
+- Frontend changes need loading, error, empty, and contradiction-visible states covered when relevant.
+- If you cannot run a needed test, say so clearly.
+
+---
+
+## 14. Temporary and Support Artifacts
+
+- Put temporary reports and experiments in `.temp/`.
+- Keep agent workflow files in `docs/` and `AGENTS.md`.
+- Do not scatter scratch files into backend, frontend, or docs directories.
