@@ -59,14 +59,14 @@ Source: Parallel agent audit session 2026-03-23.
 
 - [x] **DF-RVW-C1** `backend/app/api/extraction_review.py:145-150,196-201` — Single and batch review endpoints use `get_current_user`, not `get_current_active_superuser`. Any authenticated user can approve/reject knowledge graph extractions. Add superuser guard.
 - [x] **DF-RVW-C2** `backend/app/services/extraction_review/materialization.py:27-39,54-66,116-130` — `created_by_user_id` on `EntityRevision`/`RelationRevision` is never populated during materialization. All LLM-extracted items lack human attribution. Pass `reviewed_by` through to `create_new_revision()`.
-- [ ] **DF-RVW-C3** `backend/app/services/extraction_review/auto_commit.py:84-86` — Auto-approved extractions do not set `reviewed_by`; field remains NULL. Set a sentinel system user ID (or a dedicated `auto_approved` flag) to distinguish automated from human approvals.
+- [x] **DF-RVW-C3** `backend/app/services/extraction_review/auto_commit.py:84-86` — Auto-approved extractions do not set `reviewed_by`; field remains NULL. Added `auto_approved: bool` column (migration 011) set to `True` in `_materialize_approved`; exposed in schema and filters.
 - [ ] **DF-RVW-C4** `frontend/src/hooks/useReviewDialog.ts:79-109` — `submitBatchReview()` does not inspect `response.failed`. Shows a single success message even when half the batch failed silently. Inspect `failed > 0` and show a detailed warning.
 
 ##### Major
 
-- [ ] **DF-RVW-M1** `backend/app/models/staged_extraction.py:12,38` — Rejecting a staged extraction only sets `status = "rejected"`; materialized entities/relations remain fully visible in the knowledge graph. Implement soft-delete (mark `is_active=False`) on rejection, or document that rejection does not remove items.
-- [ ] **DF-RVW-M2** `backend/app/services/extraction_review_service.py:175` vs `222` — `approve_extraction()` only accepts `PENDING`; `reject_extraction()` accepts `PENDING` and `AUTO_VERIFIED`. Asymmetry prevents re-approval of auto-verified items. Align the status guards to a consistent policy.
-- [ ] **DF-RVW-M3** No mechanism to distinguish auto-approved items from human-reviewed items in queries or the UI. Add `auto_approved: bool` field to `StagedExtraction` and expose it in the review queue.
+- [ ] **DF-RVW-M1** `backend/app/models/staged_extraction.py:12,38` — Rejecting a staged extraction only sets `status = "rejected"`; materialized entities/relations remain fully visible in the knowledge graph. Deferred: model docstring explicitly documents this as intentional async quality control; soft-delete requires schema + query changes scoped to a post-v1 moderation sprint.
+- [x] **DF-RVW-M2** `backend/app/services/extraction_review_service.py:175` vs `222` — `approve_extraction()` only accepts `PENDING`; `reject_extraction()` accepts `PENDING` and `AUTO_VERIFIED`. Asymmetry prevents re-approval of auto-verified items. Fixed: both guards now use `{PENDING, AUTO_VERIFIED}` reviewable set.
+- [x] **DF-RVW-M3** No mechanism to distinguish auto-approved items from human-reviewed items in queries or the UI. Fixed: see DF-RVW-C3 above.
 
 ---
 
@@ -304,7 +304,7 @@ From completed audits — low priority, no blocking risk.
 
 - **Entity legacy fields** (kind, label, synonyms, ontology_ref on `EntityRead`) — still consumed as fallbacks in 10+ frontend files; cannot retire until frontend migrates to slug+summary exclusively.
 - **subject_slug / object_slug on `ExtractedRelation`** — still used in CSV export and LLM backward-compat path; documented deprecated, cannot retire yet.
-- **Rejected-extraction visibility** (Audit 20 M4) — no `rejection_flagged` column; rejected extractions remain visible with status="rejected". Defer until a post-v1.0 moderation sprint.
+- **Rejected-extraction visibility** (DF-RVW-M1, Audit 20 M4) — rejected extractions remain visible in the graph with status="rejected"; model docstring documents this as intentional async quality control. Soft-delete (`is_active=False`) deferred to post-v1.0 moderation sprint.
 - **Plaintext reset/verification token storage** — elevated to DF-AUT-C1 above; no longer deferred.
 - **Expired refresh token purge** (Auth audit m2) — old expired/revoked rows accumulate in `refresh_tokens`; add a periodic cleanup job post-v1.0.
 - **Cross-tab refresh lock busy-wait** (Auth audit m3) — `client.tsx` polls every 100 ms; replace with `StorageEvent` listener post-v1.0.

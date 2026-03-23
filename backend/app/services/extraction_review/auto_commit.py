@@ -82,6 +82,7 @@ async def _materialize_approved(db: AsyncSession, staged: StagedExtraction) -> b
     """
     try:
         staged.status = ExtractionStatus.APPROVED
+        staged.auto_approved = True
         staged.reviewed_at = datetime.now(timezone.utc)
         staged.review_notes = "Auto-approved by system (high validation score)"
 

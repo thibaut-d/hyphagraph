@@ -97,6 +97,7 @@ class StagedExtractionRead(Schema):
     # Auto-commit metadata
     auto_commit_eligible: bool
     auto_commit_threshold: float | None = None
+    auto_approved: bool = False
 
     # Timestamps
     created_at: datetime
@@ -224,6 +225,7 @@ class StagedExtractionFilters(Schema):
         None, description="Filter for extractions with/without validation flags"
     )
     auto_commit_eligible: bool | None = None
+    auto_approved: bool | None = None
 
     # Pagination
     page: int = Field(default=1, ge=1)

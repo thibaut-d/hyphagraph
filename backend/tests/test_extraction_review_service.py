@@ -414,10 +414,10 @@ async def test_reject_extraction_updates_status(
 
 
 @pytest.mark.asyncio
-async def test_cannot_review_auto_verified_extraction(
+async def test_can_approve_auto_verified_extraction(
     review_service, sample_source, sample_user, high_confidence_entity, high_confidence_validation
 ):
-    """Cannot manually review an auto-verified extraction."""
+    """Human reviewer can explicitly approve an auto-verified extraction (DF-RVW-M2)."""
     staged, _ = await review_service.stage_extraction(
         extraction_type=ExtractionType.ENTITY,
         extraction_data=high_confidence_entity,
@@ -430,15 +430,15 @@ async def test_cannot_review_auto_verified_extraction(
 
     assert staged.status == ExtractionStatus.AUTO_VERIFIED
 
-    # Attempting to review should fail
+    # A human reviewer should be able to confirm an auto-verified item
     result = await review_service.approve_extraction(
         extraction_id=staged.id,
         reviewer_id=sample_user.id,
         auto_materialize=False,
     )
 
-    assert result.success is False
-    assert "already" in result.error.lower()
+    assert result.success is True
+    assert result.error is None
 
 
 @pytest.mark.asyncio
@@ -634,16 +634,16 @@ async def test_batch_review_mixed_results(
         auto_materialize=True,
     )
 
-    # Try to batch approve both
+    # Batch approve both — AUTO_VERIFIED is now reviewable (DF-RVW-M2)
     results = await review_service.batch_review(
         extraction_ids=[staged_pending.id, staged_verified.id],
         decision="approve",
         reviewer_id=sample_user.id,
     )
 
-    # Should have 1 success, 1 failure
-    assert results.succeeded == 1
-    assert results.failed == 1
+    # Both should succeed now that AUTO_VERIFIED is a reviewable status
+    assert results.succeeded == 2
+    assert results.failed == 0
 
 
 # === Test Query Filters ===

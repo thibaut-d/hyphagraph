@@ -178,7 +178,8 @@ class ExtractionReviewService:
                 error="Staged extraction not found",
             )
 
-        if staged.status != ExtractionStatus.PENDING:
+        reviewable = {ExtractionStatus.PENDING, ExtractionStatus.AUTO_VERIFIED}
+        if staged.status not in reviewable:
             return MaterializationResult(
                 success=False,
                 extraction_id=extraction_id,
@@ -201,11 +202,12 @@ class ExtractionReviewService:
         if auto_materialize:
             # Keep status change and materialization in the same transaction so that
             # a materialization failure never leaves the extraction stuck in APPROVED.
+            original_status = staged.status
             apply_review_metadata(staged, reviewer_id, notes, approved=True)
             result = await self.materialize_extraction(extraction_id, user_id=reviewer_id)
             if not result.success:
                 # materialize_extraction rolled back; undo the in-memory status change
-                staged.status = ExtractionStatus.PENDING
+                staged.status = original_status
                 staged.reviewed_by = None
                 staged.reviewed_at = None
                 staged.review_notes = None

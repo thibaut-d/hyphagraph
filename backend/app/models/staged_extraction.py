@@ -167,6 +167,13 @@ class StagedExtraction(Base, UUIDMixin, TimestampMixin):
         comment="Whether this extraction met auto-commit criteria"
     )
 
+    auto_approved: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        comment="True when status was set to APPROVED by the automated pipeline (no human reviewer)"
+    )
+
     auto_commit_threshold: Mapped[float | None] = mapped_column(
         Float,
         nullable=True,

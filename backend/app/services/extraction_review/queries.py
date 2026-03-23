@@ -39,6 +39,8 @@ async def list_extractions(
         )
     if filters.auto_commit_eligible is not None:
         conditions.append(StagedExtraction.auto_commit_eligible == filters.auto_commit_eligible)
+    if filters.auto_approved is not None:
+        conditions.append(StagedExtraction.auto_approved == filters.auto_approved)
 
     if conditions:
         query = query.where(and_(*conditions))
