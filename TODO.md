@@ -111,15 +111,15 @@ Source: Parallel agent audit session 2026-03-23.
 
 - [x] **DF-INF-C1** `backend/app/services/explanation_read_models.py:23-29` — `build_contradiction_detail()` returns a `ContradictionDetail` with empty source lists, expecting `attach_contradiction_sources()` to fill them. If `attach_contradiction_sources()` returns `None` (because only one direction is present), the contradiction detail is discarded entirely. Frontend shows "Disagreement: 45%" with no contradiction section. Fix: report contradictions whenever `disagreement > threshold`, even when only one direction is represented.
 - [x] **DF-INF-C2** `backend/app/services/explanation_read_models.py:33-49` — Contradiction logic requires both supporting and contradicting sources to be non-empty. This is backwards: the disagreement metric can be >0 with unidirectional evidence (internal magnitude cancellation). Decouple contradiction visibility from bidirectional-source requirement.
-- [ ] **DF-INF-C3** `backend/app/services/inference/read_models.py:299-309` — Inference cache stores a global average disagreement in `ComputedRelation.uncertainty` but per-role disagreement values differ. When cached inferences are read back, all roles receive the same (incorrect) disagreement value. Store per-role disagreement in `RelationRoleRevision.disagreement`.
+- [x] **DF-INF-C3** `backend/app/services/inference/read_models.py:299-309` — Inference cache stores a global average disagreement in `ComputedRelation.uncertainty` but per-role disagreement values differ. When cached inferences are read back, all roles receive the same (incorrect) disagreement value. Store per-role disagreement in `RelationRoleRevision.disagreement`.
 
 ##### Major
 
-- [ ] **DF-INF-M1** `backend/app/services/inference/read_models.py:212-216` — Cached confidence is stored as `1.0` globally, while live inferences compute accurate per-role confidence. Store per-role confidence in `RelationRoleRevision` to keep cached and live inferences consistent.
-- [ ] **DF-INF-M2** `backend/app/services/relation_service.py` — Inference cache is invalidated on relation create/update but not on source update (trust_level change). Add cache invalidation for all entities linked to a source when that source is updated.
+- [x] **DF-INF-M1** `backend/app/services/inference/read_models.py:212-216` — Cached confidence is stored as `1.0` globally, while live inferences compute accurate per-role confidence. Store per-role confidence in `RelationRoleRevision` to keep cached and live inferences consistent.
+- [x] **DF-INF-M2** `backend/app/services/relation_service.py` — Inference cache is invalidated on relation create/update but not on source update (trust_level change). Add cache invalidation for all entities linked to a source when that source is updated.
 - [x] **DF-INF-M3** `backend/app/services/inference/detail_views.py:82` — `zip(source_ids, results, strict=False)` silently accepts mismatched lengths. A failed source fetch drops source metadata without warning. Change to `strict=True` and handle the resulting ValueError explicitly.
 - [x] **DF-INF-M4** `frontend/src/views/InferencesView.tsx:206-234` — Inferences fetched in a loop read `items.length` from stale closure for index calculation; concurrent async updates can assign inferences to wrong positions. Use functional state updates with explicit index tracking.
-- [ ] **DF-INF-M5** `backend/app/services/inference/evidence_views.py:33-47` — `if role.weight:` treats explicit `0.0` as absent, falling back to relation direction. A role weight of 0 (neutral contribution) should be distinct from unset. Check `role.weight is not None` instead.
+- [x] **DF-INF-M5** `backend/app/services/inference/evidence_views.py:33-47` — `if role.weight:` treats explicit `0.0` as absent, falling back to relation direction. A role weight of 0 (neutral contribution) should be distinct from unset. Check `role.weight is not None` instead.
 
 ##### Minor
 

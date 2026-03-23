@@ -10,8 +10,10 @@ from sqlalchemy.sql import Select
 from app.mappers.source_mapper import source_revision_from_write, source_to_read
 from app.models.relation import Relation
 from app.models.relation_revision import RelationRevision
+from app.models.relation_role_revision import RelationRoleRevision
 from app.models.source import Source
 from app.models.source_revision import SourceRevision
+from app.repositories.computed_relation_repo import ComputedRelationRepository
 from app.repositories.source_repo import SourceRepository
 from app.schemas.filters import SourceFilterOptions, SourceFilters
 from app.schemas.source import SourceWrite, SourceRead
@@ -296,6 +298,29 @@ class SourceService:
                 revision_data=revision_data,
                 set_as_current=True,
             )
+
+            # Invalidate inference cache for all entities linked to this source.
+            # Source trust_level changes affect evidence quality calculations, so
+            # any computed relation that references a relation from this source is stale.
+            entity_ids_stmt = (
+                select(RelationRoleRevision.entity_id)
+                .join(
+                    RelationRevision,
+                    RelationRoleRevision.relation_revision_id == RelationRevision.id,
+                )
+                .join(Relation, RelationRevision.relation_id == Relation.id)
+                .where(
+                    Relation.source_id == source.id,
+                    RelationRevision.is_current == True,
+                )
+                .distinct()
+            )
+            entity_ids_result = await self.db.execute(entity_ids_stmt)
+            affected_entity_ids = [row[0] for row in entity_ids_result.all()]
+            if affected_entity_ids:
+                computed_repo = ComputedRelationRepository(self.db)
+                for entity_id in affected_entity_ids:
+                    await computed_repo.delete_by_entity_id(entity_id)
 
             await self.db.commit()
             return source_to_read(source, revision)
