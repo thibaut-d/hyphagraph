@@ -74,6 +74,8 @@ Execution notes:
 - Keep temporary notes and scratch outputs in `.temp/`.
 - Use `TODO.md` as the live work log; `docs/PLANNING_GUIDE.md` explains the planning format.
 - A task is done only when: tests pass, behavior matches expectations, and architecture, provenance, contradiction visibility, and validation expectations still hold. Never mark done without running the relevant tests and verifying against actual behavior.
+- Run targeted tests covering the changed area. Run the full test suite only when the change warrants it (cross-cutting, schema changes, auth) or when explicitly asked — it is slow.
+- If scope expands unexpectedly, constraints become contradictory, or tests remain broken after two fix attempts: stop, summarize the current state, and surface a proposed reduction plan (including partial revert if needed) to the user before continuing.
 
 Bug fixing:
 
@@ -88,6 +90,8 @@ Hard rules:
 - No guessing when unsure — investigate first
 - No multiple code paths computing the same result
 - If unsure whether a fix is correct, it is not done
+- Never add secrets, credentials, or API keys to any file in the repository
+- Do not add or upgrade runtime dependencies (Python packages, npm packages) without explicit user agreement; dev-only dependencies may be added if clearly justified
 
 Audit output rules:
 
