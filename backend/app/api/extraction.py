@@ -15,7 +15,7 @@ from app.api.error_handlers import handle_extraction_errors
 from app.api.service_dependencies import get_extraction_service
 from app.config import settings
 from app.dependencies.auth import get_current_user
-from app.llm.client import is_llm_available
+from app.llm.client import get_llm_provider, is_llm_available
 from app.models.user import User
 from app.schemas.extraction import (
     BatchExtractionRequest,
@@ -248,11 +248,17 @@ async def extract_batch(
 async def extraction_status() -> ExtractionStatusResponse:
     """Check if extraction service is available."""
     available = is_llm_available()
+    model_name = None
+    if available:
+        try:
+            model_name = get_llm_provider().get_model_name()
+        except RuntimeError:
+            pass
 
     return ExtractionStatusResponse(
         status="ready" if available else "unavailable",
         available=available,
         message="Extraction service is ready" if available else "LLM not configured",
         provider=settings.LLM_PROVIDER if available else None,
-        model=settings.OPENAI_MODEL if available else None
+        model=model_name,
     )
