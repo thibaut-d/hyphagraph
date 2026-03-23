@@ -241,7 +241,7 @@ Source: `.temp/full_audit_report_2026-03-23.md`
 
 #### Minor
 
-- [ ] **AUD-m1** `backend/app/services/export_service.py:256,264` — Relations CSV export hardcodes column headers `subject_slug` and `object_slug`. The N-ary model is correct underneath (roles_json column was added in DF-EXP-M3) but the two legacy headers imply a binary model and export `None` for non-subject/object roles. Rename to `primary_entity_slug`/`secondary_entity_slug` or drop them in favour of `roles_json`-only, and update any downstream consumers of the CSV format.
+- [x] **AUD-m1** `backend/app/services/export_service.py` — Dropped legacy `subject_slug`/`object_slug` CSV columns (always empty for N-ary roles); `roles_json` is the sole roles column. Fixed mismatched empty-result fallback header.
 
 ---
 

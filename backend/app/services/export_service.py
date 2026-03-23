@@ -253,7 +253,7 @@ class ExportService:
     def _export_relations_csv(self, relations: List[dict]) -> str:
         """Export relations as CSV (flattened)."""
         if not relations:
-            return "id,kind,direction,confidence,source_id,source_title,subject_slug,object_slug,created_at\n"
+            return "id,kind,direction,confidence,source_id,source_title,created_at,roles_json\n"
 
         output = StringIO()
         writer = csv.writer(output)
@@ -261,13 +261,11 @@ class ExportService:
         # Header
         writer.writerow([
             'id', 'kind', 'direction', 'confidence', 'source_id', 'source_title',
-            'subject_slug', 'object_slug', 'created_at', 'roles_json'
+            'created_at', 'roles_json'
         ])
 
         for relation in relations:
             roles = relation['roles']
-            subject = next((r for r in roles if r['role_type'] == 'subject'), None)
-            obj = next((r for r in roles if r['role_type'] == 'object'), None)
             roles_json = json.dumps([
                 {'entity_slug': r['entity_slug'], 'role_type': r['role_type']}
                 for r in roles
@@ -280,8 +278,6 @@ class ExportService:
                 relation['confidence'],
                 relation['source_id'],
                 relation.get('source_title', ''),
-                subject['entity_slug'] if subject else '',
-                obj['entity_slug'] if obj else '',
                 relation.get('created_at', ''),
                 roles_json,
             ])
