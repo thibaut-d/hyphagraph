@@ -5,6 +5,7 @@ import {
   Stack,
   Box,
   Button,
+  Chip,
   Typography,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
@@ -54,12 +55,22 @@ export function EntityDetailHeader({
           spacing={2}
         >
           <Box sx={{ flexGrow: 1 }}>
-            <Typography
-              variant="h4"
-              sx={{ fontSize: { xs: "1.75rem", sm: "2.125rem" } }}
-            >
-              {entity.slug}
-            </Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+              <Typography
+                variant="h4"
+                sx={{ fontSize: { xs: "1.75rem", sm: "2.125rem" } }}
+              >
+                {entity.slug}
+              </Typography>
+              {entity.status === "draft" && (
+                <Chip
+                  label={t("entity.status_draft", "Draft")}
+                  size="small"
+                  color="warning"
+                  variant="outlined"
+                />
+              )}
+            </Box>
             <Typography variant="subtitle2" color="text.secondary">
               {entity.summary?.en}
             </Typography>

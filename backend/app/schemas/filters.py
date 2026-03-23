@@ -81,6 +81,12 @@ class EntityFilters(BaseModel):
         json_schema_extra={"example": ["recent"]}
     )
 
+    status: Optional[List[str]] = Field(
+        None,
+        description="Filter by revision status. Values: 'draft', 'confirmed'",
+        json_schema_extra={"example": ["draft"]}
+    )
+
     limit: int = Field(
         50,
         description="Maximum number of results to return",

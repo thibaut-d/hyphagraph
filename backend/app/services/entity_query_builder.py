@@ -52,7 +52,7 @@ class EntityQueryBuilder:
 
     def apply_basic_filters(self, query: Select, filters: EntityFilters) -> Select:
         """
-        Apply simple filters: ui_category_id and search.
+        Apply simple filters: ui_category_id, search, and status.
 
         Args:
             query: The base query to filter
@@ -71,6 +71,10 @@ class EntityQueryBuilder:
         if filters.search:
             search_term = f"%{filters.search.lower()}%"
             query = query.where(EntityRevision.slug.ilike(search_term))
+
+        # Filter by revision status (draft / confirmed)
+        if filters.status:
+            query = query.where(EntityRevision.status.in_(filters.status))
 
         return query
 

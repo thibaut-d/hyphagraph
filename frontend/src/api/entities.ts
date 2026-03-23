@@ -24,6 +24,7 @@ export interface EntityFilters {
   evidence_quality_min?: number;
   evidence_quality_max?: number;
   recency?: string[];
+  status?: string[];
   limit?: number;
   offset?: number;
 }
@@ -63,6 +64,7 @@ export function listEntities(filters?: EntityFilters): Promise<PaginatedResponse
     appendOptionalNumber(query, "evidence_quality_min", filters?.evidence_quality_min);
     appendOptionalNumber(query, "evidence_quality_max", filters?.evidence_quality_max);
     appendArrayParam(query, "recency", filters?.recency);
+    appendArrayParam(query, "status", filters?.status);
     appendOptionalNumber(query, "limit", filters?.limit);
     appendOptionalNumber(query, "offset", filters?.offset);
   });

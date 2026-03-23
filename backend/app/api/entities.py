@@ -51,6 +51,7 @@ async def list_entities(
     evidence_quality_min: Optional[float] = Query(None, description="Minimum evidence quality", ge=0.0, le=1.0),
     evidence_quality_max: Optional[float] = Query(None, description="Maximum evidence quality", ge=0.0, le=1.0),
     recency: Optional[List[str]] = Query(None, description="Filter by recency (recent/older/historical)"),
+    status: Optional[List[str]] = Query(None, description="Filter by revision status (draft/confirmed)"),
     limit: int = Query(50, description="Maximum number of results", ge=1, le=100),
     offset: int = Query(0, description="Number of results to skip", ge=0),
     service: EntityService = Depends(get_entity_service),
@@ -63,6 +64,7 @@ async def list_entities(
     Basic Filters:
     - **ui_category_id**: Filter by UI category (multiple values use OR logic)
     - **search**: Case-insensitive search in slug
+    - **status**: Filter by revision status (draft/confirmed)
 
     Advanced Filters (require aggregations):
     - **clinical_effects**: Filter by clinical effects/relation types (treats, causes, etc.)
@@ -82,6 +84,7 @@ async def list_entities(
         evidence_quality_min=evidence_quality_min,
         evidence_quality_max=evidence_quality_max,
         recency=recency,
+        status=status,
         limit=limit,
         offset=offset
     )

@@ -124,7 +124,8 @@ export function EntitiesView() {
     filters.consensus_level,
     filters.evidence_quality_min,
     filters.evidence_quality_max,
-    filters.recency
+    filters.recency,
+    filters.status,
   ]);
 
   // Fetch entities with server-side filtering and pagination
@@ -164,6 +165,10 @@ export function EntitiesView() {
       apiFilters.recency = filters.recency as string[];
     }
 
+    if (filters.status && Array.isArray(filters.status)) {
+      apiFilters.status = filters.status as string[];
+    }
+
     try {
       const response = await listEntities(apiFilters);
 
@@ -189,6 +194,7 @@ export function EntitiesView() {
     filters.evidence_quality_min,
     filters.evidence_quality_max,
     filters.recency,
+    filters.status,
   ]);
 
   useEffect(() => {
@@ -305,6 +311,14 @@ export function EntitiesView() {
                               label={categoryLabel}
                               size="small"
                               color="primary"
+                              variant="outlined"
+                            />
+                          )}
+                          {e.status === "draft" && (
+                            <Chip
+                              label={t("entity.status_draft", "Draft")}
+                              size="small"
+                              color="warning"
                               variant="outlined"
                             />
                           )}
@@ -427,6 +441,18 @@ export function EntitiesView() {
             options={recencyOptions}
             value={(filters.recency as string[]) || []}
             onChange={(value) => setFilter('recency', value)}
+          />
+        </FilterSection>
+
+        {/* Filter: Revision Status */}
+        <FilterSection title={t("filters.status", "Status")}>
+          <CheckboxFilter
+            options={[
+              { value: 'draft', label: t('entity.status_draft', 'Draft') },
+              { value: 'confirmed', label: t('entity.status_confirmed', 'Confirmed') },
+            ]}
+            value={(filters.status as string[]) || []}
+            onChange={(value) => setFilter('status', value)}
           />
         </FilterSection>
       </FilterDrawer>
