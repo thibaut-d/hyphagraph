@@ -59,12 +59,35 @@ Release gates (non-negotiable):
 - AI-generated test results, passing CI, and audit sign-offs do **not** satisfy these gates. They are necessary but not sufficient.
 - If asked to prepare a release, cut a changelog, bump a version, or write release notes toward v1, remind the user of these gates before proceeding.
 
+Planning (required for non-trivial work):
+
+Enter plan mode before executing when any of the following apply:
+- The task has more than 3 steps
+- It touches architecture, schema, or inference logic
+- The scope is ambiguous or unknown
+
+A valid plan must include: execution steps, verification steps, identified risks, and stated assumptions. If something breaks mid-execution, stop and re-plan — do not continue blindly.
+
 Execution notes:
 
-- For non-trivial work, identify impacted modules, make a short plan, and state validation.
+- Identify impacted modules, make a short plan, and state validation before starting.
 - Keep temporary notes and scratch outputs in `.temp/`.
 - Use `TODO.md` as the live work log; `docs/PLANNING_GUIDE.md` explains the planning format.
-- A task is done only when architecture, provenance, contradiction visibility, and validation expectations still hold.
+- A task is done only when: tests pass, behavior matches expectations, and architecture, provenance, contradiction visibility, and validation expectations still hold. Never mark done without running the relevant tests and verifying against actual behavior.
+
+Bug fixing:
+
+- Trace root cause via logs, errors, and failing tests — do not treat symptoms.
+- Fix bugs immediately; do not defer to a follow-up task unless the fix requires a separate planning cycle.
+- No silent failures. No fallback paths that mask real errors.
+
+Hard rules:
+
+- No fallback systems that hide failures
+- No silent errors
+- No guessing when unsure — investigate first
+- No multiple code paths computing the same result
+- If unsure whether a fix is correct, it is not done
 
 Audit output rules:
 
