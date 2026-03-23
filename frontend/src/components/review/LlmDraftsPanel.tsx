@@ -66,6 +66,20 @@ export function LlmDraftsPanel() {
     }
   }, [showError]);
 
+  // Background refresh after an action: no loading spinner, failure shown separately
+  const silentRefresh = useCallback(async () => {
+    try {
+      const [listResp, countsResp] = await Promise.all([
+        listDraftRevisions({ page_size: PAGE_SIZE }),
+        getDraftRevisionCounts(),
+      ]);
+      setItems(listResp.items);
+      setCounts(countsResp);
+    } catch {
+      showError(t("llm_drafts.refresh_failed", "List refresh failed — reload to see latest drafts"));
+    }
+  }, [showError, t]);
+
   useEffect(() => {
     void load();
   }, [load]);
@@ -74,8 +88,9 @@ export function LlmDraftsPanel() {
     setActionInFlight(item.id);
     try {
       await confirmRevision(item.revision_kind, item.id);
+      setItems((prev) => prev.filter((i) => i.id !== item.id));
       showSuccess(t("llm_drafts.confirmed_success"));
-      void load();
+      void silentRefresh();
     } catch (err) {
       showError(err);
     } finally {
@@ -87,8 +102,9 @@ export function LlmDraftsPanel() {
     setActionInFlight(item.id);
     try {
       await discardRevision(item.revision_kind, item.id);
+      setItems((prev) => prev.filter((i) => i.id !== item.id));
       showSuccess(t("llm_drafts.discarded_success"));
-      void load();
+      void silentRefresh();
     } catch (err) {
       showError(err);
     } finally {

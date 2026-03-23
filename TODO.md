@@ -83,7 +83,7 @@ Source: Parallel agent audit session 2026-03-23.
 
 - [x] **DF-DRV-M1** `backend/app/api/revision_review.py:61-108` — All four revision-review endpoints use `get_current_user`, not `get_current_active_superuser`. Any authenticated user can confirm or discard LLM drafts. Add superuser guard.
 - [x] **DF-DRV-M2** `backend/app/services/revision_review_service.py:62-115` — `_list_*_drafts()` methods filter on `status == "draft"` but not `is_current == True`. Non-current drafts appear in the review queue. Add `is_current=True` filter or document the intent.
-- [ ] **DF-DRV-M3** `frontend/src/components/review/LlmDraftsPanel.tsx:73-97` — After confirm/discard, `load()` is called unconditionally. On slow networks, if `load()` fails, the success message is contradicted by an error. Optimistically remove the item on API success; show refresh failure separately.
+- [x] **DF-DRV-M3** `frontend/src/components/review/LlmDraftsPanel.tsx:73-97` — After confirm/discard, `load()` is called unconditionally. On slow networks, if `load()` fails, the success message is contradicted by an error. Optimistically remove the item on API success; show refresh failure separately.
 
 ---
 
