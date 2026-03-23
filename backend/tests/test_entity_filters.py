@@ -306,3 +306,65 @@ class TestEntityConsensusFiltering:
         assert total == 2
         slugs = {item.slug for item in items}
         assert slugs == {"drug-a", "drug-b"}
+
+
+@pytest.mark.asyncio
+class TestEntityRecencyFiltering:
+    """Test recency filtering for entities, including NULL source year handling (DF-ENT-m1)."""
+
+    async def test_recency_filter_null_source_year_treated_as_historical(self, db_session):
+        """
+        Entities whose every source has NULL year are classified as 'historical'.
+
+        COALESCE(MAX(year), 0) maps all-null years to year 0, which is older
+        than current_year - 10, so the entity appears under the 'historical'
+        recency bucket rather than being silently excluded.
+        """
+        entity_service = EntityService(db_session)
+        source_service = SourceService(db_session)
+        relation_service = RelationService(db_session)
+
+        entity_no_year = await entity_service.create(EntityWrite(slug="null-year-entity"))
+        entity_partner = await entity_service.create(EntityWrite(slug="null-year-partner"))
+
+        source_no_year = await source_service.create(SourceWrite(
+            kind="website",
+            title="Webpage without publication date",
+            url="https://example.com/no-date",
+            trust_level=0.5,
+        ))
+
+        await relation_service.create(RelationWrite(
+            source_id=source_no_year.id,
+            kind="effect",
+            direction="supports",
+            confidence=0.7,
+            roles=[
+                RoleRevisionWrite(entity_id=entity_no_year.id, role_type="agent"),
+                RoleRevisionWrite(entity_id=entity_partner.id, role_type="patient"),
+            ]
+        ))
+
+        # Null-year entity should appear under 'historical'
+        items, _ = await entity_service.list_all(filters=EntityFilters(recency=["historical"]))
+        slugs = {item.slug for item in items}
+        assert "null-year-entity" in slugs
+
+        # Null-year entity should NOT appear under 'recent'
+        items_recent, _ = await entity_service.list_all(filters=EntityFilters(recency=["recent"]))
+        slugs_recent = {item.slug for item in items_recent}
+        assert "null-year-entity" not in slugs_recent
+
+    async def test_recency_filter_entity_with_no_relations_excluded(self, db_session):
+        """
+        Entities with no source relations at all are excluded from recency-filtered
+        results (NULL from OUTER JOIN → conditions evaluate to NULL/false).
+        """
+        entity_service = EntityService(db_session)
+
+        await entity_service.create(EntityWrite(slug="no-relations-entity"))
+
+        for bucket in ["recent", "older", "historical"]:
+            items, _ = await entity_service.list_all(filters=EntityFilters(recency=[bucket]))
+            slugs = {item.slug for item in items}
+            assert "no-relations-entity" not in slugs

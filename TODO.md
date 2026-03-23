@@ -192,7 +192,7 @@ Source: Parallel agent audit session 2026-03-23.
 
 ##### Minor
 
-- [ ] **DF-ENT-m1** `backend/app/services/entity_query_builder.py:154-212` — Recency filter uses INNER JOIN with a year subquery; entities whose sources have `NULL` year are excluded. Use `COALESCE` or OUTER JOIN to handle unknown years.
+- [x] **DF-ENT-m1** `backend/app/services/entity_query_builder.py:154-212` — Recency filter uses INNER JOIN with a year subquery; entities whose sources have `NULL` year are excluded. Use `COALESCE` or OUTER JOIN to handle unknown years.
 - [x] **DF-ENT-m2** `frontend/src/hooks/useEntityData.ts:23-76` — No `AbortController` on the fetch; unmounting during a request leaves a dangling promise. Add cleanup to cancel in-flight requests on unmount.
 
 ---

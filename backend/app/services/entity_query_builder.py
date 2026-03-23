@@ -176,11 +176,17 @@ class EntityQueryBuilder:
 
         current_year = datetime.now().year
 
-        # Subquery to get max year per entity
+        # Subquery to get max year per entity.
+        # COALESCE(MAX(year), 0): entities whose every source has NULL year
+        # are treated as "historical" (year 0) rather than silently excluded
+        # by NULL comparisons.  Entities with no relations at all are absent
+        # from this subquery; the OUTER JOIN below leaves max_year as NULL,
+        # making all recency conditions evaluate to NULL/false — correct
+        # behaviour (no source data → excluded from recency filter).
         max_year_subquery = (
             select(
                 RelationRoleRevision.entity_id,
-                func.max(SourceRevision.year).label('max_year')
+                func.coalesce(func.max(SourceRevision.year), 0).label('max_year')
             )
             .select_from(RelationRoleRevision)
             .join(RelationRevision, RelationRoleRevision.relation_revision_id == RelationRevision.id)
@@ -208,7 +214,7 @@ class EntityQueryBuilder:
             recency_filter_conditions.append(max_year_subquery.c.max_year < current_year - 10)
 
         if recency_filter_conditions:
-            query = query.join(
+            query = query.outerjoin(
                 max_year_subquery,
                 Entity.id == max_year_subquery.c.entity_id
             ).where(or_(*recency_filter_conditions))
