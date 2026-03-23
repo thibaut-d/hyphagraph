@@ -16,11 +16,12 @@ import {
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
-import { getSource, updateSource, SourceWrite } from "../api/sources";
+import { getSource, updateSource, SourceWrite, getSourceFilterOptions, SourceFilterOptions } from "../api/sources";
 import { SourceRead } from "../types/source";
 import { invalidateSourceFilterCache } from "../utils/cacheUtils";
 import { useNotification } from "../notifications/NotificationContext";
 import { useAsyncAction } from "../hooks/useAsyncAction";
+import { useFilterOptionsCache } from "../hooks/useFilterOptionsCache";
 
 const SOURCE_KINDS = [
   "article",
@@ -38,6 +39,10 @@ export function EditSourceView() {
   const { t } = useTranslation();
   const { showError } = useNotification();
   const navigate = useNavigate();
+  const filterOptions = useFilterOptionsCache<SourceFilterOptions>(
+    'source-filter-options-cache',
+    getSourceFilterOptions,
+  );
 
   const [source, setSource] = useState<SourceRead | null>(null);
   const [kind, setKind] = useState("article");
@@ -178,7 +183,7 @@ export function EditSourceView() {
                   disabled={saving}
                   fullWidth
                 >
-                  {SOURCE_KINDS.map((k) => (
+                  {(filterOptions?.kinds ?? SOURCE_KINDS).map((k) => (
                     <MenuItem key={k} value={k}>
                       {t(`create_source.kind_${k}`, k)}
                     </MenuItem>

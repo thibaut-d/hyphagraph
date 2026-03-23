@@ -49,7 +49,7 @@ Source: Parallel agent audit session 2026-03-23.
 ##### Minor
 
 - [x] **DF-SCH-m1** `backend/app/services/search/common.py:17-21` — All queries use `ILIKE`/`LIKE`, no trigram or full-text index exists. The docstring claims "PostgreSQL full-text search" — this is false. Add `pg_trgm` GIN indexes on searched columns.
-- [ ] **DF-SCH-m2** `frontend/src/views/SearchView.tsx:123-124` — Entity links use `result.id` (UUID); verify the entity detail route accepts UUID not slug, or change to `result.slug`.
+- [x] **DF-SCH-m2** `frontend/src/views/SearchView.tsx:123-124` — Entity links use `result.id` (UUID); verify the entity detail route accepts UUID not slug, or change to `result.slug`. *(Verified: `GET /entities/{entity_id}` accepts UUID; `result.id` is correct — no code change needed.)*
 
 ---
 
@@ -172,7 +172,7 @@ Source: Parallel agent audit session 2026-03-23.
 - [x] **DF-SRC-M1** `backend/app/schemas/source.py:56-75` + `backend/app/mappers/source_mapper.py` — `SourceRead` does not expose `document_format`, `document_file_name`, or `document_extracted_at` from `SourceRevision`. Frontend cannot show whether a document is attached or its format. Add optional document fields to `SourceRead` and update mapper.
 - [x] **DF-SRC-M2** `backend/app/schemas/source.py:56-75` — `SourceRead` omits `created_with_llm` and `created_by_user_id`. Provenance is invisible to frontend consumers. Add optional fields and update mapper.
 - [x] **DF-SRC-M3** `backend/app/mappers/source_mapper.py:66-80` — Fallback branch accesses deprecated flat fields (`kind`, `title`, etc.) directly on `Source`; these fields no longer exist in the dual-table architecture. Remove the fallback or add `hasattr()` guards to prevent `AttributeError`.
-- [ ] **DF-SRC-M4** `frontend/src/views/CreateSourceView.tsx:28-37` + `EditSourceView.tsx:25-34` — Source kinds are hardcoded arrays. Changes to allowed kinds in the DB are not reflected. Use `filterOptions?.kinds` from the cache, falling back to the hardcoded list.
+- [x] **DF-SRC-M4** `frontend/src/views/CreateSourceView.tsx:28-37` + `EditSourceView.tsx:25-34` — Source kinds are hardcoded arrays. Changes to allowed kinds in the DB are not reflected. Use `filterOptions?.kinds` from the cache, falling back to the hardcoded list.
 
 ---
 

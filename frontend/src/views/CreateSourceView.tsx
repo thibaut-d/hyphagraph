@@ -24,6 +24,8 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import SearchIcon from "@mui/icons-material/Search";
 
 import { useCreateSourceForm } from "../hooks/useCreateSourceForm";
+import { useFilterOptionsCache } from "../hooks/useFilterOptionsCache";
+import { getSourceFilterOptions, SourceFilterOptions } from "../api/sources";
 
 const SOURCE_KINDS = [
   "article",
@@ -39,6 +41,10 @@ const SOURCE_KINDS = [
 export function CreateSourceView() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const filterOptions = useFilterOptionsCache<SourceFilterOptions>(
+    'source-filter-options-cache',
+    getSourceFilterOptions,
+  );
 
   const {
     kind, setKind,
@@ -220,7 +226,7 @@ export function CreateSourceView() {
                           : {},
                       }}
                     >
-                      {SOURCE_KINDS.map((k) => (
+                      {(filterOptions?.kinds ?? SOURCE_KINDS).map((k) => (
                         <MenuItem key={k} value={k}>
                           {t(`create_source.kind_${k}`, k)}
                         </MenuItem>
