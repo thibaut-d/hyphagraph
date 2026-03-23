@@ -1036,13 +1036,11 @@ async def test_stage_relation_auto_verifies_and_materializes(
 
 
 @pytest.mark.asyncio
-async def test_stage_relation_without_matching_entities_skips_roles(
+async def test_stage_relation_without_matching_entities_raises(
     review_service, sample_source, high_confidence_validation
 ):
-    """Relation with unknown entity slugs materializes but skips missing roles (no crash)."""
+    """Relation with unknown entity slugs raises ValueError during materialization (DF-EXT-M1)."""
     from app.llm.schemas import ExtractedRelation, ExtractedRole
-    from app.models.relation import Relation
-    from sqlalchemy import select
 
     relation = ExtractedRelation(
         relation_type="treats",
@@ -1054,18 +1052,14 @@ async def test_stage_relation_without_matching_entities_skips_roles(
         text_span="unknown-entity-a treats unknown-entity-b",
     )
 
-    staged, relation_id = await review_service.stage_extraction(
-        extraction_type=ExtractionType.RELATION,
-        extraction_data=relation,
-        source_id=sample_source.id,
-        validation_result=high_confidence_validation,
-        auto_materialize=True,
-    )
-
-    # Relation row should still be created even if no roles could be linked
-    assert relation_id is not None
-    result = await review_service.db.execute(select(Relation).where(Relation.id == relation_id))
-    assert result.scalar_one_or_none() is not None
+    with pytest.raises(ValueError, match="not found"):
+        await review_service.stage_extraction(
+            extraction_type=ExtractionType.RELATION,
+            extraction_data=relation,
+            source_id=sample_source.id,
+            validation_result=high_confidence_validation,
+            auto_materialize=True,
+        )
 
 
 # === Test Claim Staging ===
