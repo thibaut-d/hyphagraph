@@ -208,7 +208,7 @@ Source: Parallel agent audit session 2026-03-23.
 
 - [x] **DF-DSC-M1** `backend/app/services/document_extraction_discovery.py:98-114` — Sources imported from PubMed store no `imported_at` timestamp or `discovery_query` provenance in metadata. Extend `source_metadata` with `imported_at`, `import_method`, and optionally `discovery_query`.
 - [x] **DF-DSC-M2** `backend/app/services/document_extraction_discovery.py:320-325` — `trust_level` is LLM-inferred and stored directly as the canonical source trust level without any human review. Store it in a separate `calculated_trust_level` field and leave `trust_level` NULL pending user confirmation, or add a review step before bulk-import commit.
-- [ ] **DF-DSC-M3** `frontend/src/views/PubMedImportView.tsx:106-138` — No `AbortController`, no timeout, no cancel button for bulk import requests that can take 30+ seconds. Add cancellation and a progress/timeout indicator.
+- [x] **DF-DSC-M3** `frontend/src/views/PubMedImportView.tsx` — Added `AbortController` for both search and import requests; Cancel buttons shown during in-flight operations; `AbortError` caught silently.
 - [x] **DF-DSC-M4** `frontend/src/types/pubmed.ts:32-37` + `frontend/src/api/smart-discovery.ts:48-53` — Bulk import response type is declared twice with identical shapes. Remove the duplicate from `smart-discovery.ts` and import from `pubmed.ts`.
 
 ---

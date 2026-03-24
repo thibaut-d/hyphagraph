@@ -7,7 +7,7 @@
  * 3. User selects articles to import
  * 4. Batch create sources from selected articles
  */
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Paper,
@@ -48,11 +48,20 @@ export function PubMedImportView() {
   const [importError, setImportError] = useState<string | null>(null);
   const [importSuccess, setImportSuccess] = useState<string | null>(null);
 
+  // Abort controllers for cancellable long-running requests
+  const searchControllerRef = useRef<AbortController | null>(null);
+  const importControllerRef = useRef<AbortController | null>(null);
+
   const handleSearch = async () => {
     if (!searchInput.trim()) {
       setSearchError("Please enter a search query or paste a PubMed search URL");
       return;
     }
+
+    // Cancel any in-flight search
+    searchControllerRef.current?.abort();
+    const controller = new AbortController();
+    searchControllerRef.current = controller;
 
     setSearching(true);
     setSearchError(null);
@@ -63,11 +72,14 @@ export function PubMedImportView() {
       // Determine if input is a URL or query
       const isUrl = searchInput.startsWith("http");
 
-      const response = await bulkSearchPubMed({
-        query: isUrl ? undefined : searchInput,
-        search_url: isUrl ? searchInput : undefined,
-        max_results: maxResults,
-      });
+      const response = await bulkSearchPubMed(
+        {
+          query: isUrl ? undefined : searchInput,
+          search_url: isUrl ? searchInput : undefined,
+          max_results: maxResults,
+        },
+        controller.signal,
+      );
 
       setResults(response.results);
       setQuery(response.query);
@@ -77,11 +89,16 @@ export function PubMedImportView() {
       const allPmids = new Set(response.results.map((r) => r.pmid));
       setSelectedPmids(allPmids);
     } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") return;
       const parsedError = handlePageError(error, "Failed to search PubMed");
       setSearchError(parsedError.userMessage);
     } finally {
       setSearching(false);
     }
+  };
+
+  const handleCancelSearch = () => {
+    searchControllerRef.current?.abort();
   };
 
   const handleToggleSelect = (pmid: string) => {
@@ -109,13 +126,17 @@ export function PubMedImportView() {
       return;
     }
 
+    const controller = new AbortController();
+    importControllerRef.current = controller;
+
     setImporting(true);
     setImportError(null);
 
     try {
-      const response = await bulkImportPubMed({
-        pmids: Array.from(selectedPmids),
-      });
+      const response = await bulkImportPubMed(
+        { pmids: Array.from(selectedPmids) },
+        controller.signal,
+      );
 
       // Show success message
       const failedCount = response.failed_pmids.length;
@@ -131,11 +152,16 @@ export function PubMedImportView() {
         navigate("/sources");
       }, 2000);
     } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") return;
       const parsedError = handlePageError(error, "Failed to import articles");
       setImportError(parsedError.userMessage);
     } finally {
       setImporting(false);
     }
+  };
+
+  const handleCancelImport = () => {
+    importControllerRef.current?.abort();
   };
 
   return (
@@ -205,14 +231,21 @@ export function PubMedImportView() {
           </Typography>
         </Box>
 
-        <Button
-          variant="contained"
-          startIcon={searching ? <CircularProgress size={16} /> : <SearchIcon />}
-          onClick={handleSearch}
-          disabled={searching}
-        >
-          {searching ? "Searching..." : "Search PubMed"}
-        </Button>
+        <Stack direction="row" spacing={1}>
+          <Button
+            variant="contained"
+            startIcon={searching ? <CircularProgress size={16} /> : <SearchIcon />}
+            onClick={handleSearch}
+            disabled={searching}
+          >
+            {searching ? "Searching..." : "Search PubMed"}
+          </Button>
+          {searching && (
+            <Button variant="outlined" color="error" onClick={handleCancelSearch}>
+              Cancel
+            </Button>
+          )}
+        </Stack>
 
         {searchError && (
           <Alert severity="error" sx={{ mt: 2 }} onClose={() => setSearchError(null)}>
@@ -234,6 +267,7 @@ export function PubMedImportView() {
             onToggleSelect={handleToggleSelect}
             onSelectAll={handleSelectAll}
             onImport={handleImport}
+            onCancelImport={handleCancelImport}
             onClearImportError={() => setImportError(null)}
           />
         </Paper>

@@ -22,7 +22,8 @@ import type {
  * @returns Search results with article metadata
  */
 export async function bulkSearchPubMed(
-  request: PubMedBulkSearchRequest
+  request: PubMedBulkSearchRequest,
+  signal?: AbortSignal,
 ): Promise<PubMedBulkSearchResponse> {
   return apiFetch<PubMedBulkSearchResponse>("/pubmed/bulk-search", {
     method: "POST",
@@ -30,6 +31,7 @@ export async function bulkSearchPubMed(
       "Content-Type": "application/json",
     },
     body: JSON.stringify(request),
+    signal,
   });
 }
 
@@ -45,7 +47,8 @@ export async function bulkSearchPubMed(
  * @returns Import result with created source IDs
  */
 export async function bulkImportPubMed(
-  request: PubMedBulkImportRequest
+  request: PubMedBulkImportRequest,
+  signal?: AbortSignal,
 ): Promise<PubMedBulkImportResponse> {
   return apiFetch<PubMedBulkImportResponse>("/pubmed/bulk-import", {
     method: "POST",
@@ -53,5 +56,6 @@ export async function bulkImportPubMed(
       "Content-Type": "application/json",
     },
     body: JSON.stringify(request),
+    signal,
   });
 }

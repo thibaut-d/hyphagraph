@@ -25,6 +25,7 @@ interface PubMedResultsTableProps {
   onToggleSelect: (pmid: string) => void;
   onSelectAll: () => void;
   onImport: () => void;
+  onCancelImport: () => void;
   onClearImportError: () => void;
 }
 
@@ -38,6 +39,7 @@ export function PubMedResultsTable({
   onToggleSelect,
   onSelectAll,
   onImport,
+  onCancelImport,
   onClearImportError,
 }: PubMedResultsTableProps) {
   return (
@@ -63,6 +65,11 @@ export function PubMedResultsTable({
           >
             {importing ? "Importing..." : `Import ${selectedPmids.size} Articles`}
           </Button>
+          {importing && (
+            <Button variant="outlined" color="error" onClick={onCancelImport}>
+              Cancel
+            </Button>
+          )}
         </Box>
       </Box>
 
