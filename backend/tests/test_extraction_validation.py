@@ -9,7 +9,9 @@ import pytest
 from app.services.extraction_validation_service import (
     TextSpanValidator,
     ExtractionValidationService,
+    ValidationResult,
 )
+from app.services.batch_extraction_orchestrator import BatchExtractionOrchestrator
 from app.llm.schemas import ExtractedEntity, ExtractedRelation, ExtractedClaim
 
 
@@ -422,3 +424,176 @@ class TestEdgeCases:
 
         # Assert
         assert result.is_valid is True
+
+
+# =============================================================================
+# DF-EXT-M6: Entity slug coherence (cross-field semantic validation)
+# =============================================================================
+
+def _make_orchestrator(strict: bool = False) -> BatchExtractionOrchestrator:
+    """Return an orchestrator with validation enabled but no LLM needed for slug checks."""
+    level = "strict" if strict else "moderate"
+    return BatchExtractionOrchestrator(
+        enable_validation=True,
+        validation_level=level,
+    )
+
+
+def _dummy_result(is_valid: bool = True) -> ValidationResult:
+    return ValidationResult(
+        is_valid=is_valid,
+        confidence_adjustment=1.0,
+        validation_score=1.0,
+        flags=[],
+        matched_span=None,
+    )
+
+
+def _make_entities(*slugs: str) -> list[ExtractedEntity]:
+    return [
+        ExtractedEntity(slug=s, category="drug", confidence="high", text_span=s)
+        for s in slugs
+    ]
+
+
+def _make_relation(*slugs: str) -> ExtractedRelation:
+    roles = [{"entity_slug": s, "role_type": "agent" if i == 0 else "target"} for i, s in enumerate(slugs)]
+    return ExtractedRelation(
+        relation_type="treats",
+        roles=roles,
+        confidence="high",
+        text_span="Some relation text span for testing",
+    )
+
+
+def _make_claim(*slugs: str) -> ExtractedClaim:
+    return ExtractedClaim(
+        claim_text="Some claim text for testing purposes",
+        entities_involved=list(slugs),
+        claim_type="efficacy",
+        evidence_strength="moderate",
+        confidence="medium",
+        text_span="Some claim text span for testing",
+    )
+
+
+class TestEntitySlugCoherence:
+    """Unit tests for _check_entity_slug_coherence (DF-EXT-M6)."""
+
+    def test_all_known_slugs_pass_unchanged(self):
+        """Relations/claims whose slugs all exist in extracted entities are untouched."""
+        orch = _make_orchestrator()
+        entities = _make_entities("drug-a", "disease-b")
+        relation = _make_relation("drug-a", "disease-b")
+        claim = _make_claim("drug-a", "disease-b")
+        rel_result = _dummy_result()
+        clm_result = _dummy_result()
+
+        rels, rel_results, clms, clm_results = orch._check_entity_slug_coherence(
+            entities, [relation], [rel_result], [claim], [clm_result]
+        )
+
+        assert len(rels) == 1
+        assert rel_results[0].flags == []
+        assert rel_results[0].confidence_adjustment == 1.0
+        assert len(clms) == 1
+        assert clm_results[0].flags == []
+
+    def test_unknown_relation_slug_flagged_in_moderate_mode(self):
+        """Relation with an unknown entity slug is flagged and confidence halved (moderate)."""
+        orch = _make_orchestrator(strict=False)
+        entities = _make_entities("drug-a")
+        relation = _make_relation("drug-a", "ghost-entity")
+        rel_result = _dummy_result()
+
+        rels, rel_results, clms, clm_results = orch._check_entity_slug_coherence(
+            entities, [relation], [rel_result], [], []
+        )
+
+        assert len(rels) == 1  # Still kept in moderate mode
+        assert any("unknown_entity_slug" in f for f in rel_results[0].flags)
+        assert "ghost-entity" in rel_results[0].flags[0]
+        assert rel_results[0].confidence_adjustment == pytest.approx(0.5)
+        assert rel_results[0].validation_score == pytest.approx(0.5)
+
+    def test_unknown_relation_slug_rejected_in_strict_mode(self):
+        """Relation with unknown entity slug is removed in strict mode."""
+        orch = _make_orchestrator(strict=True)
+        entities = _make_entities("drug-a")
+        relation = _make_relation("drug-a", "ghost-entity")
+        rel_result = _dummy_result()
+
+        rels, rel_results, clms, clm_results = orch._check_entity_slug_coherence(
+            entities, [relation], [rel_result], [], []
+        )
+
+        assert len(rels) == 0  # Removed in strict mode
+        assert len(rel_results) == 0
+
+    def test_unknown_claim_slug_flagged_in_moderate_mode(self):
+        """Claim with unknown entity slug is flagged and confidence halved (moderate)."""
+        orch = _make_orchestrator(strict=False)
+        entities = _make_entities("drug-a")
+        claim = _make_claim("drug-a", "phantom")
+        clm_result = _dummy_result()
+
+        rels, rel_results, clms, clm_results = orch._check_entity_slug_coherence(
+            entities, [], [], [claim], [clm_result]
+        )
+
+        assert len(clms) == 1
+        assert any("unknown_entity_slug" in f for f in clm_results[0].flags)
+        assert clm_results[0].confidence_adjustment == pytest.approx(0.5)
+
+    def test_unknown_claim_slug_rejected_in_strict_mode(self):
+        """Claim with all-unknown entity slugs is removed in strict mode."""
+        orch = _make_orchestrator(strict=True)
+        entities = _make_entities("drug-a")
+        claim = _make_claim("phantom-1", "phantom-2")
+        clm_result = _dummy_result()
+
+        rels, rel_results, clms, clm_results = orch._check_entity_slug_coherence(
+            entities, [], [], [claim], [clm_result]
+        )
+
+        assert len(clms) == 0
+
+    def test_empty_entity_list_flags_all_relations(self):
+        """When no entities are extracted, all relation slugs are unknown."""
+        orch = _make_orchestrator(strict=False)
+        relation = _make_relation("drug-a", "disease-b")
+        rel_result = _dummy_result()
+
+        rels, rel_results, clms, clm_results = orch._check_entity_slug_coherence(
+            [], [relation], [rel_result], [], []
+        )
+
+        assert len(rels) == 1  # Kept in moderate mode
+        assert any("unknown_entity_slug" in f for f in rel_results[0].flags)
+
+    def test_multiple_unknown_slugs_all_listed_in_flag(self):
+        """All unknown slugs are listed in the flag string."""
+        orch = _make_orchestrator(strict=False)
+        entities = _make_entities("known")
+        relation = _make_relation("known", "ghost-1", "ghost-2")
+        rel_result = _dummy_result()
+
+        # Need 3-role relation; create manually
+        relation = ExtractedRelation(
+            relation_type="treats",
+            roles=[
+                {"entity_slug": "known", "role_type": "agent"},
+                {"entity_slug": "ghost-1", "role_type": "target"},
+                {"entity_slug": "ghost-2", "role_type": "population"},
+            ],
+            confidence="high",
+            text_span="Some relation text span for testing",
+        )
+
+        rels, rel_results, clms, clm_results = orch._check_entity_slug_coherence(
+            entities, [relation], [rel_result], [], []
+        )
+
+        flag = rel_results[0].flags[0]
+        assert "ghost-1" in flag
+        assert "ghost-2" in flag

@@ -311,6 +311,13 @@ class BatchExtractionOrchestrator:
             # Validate claims
             claims, claim_results = await self.validation_service.validate_claims(claims, text)
 
+            # Semantic cross-field check: entity_slug coherence
+            relations, relation_results, claims, claim_results = (
+                self._check_entity_slug_coherence(
+                    entities, relations, relation_results, claims, claim_results
+                )
+            )
+
             # Log validation summary
             flagged_entities = sum(1 for r in entity_results if r.flags)
             flagged_relations = sum(1 for r in relation_results if r.flags)
@@ -355,6 +362,75 @@ class BatchExtractionOrchestrator:
             ]
 
         return entities, relations, claims, entity_results, relation_results, claim_results
+
+    def _check_entity_slug_coherence(
+        self,
+        entities: list[ExtractedEntity],
+        relations: list[ExtractedRelation],
+        relation_results: list[ValidationResult],
+        claims: list[ExtractedClaim],
+        claim_results: list[ValidationResult],
+    ) -> tuple[
+        list[ExtractedRelation],
+        list[ValidationResult],
+        list[ExtractedClaim],
+        list[ValidationResult],
+    ]:
+        """
+        Cross-field semantic check: every entity_slug referenced in relations
+        and claims must appear in the extracted entity list from the same batch.
+
+        Flags offending items and halves their confidence score.
+        In strict mode (auto_reject_invalid=True) they are removed entirely.
+        """
+        entity_slug_set = {e.slug for e in entities}
+        auto_reject = (
+            self.validation_service is not None
+            and self.validation_service.auto_reject_invalid
+        )
+
+        out_relations: list[ExtractedRelation] = []
+        out_relation_results: list[ValidationResult] = []
+        for relation, result in zip(relations, relation_results):
+            unknown = sorted({r.entity_slug for r in relation.roles if r.entity_slug not in entity_slug_set})
+            if unknown:
+                result = ValidationResult(
+                    is_valid=False if auto_reject else result.is_valid,
+                    confidence_adjustment=result.confidence_adjustment * 0.5,
+                    validation_score=result.validation_score * 0.5,
+                    flags=result.flags + [f"unknown_entity_slug:{','.join(unknown)}"],
+                    matched_span=result.matched_span,
+                )
+                logger.warning(
+                    "Relation '%s' references unknown entity slugs: %s",
+                    relation.relation_type,
+                    unknown,
+                )
+            if result.is_valid or not auto_reject:
+                out_relations.append(relation)
+                out_relation_results.append(result)
+
+        out_claims: list[ExtractedClaim] = []
+        out_claim_results: list[ValidationResult] = []
+        for claim, result in zip(claims, claim_results):
+            unknown = sorted({s for s in claim.entities_involved if s not in entity_slug_set})
+            if unknown:
+                result = ValidationResult(
+                    is_valid=False if auto_reject else result.is_valid,
+                    confidence_adjustment=result.confidence_adjustment * 0.5,
+                    validation_score=result.validation_score * 0.5,
+                    flags=result.flags + [f"unknown_entity_slug:{','.join(unknown)}"],
+                    matched_span=result.matched_span,
+                )
+                logger.warning(
+                    "Claim references unknown entity slugs: %s",
+                    unknown,
+                )
+            if result.is_valid or not auto_reject:
+                out_claims.append(claim)
+                out_claim_results.append(result)
+
+        return out_relations, out_relation_results, out_claims, out_claim_results
 
     def _filter_by_evidence(
         self, claims: list[ExtractedClaim], min_evidence_strength: str | None
