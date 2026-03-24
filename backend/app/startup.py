@@ -60,7 +60,8 @@ async def bootstrap_admin_user(db: AsyncSession) -> None:
         # Use the service to create the user
         admin_data = UserRegister(
             email=settings.ADMIN_EMAIL,
-            password=settings.ADMIN_PASSWORD
+            password=settings.ADMIN_PASSWORD,
+            password_confirmation=settings.ADMIN_PASSWORD,
         )
 
         admin_user = await user_service.create(admin_data)
