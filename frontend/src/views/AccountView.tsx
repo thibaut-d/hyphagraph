@@ -34,7 +34,7 @@ export function AccountView() {
         username: email,
         password,
       });
-      login(res.access_token, res.refresh_token);
+      login(res.access_token);
     }, t("account.login_error", "Login failed"));
 
     if (!result.ok) {

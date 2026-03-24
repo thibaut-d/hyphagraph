@@ -43,7 +43,6 @@ describe("apiFetch", () => {
 
   it("returns undefined for 204 responses after a local token refresh", async () => {
     localStorage.setItem("auth_token", "stale-token");
-    localStorage.setItem("refresh_token", "refresh-token");
 
     const retryJson = vi.fn();
     const fetchMock = vi
@@ -68,7 +67,6 @@ describe("apiFetch", () => {
     vi.useFakeTimers();
 
     localStorage.setItem("auth_token", "stale-token");
-    localStorage.setItem("refresh_token", "refresh-token");
     localStorage.setItem(REFRESH_LOCK_KEY, Date.now().toString());
 
     const retryJson = vi.fn();
@@ -87,6 +85,11 @@ describe("apiFetch", () => {
 
     localStorage.setItem("auth_token", "new-token");
     localStorage.removeItem(REFRESH_LOCK_KEY);
+    // jsdom 27 doesn't fire storage events for same-window modifications (per spec);
+    // dispatch manually to simulate the other tab releasing the lock.
+    window.dispatchEvent(
+      new StorageEvent("storage", { key: REFRESH_LOCK_KEY, newValue: null }),
+    );
 
     await vi.advanceTimersByTimeAsync(100);
 

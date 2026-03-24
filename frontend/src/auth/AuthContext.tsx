@@ -20,9 +20,8 @@ import type { UserRead } from "../types/auth";
 type AuthContextValue = {
   user: UserRead | null;
   token: string | null;
-  refreshToken: string | null;
   loading: boolean;
-  login: (token: string, refreshToken: string) => void;
+  login: (token: string) => void;
   logout: () => void;
 };
 
@@ -31,13 +30,11 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const initialAuth = getStoredAuthTokens();
   const [token, setToken] = useState<string | null>(initialAuth.token);
-  const [refreshToken, setRefreshToken] = useState<string | null>(initialAuth.refreshToken);
   const [user, setUser] = useState<UserRead | null>(null);
   const [loading, setLoading] = useState<boolean>(!!initialAuth.token);
 
   // Use refs to track current token values without causing re-renders
   const tokenRef = useRef(token);
-  const refreshTokenRef = useRef(refreshToken);
   const requestVersionRef = useRef(0);
 
   // Update refs when state changes
@@ -46,23 +43,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [token]);
 
   useEffect(() => {
-    refreshTokenRef.current = refreshToken;
-  }, [refreshToken]);
-
-  useEffect(() => {
     const syncAuthState = () => {
       const nextAuth = getStoredAuthTokens();
 
       if (nextAuth.token !== tokenRef.current) {
         setToken(nextAuth.token);
       }
-      if (nextAuth.refreshToken !== refreshTokenRef.current) {
-        setRefreshToken(nextAuth.refreshToken);
-      }
     };
 
     const handleStorageEvent = (event: StorageEvent) => {
-      if (event.key === null || event.key === "auth_token" || event.key === "refresh_token") {
+      if (event.key === null || event.key === "auth_token") {
         syncAuthState();
       }
     };
@@ -78,18 +68,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     requestVersionRef.current += 1;
-    const currentRefreshToken = refreshTokenRef.current;
 
-    if (currentRefreshToken) {
-      logoutApi(currentRefreshToken).catch((err) => {
-        // Logout should clear client state even if token revocation fails.
-        console.warn("[auth] Token revocation failed (session cleared anyway):", err);
-      });
-    }
+    logoutApi().catch((err) => {
+      // Logout should clear client state even if token revocation fails.
+      console.warn("[auth] Token revocation failed (session cleared anyway):", err);
+    });
 
     clearStoredAuthTokens();
     setToken(null);
-    setRefreshToken(null);
     setUser(null);
     setLoading(false);
   }, []);
@@ -139,14 +125,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [token, logout]);
 
-  const login = (newToken: string, newRefreshToken: string) => {
-    setStoredAuthTokens(newToken, newRefreshToken);
+  const login = (newToken: string) => {
+    setStoredAuthTokens(newToken);
     setToken(newToken);
-    setRefreshToken(newRefreshToken);
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, refreshToken, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

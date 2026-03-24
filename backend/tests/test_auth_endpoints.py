@@ -155,8 +155,9 @@ class TestLoginEndpoint:
                 assert response.status_code == status.HTTP_200_OK
                 data = response.json()
                 assert "access_token" in data
-                assert "refresh_token" in data
+                assert "refresh_token" not in data  # refresh token is now in httpOnly cookie
                 assert data["token_type"] == "bearer"
+                assert "refresh_token" in response.cookies  # cookie set by server
 
     @pytest.mark.asyncio
     async def test_login_wrong_password(self):
@@ -244,7 +245,7 @@ class TestRefreshToken:
 
     @pytest.mark.asyncio
     async def test_refresh_token_success(self):
-        """Successfully refresh access token."""
+        """Successfully refresh access token via httpOnly cookie."""
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             with patch("app.api.auth.UserService") as mock_service_class, \
                  patch("app.api.auth.log_token_refresh", new_callable=AsyncMock) as mock_log_refresh:
@@ -260,25 +261,42 @@ class TestRefreshToken:
                     is_verified=True,
                     created_at=datetime.now(timezone.utc),
                 )
-                mock_service.refresh_access_token_with_user.return_value = ("new_access_token", user)
+                mock_service.refresh_access_token_with_user.return_value = (
+                    "new_access_token", "new_refresh_token_456", user
+                )
 
                 response = await client.post(
                     "/api/auth/refresh",
-                    json={"refresh_token": "valid_refresh_token"}
+                    cookies={"refresh_token": "valid_refresh_token"},
                 )
 
                 assert response.status_code == status.HTTP_200_OK
                 data = response.json()
                 assert data["access_token"] == "new_access_token"
+                assert "refresh_token" not in data  # cookie only
                 assert data["token_type"] == "bearer"
+                assert "refresh_token" in response.cookies  # rotated cookie set
                 mock_log_refresh.assert_awaited_once()
                 assert mock_log_refresh.await_args.kwargs["success"] is True
                 assert mock_log_refresh.await_args.kwargs["user_id"] == user.id
                 assert mock_log_refresh.await_args.kwargs["user_email"] == user.email
 
     @pytest.mark.asyncio
+    async def test_refresh_token_missing_cookie(self):
+        """Refresh without cookie returns 401."""
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            with patch("app.api.auth.UserService") as mock_service_class, \
+                 patch("app.api.auth.log_token_refresh", new_callable=AsyncMock):
+                mock_service = AsyncMock()
+                mock_service_class.return_value = mock_service
+
+                response = await client.post("/api/auth/refresh")
+
+                assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    @pytest.mark.asyncio
     async def test_refresh_token_invalid(self):
-        """Refresh with invalid token should fail."""
+        """Refresh with invalid cookie token should fail."""
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             with patch("app.api.auth.UserService") as mock_service_class, \
                  patch("app.api.auth.log_token_refresh", new_callable=AsyncMock) as mock_log_refresh:
@@ -292,7 +310,7 @@ class TestRefreshToken:
 
                 response = await client.post(
                     "/api/auth/refresh",
-                    json={"refresh_token": "invalid_token"}
+                    cookies={"refresh_token": "invalid_token"},
                 )
 
                 assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -306,7 +324,7 @@ class TestLogout:
 
     @pytest.mark.asyncio
     async def test_logout_success(self, sample_user):
-        """Successfully logout and revoke refresh token."""
+        """Successfully logout and revoke refresh token cookie."""
         from app.dependencies.auth import get_current_user
 
         async def override_get_current_user():
@@ -322,8 +340,8 @@ class TestLogout:
 
                     response = await client.post(
                         "/api/auth/logout",
-                        json={"refresh_token": "token_to_revoke"},
-                        headers={"Authorization": "Bearer valid_token"}
+                        cookies={"refresh_token": "token_to_revoke"},
+                        headers={"Authorization": "Bearer valid_token"},
                     )
 
                     assert response.status_code == status.HTTP_204_NO_CONTENT

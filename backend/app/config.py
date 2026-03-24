@@ -56,6 +56,14 @@ class Settings(BaseSettings):
     LLM_PROVIDER: str = "openai"  # LLM provider identifier stored in provenance (e.g., "openai", "anthropic")
     OPENAI_TEMPERATURE: float = 0.3  # Temperature for LLM responses (0.0-1.0, lower = more deterministic)
 
+    # Cookie settings (for httpOnly refresh token)
+    COOKIE_SECURE: bool = False  # Set True in production (requires HTTPS)
+    COOKIE_SAMESITE: str = "lax"  # "lax" works for same-site; use "none" only with HTTPS cross-site
+    COOKIE_DOMAIN: str | None = None  # None = current domain
+
+    # CORS (must be specific origins, not "*", when credentials/cookies are used)
+    CORS_ORIGINS: list[str] = ["http://localhost:3000"]
+
     # Flags
     STRICT_VALIDATION: bool = True
     SQL_DEBUG: bool = False

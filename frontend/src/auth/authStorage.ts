@@ -2,13 +2,11 @@ export const AUTH_STATE_CHANGED_EVENT = "auth-state-changed";
 
 export type AuthTokens = {
   token: string | null;
-  refreshToken: string | null;
 };
 
 function readAuthTokens(): AuthTokens {
   return {
     token: localStorage.getItem("auth_token"),
-    refreshToken: localStorage.getItem("refresh_token"),
   };
 }
 
@@ -24,9 +22,8 @@ export function getStoredAuthTokens(): AuthTokens {
   return readAuthTokens();
 }
 
-export function setStoredAuthTokens(token: string, refreshToken: string): void {
+export function setStoredAuthTokens(token: string): void {
   localStorage.setItem("auth_token", token);
-  localStorage.setItem("refresh_token", refreshToken);
   dispatchAuthStateChanged();
 }
 
@@ -37,6 +34,5 @@ export function updateStoredAccessToken(token: string): void {
 
 export function clearStoredAuthTokens(): void {
   localStorage.removeItem("auth_token");
-  localStorage.removeItem("refresh_token");
   dispatchAuthStateChanged();
 }

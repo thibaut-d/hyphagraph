@@ -1,18 +1,16 @@
 from __future__ import annotations
 
-from fastapi import Request, status
+from fastapi import Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.user import User
 from app.schemas.auth import (
     ChangePassword,
-    RefreshTokenRequest,
     RequestPasswordReset,
     ResendVerificationEmail,
     ResetPassword,
     Token,
-    TokenPair,
     UserRead,
     UserRegister,
     UserSelfUpdate,
@@ -21,6 +19,25 @@ from app.schemas.auth import (
 )
 from app.services.user_service import UserService
 from app.utils.errors import AppException, ErrorCode, ValidationException
+
+_REFRESH_COOKIE = "refresh_token"
+
+
+def _set_refresh_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key=_REFRESH_COOKIE,
+        value=token,
+        httponly=True,
+        secure=settings.COOKIE_SECURE,
+        samesite=settings.COOKIE_SAMESITE,
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400,
+        domain=settings.COOKIE_DOMAIN,
+        path="/api/auth",
+    )
+
+
+def _clear_refresh_cookie(response: Response) -> None:
+    response.delete_cookie(key=_REFRESH_COOKIE, path="/api/auth")
 
 
 async def register_user(
@@ -67,16 +84,18 @@ async def register_user(
 
 async def login_user(
     request: Request,
+    response: Response,
     email: str,
     password: str,
     user_service: UserService,
     db: AsyncSession,
     *,
     log_login_attempt,
-) -> TokenPair:
+) -> Token:
     try:
         user = await user_service.authenticate(email, password)
         access_token, refresh_token = await user_service.create_refresh_token(user)
+        _set_refresh_cookie(response, refresh_token)
         await log_login_attempt(
             db=db,
             request=request,
@@ -84,11 +103,7 @@ async def login_user(
             success=True,
             user_id=user.id,
         )
-        return TokenPair(
-            access_token=access_token,
-            refresh_token=refresh_token,
-            token_type="bearer",
-        )
+        return Token(access_token=access_token, token_type="bearer")
     except AppException as error:
         await log_login_attempt(
             db=db,
@@ -113,14 +128,22 @@ def read_current_user(current_user: User) -> UserRead:
 
 async def refresh_user_token(
     request: Request,
-    payload: RefreshTokenRequest,
+    response: Response,
     user_service: UserService,
     db: AsyncSession,
     *,
     log_token_refresh,
-) -> TokenPair:
+) -> Token:
+    refresh_token = request.cookies.get(_REFRESH_COOKIE)
+    if not refresh_token:
+        from app.utils.errors import UnauthorizedException
+        raise UnauthorizedException(
+            message="No refresh token",
+            details="Refresh token cookie is missing",
+        )
     try:
-        access_token, new_refresh_token, user = await user_service.refresh_access_token_with_user(payload.refresh_token)
+        access_token, new_refresh_token, user = await user_service.refresh_access_token_with_user(refresh_token)
+        _set_refresh_cookie(response, new_refresh_token)
         await log_token_refresh(
             db=db,
             request=request,
@@ -128,7 +151,7 @@ async def refresh_user_token(
             user_email=user.email,
             success=True,
         )
-        return TokenPair(access_token=access_token, refresh_token=new_refresh_token, token_type="bearer")
+        return Token(access_token=access_token, token_type="bearer")
     except AppException as error:
         await log_token_refresh(
             db=db,
@@ -141,8 +164,14 @@ async def refresh_user_token(
         raise
 
 
-async def logout_user(payload: RefreshTokenRequest, current_user: User, user_service: UserService) -> None:
-    await user_service.revoke_refresh_token(current_user.id, payload.refresh_token)
+async def logout_user(request: Request, response: Response, current_user: User, user_service: UserService) -> None:
+    refresh_token = request.cookies.get(_REFRESH_COOKIE)
+    if refresh_token:
+        try:
+            await user_service.revoke_refresh_token(current_user.id, refresh_token)
+        except AppException:
+            pass  # Already revoked or not found — clear cookie regardless
+    _clear_refresh_cookie(response)
     return None
 
 

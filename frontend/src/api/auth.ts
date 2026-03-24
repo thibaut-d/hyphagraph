@@ -13,18 +13,12 @@ export type RegisterPayload = {
   password_confirmation: string;
 };
 
-export type TokenPairResponse = {
-  access_token: string;
-  refresh_token: string;
-  token_type: string;
-};
-
 export type TokenResponse = {
   access_token: string;
   token_type: string;
 };
 
-export function login(payload: LoginPayload): Promise<TokenPairResponse> {
+export function login(payload: LoginPayload): Promise<TokenResponse> {
   const body = buildFormUrlEncoded({
     username: payload.username,
     password: payload.password,
@@ -50,17 +44,17 @@ export function getMe(): Promise<UserRead> {
   return apiFetch<UserRead>("/auth/me");
 }
 
-export function refreshAccessToken(refreshToken: string): Promise<TokenResponse> {
+export function refreshAccessToken(): Promise<TokenResponse> {
   return apiFetch("/auth/refresh", {
     method: "POST",
-    body: JSON.stringify({ refresh_token: refreshToken }),
+    credentials: "include",
   });
 }
 
-export function logout(refreshToken: string): Promise<void> {
+export function logout(): Promise<void> {
   return apiFetch("/auth/logout", {
     method: "POST",
-    body: JSON.stringify({ refresh_token: refreshToken }),
+    credentials: "include",
   });
 }
 

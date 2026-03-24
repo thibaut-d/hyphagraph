@@ -90,10 +90,10 @@ register_error_handlers(app)
 # --- Rate Limiting ---
 app.state.limiter = limiter
 
-# --- CORS (dev only; safe behind Caddy) ---
+# --- CORS — specific origins required when allow_credentials=True (cookies) ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # tighten in prod
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

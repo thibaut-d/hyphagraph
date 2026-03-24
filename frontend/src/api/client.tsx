@@ -6,7 +6,6 @@ import {
 } from "../utils/errorHandler";
 import {
   clearStoredAuthTokens,
-  setStoredAuthTokens,
   updateStoredAccessToken,
 } from "../auth/authStorage";
 
@@ -149,18 +148,10 @@ async function parseFailureResponse(
 }
 
 async function refreshToken(): Promise<string | null> {
-  const refreshToken = localStorage.getItem("refresh_token");
-  if (!refreshToken) {
-    return null;
-  }
-
   try {
     const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ refresh_token: refreshToken }),
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -170,22 +161,7 @@ async function refreshToken(): Promise<string | null> {
 
     const data = await response.json();
     const newToken = data.access_token;
-    const newRefreshToken = data.refresh_token;
-
-    // Guard: if the refresh token was cleared while this request was in-flight
-    // (e.g. user logged out), discard the new access token so it is never
-    // written back to localStorage and does not re-authenticate the user.
-    if (!localStorage.getItem("refresh_token")) {
-      return null;
-    }
-
-    // Update stored tokens; persist rotated refresh token if server returned one.
-    if (newRefreshToken) {
-      setStoredAuthTokens(newToken, newRefreshToken);
-    } else {
-      updateStoredAccessToken(newToken);
-    }
-
+    updateStoredAccessToken(newToken);
     return newToken;
   } catch (error) {
     // Network error or other issue
@@ -237,6 +213,7 @@ async function apiRequest<T>(
     res = await fetch(`${API_BASE_URL}${path}`, {
       ...options,
       headers,
+      credentials: "include",
     });
   } catch (error) {
     // Network error (e.g., no internet, CORS, DNS failure)
@@ -279,7 +256,7 @@ async function apiRequest<T>(
             ...headers,
             Authorization: `Bearer ${newToken}`,
           };
-          fetch(`${API_BASE_URL}${path}`, { ...options, headers: newHeaders })
+          fetch(`${API_BASE_URL}${path}`, { ...options, headers: newHeaders, credentials: "include" })
             .then(async (retryRes) => {
               if (!retryRes.ok) {
                 const parsedAppError = await parseFailureResponse(retryRes, "API request failed");
@@ -335,6 +312,7 @@ async function apiRequest<T>(
     const retryRes = await fetch(`${API_BASE_URL}${path}`, {
       ...options,
       headers: newHeaders,
+      credentials: "include",
     });
 
     if (!retryRes.ok) {

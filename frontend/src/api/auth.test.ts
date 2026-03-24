@@ -26,7 +26,6 @@ describe('Auth API Client', () => {
     it('should call API with form-urlencoded credentials', async () => {
       const mockResponse = {
         access_token: 'access_token_123',
-        refresh_token: 'refresh_token_456',
         token_type: 'bearer',
       };
 
@@ -136,7 +135,7 @@ describe('Auth API Client', () => {
   });
 
   describe('refreshAccessToken', () => {
-    it('should call refresh endpoint with refresh token', async () => {
+    it('should call refresh endpoint via cookie (no body)', async () => {
       const mockResponse = {
         access_token: 'new_access_token',
         token_type: 'bearer',
@@ -144,12 +143,11 @@ describe('Auth API Client', () => {
 
       (apiFetch as any).mockResolvedValue(mockResponse);
 
-      const refreshToken = 'refresh_token_123';
-      const result = await authApi.refreshAccessToken(refreshToken);
+      const result = await authApi.refreshAccessToken();
 
       expect(apiFetch).toHaveBeenCalledWith('/auth/refresh', {
         method: 'POST',
-        body: JSON.stringify({ refresh_token: refreshToken }),
+        credentials: 'include',
       });
 
       expect(result).toEqual(mockResponse);
@@ -163,7 +161,7 @@ describe('Auth API Client', () => {
 
       (apiFetch as any).mockResolvedValue(mockResponse);
 
-      const result = await authApi.refreshAccessToken('refresh_token_123');
+      const result = await authApi.refreshAccessToken();
 
       expect(result).toHaveProperty('access_token');
       expect(result).not.toHaveProperty('refresh_token');
@@ -171,22 +169,21 @@ describe('Auth API Client', () => {
   });
 
   describe('logout', () => {
-    it('should call logout endpoint with refresh token', async () => {
+    it('should call logout endpoint via cookie (no body)', async () => {
       (apiFetch as any).mockResolvedValue(undefined);
 
-      const refreshToken = 'refresh_token_123';
-      await authApi.logout(refreshToken);
+      await authApi.logout();
 
       expect(apiFetch).toHaveBeenCalledWith('/auth/logout', {
         method: 'POST',
-        body: JSON.stringify({ refresh_token: refreshToken }),
+        credentials: 'include',
       });
     });
 
     it('should return void', async () => {
       (apiFetch as any).mockResolvedValue(undefined);
 
-      const result = await authApi.logout('refresh_token_123');
+      const result = await authApi.logout();
 
       expect(result).toBeUndefined();
     });
@@ -331,7 +328,7 @@ describe('Auth API Client', () => {
       (apiFetch as any).mockRejectedValue(mockError);
 
       await expect(
-        authApi.refreshAccessToken('invalid_token')
+        authApi.refreshAccessToken()
       ).rejects.toThrow('Invalid refresh token');
     });
 

@@ -44,7 +44,6 @@ describe("AuthProvider", () => {
 
   it("syncs token changes without polling when the access token changes in the same tab", async () => {
     localStorage.setItem("auth_token", "stale-token");
-    localStorage.setItem("refresh_token", "refresh-token");
 
     vi.mocked(getMe)
       .mockResolvedValueOnce({
@@ -84,7 +83,6 @@ describe("AuthProvider", () => {
 
   it("ignores stale getMe responses that resolve after logout", async () => {
     localStorage.setItem("auth_token", "active-token");
-    localStorage.setItem("refresh_token", "refresh-token");
 
     const pendingUserRequest = createDeferred<{
       id: string;

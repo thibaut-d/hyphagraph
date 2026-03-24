@@ -1,6 +1,6 @@
 """Authentication endpoints with thin route handlers over focused auth helpers."""
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,12 +25,10 @@ from app.dependencies.auth import get_current_user
 from app.models.user import User
 from app.schemas.auth import (
     ChangePassword,
-    RefreshTokenRequest,
     RequestPasswordReset,
     ResendVerificationEmail,
     ResetPassword,
     Token,
-    TokenPair,
     UserRead,
     UserRegister,
     UserSelfUpdate,
@@ -74,16 +72,18 @@ async def register(
     )
 
 
-@router.post("/login", response_model=TokenPair)
+@router.post("/login", response_model=Token)
 @limiter.limit(f"{settings.AUTH_RATE_LIMIT_PER_MINUTE}/minute")
 async def login(
     request: Request,
+    response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
     user_service: UserService = Depends(get_user_service),
     db: AsyncSession = Depends(get_db),
 ):
     return await login_user(
         request,
+        response,
         form_data.username,
         form_data.password,
         user_service,
@@ -97,17 +97,17 @@ async def get_current_user_info(current_user: User = Depends(get_current_user)):
     return read_current_user(current_user)
 
 
-@router.post("/refresh", response_model=TokenPair)
+@router.post("/refresh", response_model=Token)
 @limiter.limit(f"{settings.AUTH_RATE_LIMIT_PER_MINUTE}/minute")
 async def refresh_access_token(
     request: Request,
-    payload: RefreshTokenRequest,
+    response: Response,
     user_service: UserService = Depends(get_user_service),
     db: AsyncSession = Depends(get_db),
 ):
     return await refresh_user_token(
         request,
-        payload,
+        response,
         user_service,
         db,
         log_token_refresh=log_token_refresh,
@@ -116,11 +116,12 @@ async def refresh_access_token(
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
-    payload: RefreshTokenRequest,
+    request: Request,
+    response: Response,
     current_user: User = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service),
 ):
-    return await logout_user(payload, current_user, user_service)
+    return await logout_user(request, response, current_user, user_service)
 
 
 @router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
