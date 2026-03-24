@@ -278,7 +278,11 @@ class TestRefreshTokens:
     @pytest.mark.asyncio
     async def test_create_refresh_token(self, user_service, mock_db):
         """Creating refresh token should return token pair."""
+        from unittest.mock import MagicMock
         user_id = uuid4()
+        mock_user = MagicMock()
+        mock_user.id = user_id
+        mock_user.token_version = 1
 
         with patch("app.services.user_service.create_access_token") as mock_access, \
              patch("app.services.user_service.generate_refresh_token") as mock_refresh, \
@@ -287,7 +291,7 @@ class TestRefreshTokens:
             mock_refresh.return_value = "refresh_token_123"
             mock_hash.return_value = "hashed_refresh_token"
 
-            access_token, refresh_token = await user_service.create_refresh_token(user_id)
+            access_token, refresh_token = await user_service.create_refresh_token(mock_user)
 
         assert access_token == "access_token_123"
         assert refresh_token == "refresh_token_123"

@@ -96,6 +96,18 @@ class AccessTokenManager:
         except JWTError:
             return None
 
+    def decode_access_token_payload(self, token: str) -> Optional[dict]:
+        """
+        Decode and validate a JWT access token, returning the full payload.
+
+        Returns:
+            Full decoded payload dict if valid, None otherwise
+        """
+        try:
+            return jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
+        except JWTError:
+            return None
+
 
 # Singleton instance for convenience
 access_token_manager = AccessTokenManager()
@@ -118,3 +130,12 @@ def decode_access_token(token: str) -> Optional[str]:
     Convenience function that uses the default access token manager.
     """
     return access_token_manager.decode_access_token(token)
+
+
+def decode_access_token_payload(token: str) -> Optional[dict]:
+    """
+    Decode and validate a JWT access token, returning the full payload.
+
+    Convenience function that uses the default access token manager.
+    """
+    return access_token_manager.decode_access_token_payload(token)

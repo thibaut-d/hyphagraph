@@ -19,6 +19,7 @@ from app.utils.password_hasher import (
 from app.utils.access_token_manager import (
     create_access_token,
     decode_access_token,
+    decode_access_token_payload,
     access_token_manager,
     AccessTokenManager,
 )
@@ -41,6 +42,7 @@ __all__ = [
     # Access token operations
     "create_access_token",
     "decode_access_token",
+    "decode_access_token_payload",
     "access_token_manager",
     "AccessTokenManager",
     # Refresh token operations

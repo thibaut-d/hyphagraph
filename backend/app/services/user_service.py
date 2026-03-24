@@ -85,10 +85,11 @@ class UserService:
             hash_password_fn=hash_password,
         )
 
-    async def create_refresh_token(self, user_id: UUID) -> tuple[str, str]:
+    async def create_refresh_token(self, user: User) -> tuple[str, str]:
         return await create_refresh_token_pair(
             self,
-            user_id,
+            user.id,
+            user.token_version,
             create_access_token_fn=create_access_token,
             generate_refresh_token_fn=generate_refresh_token,
             hash_refresh_token_fn=hash_refresh_token,

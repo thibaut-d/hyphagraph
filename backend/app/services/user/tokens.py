@@ -31,13 +31,14 @@ class UserServiceContext(Protocol):
 async def create_refresh_token_pair(
     service: UserServiceContext,
     user_id: UUID,
+    token_version: int,
     *,
     create_access_token_fn=create_access_token,
     generate_refresh_token_fn=generate_refresh_token,
     hash_refresh_token_fn=hash_refresh_token,
     hash_token_for_lookup_fn=hash_token_for_lookup,
 ) -> tuple[str, str]:
-    access_token = create_access_token_fn(data={"sub": str(user_id)})
+    access_token = create_access_token_fn(data={"sub": str(user_id), "tv": token_version})
     refresh_token = generate_refresh_token_fn()
     token_hash = await hash_refresh_token_fn(refresh_token)
     token_lookup_hash = hash_token_for_lookup_fn(refresh_token)
@@ -118,7 +119,7 @@ async def refresh_access_token_with_user(
         await service.db.rollback()
         raise
 
-    access_token = create_access_token_fn(data={"sub": str(user.id)})
+    access_token = create_access_token_fn(data={"sub": str(user.id), "tv": user.token_version})
     return access_token, new_refresh_token, user
 
 

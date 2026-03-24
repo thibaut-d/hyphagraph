@@ -12,7 +12,7 @@ from uuid import UUID
 from app.config import settings
 from app.database import get_db
 from app.models.user import User
-from app.utils.auth import decode_access_token
+from app.utils.auth import decode_access_token_payload
 from app.utils.errors import UnauthorizedException, ForbiddenException
 
 
@@ -45,12 +45,21 @@ async def get_current_user(
         UnauthorizedException: If token is invalid or user not found
         ForbiddenException: If user is inactive
     """
-    # Decode token to get user_id
-    user_id_str = decode_access_token(token)
-    if user_id_str is None:
+    # Decode full token payload to extract sub and token version
+    payload = decode_access_token_payload(token)
+    if payload is None:
         raise UnauthorizedException(
             message="Could not validate credentials",
             details="Invalid or expired token"
+        )
+
+    user_id_str: str | None = payload.get("sub")
+    token_version: int | None = payload.get("tv")
+
+    if user_id_str is None or token_version is None:
+        raise UnauthorizedException(
+            message="Could not validate credentials",
+            details="Malformed token"
         )
 
     # Convert string to UUID
@@ -71,6 +80,13 @@ async def get_current_user(
         raise UnauthorizedException(
             message="Could not validate credentials",
             details="User not found"
+        )
+
+    # Verify token version matches — rejects tokens issued before delete/deactivate
+    if user.token_version != token_version:
+        raise UnauthorizedException(
+            message="Could not validate credentials",
+            details="Token has been invalidated"
         )
 
     # Check if user is active

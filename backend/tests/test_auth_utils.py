@@ -9,6 +9,7 @@ from app.utils.auth import (
     verify_password,
     create_access_token,
     decode_access_token,
+    decode_access_token_payload,
     generate_refresh_token,
     hash_refresh_token,
     verify_refresh_token,
@@ -106,6 +107,31 @@ class TestJWTTokens:
         assert "exp" in payload
         assert "sub" in payload
         assert payload["sub"] == user_id
+
+    def test_decode_access_token_payload_returns_full_dict(self):
+        """decode_access_token_payload should return full payload including tv claim."""
+        user_id = "123e4567-e89b-12d3-a456-426614174000"
+        token = create_access_token(data={"sub": user_id, "tv": 3})
+
+        payload = decode_access_token_payload(token)
+
+        assert payload is not None
+        assert payload["sub"] == user_id
+        assert payload["tv"] == 3
+
+    def test_decode_access_token_payload_invalid_returns_none(self):
+        """Invalid token should return None from decode_access_token_payload."""
+        result = decode_access_token_payload("not.a.token")
+
+        assert result is None
+
+    def test_token_version_embedded_in_token(self):
+        """Access token created with tv claim should carry the version."""
+        token = create_access_token(data={"sub": "some-user-id", "tv": 7})
+        payload = decode_access_token_payload(token)
+
+        assert payload is not None
+        assert payload["tv"] == 7
 
 
 class TestRefreshTokens:

@@ -76,7 +76,7 @@ async def login_user(
 ) -> TokenPair:
     try:
         user = await user_service.authenticate(email, password)
-        access_token, refresh_token = await user_service.create_refresh_token(user.id)
+        access_token, refresh_token = await user_service.create_refresh_token(user)
         await log_login_attempt(
             db=db,
             request=request,

@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import String, Boolean, DateTime
-from sqlalchemy.sql import func
+from sqlalchemy import String, Boolean, DateTime, Integer
+from sqlalchemy.sql import func, text
 
 from datetime import datetime
 from app.models.base import Base, UUIDMixin
@@ -23,6 +23,11 @@ class User(Base, UUIDMixin):
     # Basic permissions
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    # Token versioning — increment to immediately invalidate all outstanding access tokens
+    token_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default=text("1")
+    )
 
     # Email verification
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
