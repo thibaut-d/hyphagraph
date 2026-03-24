@@ -12,30 +12,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.service_dependencies import get_admin_service
 from app.database import get_db
-from app.dependencies.auth import get_current_user
+from app.dependencies.auth import get_current_active_superuser
 from app.models.ui_category import UiCategory
 from app.models.user import User
 from app.schemas.admin import UserListItemRead, UserStatsRead, UserUpdate
 from app.schemas.ui_category import UICategoryWrite, UICategoryRead
 from app.services.admin_service import AdminService
-from app.utils.errors import AppException, ErrorCode, ForbiddenException
+from app.utils.errors import AppException, ErrorCode
 
 
 router = APIRouter(tags=["admin"])
-
-
-# =============================================================================
-# Dependencies
-# =============================================================================
-
-def require_superuser(current_user: User = Depends(get_current_user)) -> User:
-    """Dependency to check if current user is a superuser."""
-    if not current_user.is_superuser:
-        raise ForbiddenException(
-            message="Superuser privileges required",
-            details="You must be a superuser to access this endpoint"
-        )
-    return current_user
 
 
 # =============================================================================
@@ -45,7 +31,7 @@ def require_superuser(current_user: User = Depends(get_current_user)) -> User:
 @router.get("/stats", response_model=UserStatsRead)
 async def get_user_statistics(
     admin_svc: AdminService = Depends(get_admin_service),
-    _admin: User = Depends(require_superuser),
+    _admin: User = Depends(get_current_active_superuser),
 ):
     """Get user statistics for admin dashboard."""
     return await admin_svc.get_stats()
@@ -56,7 +42,7 @@ async def list_users(
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     admin_svc: AdminService = Depends(get_admin_service),
-    _admin: User = Depends(require_superuser),
+    _admin: User = Depends(get_current_active_superuser),
 ):
     """List all users (superuser only)."""
     return await admin_svc.list_users(limit=limit, offset=offset)
@@ -66,7 +52,7 @@ async def list_users(
 async def get_user(
     user_id: UUID,
     admin_svc: AdminService = Depends(get_admin_service),
-    _admin: User = Depends(require_superuser),
+    _admin: User = Depends(get_current_active_superuser),
 ):
     """Get user details by ID (superuser only)."""
     return await admin_svc.get_user(user_id)
@@ -77,7 +63,7 @@ async def update_user(
     user_id: UUID,
     updates: UserUpdate,
     admin_svc: AdminService = Depends(get_admin_service),
-    admin: User = Depends(require_superuser),
+    admin: User = Depends(get_current_active_superuser),
 ):
     """Update user settings (superuser only)."""
     return await admin_svc.update_user(user_id, updates, admin.id)
@@ -87,7 +73,7 @@ async def update_user(
 async def delete_user(
     user_id: UUID,
     admin_svc: AdminService = Depends(get_admin_service),
-    admin: User = Depends(require_superuser),
+    admin: User = Depends(get_current_active_superuser),
 ):
     """Delete user (superuser only)."""
     await admin_svc.delete_user(user_id, admin.id)
@@ -113,7 +99,7 @@ def _cat_to_read(cat: UiCategory) -> UICategoryRead:
 @router.get("/categories", response_model=list[UICategoryRead])
 async def list_categories(
     db: AsyncSession = Depends(get_db),
-    _admin: User = Depends(require_superuser),
+    _admin: User = Depends(get_current_active_superuser),
 ):
     """List all UI categories (superuser only)."""
     result = await db.execute(select(UiCategory).order_by(UiCategory.order))
@@ -124,7 +110,7 @@ async def list_categories(
 async def create_category(
     payload: UICategoryWrite,
     db: AsyncSession = Depends(get_db),
-    _admin: User = Depends(require_superuser),
+    _admin: User = Depends(get_current_active_superuser),
 ):
     """Create a new UI category (superuser only)."""
     cat = UiCategory(
@@ -154,7 +140,7 @@ async def update_category(
     category_id: UUID,
     payload: UICategoryWrite,
     db: AsyncSession = Depends(get_db),
-    _admin: User = Depends(require_superuser),
+    _admin: User = Depends(get_current_active_superuser),
 ):
     """Update a UI category (superuser only)."""
     result = await db.execute(select(UiCategory).where(UiCategory.id == category_id))
@@ -189,7 +175,7 @@ async def update_category(
 async def delete_category(
     category_id: UUID,
     db: AsyncSession = Depends(get_db),
-    _admin: User = Depends(require_superuser),
+    _admin: User = Depends(get_current_active_superuser),
 ):
     """Delete a UI category (superuser only)."""
     result = await db.execute(select(UiCategory).where(UiCategory.id == category_id))

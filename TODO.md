@@ -26,7 +26,7 @@ Source: Parallel agent audit session 2026-03-23.
 - [ ] **DF-AUT-M2** `frontend/src/auth/authStorage.ts:28-34` — Access and refresh tokens stored in `localStorage`, readable by any XSS payload. Migrate to `httpOnly` cookies or a BFF proxy.
 - [x] **DF-AUT-M3** `backend/app/services/user/account.py` — Added `token_version` column to `User`; embedded as `tv` claim in access tokens; `get_current_user` rejects tokens whose `tv` mismatches DB value; `delete_user` and `deactivate_user` increment `token_version`. Migration 012.
 - [x] **DF-AUT-M4** `frontend/src/api/client.tsx:243-315` — Cross-tab refresh lock uses a 10-second timeout; stale lock allows concurrent refresh requests. Server-side rotation (C2 above) eliminates the replay risk; also replace the localStorage busy-poll with a `StorageEvent` listener.
-- [ ] **DF-AUT-M5** `backend/app/api/admin.py:31-38` — Admin status is read from the JWT, not re-checked against DB on each request. Revoked admin privileges take up to 30 min to take effect. Re-fetch user on admin operations, or invalidate tokens on role change.
+- [x] **DF-AUT-M5** `backend/app/api/admin.py` + `admin_service.py` — Removed duplicate `require_superuser`; all admin endpoints now use `get_current_active_superuser` (live DB check). `update_user` increments `token_version` when `is_superuser` or `is_active` changes to immediately invalidate outstanding tokens.
 - [x] **DF-AUT-M6** `frontend/src/api/client.tsx:317-321` — On 401 after failed refresh, unconditional `window.location.href = "/account"` redirect can loop if `AccountView` itself triggers auth. Guard with a check that the current path is not already `/account`.
 
 ---

@@ -100,12 +100,21 @@ class AdminService:
                     details="At least one superuser must remain in the system",
                 )
 
+        role_changed = False
         if updates.is_active is not None:
+            if user.is_active != updates.is_active:
+                role_changed = True
             user.is_active = updates.is_active
         if updates.is_superuser is not None:
+            if user.is_superuser != updates.is_superuser:
+                role_changed = True
             user.is_superuser = updates.is_superuser
         if updates.is_verified is not None:
             user.is_verified = updates.is_verified
+
+        # Invalidate outstanding access tokens when privileges change
+        if role_changed:
+            user.token_version += 1
 
         try:
             await self.db.commit()
