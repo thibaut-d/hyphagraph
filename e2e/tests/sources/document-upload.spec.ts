@@ -56,8 +56,8 @@ test.describe('Document Upload and Extraction', () => {
   test('should show upload document button on source detail page', async ({ page }) => {
     await page.goto(`/sources/${sourceId}`);
 
-    // Should show upload button (specifically the button, not the description text)
-    const uploadButton = page.getByRole('button', { name: /upload.*(?:pdf|txt|document)/i });
+    // Should show upload button (rendered as <span> inside a label for file input)
+    const uploadButton = page.locator('label[for="document-upload"]');
     await expect(uploadButton).toBeVisible();
   });
 
@@ -89,7 +89,8 @@ test.describe('Document Upload and Extraction', () => {
     await page.goto(`/sources/${sourceId}`);
 
     // Should show both upload and URL extraction options
-    await expect(page.getByRole('button', { name: /upload.*(?:pdf|txt|document)/i })).toBeVisible();
+    // Upload button renders as <span> (MUI component="span") inside a label for the hidden file input
+    await expect(page.locator('label[for="document-upload"]')).toBeVisible();
     await expect(page.getByRole('button', { name: /custom.*url/i })).toBeVisible();
 
     // Should show knowledge extraction section heading

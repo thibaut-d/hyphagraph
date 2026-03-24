@@ -66,7 +66,7 @@ export async function loginViaAPI(
   page: Page,
   email: string,
   password: string
-): Promise<{ accessToken: string; refreshToken: string }> {
+): Promise<{ accessToken: string; refreshToken: string | null }> {
   const API_URL = process.env.API_URL || 'http://localhost';
 
   // Login via API with extended timeout
@@ -85,28 +85,28 @@ export async function loginViaAPI(
     throw new Error(`Login failed: ${response.status()}`);
   }
 
-  const { access_token, refresh_token } = await response.json();
+  const { access_token } = await response.json();
+  // Note: refresh_token is set as an httpOnly cookie by the server — not in the response body.
 
-  // Set auth state in localStorage
+  // Set access token in localStorage; refresh token cookie is managed by the browser automatically.
   await page.goto(BASE_URL);
   await page.evaluate(
-    ({ accessToken, refreshToken }) => {
+    ({ accessToken }) => {
       localStorage.setItem('auth_token', accessToken);
-      localStorage.setItem('refresh_token', refreshToken);
     },
-    { accessToken: access_token, refreshToken: refresh_token }
+    { accessToken: access_token }
   );
 
   return {
     accessToken: access_token,
-    refreshToken: refresh_token,
+    refreshToken: null, // httpOnly cookie — not accessible via JS
   };
 }
 
 /**
  * Login as admin via API
  */
-export async function loginAsAdminViaAPI(page: Page): Promise<{ accessToken: string; refreshToken: string }> {
+export async function loginAsAdminViaAPI(page: Page): Promise<{ accessToken: string; refreshToken: string | null }> {
   return loginViaAPI(page, ADMIN_USER.email, ADMIN_USER.password);
 }
 

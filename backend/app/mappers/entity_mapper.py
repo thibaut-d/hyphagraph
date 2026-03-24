@@ -53,6 +53,7 @@ def entity_to_read(entity: Entity, current_revision: EntityRevision) -> EntityRe
     return EntityRead(
         id=entity.id,
         created_at=entity.created_at,
+        updated_at=current_revision.created_at,
         slug=current_revision.slug,
         summary=_parse_summary(current_revision.summary),
         ui_category_id=current_revision.ui_category_id,

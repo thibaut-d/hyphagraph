@@ -49,7 +49,7 @@ class TestRefreshTokenPerformance:
         service = UserService(db_session)
 
         # Create a refresh token
-        access_token, refresh_token = await service.create_refresh_token(test_user.id)
+        access_token, refresh_token = await service.create_refresh_token(test_user)
 
         # Verify we can refresh using the token
         new_access_token = await service.refresh_access_token(refresh_token)
@@ -62,7 +62,7 @@ class TestRefreshTokenPerformance:
         service = UserService(db_session)
 
         # Create a valid token
-        await service.create_refresh_token(test_user.id)
+        await service.create_refresh_token(test_user)
 
         # Try to refresh with a wrong token
         wrong_token = generate_refresh_token()
@@ -81,7 +81,7 @@ class TestRefreshTokenPerformance:
         service = UserService(db_session)
 
         # Create a refresh token
-        _, refresh_token = await service.create_refresh_token(test_user.id)
+        _, refresh_token = await service.create_refresh_token(test_user)
 
         # Revoke it
         await service.revoke_refresh_token(test_user.id, refresh_token)
@@ -103,7 +103,7 @@ class TestRefreshTokenPerformance:
         # Create multiple refresh tokens
         tokens = []
         for _ in range(5):
-            _, refresh_token = await service.create_refresh_token(test_user.id)
+            _, refresh_token = await service.create_refresh_token(test_user)
             tokens.append(refresh_token)
 
         # Verify we can refresh using any of them (should be O(1) lookup each time)
@@ -119,7 +119,7 @@ class TestRefreshTokenPerformance:
         service = UserService(db_session)
 
         # Create a valid token
-        _, real_token = await service.create_refresh_token(test_user.id)
+        _, real_token = await service.create_refresh_token(test_user)
 
         # Create a fake token with same lookup hash but different content
         # (In reality this would require finding a SHA256 collision, but we simulate it)

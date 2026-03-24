@@ -38,7 +38,7 @@ test.describe('Relation CRUD Operations', () => {
     await page.getByRole('option').first().click();
 
     // Fill in role type
-    await page.getByLabel(/role type|role/i).first().fill('subject');
+    await page.getByRole('textbox', { name: 'Role' }).first().fill('subject');
 
     // Submit form
     await page.getByRole('button', { name: /create/i }).last().click();
@@ -70,7 +70,7 @@ test.describe('Relation CRUD Operations', () => {
     await page.getByRole('button', { name: /add role/i }).click();
 
     // Should have 2 role entries (each has entity select and role type field)
-    const roleTypeFields = page.getByLabel(/role type|role/i);
+    const roleTypeFields = page.getByRole('textbox', { name: 'Role' });
     await expect(roleTypeFields).toHaveCount(2);
 
     // Fill in first role
@@ -95,14 +95,14 @@ test.describe('Relation CRUD Operations', () => {
     await page.getByRole('button', { name: /add role/i }).click();
 
     // Should have 2 roles
-    let roleTypeFields = page.getByLabel(/role type|role/i);
+    let roleTypeFields = page.getByRole('textbox', { name: 'Role' });
     await expect(roleTypeFields).toHaveCount(2);
 
     // Click Remove role on the first role entry
     await page.getByRole('button', { name: /remove role/i }).first().click();
 
     // Should now have only 1 role — Playwright retries until count matches
-    roleTypeFields = page.getByLabel(/role type|role/i);
+    roleTypeFields = page.getByRole('textbox', { name: 'Role' });
     await expect(roleTypeFields).toHaveCount(1);
   });
 

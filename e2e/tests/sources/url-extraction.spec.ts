@@ -67,10 +67,11 @@ test.describe('URL-based Document Extraction', () => {
     const submitButton = page.getByRole('button', { name: /extract/i }).last();
     await submitButton.click();
 
-    // Should show error message in the dialog
-    await expect(
-      page.getByText(/please.*enter.*valid.*url|invalid.*url|url.*invalid/i).first()
-    ).toBeVisible({ timeout: 5000 });
+    // Should show error message — check via aria-describedby on the input (MUI helperText)
+    await expect(page.getByLabel(/^url$/i)).toHaveAccessibleDescription(
+      /please.*enter.*valid.*url|invalid.*url|url.*invalid/i,
+      { timeout: 5000 }
+    );
   });
 
   test('should validate URL input is required', async ({ page }) => {

@@ -28,7 +28,7 @@ type ValidationField = "newPassword" | "confirmPassword";
 export function ChangePasswordView() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { user } = useAuthContext();
+  const { user, loading: authLoading } = useAuthContext();
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -46,6 +46,11 @@ export function ChangePasswordView() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Wait for auth to initialize before redirecting
+  if (authLoading) {
+    return null;
+  }
 
   // Redirect to login if not authenticated
   if (!user) {

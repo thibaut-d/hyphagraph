@@ -70,6 +70,7 @@ def relation_to_read(
     return RelationRead(
         id=relation.id,
         created_at=relation.created_at,
+        updated_at=current_revision.created_at,
         source_id=relation.source_id,
         kind=current_revision.kind,
         direction=current_revision.direction,

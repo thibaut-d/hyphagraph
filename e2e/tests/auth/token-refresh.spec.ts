@@ -11,14 +11,12 @@ test.describe('Token Refresh Flow', () => {
     page,
   }) => {
     const BASE_URL = process.env.BASE_URL || 'http://localhost:3001';
-    const API_URL = process.env.API_URL || 'http://localhost:8001';
 
-    // Login to get both tokens
-    const { accessToken, refreshToken } = await loginAsAdminViaAPI(page);
+    // Login — access token is returned in JSON; refresh token is set as httpOnly cookie by the server
+    const { accessToken } = await loginAsAdminViaAPI(page);
     expect(accessToken).toBeTruthy();
-    expect(refreshToken).toBeTruthy();
 
-    // Simulate an expired access token by clearing it while keeping refresh_token
+    // Simulate an expired access token by clearing localStorage; httpOnly refresh cookie remains
     await page.goto(BASE_URL);
     await page.evaluate(() => {
       localStorage.removeItem('auth_token');

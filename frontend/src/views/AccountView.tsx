@@ -85,7 +85,7 @@ export function AccountView() {
           <Button
             variant="outlined"
             component={Link}
-            to="/account/change-password"
+            to="/change-password"
           >
             {t("account.change_password", "Change Password")}
           </Button>

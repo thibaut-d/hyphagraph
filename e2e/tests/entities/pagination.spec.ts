@@ -12,8 +12,8 @@ test.describe('Entity List Pagination', () => {
     await clearAuthState(page);
   });
 
-  // E2E-G6 — Pagination correctness: page 2 data must differ from page 1
-  test('should load additional entities when Load More is clicked', async ({ page }) => {
+  // E2E-G6 — Pagination correctness: more entities load when the sentinel is reached
+  test('should load additional entities when scrolling past first page', async ({ page }) => {
     const API_URL = process.env.API_URL || 'http://localhost:8001';
     const token = await page.evaluate(() => localStorage.getItem('auth_token'));
 
@@ -39,27 +39,31 @@ test.describe('Entity List Pagination', () => {
       }
     }
 
-    // Navigate to entities list
+    // Navigate to entities list and wait for first batch
     await page.goto('/entities');
     await expect(page.getByRole('heading', { name: 'Entities' })).toBeVisible();
-    await page.waitForLoadState('networkidle');
 
-    // Collect entity rows visible on first load.
-    // Scope to <main> to exclude nav/sidebar <li> elements; entities render as ListItems inside the
-    // main content List (not inside role="banner" or role="navigation").
+    // Wait for at least one entity row to appear (first page loaded)
+    // Scope to <main> to exclude nav/sidebar <li> elements
     const rows = page.locator('main').getByRole('listitem');
-    const firstPageCount = await rows.count();
+    await expect(rows.first()).toBeVisible({ timeout: 10000 });
 
-    // "Load More" button must be present when total > PAGE_SIZE
+    // Scroll to the bottom — this triggers IntersectionObserver-based infinite scroll
+    // (or makes the "Load More" button visible as a fallback)
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+
+    // Allow either infinite scroll or Load More button to load the next page
     const loadMoreButton = page.getByRole('button', { name: /load more/i });
-    await expect(loadMoreButton).toBeVisible({ timeout: 5000 });
+    const buttonVisible = await loadMoreButton.isVisible({ timeout: 1000 }).catch(() => false);
+    if (buttonVisible) {
+      await loadMoreButton.click();
+    }
 
-    // Click Load More
-    await loadMoreButton.click();
+    // Wait for any in-flight requests from pagination to finish
     await page.waitForLoadState('networkidle');
 
-    // After load more, the list must have grown
-    const secondPageCount = await rows.count();
-    expect(secondPageCount).toBeGreaterThan(firstPageCount);
+    // Total entities shown must exceed PAGE_SIZE — pagination delivered more than the first page
+    const totalShown = await rows.count();
+    expect(totalShown).toBeGreaterThan(PAGE_SIZE);
   });
 });

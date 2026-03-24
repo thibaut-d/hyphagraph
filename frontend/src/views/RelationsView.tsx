@@ -11,6 +11,7 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import PlaylistAddIcon from "@mui/icons-material/PlaylistAdd";
 import SourceIcon from "@mui/icons-material/Source";
+import { ExportMenu } from "../components/ExportMenu";
 
 export default function RelationsView() {
   const { t } = useTranslation();
@@ -20,6 +21,7 @@ export default function RelationsView() {
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <Typography variant="h4">{t("relations.title", "Relations")}</Typography>
         <Stack direction="row" spacing={1}>
+          <ExportMenu exportType="relations" buttonText={t("export.relations", "Export Relations")} size="small" />
           <Button
             component={RouterLink}
             to="/relations/batch"

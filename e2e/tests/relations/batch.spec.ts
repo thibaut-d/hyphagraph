@@ -88,7 +88,7 @@ test.describe('Batch Relation Creation', () => {
       await kindField.fill('test-batch-kind');
     }
 
-    const submitButton = page.getByRole('button', { name: /submit|create all/i });
+    const submitButton = page.getByRole('button', { name: /create.*relation/i });
     await expect(submitButton).toBeVisible({ timeout: 3000 });
     await submitButton.click();
     await page.waitForLoadState('networkidle');

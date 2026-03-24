@@ -39,6 +39,7 @@ class EntityRead(Schema):
     """
     id: UUID
     created_at: datetime
+    updated_at: datetime  # created_at of the current revision
 
     # Current revision data
     slug: str

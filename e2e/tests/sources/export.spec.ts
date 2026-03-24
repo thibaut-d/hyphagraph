@@ -36,10 +36,14 @@ test.describe('Source Export', () => {
 
     const exportButton = page.getByRole('button', { name: /export sources/i });
     await expect(exportButton).toBeVisible({ timeout: 5000 });
+    await exportButton.click();
 
+    // Select "Export as JSON" from the dropdown menu
+    const jsonOption = page.getByRole('menuitem', { name: /export as json/i });
+    await expect(jsonOption).toBeVisible({ timeout: 3000 });
     const [download] = await Promise.all([
       page.waitForEvent('download', { timeout: 10000 }),
-      exportButton.click(),
+      jsonOption.click(),
     ]);
 
     // Download must have fired — a null download means the export button is broken
@@ -63,10 +67,14 @@ test.describe('Source Export', () => {
 
     const exportButton = page.getByRole('button', { name: /export sources/i });
     await expect(exportButton).toBeVisible({ timeout: 5000 });
+    await exportButton.click();
 
+    // Select "Export as JSON" from the dropdown menu
+    const jsonOption = page.getByRole('menuitem', { name: /export as json/i });
+    await expect(jsonOption).toBeVisible({ timeout: 3000 });
     const [download] = await Promise.all([
       page.waitForEvent('download', { timeout: 10000 }),
-      exportButton.click(),
+      jsonOption.click(),
     ]);
 
     // Download must have fired — a null download means the export button is broken

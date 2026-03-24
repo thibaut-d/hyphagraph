@@ -12,6 +12,7 @@ from fastapi import HTTPException
 from app.services.user_service import UserService
 from app.schemas.auth import UserRegister
 from app.models.user import User
+from app.utils.auth import hash_token_for_lookup
 
 
 @pytest.fixture
@@ -207,7 +208,7 @@ class TestPasswordManagement:
             token = await user_service.request_password_reset("test@example.com")
 
         assert token == "reset_token_123"
-        assert sample_user.reset_token == "reset_token_123"
+        assert sample_user.reset_token == hash_token_for_lookup("reset_token_123")
         mock_db.commit.assert_called_once()
 
     @pytest.mark.asyncio
@@ -235,7 +236,7 @@ class TestEmailVerification:
             token = await user_service.create_verification_token(sample_user.id)
 
         assert token == "verification_token_123"
-        assert sample_user.verification_token == "verification_token_123"
+        assert sample_user.verification_token == hash_token_for_lookup("verification_token_123")
         assert sample_user.verification_token_expires_at is not None
         mock_db.commit.assert_called_once()
 

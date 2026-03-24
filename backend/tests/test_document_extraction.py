@@ -10,6 +10,15 @@ from uuid import uuid4
 from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi import HTTPException
 
+
+@pytest.fixture(autouse=True)
+def disable_rate_limiting():
+    """Disable rate limiting when calling endpoint functions directly in unit tests."""
+    from app.utils.rate_limit import limiter
+    limiter._enabled = False
+    yield
+    limiter._enabled = True
+
 from app.api.document_extraction_dependencies import calculate_relevance
 from app.api.document_extraction_routes.discovery import (
     bulk_import_pubmed,
@@ -152,7 +161,7 @@ class TestSmartDiscovery:
                     min_quality=0.5,
                     databases=["pubmed"],
                 )
-                response = await smart_discovery(request, db=db_session, current_user=test_user)
+                response = await smart_discovery(MagicMock(), request, db=db_session, current_user=test_user)
 
         # Assert
         assert response.entity_slugs == ["pregabalin"]
@@ -196,7 +205,7 @@ class TestSmartDiscovery:
                     min_quality=0.5,
                     databases=["pubmed"],
                 )
-                response = await smart_discovery(request, db=db_session, current_user=test_user)
+                response = await smart_discovery(MagicMock(), request, db=db_session, current_user=test_user)
 
         # Assert
         assert response.entity_slugs == ["duloxetine", "fibromyalgia"]
@@ -240,7 +249,7 @@ class TestSmartDiscovery:
                     min_quality=0.75,
                     databases=["pubmed"],
                 )
-                response = await smart_discovery(request, db=db_session, current_user=test_user)
+                response = await smart_discovery(MagicMock(), request, db=db_session, current_user=test_user)
 
         # Assert - Only high-quality article passes filter
         assert response.total_found == 1
@@ -287,7 +296,7 @@ class TestSmartDiscovery:
                     min_quality=0.5,
                     databases=["pubmed"],
                 )
-                response = await smart_discovery(request, db=db_session, current_user=test_user)
+                response = await smart_discovery(MagicMock(), request, db=db_session, current_user=test_user)
 
         # Assert - Result should be marked as already imported
         assert response.total_found == 1
@@ -305,7 +314,7 @@ class TestSmartDiscovery:
         )
 
         with pytest.raises(HTTPException) as exc_info:
-            await smart_discovery(request, db=db_session, current_user=test_user)
+            await smart_discovery(MagicMock(), request, db=db_session, current_user=test_user)
 
         assert exc_info.value.status_code == 400
         assert "at least one entity slug" in exc_info.value.detail.lower()
@@ -321,7 +330,7 @@ class TestSmartDiscovery:
         )
 
         with pytest.raises(HTTPException) as exc_info:
-            await smart_discovery(request, db=db_session, current_user=test_user)
+            await smart_discovery(MagicMock(), request, db=db_session, current_user=test_user)
 
         assert exc_info.value.status_code == 400
         assert "maximum 10 entities" in exc_info.value.detail.lower()
@@ -351,7 +360,7 @@ class TestPubMedBulkSearch:
                 query="fibromyalgia AND treatment",
                 max_results=10,
             )
-            response = await bulk_search_pubmed(request, db=db_session, current_user=test_user)
+            response = await bulk_search_pubmed(MagicMock(), request, db=db_session, current_user=test_user)
 
         # Assert
         assert response.query == "fibromyalgia AND treatment"
@@ -375,7 +384,7 @@ class TestPubMedBulkSearch:
                 search_url="https://pubmed.ncbi.nlm.nih.gov/?term=fibromyalgia",
                 max_results=5,
             )
-            response = await bulk_search_pubmed(request, db=db_session, current_user=test_user)
+            response = await bulk_search_pubmed(MagicMock(), request, db=db_session, current_user=test_user)
 
         # Assert
         assert response.query == "fibromyalgia"
@@ -394,7 +403,7 @@ class TestPubMedBulkSearch:
                 query="nonexistent_query_xyz",
                 max_results=10,
             )
-            response = await bulk_search_pubmed(request, db=db_session, current_user=test_user)
+            response = await bulk_search_pubmed(MagicMock(), request, db=db_session, current_user=test_user)
 
         # Assert
         assert response.query == "nonexistent_query_xyz"
@@ -408,7 +417,7 @@ class TestPubMedBulkSearch:
         request = PubMedBulkSearchRequest(max_results=10)
 
         with pytest.raises(HTTPException) as exc_info:
-            await bulk_search_pubmed(request, db=db_session, current_user=test_user)
+            await bulk_search_pubmed(MagicMock(), request, db=db_session, current_user=test_user)
 
         assert exc_info.value.status_code == 400
         assert "query" in exc_info.value.detail.lower()
@@ -440,7 +449,7 @@ class TestPubMedBulkImport:
 
                 # Act
                 request = PubMedBulkImportRequest(pmids=["17333346", "18059454"])
-                response = await bulk_import_pubmed(request, db=db_session, current_user=test_user)
+                response = await bulk_import_pubmed(MagicMock(), request, db=db_session, current_user=test_user)
 
         # Assert
         assert response.total_requested == 2
@@ -462,7 +471,7 @@ class TestPubMedBulkImport:
         request = PubMedBulkImportRequest(pmids=[])
 
         with pytest.raises(HTTPException) as exc_info:
-            await bulk_import_pubmed(request, db=db_session, current_user=test_user)
+            await bulk_import_pubmed(MagicMock(), request, db=db_session, current_user=test_user)
 
         assert exc_info.value.status_code == 400
         assert "no pmids" in exc_info.value.detail.lower()
@@ -473,7 +482,7 @@ class TestPubMedBulkImport:
         request = PubMedBulkImportRequest(pmids=[str(i) for i in range(101)])  # 101 PMIDs
 
         with pytest.raises(HTTPException) as exc_info:
-            await bulk_import_pubmed(request, db=db_session, current_user=test_user)
+            await bulk_import_pubmed(MagicMock(), request, db=db_session, current_user=test_user)
 
         assert exc_info.value.status_code == 400
         assert "maximum 100" in exc_info.value.detail.lower()
