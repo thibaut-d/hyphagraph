@@ -1,3 +1,5 @@
+import asyncio
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -25,8 +27,23 @@ from app.api import (
 from app.config import settings
 from app.database import AsyncSessionLocal
 from app.middleware.error_handler import register_error_handlers
+from app.services.user.tokens import purge_expired_tokens
 from app.startup import run_startup_tasks
 from app.utils.rate_limit import limiter
+
+_logger = logging.getLogger(__name__)
+_PURGE_INTERVAL_SECONDS = 24 * 60 * 60  # 24 hours
+
+
+async def _token_purge_loop() -> None:
+    """Background task: purge expired/revoked refresh tokens every 24 hours."""
+    while True:
+        try:
+            async with AsyncSessionLocal() as db:
+                await purge_expired_tokens(db)
+        except Exception:
+            _logger.exception("Token purge failed; will retry in %d s", _PURGE_INTERVAL_SECONDS)
+        await asyncio.sleep(_PURGE_INTERVAL_SECONDS)
 
 # Import all models to ensure SQLAlchemy discovers all tables and relationships
 # This prevents NoReferencedTableError during foreign key resolution
@@ -69,13 +86,21 @@ async def lifespan(app: FastAPI):
     Runs startup tasks when the application starts,
     and cleanup tasks when it shuts down.
     """
-    # Startup: Create admin user and run other initialization tasks
+    # Startup: initialization tasks
     async with AsyncSessionLocal() as db:
         await run_startup_tasks(db)
 
+    # Background task: periodic refresh-token purge
+    purge_task = asyncio.create_task(_token_purge_loop())
+
     yield
 
-    # Shutdown: Add cleanup tasks here if needed in the future
+    # Shutdown: cancel background tasks
+    purge_task.cancel()
+    try:
+        await purge_task
+    except asyncio.CancelledError:
+        pass
 
 
 app = FastAPI(

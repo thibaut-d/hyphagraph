@@ -6,7 +6,8 @@ from inspect import isawaitable
 from typing import Protocol
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import delete, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.refresh_token import RefreshToken
@@ -166,3 +167,25 @@ async def revoke_refresh_token(
         logger.error("Failed to revoke refresh token for user %s: %s", user_id, e, exc_info=True)
         await service.db.rollback()
         raise
+
+
+async def purge_expired_tokens(db: AsyncSession) -> int:
+    """Delete all expired or revoked refresh token rows.
+
+    Rows are safe to delete when they are expired (expires_at < now) or
+    explicitly revoked — neither can ever authenticate again.
+
+    Returns:
+        Number of rows deleted.
+    """
+    stmt = delete(RefreshToken).where(
+        or_(
+            RefreshToken.expires_at < datetime.now(timezone.utc),
+            RefreshToken.is_revoked == True,
+        )
+    )
+    result = await db.execute(stmt)
+    await db.commit()
+    count = result.rowcount
+    logger.info("Purged %d expired/revoked refresh token(s)", count)
+    return count
