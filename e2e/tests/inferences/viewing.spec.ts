@@ -68,7 +68,7 @@ test.describe('Inference Viewing', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // The entity detail page must render at minimum the entity slug
-    await expect(page.locator(`text=${entity1Slug}`)).toBeVisible();
+    await expect(page.locator(`text=${entity1Slug}`).first()).toBeVisible();
 
     // The inference section must be visible now that a relation was seeded.
     // Inference computation may be async; use a generous timeout.
@@ -141,7 +141,7 @@ test.describe('Inference Viewing', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Entity detail page must load and show the slug
-    await expect(page.locator(`text=${entitySlug}`)).toBeVisible();
+    await expect(page.locator(`text=${entitySlug}`).first()).toBeVisible();
 
     // Score elements are computed — if the inference engine produced output, a score must be visible.
     // If no score element appears within 5 s the page is still valid (entity has no inferences yet).
@@ -159,7 +159,7 @@ test.describe('Inference Viewing', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Entity detail page must render the slug
-    await expect(page.locator(`text=${entitySlug}`)).toBeVisible();
+    await expect(page.locator(`text=${entitySlug}`).first()).toBeVisible();
 
     // If a details/expand button is present, it must be clickable and the page must remain functional
     const viewDetailsButton = page.getByRole('button', { name: /details|more|expand/i });
@@ -167,7 +167,7 @@ test.describe('Inference Viewing', () => {
       await viewDetailsButton.first().click();
       await page.waitForLoadState('domcontentloaded');
       // Page must still be rendering the entity after expansion
-      await expect(page.locator(`text=${entitySlug}`)).toBeVisible();
+      await expect(page.locator(`text=${entitySlug}`).first()).toBeVisible();
     }
   });
 
