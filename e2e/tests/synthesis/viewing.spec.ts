@@ -23,7 +23,7 @@ test.describe('Synthesis View', () => {
     const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1];
 
     await page.goto(`/entities/${entityId}/synthesis`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Should render the synthesis page
     await expect(page).toHaveURL(`/entities/${entityId}/synthesis`);
@@ -42,7 +42,7 @@ test.describe('Synthesis View', () => {
     const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1];
 
     await page.goto(`/entities/${entityId}/synthesis`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Empty state message should be visible
     await expect(
@@ -60,7 +60,7 @@ test.describe('Synthesis View', () => {
     const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1];
 
     await page.goto(`/entities/${entityId}`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Synthesis link must be reachable from entity detail — if absent, use skip with reason
     const synthesisLink = page.getByRole('link', { name: /synthesis/i }).or(
@@ -100,7 +100,7 @@ test.describe('Synthesis View', () => {
     const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1];
 
     await page.goto(`/entities/${entityId}/synthesis`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const backButton = page.getByRole('button', { name: /back/i }).or(
       page.getByRole('link', { name: /back|entity/i })

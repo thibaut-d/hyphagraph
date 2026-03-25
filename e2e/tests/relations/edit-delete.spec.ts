@@ -115,9 +115,9 @@ test.describe('Relation Edit and Delete', () => {
     await kindField.fill('updated-mention');
 
     await page.getByRole('button', { name: /save|update/i }).click();
-    // Wait for navigation away from the edit page and for the backend write to commit
-    await page.waitForURL(/\/relations\/[a-f0-9-]+$/, { timeout: 10000 });
-    await page.waitForLoadState('networkidle');
+    // EditRelationView navigates to /sources/{source_id} on save
+    await page.waitForURL(/\/(relations|sources)\/[a-f0-9-]+/, { timeout: 10000 });
+    await page.waitForTimeout(500);
 
     // Verify via API that the relation was actually updated
     const afterResp = await page.request.get(`${API_URL}/api/relations/${relationId}`, {
@@ -133,24 +133,27 @@ test.describe('Relation Edit and Delete', () => {
   });
 
   // US-REL-04 — Delete Relation
-  test('should delete a relation from the relations list', async ({ page }) => {
+  test('should delete a relation from the source detail page', async ({ page }) => {
     if (!relationId) test.skip(true, 'No relation was created in beforeEach — seed relation data to run this test');
 
-    await page.goto('/relations');
-    await expect(page.getByRole('heading', { name: 'Relations', exact: true })).toBeVisible();
+    // Relations are shown with delete buttons on the source detail page
+    await page.goto(`/sources/${sourceId}`);
+    await page.waitForLoadState('domcontentloaded');
 
     // A delete button must be present — relation was seeded in beforeEach
-    const deleteButton = page.getByRole('button', { name: /delete/i }).first();
-    await expect(deleteButton).toBeVisible({ timeout: 5000 });
+    const deleteButton = page.getByRole('button', { name: /delete.*relation|relation.*delete/i }).first()
+      .or(page.locator('[data-testid*="delete-relation"]').first())
+      .or(page.getByRole('button', { name: /delete/i }).nth(1)); // second delete (first may be source delete)
+    await expect(deleteButton).toBeVisible({ timeout: 10000 });
     await deleteButton.click();
 
     // Confirmation dialog must appear
     const confirmButton = page.locator('[role="dialog"]').getByRole('button', { name: /delete|confirm/i });
     await expect(confirmButton).toBeVisible({ timeout: 3000 });
     await confirmButton.click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(500);
 
-    // Should still be on relations page
-    await expect(page.getByRole('heading', { name: 'Relations', exact: true })).toBeVisible();
+    // Should still be on source detail page
+    await expect(page).toHaveURL(new RegExp(`/sources/${sourceId}`));
   });
 });

@@ -55,8 +55,8 @@ test.describe('Account Settings', () => {
     await page.waitForLoadState('networkidle');
 
     const currentPasswordField = page.getByLabel(/current.*password|old.*password/i);
-    const newPasswordField = page.getByLabel('New Password', { exact: true });
-    const confirmPasswordField = page.getByLabel('Confirm New Password', { exact: true });
+    const newPasswordField = page.getByRole('textbox', { name: 'New Password', exact: true });
+    const confirmPasswordField = page.getByRole('textbox', { name: 'Confirm New Password', exact: true });
 
     // New password field must be present on /change-password
     await expect(newPasswordField).toBeVisible({ timeout: 5000 });
@@ -104,8 +104,8 @@ test.describe('Account Settings', () => {
     await page.waitForLoadState('networkidle');
 
     const currentPasswordField = page.getByLabel(/current.*password|old.*password/i);
-    const newPasswordField = page.getByLabel('New Password', { exact: true });
-    const confirmPasswordField = page.getByLabel('Confirm New Password', { exact: true });
+    const newPasswordField = page.getByRole('textbox', { name: 'New Password', exact: true });
+    const confirmPasswordField = page.getByRole('textbox', { name: 'Confirm New Password', exact: true });
 
     // Form fields must be present
     await expect(newPasswordField).toBeVisible({ timeout: 5000 });

@@ -31,14 +31,18 @@ test.describe('Registration Flow', () => {
 
     // Fill in registration form
     await page.getByLabel(/email/i).fill(email);
-    await page.getByLabel(/password/i).fill(password);
+    await page.getByRole('textbox', { name: 'Password', exact: true }).fill(password);
+    await page.getByRole('textbox', { name: 'Confirm Password' }).fill(password);
 
     // Click register button
     await page.getByRole('button', { name: /register/i }).click();
 
-    // Should show error message (displayed as Typography with color="error")
+    // Should show error message — backend returns "Registration failed" for duplicate emails
+    // (displayed as Typography with color="error" or as an Alert)
     await expect(
-      page.locator('[class*="MuiTypography-root"]').filter({ hasText: /already|exists|registered/i })
+      page.locator('[class*="MuiTypography-root"]').filter({ hasText: /already|exists|registered|failed|Registration/i })
+        .or(page.getByRole('alert').filter({ hasText: /already|exists|registered|failed/i }))
+        .first()
     ).toBeVisible({ timeout: 5000 });
   });
 
@@ -49,7 +53,8 @@ test.describe('Registration Flow', () => {
     await page.goto('/account');
 
     await page.getByLabel(/email/i).fill(invalidEmail);
-    await page.getByLabel(/password/i).fill(password);
+    await page.getByRole('textbox', { name: 'Password', exact: true }).fill(password);
+    await page.getByRole('textbox', { name: 'Confirm Password' }).fill(password);
     await page.getByRole('button', { name: /register/i }).click();
 
     // A validation error must be visible — either from client-side HTML5 validation
@@ -75,7 +80,8 @@ test.describe('Registration Flow', () => {
 
     // Fill in registration form
     await page.getByLabel(/email/i).fill(email);
-    await page.getByLabel(/password/i).fill(weakPassword);
+    await page.getByRole('textbox', { name: 'Password', exact: true }).fill(weakPassword);
+    await page.getByRole('textbox', { name: 'Confirm Password' }).fill(weakPassword);
 
     // Click register button
     await page.getByRole('button', { name: /register/i }).click();

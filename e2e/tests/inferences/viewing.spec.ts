@@ -65,7 +65,7 @@ test.describe('Inference Viewing', () => {
 
     // Navigate to entity detail page and verify inference section is present
     await page.goto(entity1Url);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // The entity detail page must render at minimum the entity slug
     await expect(page.locator(`text=${entity1Slug}`)).toBeVisible();
@@ -73,7 +73,7 @@ test.describe('Inference Viewing', () => {
     // The inference section must be visible now that a relation was seeded.
     // Inference computation may be async; use a generous timeout.
     await expect(
-      page.locator('text=/Inferences|Computed Relations|Roles/i').first()
+      page.getByRole('heading', { name: /Related assertions|Inferences|Computed Relations|Roles/i }).first()
     ).toBeVisible({ timeout: 10000 });
   });
 
@@ -138,7 +138,7 @@ test.describe('Inference Viewing', () => {
     }
 
     await page.goto(`/entities/${entityId}`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Entity detail page must load and show the slug
     await expect(page.locator(`text=${entitySlug}`)).toBeVisible();
@@ -156,7 +156,7 @@ test.describe('Inference Viewing', () => {
     await page.getByLabel(/summary \(english\)/i).fill('Entity for inference details');
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/entities\/[a-f0-9-]+/);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Entity detail page must render the slug
     await expect(page.locator(`text=${entitySlug}`)).toBeVisible();
@@ -165,7 +165,7 @@ test.describe('Inference Viewing', () => {
     const viewDetailsButton = page.getByRole('button', { name: /details|more|expand/i });
     if (await viewDetailsButton.first().isVisible({ timeout: 2000 })) {
       await viewDetailsButton.first().click();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       // Page must still be rendering the entity after expansion
       await expect(page.locator(`text=${entitySlug}`)).toBeVisible();
     }

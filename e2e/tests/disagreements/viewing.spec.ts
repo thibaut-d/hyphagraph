@@ -23,7 +23,7 @@ test.describe('Disagreements View', () => {
     const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1];
 
     await page.goto(`/entities/${entityId}/disagreements`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await expect(page).toHaveURL(`/entities/${entityId}/disagreements`);
     // Either shows disagreement groups or empty-state message
@@ -43,7 +43,7 @@ test.describe('Disagreements View', () => {
     const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1];
 
     await page.goto(`/entities/${entityId}/disagreements`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Empty state alert should be visible (from DisagreementsView — success severity)
     await expect(
@@ -61,7 +61,7 @@ test.describe('Disagreements View', () => {
     const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1];
 
     await page.goto(`/entities/${entityId}`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const disagreementsLink = page.getByRole('link', { name: /disagree/i }).or(
       page.getByRole('button', { name: /disagree/i })
@@ -84,7 +84,7 @@ test.describe('Disagreements View', () => {
     const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1];
 
     await page.goto(`/entities/${entityId}/disagreements`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const backButton = page.getByRole('button', { name: /back/i }).or(
       page.getByRole('link', { name: /back|entity/i })
@@ -107,7 +107,7 @@ test.describe('Disagreements View', () => {
     const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1];
 
     await page.goto(`/entities/${entityId}/disagreements`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const synthButton = page.getByRole('button', { name: /synthesis/i }).or(
       page.getByRole('link', { name: /synthesis/i })
@@ -178,7 +178,7 @@ test.describe('Disagreements View', () => {
 
     // Navigate to disagreements page
     await page.goto(`/entities/${entityId}/disagreements`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await expect(page).toHaveURL(`/entities/${entityId}/disagreements`);
 

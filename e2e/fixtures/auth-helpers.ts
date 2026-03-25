@@ -22,7 +22,7 @@ export async function loginViaUI(
 
   // Fill in credentials using role-based selectors
   const emailField = page.getByRole('textbox', { name: /email/i });
-  const passwordField = page.getByLabel(/password/i);
+  const passwordField = page.getByRole('textbox', { name: 'Password', exact: true });
   const loginButton = page.getByRole('button', { name: /login/i });
 
   // Wait for fields to be visible and interactable
@@ -170,7 +170,8 @@ export async function registerViaUI(
 
   // Fill in registration form using role-based selectors
   await page.getByRole('textbox', { name: /email/i }).fill(email);
-  await page.getByLabel(/password/i).fill(password);
+  await page.getByRole('textbox', { name: 'Password', exact: true }).fill(password);
+  await page.getByRole('textbox', { name: 'Confirm Password' }).fill(password);
 
   // Click register button
   await page.getByRole('button', { name: /register/i }).click();
@@ -196,6 +197,7 @@ export async function registerViaAPI(
     data: {
       email,
       password,
+      password_confirmation: password,
     },
   });
 

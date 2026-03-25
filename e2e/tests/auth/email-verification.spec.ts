@@ -20,7 +20,12 @@ test.describe('Email Verification Flow', () => {
 
     await page.goto('/account');
     await page.getByLabel(/email/i).fill(email);
-    await page.getByLabel(/password/i).fill(password);
+    await page.getByRole('textbox', { name: 'Password', exact: true }).fill(password);
+    // Confirm Password is required for registration
+    const confirmField = page.getByRole('textbox', { name: 'Confirm Password' });
+    if (await confirmField.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await confirmField.fill(password);
+    }
     await page.getByRole('button', { name: /register/i }).click();
 
     // Registration success message must appear

@@ -163,6 +163,7 @@ export function Layout() {
 
       {/* Content */}
       <Container
+        component="main"
         maxWidth="lg"
         sx={{
           mt: { xs: 2, sm: 3, md: 4 },

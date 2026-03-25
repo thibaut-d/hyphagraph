@@ -38,7 +38,7 @@ test.describe('Login Flow', () => {
 
     // Fill in invalid credentials using role-based selectors
     await page.getByRole('textbox', { name: /email/i }).fill('invalid@example.com');
-    await page.getByLabel(/password/i).fill('wrongpassword');
+    await page.getByRole('textbox', { name: 'Password', exact: true }).fill('wrongpassword');
 
     // Click login button
     await page.getByRole('button', { name: /login/i }).click();

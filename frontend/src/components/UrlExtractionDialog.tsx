@@ -58,15 +58,22 @@ export function UrlExtractionDialog({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const { run } = useAsyncAction(setSubmitError);
 
-  // Update URL when defaultUrl changes or dialog opens
+  // Pre-fill URL from source when dialog opens or defaultUrl changes
   React.useEffect(() => {
     if (open && defaultUrl) {
       setUrl(defaultUrl);
     }
+  }, [open, defaultUrl]);
+
+  // Clear validation errors whenever the dialog opens
+  React.useEffect(() => {
     if (open) {
       clearError();
     }
-  }, [open, defaultUrl, clearError]);
+    // clearError identity changes with validationField; intentionally omitted to
+    // avoid resetting the user-edited URL on every validation state change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
   const isPubMedUrl = (urlString: string): boolean => {
     try {
       const urlObj = new URL(urlString);
