@@ -31,6 +31,7 @@ class RelationRepository:
         stmt = (
             select(Relation)
             .where(Relation.source_id == source_id)
+            .where(Relation.is_rejected == False)
             .options(
                 selectinload(Relation.revisions).selectinload(RelationRevision.roles)
             )
@@ -47,6 +48,7 @@ class RelationRepository:
             .join(RelationRoleRevision)
             .where(RelationRevision.is_current == True)
             .where(RelationRoleRevision.entity_id == entity_id)
+            .where(Relation.is_rejected == False)
         )
         result = await self.db.execute(stmt_ids)
         relation_ids = [row[0] for row in result.all()]

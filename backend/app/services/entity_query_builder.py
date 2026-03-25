@@ -48,6 +48,7 @@ class EntityQueryBuilder:
             select(Entity, EntityRevision)
             .join(EntityRevision, Entity.id == EntityRevision.entity_id)
             .where(EntityRevision.is_current == True)
+            .where(Entity.is_rejected == False)
         )
 
     def apply_basic_filters(self, query: Select, filters: EntityFilters) -> Select:

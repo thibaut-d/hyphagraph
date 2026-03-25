@@ -19,6 +19,7 @@ async def search_relations(
         .join(RelationRevision, Relation.id == RelationRevision.relation_id)
         .where(RelationRevision.is_current == True)
         .where(RelationRevision.status == "confirmed")
+        .where(Relation.is_rejected == False)
         .where(
             or_(
                 text_contains(RelationRevision.kind, query_lower),

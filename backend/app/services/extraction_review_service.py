@@ -15,6 +15,8 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.llm.schemas import ExtractedClaim, ExtractedEntity, ExtractedRelation
+from app.models.entity import Entity
+from app.models.relation import Relation
 from app.models.staged_extraction import ExtractionStatus, ExtractionType, StagedExtraction
 from app.schemas.staged_extraction import (
     AutoCommitResponse,
@@ -232,6 +234,18 @@ class ExtractionReviewService:
             return False
 
         apply_review_metadata(staged, reviewer_id, notes, approved=False)
+
+        # Soft-delete the materialized entity or relation so it is hidden from
+        # listings, search, and export.  The record itself is preserved for audit.
+        if staged.materialized_entity_id:
+            entity = await self.db.get(Entity, staged.materialized_entity_id)
+            if entity:
+                entity.is_rejected = True
+        elif staged.materialized_relation_id:
+            relation = await self.db.get(Relation, staged.materialized_relation_id)
+            if relation:
+                relation.is_rejected = True
+
         await self.db.commit()
         logger.info("Rejected extraction %s", extraction_id)
         return True

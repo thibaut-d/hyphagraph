@@ -59,7 +59,7 @@ class ExportService:
         # Fetch all current entities
         stmt = select(Entity, EntityRevision).join(
             EntityRevision, Entity.id == EntityRevision.entity_id
-        ).where(EntityRevision.is_current == True)
+        ).where(EntityRevision.is_current == True).where(Entity.is_rejected == False)
 
         result = await self.db.execute(stmt)
         entities_data = []
@@ -182,7 +182,8 @@ class ExportService:
             SourceRevision, Source.id == SourceRevision.source_id
         ).where(
             RelationRevision.is_current == True,
-            SourceRevision.is_current == True
+            SourceRevision.is_current == True,
+            Relation.is_rejected == False
         )
 
         result = await self.db.execute(stmt)

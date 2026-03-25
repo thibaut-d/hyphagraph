@@ -33,6 +33,13 @@ class Entity(Base, UUIDMixin):
         Boolean, nullable=False, default=False, server_default="false"
     )
 
+    # Set to True when a human reviewer rejects the staged extraction that created
+    # this entity.  Rejected entities are hidden from listings, search, and export
+    # but remain accessible by direct ID for audit purposes.
+    is_rejected: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+
     terms = relationship(
         "EntityTerm",
         back_populates="entity",

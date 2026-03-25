@@ -95,7 +95,7 @@ Source: Parallel agent audit session 2026-03-23.
 
 ##### Major
 
-- [ ] **DF-RVW-M1** `backend/app/models/staged_extraction.py:12,38` — Rejecting a staged extraction only sets `status = "rejected"`; materialized entities/relations remain fully visible in the knowledge graph. Deferred: model docstring explicitly documents this as intentional async quality control; soft-delete requires schema + query changes scoped to a post-v1 moderation sprint.
+- [x] **DF-RVW-M1** `backend/app/models/staged_extraction.py:12,38` — Rejecting a staged extraction only sets `status = "rejected"`; materialized entities/relations remain fully visible in the knowledge graph. Fixed: added `is_rejected` boolean flag (migration 014) to `entities` and `relations` base tables; `reject_extraction()` sets it; filtered from list/search/export queries; accessible by direct ID for audit.
 - [x] **DF-RVW-M2** `backend/app/services/extraction_review_service.py:175` vs `222` — `approve_extraction()` only accepts `PENDING`; `reject_extraction()` accepts `PENDING` and `AUTO_VERIFIED`. Asymmetry prevents re-approval of auto-verified items. Fixed: both guards now use `{PENDING, AUTO_VERIFIED}` reviewable set.
 - [x] **DF-RVW-M3** No mechanism to distinguish auto-approved items from human-reviewed items in queries or the UI. Fixed: see DF-RVW-C3 above.
 
@@ -335,7 +335,6 @@ From completed audits — low priority, no blocking risk.
 
 - **Entity legacy fields** (kind, label, synonyms, ontology_ref on `EntityRead`) — still consumed as fallbacks in 10+ frontend files; cannot retire until frontend migrates to slug+summary exclusively.
 - **subject_slug / object_slug on `ExtractedRelation`** — still used in CSV export and LLM backward-compat path; documented deprecated, cannot retire yet.
-- **Rejected-extraction visibility** (DF-RVW-M1, Audit 20 M4) — rejected extractions remain visible in the graph with status="rejected"; model docstring documents this as intentional async quality control. Soft-delete (`is_active=False`) deferred to post-v1.0 moderation sprint.
 - **Plaintext reset/verification token storage** — elevated to DF-AUT-C1 above; no longer deferred.
 - **Expired refresh token purge** (Auth audit m2) — old expired/revoked rows accumulate in `refresh_tokens`; add a periodic cleanup job post-v1.0.
 - **Cross-tab refresh lock busy-wait** (Auth audit m3) — `client.tsx` polls every 100 ms; replace with `StorageEvent` listener post-v1.0.

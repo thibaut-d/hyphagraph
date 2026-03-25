@@ -407,10 +407,12 @@ async def test_reject_extraction_updates_status(
     assert updated.reviewed_by == sample_user.id
     assert updated.review_notes == "Text span not found in source"
 
-    # Entity should still exist (visibility strategy)
+    # Entity still exists in the DB (soft-delete, not hard-delete)
     result = await review_service.db.execute(select(Entity).where(Entity.id == entity_id))
     entity = result.scalar_one_or_none()
     assert entity is not None
+    # Entity is now flagged as rejected and hidden from standard queries
+    assert entity.is_rejected is True
 
 
 @pytest.mark.asyncio
@@ -1646,3 +1648,121 @@ async def test_batch_review_reject_multiple(
         )
         updated = db_result.scalar_one()
         assert updated.status == ExtractionStatus.REJECTED
+
+
+# ---------------------------------------------------------------------------
+# DF-RVW-M1: rejected extractions soft-delete the materialized entity/relation
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_reject_entity_extraction_sets_is_rejected(
+    review_service, sample_source, sample_user, low_confidence_entity, low_confidence_validation
+):
+    """Rejecting an entity extraction sets is_rejected=True on the entity."""
+    staged, entity_id = await review_service.stage_extraction(
+        extraction_type=ExtractionType.ENTITY,
+        extraction_data=low_confidence_entity,
+        source_id=sample_source.id,
+        validation_result=low_confidence_validation,
+        llm_model="test-model",
+        llm_provider="test",
+        auto_materialize=True,
+    )
+
+    ok = await review_service.reject_extraction(
+        extraction_id=staged.id,
+        reviewer_id=sample_user.id,
+    )
+    assert ok is True
+
+    from sqlalchemy import select
+    result = await review_service.db.execute(select(Entity).where(Entity.id == entity_id))
+    entity = result.scalar_one()
+    assert entity.is_rejected is True
+
+
+@pytest.mark.asyncio
+async def test_rejected_entity_hidden_from_list_query(
+    review_service, sample_source, sample_user, low_confidence_entity, low_confidence_validation
+):
+    """Rejected entity does not appear in the standard list query."""
+    from sqlalchemy import select
+    from app.models.entity_revision import EntityRevision
+
+    staged, entity_id = await review_service.stage_extraction(
+        extraction_type=ExtractionType.ENTITY,
+        extraction_data=low_confidence_entity,
+        source_id=sample_source.id,
+        validation_result=low_confidence_validation,
+        llm_model="test-model",
+        llm_provider="test",
+        auto_materialize=True,
+    )
+    await review_service.reject_extraction(
+        extraction_id=staged.id,
+        reviewer_id=sample_user.id,
+    )
+
+    # Standard list query (entity_query_builder pattern) must not return it
+    list_result = await review_service.db.execute(
+        select(Entity, EntityRevision)
+        .join(EntityRevision, Entity.id == EntityRevision.entity_id)
+        .where(EntityRevision.is_current == True)  # noqa: E712
+        .where(Entity.is_rejected == False)  # noqa: E712
+        .where(Entity.id == entity_id)
+    )
+    assert list_result.first() is None
+
+
+@pytest.mark.asyncio
+async def test_rejected_entity_still_accessible_by_direct_id(
+    review_service, sample_source, sample_user, low_confidence_entity, low_confidence_validation
+):
+    """Rejected entity remains accessible by direct ID lookup for audit purposes."""
+    from sqlalchemy import select
+
+    staged, entity_id = await review_service.stage_extraction(
+        extraction_type=ExtractionType.ENTITY,
+        extraction_data=low_confidence_entity,
+        source_id=sample_source.id,
+        validation_result=low_confidence_validation,
+        llm_model="test-model",
+        llm_provider="test",
+        auto_materialize=True,
+    )
+    await review_service.reject_extraction(
+        extraction_id=staged.id,
+        reviewer_id=sample_user.id,
+    )
+
+    # Direct ID lookup without is_rejected filter still returns the entity
+    result = await review_service.db.execute(select(Entity).where(Entity.id == entity_id))
+    entity = result.scalar_one_or_none()
+    assert entity is not None
+    assert entity.is_rejected is True
+
+
+@pytest.mark.asyncio
+async def test_approve_extraction_does_not_set_is_rejected(
+    review_service, sample_source, sample_user, uncertain_entity, uncertain_validation
+):
+    """Approving an extraction must leave is_rejected=False."""
+    from sqlalchemy import select
+
+    staged, entity_id = await review_service.stage_extraction(
+        extraction_type=ExtractionType.ENTITY,
+        extraction_data=uncertain_entity,
+        source_id=sample_source.id,
+        validation_result=uncertain_validation,
+        llm_model="test-model",
+        llm_provider="test",
+        auto_materialize=True,
+    )
+    await review_service.approve_extraction(
+        extraction_id=staged.id,
+        reviewer_id=sample_user.id,
+    )
+
+    result = await review_service.db.execute(select(Entity).where(Entity.id == entity_id))
+    entity = result.scalar_one()
+    assert entity.is_rejected is False
