@@ -116,7 +116,6 @@ class ExtractedRelation(BaseModel):
     Schema for an extracted N-ary relation with semantic roles.
 
     Represents a hypergraph edge connecting multiple entities with explicit roles.
-    Supports both new semantic roles and backward compatibility with subject/object.
     """
     relation_type: RelationType = Field(
         ...,
@@ -126,15 +125,6 @@ class ExtractedRelation(BaseModel):
         ...,
         description="Array of entities with their semantic roles (agent, target, population, etc.)",
         min_length=2  # At least 2 entities per relation
-    )
-    # Backward compatibility fields (optional, auto-populated if roles use subject/object)
-    subject_slug: str | None = Field(
-        None,
-        description="[DEPRECATED] Use roles array instead. Kept for backward compatibility."
-    )
-    object_slug: str | None = Field(
-        None,
-        description="[DEPRECATED] Use roles array instead. Kept for backward compatibility."
     )
     confidence: ConfidenceLevel = Field(
         ...,

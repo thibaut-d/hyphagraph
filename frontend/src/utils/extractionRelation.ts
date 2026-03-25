@@ -29,10 +29,6 @@ export function getRelationKey(relation: ExtractedRelation): string {
 }
 
 export function getRelationSubject(relation: ExtractedRelation): string {
-  if (relation.subject_slug) {
-    return relation.subject_slug;
-  }
-
   return pickRoleEntity(
     relation,
     ["subject", "agent", "biomarker", "measured_by", "study_group"],
@@ -41,10 +37,6 @@ export function getRelationSubject(relation: ExtractedRelation): string {
 }
 
 export function getRelationObject(relation: ExtractedRelation): string {
-  if (relation.object_slug) {
-    return relation.object_slug;
-  }
-
   return pickRoleEntity(
     relation,
     ["object", "target", "outcome", "population", "control_group", "condition"],

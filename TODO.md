@@ -1,6 +1,6 @@
 # Current Work
 
-**Last updated**: 2026-03-25 (AUD-M2 — llm_review_status on revision tables)
+**Last updated**: 2026-03-25 (subject_slug/object_slug removed from ExtractedRelation)
 
 ---
 
@@ -334,7 +334,6 @@ Source: E2E review session 2026-03-22.
 From completed audits — low priority, no blocking risk.
 
 - **Entity legacy fields** (kind, label, synonyms, ontology_ref on `EntityRead`) — still consumed as fallbacks in 10+ frontend files; cannot retire until frontend migrates to slug+summary exclusively.
-- **subject_slug / object_slug on `ExtractedRelation`** — still used in CSV export and LLM backward-compat path; documented deprecated, cannot retire yet.
 - **Plaintext reset/verification token storage** — elevated to DF-AUT-C1 above; no longer deferred.
 - **Expired refresh token purge** (Auth audit m2) — old expired/revoked rows accumulate in `refresh_tokens`; add a periodic cleanup job post-v1.0.
 - **Cross-tab refresh lock busy-wait** (Auth audit m3) — `client.tsx` polls every 100 ms; replace with `StorageEvent` listener post-v1.0.
