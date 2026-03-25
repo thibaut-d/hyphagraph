@@ -334,7 +334,6 @@ Source: E2E review session 2026-03-22.
 From completed audits — low priority, no blocking risk.
 
 - **Plaintext reset/verification token storage** — elevated to DF-AUT-C1 above; no longer deferred.
-- **Cross-tab refresh lock busy-wait** (Auth audit m3) — `client.tsx` polls every 100 ms; replace with `StorageEvent` listener post-v1.0.
 - **LLM singleton not invalidated on key rotation** (LLM audit m3) — `_llm_provider` in `llm/client.py` persists across API key changes; restart required. Add `reset_llm_provider()` for tests post-v1.0.
 
 ---
