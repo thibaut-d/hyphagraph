@@ -40,6 +40,8 @@ services:
       # Fast bcrypt for E2E tests (10=100ms vs 12=400ms)
       BCRYPT_ROUNDS: 10
       RATE_LIMIT_ENABLED: "false"
+      # Allow E2E frontend origin (port 3001 differs from default 3000)
+      CORS_ORIGINS: '["http://localhost:3001","http://localhost:3000"]'
       # SMTP settings - use a test SMTP service or disable email
       SMTP_HOST: localhost
       SMTP_PORT: 1025
