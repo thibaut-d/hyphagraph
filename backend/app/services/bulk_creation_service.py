@@ -84,6 +84,7 @@ class BulkCreationService:
                         "created_by_user_id": user_id,
                         # LLM-created revisions start as drafts pending human review
                         "status": "draft",
+                        "llm_review_status": "pending_review",
                     }
 
                     # Create first revision
@@ -214,6 +215,7 @@ class BulkCreationService:
                         "created_by_user_id": user_id,
                         # LLM-created revisions start as drafts pending human review
                         "status": "draft",
+                        "llm_review_status": "pending_review",
                     }
 
                     # Create first revision

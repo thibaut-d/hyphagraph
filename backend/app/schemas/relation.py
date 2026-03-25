@@ -51,6 +51,7 @@ class RelationRevisionRead(Schema):
     created_at: datetime
     is_current: bool
     status: str = "confirmed"
+    llm_review_status: Optional[str] = None
     roles: List[RoleRevisionRead]
 
 
@@ -73,6 +74,7 @@ class RelationRead(Schema):
     notes: Optional[I18nText] = None
     created_with_llm: Optional[str] = None
     status: str = "confirmed"  # "draft" for LLM-created, "confirmed" for manually entered/reviewed
+    llm_review_status: Optional[str] = None
     roles: List[RoleRevisionRead]
 
 

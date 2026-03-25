@@ -60,6 +60,7 @@ def entity_to_read(entity: Entity, current_revision: EntityRevision) -> EntityRe
         created_with_llm=current_revision.created_with_llm,
         created_by_user_id=current_revision.created_by_user_id,
         status=current_revision.status,
+        llm_review_status=current_revision.llm_review_status,
     )
 
 

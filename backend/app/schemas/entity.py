@@ -29,6 +29,7 @@ class EntityRevisionRead(Schema):
     created_at: datetime
     is_current: bool
     status: str = "confirmed"
+    llm_review_status: Optional[str] = None
 
 
 class EntityRead(Schema):
@@ -47,6 +48,7 @@ class EntityRead(Schema):
     ui_category_id: Optional[UUID] = None
     created_with_llm: Optional[str] = None
     status: str = "confirmed"  # "draft" for LLM-created, "confirmed" for manually entered/reviewed
+    llm_review_status: Optional[str] = None
 
     created_by_user_id: Optional[UUID] = None
 

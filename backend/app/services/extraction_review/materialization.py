@@ -18,7 +18,10 @@ logger = logging.getLogger(__name__)
 
 
 async def materialize_entity(
-    db: AsyncSession, staged: StagedExtraction, user_id: UUID | None = None
+    db: AsyncSession,
+    staged: StagedExtraction,
+    user_id: UUID | None = None,
+    llm_review_status: str = "pending_review",
 ) -> UUID:
     entity_data = ExtractedEntity(**staged.extraction_data)
 
@@ -37,6 +40,7 @@ async def materialize_entity(
             "status": "draft",
             "created_with_llm": staged.llm_model,
             "created_by_user_id": user_id,
+            "llm_review_status": llm_review_status,
         },
         set_as_current=True,
     )
@@ -46,7 +50,10 @@ async def materialize_entity(
 
 
 async def materialize_relation(
-    db: AsyncSession, staged: StagedExtraction, user_id: UUID | None = None
+    db: AsyncSession,
+    staged: StagedExtraction,
+    user_id: UUID | None = None,
+    llm_review_status: str = "pending_review",
 ) -> UUID:
     relation_data = ExtractedRelation(**staged.extraction_data)
 
@@ -68,6 +75,7 @@ async def materialize_relation(
             "status": "draft",
             "created_with_llm": staged.llm_model,
             "created_by_user_id": user_id,
+            "llm_review_status": llm_review_status,
         },
         set_as_current=True,
     )
@@ -101,7 +109,10 @@ async def materialize_relation(
 
 
 async def materialize_claim(
-    db: AsyncSession, staged: StagedExtraction, user_id: UUID | None = None
+    db: AsyncSession,
+    staged: StagedExtraction,
+    user_id: UUID | None = None,
+    llm_review_status: str = "pending_review",
 ) -> UUID:
     """Materialize a claim as a relation in the knowledge graph.
 
@@ -134,6 +145,7 @@ async def materialize_claim(
             "status": "draft",
             "created_with_llm": staged.llm_model,
             "created_by_user_id": user_id,
+            "llm_review_status": llm_review_status,
         },
         set_as_current=True,
     )

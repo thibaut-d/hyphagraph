@@ -44,6 +44,12 @@ class RelationRevision(Base, UUIDMixin):
     # 'confirmed' for manually-entered or reviewed revisions.
     status: Mapped[str] = mapped_column(String, nullable=False, default="confirmed")
 
+    # LLM provenance review status (NULL for human-authored rows):
+    #   'pending_review'  — LLM-created, awaiting human confirmation
+    #   'auto_verified'   — LLM-created, passed automated quality check
+    #   'confirmed'       — LLM-created, explicitly confirmed by a human
+    llm_review_status: Mapped[str | None] = mapped_column(String, nullable=True)
+
     # Confirmation provenance
     confirmed_by_user_id: Mapped[PyUUID | None] = mapped_column(
         PGUUID(as_uuid=True),

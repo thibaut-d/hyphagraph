@@ -26,6 +26,7 @@ class DraftRevisionRead(Schema):
     kind: Optional[str] = None          # relation / source revisions
     title: Optional[str] = None         # source revisions
     status: str = "draft"
+    llm_review_status: Optional[str] = None
 
 
 class DraftRevisionListResponse(Schema):

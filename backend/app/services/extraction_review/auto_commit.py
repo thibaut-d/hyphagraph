@@ -87,17 +87,17 @@ async def _materialize_approved(db: AsyncSession, staged: StagedExtraction) -> b
         staged.review_notes = "Auto-approved by system (high validation score)"
 
         if staged.extraction_type == ExtractionType.ENTITY:
-            entity_id = await materialize_entity(db, staged)
+            entity_id = await materialize_entity(db, staged, llm_review_status="auto_verified")
             staged.materialized_entity_id = entity_id
             await db.commit()
             return True
         elif staged.extraction_type == ExtractionType.RELATION:
-            relation_id = await materialize_relation(db, staged)
+            relation_id = await materialize_relation(db, staged, llm_review_status="auto_verified")
             staged.materialized_relation_id = relation_id
             await db.commit()
             return True
         elif staged.extraction_type == ExtractionType.CLAIM:
-            relation_id = await materialize_claim(db, staged)
+            relation_id = await materialize_claim(db, staged, llm_review_status="auto_verified")
             staged.materialized_relation_id = relation_id
             await db.commit()
             return True

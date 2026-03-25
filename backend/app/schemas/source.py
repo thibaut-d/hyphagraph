@@ -51,6 +51,7 @@ class SourceRevisionRead(Schema):
     created_at: datetime
     is_current: bool
     status: str = "confirmed"
+    llm_review_status: Optional[str] = None
 
 
 class SourceRead(Schema):
@@ -74,6 +75,8 @@ class SourceRead(Schema):
     source_metadata: Optional[JsonObject] = None
     created_with_llm: Optional[str] = None
     created_by_user_id: Optional[UUID] = None
+    status: str = "confirmed"
+    llm_review_status: Optional[str] = None
     document_format: Optional[str] = None
     document_file_name: Optional[str] = None
     document_extracted_at: Optional[datetime] = None

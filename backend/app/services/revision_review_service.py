@@ -73,6 +73,7 @@ class RevisionReviewService:
                 created_at=r.created_at,
                 slug=r.slug,
                 status=r.status,
+                llm_review_status=r.llm_review_status,
             )
             for r in result.scalars().all()
         ]
@@ -91,6 +92,7 @@ class RevisionReviewService:
                 created_at=r.created_at,
                 kind=r.kind,
                 status=r.status,
+                llm_review_status=r.llm_review_status,
             )
             for r in result.scalars().all()
         ]
@@ -110,6 +112,7 @@ class RevisionReviewService:
                 kind=r.kind,
                 title=r.title,
                 status=r.status,
+                llm_review_status=r.llm_review_status,
             )
             for r in result.scalars().all()
         ]
@@ -146,6 +149,8 @@ class RevisionReviewService:
 
         revision.status = "confirmed"
         revision.is_current = True
+        if revision.created_with_llm:
+            revision.llm_review_status = "confirmed"
         await self.db.flush()
         await self.db.commit()
         logger.info(

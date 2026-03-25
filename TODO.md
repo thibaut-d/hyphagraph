@@ -1,6 +1,6 @@
 # Current Work
 
-**Last updated**: 2026-03-25 (E2E skipped-test fixes — all actionable skips resolved)
+**Last updated**: 2026-03-25 (AUD-M2 — llm_review_status on revision tables)
 
 ---
 
@@ -268,7 +268,7 @@ Source: `.temp/full_audit_report_2026-03-23.md`
 
 #### Major
 
-- [ ] **AUD-M2** `backend/app/services/bulk_creation_service.py:83` + revision tables — Once materialized, LLM-generated revisions are structurally indistinguishable from human-authored ones. `created_with_llm` records the model name but there is no status field. Add `llm_review_status: Literal["pending_review", "confirmed", "auto_verified"] | None` to `EntityRevision`, `RelationRevision`, `SourceRevision` (nullable for human-authored rows). Populate from review outcome in `bulk_creation_service` and `save_extraction_to_graph`. Surface in review queue and export. *(Architectural — plan as a dedicated sprint.)*
+- [x] **AUD-M2** `backend/app/services/bulk_creation_service.py:83` + revision tables — Once materialized, LLM-generated revisions are structurally indistinguishable from human-authored ones. Added `llm_review_status: str | None` (nullable for human-authored rows; `"pending_review"` on creation, `"auto_verified"` from auto-commit, `"confirmed"` on human confirm) to all three revision models. Migration 013. Populated in `bulk_creation_service`, `materialization.py`, `auto_commit._materialize_approved`, and `revision_review_service.confirm`. Exposed in all read schemas, mappers, `DraftRevisionRead`, and export service.
 
 #### Minor
 

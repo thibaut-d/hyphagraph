@@ -345,3 +345,128 @@ class TestStatusDefaults:
         db_session.add(rev)
         await db_session.flush()
         assert rev.status == "confirmed"
+
+
+# ---------------------------------------------------------------------------
+# llm_review_status
+# ---------------------------------------------------------------------------
+
+class TestLlmReviewStatus:
+    """llm_review_status tracks the LLM provenance review outcome independently
+    of the revision visibility status ('draft'/'confirmed')."""
+
+    async def test_human_authored_revision_has_null_llm_review_status(self, db_session: AsyncSession):
+        """Human-authored revisions leave llm_review_status as NULL."""
+        entity = Entity(id=uuid4())
+        db_session.add(entity)
+        await db_session.flush()
+
+        rev = EntityRevision(
+            entity_id=entity.id,
+            slug="human-authored",
+            is_current=True,
+            status="confirmed",
+        )
+        db_session.add(rev)
+        await db_session.flush()
+        assert rev.llm_review_status is None
+
+    async def test_llm_revision_starts_as_pending_review(self, db_session: AsyncSession):
+        """LLM-created revisions should carry llm_review_status='pending_review'."""
+        entity = Entity(id=uuid4())
+        db_session.add(entity)
+        await db_session.flush()
+
+        rev = EntityRevision(
+            entity_id=entity.id,
+            slug=f"llm-entity-{uuid4().hex[:6]}",
+            created_with_llm="gpt-4",
+            is_current=True,
+            status="draft",
+            llm_review_status="pending_review",
+        )
+        db_session.add(rev)
+        await db_session.flush()
+        assert rev.llm_review_status == "pending_review"
+
+    async def test_confirm_sets_llm_review_status_confirmed_for_llm_revision(self, db_session: AsyncSession):
+        """confirm() must update llm_review_status to 'confirmed' for LLM revisions."""
+        rev = await _make_entity_revision(db_session, status="draft")
+        rev.llm_review_status = "pending_review"
+        await db_session.flush()
+
+        svc = RevisionReviewService(db_session)
+        ok = await svc.confirm("entity", rev.id)
+        assert ok is True
+
+        result = await db_session.execute(
+            select(EntityRevision).where(EntityRevision.id == rev.id)
+        )
+        updated = result.scalar_one()
+        assert updated.status == "confirmed"
+        assert updated.llm_review_status == "confirmed"
+
+    async def test_confirm_does_not_set_llm_review_status_for_human_revision(self, db_session: AsyncSession):
+        """confirm() must NOT set llm_review_status on human-authored revisions."""
+        entity = Entity(id=uuid4())
+        db_session.add(entity)
+        await db_session.flush()
+
+        rev = EntityRevision(
+            entity_id=entity.id,
+            slug=f"human-draft-{uuid4().hex[:6]}",
+            is_current=True,
+            status="draft",
+        )
+        db_session.add(rev)
+        await db_session.flush()
+
+        svc = RevisionReviewService(db_session)
+        ok = await svc.confirm("entity", rev.id)
+        assert ok is True
+
+        result = await db_session.execute(
+            select(EntityRevision).where(EntityRevision.id == rev.id)
+        )
+        updated = result.scalar_one()
+        assert updated.llm_review_status is None
+
+    async def test_list_drafts_exposes_llm_review_status(self, db_session: AsyncSession):
+        """DraftRevisionRead returned by list_drafts must include llm_review_status."""
+        entity = Entity(id=uuid4())
+        db_session.add(entity)
+        await db_session.flush()
+
+        rev = EntityRevision(
+            entity_id=entity.id,
+            slug=f"pending-{uuid4().hex[:6]}",
+            created_with_llm="gpt-4",
+            is_current=True,
+            status="draft",
+            llm_review_status="pending_review",
+        )
+        db_session.add(rev)
+        await db_session.flush()
+
+        svc = RevisionReviewService(db_session)
+        result = await svc.list_drafts()
+        assert result.total == 1
+        assert result.items[0].llm_review_status == "pending_review"
+
+    async def test_auto_verified_status_persisted(self, db_session: AsyncSession):
+        """auto_verified is a valid llm_review_status value stored on the revision."""
+        entity = Entity(id=uuid4())
+        db_session.add(entity)
+        await db_session.flush()
+
+        rev = EntityRevision(
+            entity_id=entity.id,
+            slug=f"auto-{uuid4().hex[:6]}",
+            created_with_llm="gpt-4",
+            is_current=True,
+            status="draft",
+            llm_review_status="auto_verified",
+        )
+        db_session.add(rev)
+        await db_session.flush()
+        assert rev.llm_review_status == "auto_verified"

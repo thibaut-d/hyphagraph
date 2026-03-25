@@ -64,6 +64,8 @@ def source_to_read(
             source_metadata=current_revision.source_metadata,
             created_with_llm=current_revision.created_with_llm,
             created_by_user_id=current_revision.created_by_user_id,
+            status=current_revision.status,
+            llm_review_status=current_revision.llm_review_status,
             document_format=current_revision.document_format,
             document_file_name=current_revision.document_file_name,
             document_extracted_at=current_revision.document_extracted_at,
@@ -90,4 +92,6 @@ def source_revision_to_read(revision: SourceRevision) -> SourceRevisionRead:
         created_by_user_id=revision.created_by_user_id,
         created_at=revision.created_at,
         is_current=revision.is_current,
+        status=revision.status,
+        llm_review_status=revision.llm_review_status,
     )

@@ -81,6 +81,7 @@ class ExportService:
                     'revision_created_at': revision.created_at.isoformat() if revision.created_at else None,
                     'created_with_llm': revision.created_with_llm,
                     'created_by_user_id': str(revision.created_by_user_id) if revision.created_by_user_id else None,
+                    'llm_review_status': revision.llm_review_status,
                 })
 
             entities_data.append(entity_dict)
@@ -227,6 +228,7 @@ class ExportService:
                     'notes': rel_revision.notes,
                     'created_with_llm': rel_revision.created_with_llm,
                     'created_by_user_id': str(rel_revision.created_by_user_id) if rel_revision.created_by_user_id else None,
+                    'llm_review_status': rel_revision.llm_review_status,
                 })
 
             relations_data.append(relation_dict)
@@ -385,6 +387,7 @@ class ExportService:
                     str(revision.created_by_user_id) if revision.created_by_user_id else None
                 )
                 source_dict["created_with_llm"] = revision.created_with_llm
+                source_dict["llm_review_status"] = revision.llm_review_status
             sources_data.append(source_dict)
 
         if format == "json":
