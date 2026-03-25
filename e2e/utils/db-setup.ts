@@ -99,6 +99,7 @@ export async function createTestUser(email: string, password: string, is_superus
     body: JSON.stringify({
       email,
       password,
+      password_confirmation: password,
       is_superuser,
     }),
   });
