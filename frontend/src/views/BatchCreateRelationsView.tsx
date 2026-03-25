@@ -121,7 +121,7 @@ export function BatchCreateRelationsView() {
         const items = Array.isArray(entitiesRes)
           ? entitiesRes
           : (entitiesRes.items ?? []);
-        setEntities(items.map((e) => ({ id: e.id, label: e.label || e.slug })));
+        setEntities(items.map((e) => ({ id: e.id, label: e.slug })));
         setSources(sourcesRes.items ?? []);
       })
       .catch((err: unknown) => {
