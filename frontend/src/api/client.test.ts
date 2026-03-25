@@ -1,9 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { apiFetch } from "./client";
+import { setStoredAuthTokens, clearStoredAuthTokens } from "../auth/authStorage";
 import { ErrorCode, ParsedAppError } from "../utils/errorHandler";
-
-const REFRESH_LOCK_KEY = "token_refresh_in_progress";
 
 function createResponse(
   status: number,
@@ -33,16 +32,17 @@ function createDeferred<T>() {
 
 describe("apiFetch", () => {
   beforeEach(() => {
-    localStorage.clear();
+    clearStoredAuthTokens();
     vi.restoreAllMocks();
   });
 
   afterEach(() => {
     vi.useRealTimers();
+    clearStoredAuthTokens();
   });
 
   it("returns undefined for 204 responses after a local token refresh", async () => {
-    localStorage.setItem("auth_token", "stale-token");
+    setStoredAuthTokens("stale-token");
 
     const retryJson = vi.fn();
     const fetchMock = vi
@@ -63,40 +63,42 @@ describe("apiFetch", () => {
     expect(retryJson).not.toHaveBeenCalled();
   });
 
-  it("returns undefined for 204 responses after waiting on another tab to refresh", async () => {
-    vi.useFakeTimers();
+  it("concurrent 401s within one tab share a single refresh request", async () => {
+    setStoredAuthTokens("stale-token");
 
-    localStorage.setItem("auth_token", "stale-token");
-    localStorage.setItem(REFRESH_LOCK_KEY, Date.now().toString());
+    const retryJson = vi.fn().mockResolvedValue({});
+    const refreshDeferred = createDeferred<Response>();
 
-    const retryJson = vi.fn();
-    const initialRequest = createDeferred<Response>();
+    // Both parallel requests initially get 401. Then the shared refresh request
+    // resolves and both are retried.
     const fetchMock = vi
       .fn()
-      .mockImplementationOnce(() => initialRequest.promise)
-      .mockResolvedValueOnce(createResponse(204, { json: retryJson }));
+      .mockResolvedValueOnce(createResponse(401))           // request 1 → 401
+      .mockResolvedValueOnce(createResponse(401))           // request 2 → 401
+      .mockImplementationOnce(() => refreshDeferred.promise) // shared refresh
+      .mockResolvedValue(createResponse(204, { json: retryJson })); // both retries
 
     vi.stubGlobal("fetch", fetchMock);
 
-    const requestPromise = apiFetch<void>("/sources/123", { method: "DELETE" });
+    const p1 = apiFetch<void>("/sources/1", { method: "DELETE" });
+    const p2 = apiFetch<void>("/sources/2", { method: "DELETE" });
 
-    initialRequest.resolve(createResponse(401));
+    // Let both 401s land, then resolve the shared refresh.
     await Promise.resolve();
-
-    localStorage.setItem("auth_token", "new-token");
-    localStorage.removeItem(REFRESH_LOCK_KEY);
-    // jsdom 27 doesn't fire storage events for same-window modifications (per spec);
-    // dispatch manually to simulate the other tab releasing the lock.
-    window.dispatchEvent(
-      new StorageEvent("storage", { key: REFRESH_LOCK_KEY, newValue: null }),
+    refreshDeferred.resolve(
+      createResponse(200, {
+        json: vi.fn().mockResolvedValue({ access_token: "new-token" }),
+      }),
     );
 
-    await vi.advanceTimersByTimeAsync(100);
+    await expect(p1).resolves.toBeUndefined();
+    await expect(p2).resolves.toBeUndefined();
 
-    await expect(requestPromise).resolves.toBeUndefined();
-
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(retryJson).not.toHaveBeenCalled();
+    // Exactly one refresh call should have been made.
+    const refreshCalls = fetchMock.mock.calls.filter((call) =>
+      (call[0] as string).includes("/auth/refresh"),
+    );
+    expect(refreshCalls).toHaveLength(1);
   });
 
   it("preserves structured backend errors for UI consumers", async () => {

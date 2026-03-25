@@ -89,11 +89,9 @@ test.describe('Account Settings', () => {
       form: { username: testEmail, password: originalPassword },
     });
     expect(resp.ok()).toBeTruthy();
-    const { access_token } = await resp.json();
+    await resp.json();
 
-    const BASE_URL = process.env.BASE_URL || 'http://localhost:3001';
-    await page.goto(BASE_URL);
-    await page.evaluate((token) => localStorage.setItem('auth_token', token), access_token);
+    await page.goto(process.env.BASE_URL || 'http://localhost:3001', { waitUntil: 'networkidle' });
 
     await page.goto('/change-password');
     await page.waitForLoadState('networkidle');

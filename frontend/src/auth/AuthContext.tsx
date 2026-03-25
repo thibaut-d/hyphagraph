@@ -8,7 +8,7 @@ import {
   useRef,
 } from "react";
 
-import { getMe, logout as logoutApi } from "../api/auth";
+import { getMe, logout as logoutApi, refreshAccessToken } from "../api/auth";
 import {
   AUTH_STATE_CHANGED_EVENT,
   clearStoredAuthTokens,
@@ -28,45 +28,44 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const initialAuth = getStoredAuthTokens();
-  const [token, setToken] = useState<string | null>(initialAuth.token);
+  // Token lives in memory only — never in localStorage or sessionStorage.
+  // The httpOnly refresh cookie (managed by the browser) is the persistence layer.
+  const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<UserRead | null>(null);
-  const [loading, setLoading] = useState<boolean>(!!initialAuth.token);
+  // Start loading=true so consumers don't flash unauthenticated state while we
+  // attempt to restore the session from the httpOnly refresh cookie.
+  const [loading, setLoading] = useState<boolean>(true);
 
-  // Use refs to track current token values without causing re-renders
   const tokenRef = useRef(token);
   const requestVersionRef = useRef(0);
+  // Prevents the getMe() effect from treating the initial null token as a
+  // logout before the session-restore attempt has finished.
+  const sessionRestoreAttemptedRef = useRef(false);
+  // Incremented by logout to cancel any in-flight session restore.
+  const sessionRestoreVersionRef = useRef(0);
 
-  // Update refs when state changes
   useEffect(() => {
     tokenRef.current = token;
   }, [token]);
 
+  // Sync in-tab token changes dispatched by the API client (e.g., after a
+  // transparent 401->refresh cycle in client.tsx).
   useEffect(() => {
     const syncAuthState = () => {
       const nextAuth = getStoredAuthTokens();
-
       if (nextAuth.token !== tokenRef.current) {
         setToken(nextAuth.token);
       }
     };
 
-    const handleStorageEvent = (event: StorageEvent) => {
-      if (event.key === null || event.key === "auth_token") {
-        syncAuthState();
-      }
-    };
-
-    window.addEventListener("storage", handleStorageEvent);
     window.addEventListener(AUTH_STATE_CHANGED_EVENT, syncAuthState);
-
     return () => {
-      window.removeEventListener("storage", handleStorageEvent);
       window.removeEventListener(AUTH_STATE_CHANGED_EVENT, syncAuthState);
     };
   }, []);
 
   const logout = useCallback(() => {
+    sessionRestoreVersionRef.current += 1; // Cancel any in-flight session restore
     requestVersionRef.current += 1;
 
     logoutApi().catch((err) => {
@@ -80,7 +79,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   }, []);
 
+  // On mount: attempt to restore an existing session from the httpOnly refresh
+  // cookie. If the cookie is present the refresh endpoint returns a new access
+  // token; if not, we fall through to the unauthenticated state.
   useEffect(() => {
+    const restoreVersion = ++sessionRestoreVersionRef.current;
+    refreshAccessToken()
+      .then(({ access_token }) => {
+        // Abort if logout was called while the refresh was in-flight.
+        if (restoreVersion !== sessionRestoreVersionRef.current) return;
+        setStoredAuthTokens(access_token);
+        setToken(access_token);
+        // loading is cleared by the getMe() effect once user data arrives.
+      })
+      .catch(() => {
+        if (restoreVersion !== sessionRestoreVersionRef.current) return;
+        // No valid refresh cookie — user must log in.
+        setLoading(false);
+      })
+      .finally(() => {
+        sessionRestoreAttemptedRef.current = true;
+      });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Whenever token changes (login, logout, post-restore), fetch the user profile.
+  useEffect(() => {
+    // Skip until the session-restore attempt has completed so we don't
+    // immediately flash the logged-out state on page load.
+    if (!sessionRestoreAttemptedRef.current) return;
+
     if (!token) {
       setUser(null);
       setLoading(false);
@@ -105,7 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(userData);
         setLoading(false);
       })
-      .catch((error) => {
+      .catch(() => {
         if (
           cancelled ||
           requestVersion !== requestVersionRef.current ||

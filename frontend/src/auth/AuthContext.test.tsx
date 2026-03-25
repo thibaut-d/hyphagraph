@@ -7,9 +7,10 @@ import { updateStoredAccessToken } from "./authStorage";
 vi.mock("../api/auth", () => ({
   getMe: vi.fn(),
   logout: vi.fn(),
+  refreshAccessToken: vi.fn(),
 }));
 
-import { getMe, logout } from "../api/auth";
+import { getMe, logout, refreshAccessToken } from "../api/auth";
 
 function AuthConsumer() {
   const { token, user, logout: logoutUser } = useAuthContext();
@@ -39,11 +40,14 @@ function createDeferred<T>() {
 describe("AuthProvider", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    localStorage.clear();
   });
 
   it("syncs token changes without polling when the access token changes in the same tab", async () => {
-    localStorage.setItem("auth_token", "stale-token");
+    // Session restore returns "stale-token" from the refresh cookie.
+    vi.mocked(refreshAccessToken).mockResolvedValue({
+      access_token: "stale-token",
+      token_type: "bearer",
+    });
 
     vi.mocked(getMe)
       .mockResolvedValueOnce({
@@ -82,7 +86,11 @@ describe("AuthProvider", () => {
   });
 
   it("ignores stale getMe responses that resolve after logout", async () => {
-    localStorage.setItem("auth_token", "active-token");
+    // Session restore returns "active-token" from the refresh cookie.
+    vi.mocked(refreshAccessToken).mockResolvedValue({
+      access_token: "active-token",
+      token_type: "bearer",
+    });
 
     const pendingUserRequest = createDeferred<{
       id: string;
@@ -102,6 +110,10 @@ describe("AuthProvider", () => {
       </AuthProvider>,
     );
 
+    // Wait for session restore to complete and the token to be visible before
+    // triggering logout — this ensures getMe has been called with the token.
+    await screen.findByText("token:active-token");
+
     fireEvent.click(screen.getByRole("button", { name: "Logout" }));
 
     await waitFor(() => {
@@ -109,6 +121,7 @@ describe("AuthProvider", () => {
       expect(screen.getByText("user:none")).toBeInTheDocument();
     });
 
+    // Late-resolving getMe must NOT update the user after logout.
     pendingUserRequest.resolve({
       id: "1",
       email: "late@example.com",

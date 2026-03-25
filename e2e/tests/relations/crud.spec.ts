@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginAsAdminViaAPI, clearAuthState } from '../../fixtures/auth-helpers';
+import { loginAsAdminViaAPI, clearAuthState, getAccessToken } from '../../fixtures/auth-helpers';
 import { generateEntityName } from '../../fixtures/test-data';
 
 test.describe('Relation CRUD Operations', () => {
@@ -13,7 +13,7 @@ test.describe('Relation CRUD Operations', () => {
 
   test('should create a new relation', async ({ page }) => {
     const API_URL = process.env.API_URL || 'http://localhost:8001';
-    const token = await page.evaluate(() => localStorage.getItem('auth_token'));
+    const token = await getAccessToken(page);
 
     // Pre-create a source and two entities so the form dropdowns have options
     const ts = Date.now();

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginAsAdminViaAPI, clearAuthState } from '../../fixtures/auth-helpers';
+import { loginAsAdminViaAPI, clearAuthState, getAccessToken } from '../../fixtures/auth-helpers';
 import { generateEntityName, generateSourceName } from '../../fixtures/test-data';
 
 test.describe('Disagreements View', () => {
@@ -150,7 +150,7 @@ test.describe('Disagreements View', () => {
     const otherId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1] || '';
 
     // Seed two relations with the same kind/entity but from different sources (potential contradiction)
-    const token = await page.evaluate(() => localStorage.getItem('auth_token'));
+    const token = await getAccessToken(page);
     for (const [srcId, direction] of [[src1Id, 'forward'], [src2Id, 'backward']] as [string, string][]) {
       await page.request.post(`${API_URL}/api/relations/`, {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },

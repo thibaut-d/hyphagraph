@@ -40,15 +40,8 @@ export async function loginViaUI(
   // Click login button
   await loginButton.click();
 
-  // Wait for successful login - use multiple strategies
-  // Strategy 1: Wait for auth token in localStorage (most reliable)
-  await page.waitForFunction(
-    () => !!localStorage.getItem('auth_token'),
-    { timeout: 20000 }
-  );
-
-  // Strategy 2: Wait for UI to update
-  await page.waitForSelector('text=/Logged in as/i', { timeout: 10000 });
+  // Wait for successful login — token is in-memory, check the UI indicator
+  await page.waitForSelector('text=/Logged in as/i', { timeout: 20000 });
 }
 
 /**
@@ -59,17 +52,21 @@ export async function loginAsAdmin(page: Page): Promise<void> {
 }
 
 /**
- * Login via API and set auth state
- * This is faster than UI login for tests that don't need to test the login flow
+ * Login via API and set auth state.
+ *
+ * Calls the login endpoint (which sets the httpOnly refresh cookie on the
+ * browser context), then navigates to the app so the AuthContext can restore
+ * the session via the refresh cookie. This is faster than UI login for tests
+ * that don't need to exercise the login form.
  */
 export async function loginViaAPI(
   page: Page,
   email: string,
   password: string
-): Promise<{ accessToken: string; refreshToken: string | null }> {
+): Promise<{ accessToken: string; refreshToken: null }> {
   const API_URL = process.env.API_URL || 'http://localhost';
 
-  // Login via API with extended timeout
+  // Login via API — the server sets the httpOnly refresh cookie on the browser context.
   const response = await page.request.post(`${API_URL}/api/auth/login`, {
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -78,7 +75,7 @@ export async function loginViaAPI(
       username: email,
       password: password,
     },
-    timeout: 30000, // 30 seconds timeout for API requests
+    timeout: 30000,
   });
 
   if (!response.ok()) {
@@ -86,16 +83,12 @@ export async function loginViaAPI(
   }
 
   const { access_token } = await response.json();
-  // Note: refresh_token is set as an httpOnly cookie by the server — not in the response body.
 
-  // Set access token in localStorage; refresh token cookie is managed by the browser automatically.
-  await page.goto(BASE_URL);
-  await page.evaluate(
-    ({ accessToken }) => {
-      localStorage.setItem('auth_token', accessToken);
-    },
-    { accessToken: access_token }
-  );
+  // Navigate to the app. The AuthContext will call /auth/refresh on mount,
+  // receive a new access token (using the httpOnly cookie set above), and
+  // store it in memory. waitUntil:'networkidle' ensures the refresh + /me
+  // requests complete before tests begin.
+  await page.goto(BASE_URL, { waitUntil: 'networkidle' });
 
   return {
     accessToken: access_token,
@@ -106,8 +99,25 @@ export async function loginViaAPI(
 /**
  * Login as admin via API
  */
-export async function loginAsAdminViaAPI(page: Page): Promise<{ accessToken: string; refreshToken: string | null }> {
+export async function loginAsAdminViaAPI(page: Page): Promise<{ accessToken: string; refreshToken: null }> {
   return loginViaAPI(page, ADMIN_USER.email, ADMIN_USER.password);
+}
+
+/**
+ * Get a fresh access token by calling the refresh endpoint.
+ *
+ * Use this in tests that need to add an Authorization: Bearer header to a
+ * direct page.request.* API call. The httpOnly refresh cookie must already
+ * be set (i.e., the user must be logged in via loginViaAPI or loginAsAdminViaAPI).
+ */
+export async function getAccessToken(page: Page): Promise<string> {
+  const API_URL = process.env.API_URL || 'http://localhost:8001';
+  const resp = await page.request.post(`${API_URL}/api/auth/refresh`);
+  if (!resp.ok()) {
+    throw new Error(`getAccessToken: refresh failed with status ${resp.status()}`);
+  }
+  const { access_token } = await resp.json();
+  return access_token;
 }
 
 /**
@@ -147,14 +157,11 @@ export async function clearAuthState(page: Page): Promise<void> {
 }
 
 /**
- * Check if user is authenticated
+ * Check if user is authenticated by checking UI state
  */
 export async function isAuthenticated(page: Page): Promise<boolean> {
-  await page.goto(BASE_URL);
-  const hasToken = await page.evaluate(() => {
-    return !!localStorage.getItem('auth_token');
-  });
-  return hasToken;
+  await page.goto(BASE_URL, { waitUntil: 'networkidle' });
+  return page.locator('text=/Logged in as/i').isVisible().catch(() => false);
 }
 
 /**

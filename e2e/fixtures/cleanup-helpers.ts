@@ -9,11 +9,18 @@ import { Page } from '@playwright/test';
 const API_URL = process.env.API_URL || 'http://localhost:8001';
 
 /**
- * Get auth token from localStorage
+ * Get a fresh access token via the httpOnly refresh cookie.
  */
 async function getAuthToken(page: Page): Promise<string | null> {
-  await page.goto(process.env.BASE_URL || 'http://localhost:3001');
-  return page.evaluate(() => localStorage.getItem('auth_token'));
+  const API_URL = process.env.API_URL || 'http://localhost:8001';
+  try {
+    const resp = await page.request.post(`${API_URL}/api/auth/refresh`);
+    if (!resp.ok()) return null;
+    const { access_token } = await resp.json();
+    return access_token;
+  } catch {
+    return null;
+  }
 }
 
 /**

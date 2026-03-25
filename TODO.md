@@ -54,7 +54,7 @@ Source: Parallel agent audit session 2026-03-23.
 ##### Major
 
 - [x] **DF-AUT-M1** `backend/app/dependencies/auth.py:23-82` — `get_current_user` checks `is_active` but not `is_verified`. When `EMAIL_VERIFICATION_REQUIRED=True`, unverified users can access all protected resources. Add `is_verified` check when the setting is enabled.
-- [ ] **DF-AUT-M2** `frontend/src/auth/authStorage.ts:28-34` — Access and refresh tokens stored in `localStorage`, readable by any XSS payload. Migrate to `httpOnly` cookies or a BFF proxy.
+- [x] **DF-AUT-M2** `frontend/src/auth/authStorage.ts` — Access token migrated from `localStorage` to in-memory module variable. Refresh token was already in an httpOnly cookie; AuthContext now auto-restores session on mount via the refresh cookie. Cross-tab localStorage lock replaced with in-memory Promise coalescing.
 - [x] **DF-AUT-M3** `backend/app/services/user/account.py` — Added `token_version` column to `User`; embedded as `tv` claim in access tokens; `get_current_user` rejects tokens whose `tv` mismatches DB value; `delete_user` and `deactivate_user` increment `token_version`. Migration 012.
 - [x] **DF-AUT-M4** `frontend/src/api/client.tsx:243-315` — Cross-tab refresh lock uses a 10-second timeout; stale lock allows concurrent refresh requests. Server-side rotation (C2 above) eliminates the replay risk; also replace the localStorage busy-poll with a `StorageEvent` listener.
 - [x] **DF-AUT-M5** `backend/app/api/admin.py` + `admin_service.py` — Removed duplicate `require_superuser`; all admin endpoints now use `get_current_active_superuser` (live DB check). `update_user` increments `token_version` when `is_superuser` or `is_active` changes to immediately invalidate outstanding tokens.

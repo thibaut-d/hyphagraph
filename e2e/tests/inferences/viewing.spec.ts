@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginAsAdminViaAPI, clearAuthState } from '../../fixtures/auth-helpers';
+import { loginAsAdminViaAPI, clearAuthState, getAccessToken } from '../../fixtures/auth-helpers';
 import { generateEntityName, generateSourceName } from '../../fixtures/test-data';
 
 test.describe('Inference Viewing', () => {
@@ -44,7 +44,7 @@ test.describe('Inference Viewing', () => {
 
     // Seed a relation via API so the inference engine has data to compute
     if (sourceId && entity1Id && entity2Id) {
-      const token = await page.evaluate(() => localStorage.getItem('auth_token'));
+      const token = await getAccessToken(page);
       await page.request.post(`${API_URL}/api/relations/`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -121,7 +121,7 @@ test.describe('Inference Viewing', () => {
 
     // Seed a self-referencing relation so inference scores exist
     if (sourceId && entityId) {
-      const token = await page.evaluate(() => localStorage.getItem('auth_token'));
+      const token = await getAccessToken(page);
       await page.request.post(`${API_URL}/api/relations/`, {
         headers: {
           Authorization: `Bearer ${token}`,

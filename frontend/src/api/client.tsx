@@ -6,69 +6,14 @@ import {
 } from "../utils/errorHandler";
 import {
   clearStoredAuthTokens,
+  getStoredAuthTokens,
   updateStoredAccessToken,
 } from "../auth/authStorage";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "/api";
 
-// Cross-tab synchronized flag using localStorage
-const REFRESH_LOCK_KEY = "token_refresh_in_progress";
-const REFRESH_LOCK_TIMEOUT = 10000; // 10 seconds max lock duration
-
-/**
- * Try to acquire cross-tab refresh lock using localStorage.
- * Returns true if lock acquired, false if another tab is refreshing.
- */
-function tryAcquireRefreshLock(): boolean {
-  const now = Date.now();
-  const existing = localStorage.getItem(REFRESH_LOCK_KEY);
-
-  if (existing) {
-    const lockTime = parseInt(existing, 10);
-    // Validate parseInt succeeded before arithmetic operations
-    if (isNaN(lockTime)) {
-      // Invalid lock value, steal it
-      localStorage.setItem(REFRESH_LOCK_KEY, now.toString());
-      return true;
-    }
-    // If lock is stale (> 10s old), steal it
-    if (now - lockTime > REFRESH_LOCK_TIMEOUT) {
-      localStorage.setItem(REFRESH_LOCK_KEY, now.toString());
-      return true;
-    }
-    return false; // Another tab is refreshing
-  }
-
-  // No lock exists, acquire it
-  localStorage.setItem(REFRESH_LOCK_KEY, now.toString());
-  return true;
-}
-
-/**
- * Release the cross-tab refresh lock.
- */
-function releaseRefreshLock(): void {
-  localStorage.removeItem(REFRESH_LOCK_KEY);
-}
-
-/**
- * Check if a refresh is in progress (in any tab).
- */
-function isRefreshInProgress(): boolean {
-  const existing = localStorage.getItem(REFRESH_LOCK_KEY);
-  if (!existing) return false;
-
-  const lockTime = parseInt(existing, 10);
-  // Validate parseInt succeeded before arithmetic operations
-  if (isNaN(lockTime)) {
-    // Invalid lock value, consider it not in progress
-    return false;
-  }
-  const now = Date.now();
-
-  // Consider stale if > 10s old
-  return (now - lockTime) <= REFRESH_LOCK_TIMEOUT;
-}
+// In-memory coalescing lock: all concurrent 401s within this tab share one refresh request.
+let _refreshPromise: Promise<string | null> | null = null;
 
 function toHeaderRecord(headers?: HeadersInit): Record<string, string> {
   if (!headers) {
@@ -163,7 +108,7 @@ async function refreshToken(): Promise<string | null> {
     const newToken = data.access_token;
     updateStoredAccessToken(newToken);
     return newToken;
-  } catch (error) {
+  } catch {
     // Network error or other issue
     return null;
   }
@@ -205,7 +150,7 @@ async function apiRequest<T>(
   includeJsonContentType: boolean,
   returnRawResponse = false,
 ): Promise<T> {
-  const token = localStorage.getItem("auth_token");
+  const token = getStoredAuthTokens().token;
   const headers = buildRequestHeaders(options, token, includeJsonContentType);
 
   let res: Response;
@@ -234,76 +179,23 @@ async function apiRequest<T>(
       throw parsedAppError;
     }
 
-    // Try to acquire refresh lock (cross-tab synchronized)
-    if (!tryAcquireRefreshLock()) {
-      // Another tab is refreshing — wait for the lock to be released via StorageEvent.
-      return new Promise((resolve, reject) => {
-        let timeoutId: ReturnType<typeof setTimeout>;
-
-        const cleanup = () => {
-          clearTimeout(timeoutId);
-          window.removeEventListener("storage", onStorage);
-        };
-
-        const retry = () => {
-          cleanup();
-          const newToken = localStorage.getItem("auth_token");
-          if (!newToken) {
-            reject(new Error("Session expired. Please login again."));
-            return;
-          }
-          const newHeaders = {
-            ...headers,
-            Authorization: `Bearer ${newToken}`,
-          };
-          fetch(`${API_BASE_URL}${path}`, { ...options, headers: newHeaders, credentials: "include" })
-            .then(async (retryRes) => {
-              if (!retryRes.ok) {
-                const parsedAppError = await parseFailureResponse(retryRes, "API request failed");
-                console.error(formatErrorForLogging(parsedAppError));
-                throw parsedAppError;
-              }
-              return returnRawResponse ? (retryRes as T) : parseSuccessResponse<T>(retryRes);
-            })
-            .then(resolve)
-            .catch(reject);
-        };
-
-        const onStorage = (event: StorageEvent) => {
-          // The lock is released when the key is removed from localStorage.
-          if (event.key === REFRESH_LOCK_KEY && event.newValue === null) {
-            retry();
-          }
-        };
-
-        window.addEventListener("storage", onStorage);
-
-        timeoutId = setTimeout(() => {
-          cleanup();
-          reject(new Error("Token refresh timeout"));
-        }, 15000);
+    // Coalesce concurrent 401s: all share one refresh network request.
+    if (!_refreshPromise) {
+      _refreshPromise = refreshToken().finally(() => {
+        _refreshPromise = null;
       });
     }
-
-    // We acquired the lock, perform the refresh
-    let newToken: string | null = null;
-    try {
-      newToken = await refreshToken();
-    } finally {
-      releaseRefreshLock();
-    }
+    const newToken = await _refreshPromise;
 
     if (!newToken) {
-      // Refresh failed — clear tokens and redirect to login, but only when not
-      // already on the login/account page to avoid a redirect loop.
-      clearStoredAuthTokens();
+      // Refresh failed — redirect to login unless already there.
       if (!window.location.pathname.startsWith("/account")) {
         window.location.href = "/account";
       }
       throw new Error("Session expired. Please login again.");
     }
 
-    // Retry the original request with new token
+    // Retry the original request with the refreshed token.
     const newHeaders = {
       ...headers,
       Authorization: `Bearer ${newToken}`,

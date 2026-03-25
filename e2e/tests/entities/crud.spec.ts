@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginAsAdminViaAPI, clearAuthState } from '../../fixtures/auth-helpers';
+import { loginAsAdminViaAPI, clearAuthState, getAccessToken } from '../../fixtures/auth-helpers';
 import { generateEntityName } from '../../fixtures/test-data';
 
 test.describe('Entity CRUD Operations', () => {
@@ -174,7 +174,7 @@ test.describe('Entity CRUD Operations', () => {
     const prefix = Date.now().toString().slice(-8); // 8 digits to keep slugs short
     const entity1 = `srch-${prefix}-apple`;
     const entity2 = `srch-${prefix}-banana`;
-    const token = await page.evaluate(() => localStorage.getItem('auth_token'));
+    const token = await getAccessToken(page);
 
     for (const slug of [entity1, entity2]) {
       const resp = await page.request.post(`${API_URL}/api/entities/`, {

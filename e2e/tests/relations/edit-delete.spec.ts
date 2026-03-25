@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginAsAdminViaAPI, clearAuthState } from '../../fixtures/auth-helpers';
+import { loginAsAdminViaAPI, clearAuthState, getAccessToken } from '../../fixtures/auth-helpers';
 import { generateEntityName, generateSourceName } from '../../fixtures/test-data';
 
 test.describe('Relation Edit and Delete', () => {
@@ -42,7 +42,7 @@ test.describe('Relation Edit and Delete', () => {
 
     // Create a relation via API for deterministic setup
     const API_URL = process.env.API_URL || 'http://localhost:8001';
-    const token = await page.evaluate(() => localStorage.getItem('auth_token'));
+    const token = await getAccessToken(page);
     const resp = await page.request.post(`${API_URL}/api/relations/`, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -97,7 +97,7 @@ test.describe('Relation Edit and Delete', () => {
 
   test('should save a relation update and create a new revision', async ({ page }) => {
     const API_URL = process.env.API_URL || 'http://localhost:8001';
-    const token = await page.evaluate(() => localStorage.getItem('auth_token'));
+    const token = await getAccessToken(page);
 
     // Capture the updated_at before edit
     const beforeResp = await page.request.get(`${API_URL}/api/relations/${relationId}`, {

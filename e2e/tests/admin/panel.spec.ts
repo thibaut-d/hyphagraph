@@ -134,10 +134,8 @@ test.describe('Admin Panel', () => {
     }
     const { access_token: regularToken } = await loginResp.json();
 
-    // Set auth state as the regular user
-    const BASE_URL = process.env.BASE_URL || 'http://localhost';
-    await page.goto(BASE_URL);
-    await page.evaluate((token) => localStorage.setItem('auth_token', token), regularToken);
+    // Navigate to BASE_URL with networkidle; httpOnly refresh cookie from login triggers auto-restore
+    await page.goto(process.env.BASE_URL || 'http://localhost', { waitUntil: 'networkidle' });
 
     // Navigate to admin panel as regular user
     await page.goto('/admin');

@@ -4,35 +4,33 @@ export type AuthTokens = {
   token: string | null;
 };
 
-function readAuthTokens(): AuthTokens {
-  return {
-    token: localStorage.getItem("auth_token"),
-  };
-}
+// In-memory token storage — not accessible to XSS payloads unlike localStorage.
+// The companion httpOnly refresh cookie (managed by the browser) is the persistence layer.
+let _token: string | null = null;
 
 function dispatchAuthStateChanged(): void {
   window.dispatchEvent(
     new CustomEvent<AuthTokens>(AUTH_STATE_CHANGED_EVENT, {
-      detail: readAuthTokens(),
+      detail: { token: _token },
     }),
   );
 }
 
 export function getStoredAuthTokens(): AuthTokens {
-  return readAuthTokens();
+  return { token: _token };
 }
 
 export function setStoredAuthTokens(token: string): void {
-  localStorage.setItem("auth_token", token);
+  _token = token;
   dispatchAuthStateChanged();
 }
 
 export function updateStoredAccessToken(token: string): void {
-  localStorage.setItem("auth_token", token);
+  _token = token;
   dispatchAuthStateChanged();
 }
 
 export function clearStoredAuthTokens(): void {
-  localStorage.removeItem("auth_token");
+  _token = null;
   dispatchAuthStateChanged();
 }

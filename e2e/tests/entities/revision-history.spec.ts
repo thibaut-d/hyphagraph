@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginAsAdminViaAPI, clearAuthState } from '../../fixtures/auth-helpers';
+import { loginAsAdminViaAPI, clearAuthState, getAccessToken } from '../../fixtures/auth-helpers';
 import { generateEntityName, generateSourceName } from '../../fixtures/test-data';
 
 test.describe('Revision History', () => {
@@ -25,7 +25,7 @@ test.describe('Revision History', () => {
     await page.waitForURL(/\/entities\/([a-f0-9-]+)/);
     const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1] || '';
 
-    const token = await page.evaluate(() => localStorage.getItem('auth_token'));
+    const token = await getAccessToken(page);
 
     // Capture updated_at before edit
     const beforeResp = await page.request.get(`${API_URL}/api/entities/${entityId}`, {
@@ -89,7 +89,7 @@ test.describe('Revision History', () => {
     await page.waitForURL(/\/entities\/([a-f0-9-]+)/);
     const entity2Id = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1] || '';
 
-    const token = await page.evaluate(() => localStorage.getItem('auth_token'));
+    const token = await getAccessToken(page);
 
     // Create relation via API
     const createResp = await page.request.post(`${API_URL}/api/relations/`, {

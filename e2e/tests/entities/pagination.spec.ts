@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginAsAdminViaAPI, clearAuthState } from '../../fixtures/auth-helpers';
+import { loginAsAdminViaAPI, clearAuthState, getAccessToken } from '../../fixtures/auth-helpers';
 
 const PAGE_SIZE = 50; // Must match frontend EntitiesView PAGE_SIZE
 
@@ -15,7 +15,7 @@ test.describe('Entity List Pagination', () => {
   // E2E-G6 — Pagination correctness: more entities load when the sentinel is reached
   test('should load additional entities when scrolling past first page', async ({ page }) => {
     const API_URL = process.env.API_URL || 'http://localhost:8001';
-    const token = await page.evaluate(() => localStorage.getItem('auth_token'));
+    const token = await getAccessToken(page);
 
     // Check current entity count; create just enough to exceed PAGE_SIZE
     const countResp = await page.request.get(`${API_URL}/api/entities/?limit=1&offset=0`, {
