@@ -16,27 +16,23 @@ test.describe('Relation CRUD Operations', () => {
     const token = await page.evaluate(() => localStorage.getItem('auth_token'));
 
     // Pre-create a source and two entities so the form dropdowns have options
+    const ts = Date.now();
     const sourceResp = await page.request.post(`${API_URL}/api/sources/`, {
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      data: { title: `Rel-CRUD-Source-${Date.now()}`, url: `https://example.com/rel-crud-${Date.now()}` },
+      data: { title: `Rel-CRUD-Source-${ts}`, url: `https://example.com/rel-crud-${ts}`, kind: 'study' },
     });
-    if (!sourceResp.ok()) {
-      test.skip(true, `Source pre-creation failed: ${sourceResp.status()} — seed data to run this test`);
-      return;
-    }
+    expect(sourceResp.ok()).toBeTruthy();
 
     const entity1Resp = await page.request.post(`${API_URL}/api/entities/`, {
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      data: { slug: `rel-crud-e1-${Date.now()}`, summary_en: 'Relation CRUD entity 1' },
+      data: { slug: `rel-crud-e1-${ts}`, summary: { en: 'Relation CRUD entity 1' } },
     });
     const entity2Resp = await page.request.post(`${API_URL}/api/entities/`, {
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      data: { slug: `rel-crud-e2-${Date.now()}`, summary_en: 'Relation CRUD entity 2' },
+      data: { slug: `rel-crud-e2-${ts}`, summary: { en: 'Relation CRUD entity 2' } },
     });
-    if (!entity1Resp.ok() || !entity2Resp.ok()) {
-      test.skip(true, 'Entity pre-creation failed — seed data to run this test');
-      return;
-    }
+    expect(entity1Resp.ok()).toBeTruthy();
+    expect(entity2Resp.ok()).toBeTruthy();
 
     // Navigate to create relation page
     await page.goto('/relations/new');
@@ -61,13 +57,9 @@ test.describe('Relation CRUD Operations', () => {
     await page.getByRole('button', { name: /add role/i }).click();
     await page.getByRole('button', { name: /add role/i }).click();
 
-    // Select entity for each role
-    const entitySelects = page.getByLabel(/^entity$/i);
-    const count = await entitySelects.count();
-    if (count < 2) {
-      test.skip(true, 'Entity select fields not rendered after Add Role — check CreateRelationView');
-      return;
-    }
+    // Select entity for each role — MUI v7 Select renders as role="combobox", not findable via getByLabel
+    const entitySelects = page.getByRole('combobox', { name: /^entity$/i });
+    await expect(entitySelects).toHaveCount(2, { timeout: 5000 });
 
     // First role entity
     await entitySelects.first().click();

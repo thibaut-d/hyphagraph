@@ -17,6 +17,22 @@ async function globalSetup(config: FullConfig) {
     // Reset to a known baseline and re-run startup bootstrap.
     await resetDatabase();
 
+    // Seed review queue data for E2E tests.
+    const seedResp = await fetch(`${API_URL}/api/test/seed-review-queue`, { method: 'POST' });
+    if (!seedResp.ok) {
+      console.warn(`⚠️  Review queue seeding failed: ${seedResp.status}`);
+    } else {
+      console.log('🌱 Review queue seed data created');
+    }
+
+    // Seed UI categories for entity filter tests.
+    const catResp = await fetch(`${API_URL}/api/test/seed-ui-categories`, { method: 'POST' });
+    if (!catResp.ok) {
+      console.warn(`⚠️  UI categories seeding failed: ${catResp.status}`);
+    } else {
+      console.log('🌱 UI categories seed data created');
+    }
+
     // Verify the admin bootstrap is available after reset.
     const response = await fetch(`${API_URL}/api/auth/login`, {
       method: 'POST',

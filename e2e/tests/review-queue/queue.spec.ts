@@ -98,20 +98,14 @@ test.describe('LLM Extraction Review Queue', () => {
   });
 
   // US-LLM-02 — Approve / Reject Extractions
-  // These tests require seeded staged_extractions data in the E2E database.
-  // They skip with a descriptive message when the queue is empty.
+  // Seed data created by global-setup via POST /api/test/seed-review-queue
 
   test('should show select-all button when extractions are present', async ({ page }) => {
     await page.goto('/review-queue');
     await page.waitForLoadState('domcontentloaded');
 
-    const selectAllButton = page.getByRole('button', { name: /select all/i });
-    const hasItems = await selectAllButton.isVisible({ timeout: 3000 }).catch(() => false);
-    if (!hasItems) {
-      test.skip(true, 'Review queue is empty — seed staged_extractions data to exercise this test');
-      return;
-    }
-    await expect(selectAllButton).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Review Queue' })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('button', { name: /select all/i })).toBeVisible({ timeout: 10000 });
   });
 
   // US-LLM-03 — Batch Approve / Reject
@@ -119,13 +113,10 @@ test.describe('LLM Extraction Review Queue', () => {
     await page.goto('/review-queue');
     await page.waitForLoadState('domcontentloaded');
 
-    const selectAllButton = page.getByRole('button', { name: /select all/i });
-    const hasItems = await selectAllButton.isVisible({ timeout: 3000 }).catch(() => false);
-    if (!hasItems) {
-      test.skip(true, 'Review queue is empty — seed staged_extractions data to exercise this test');
-      return;
-    }
+    await expect(page.getByRole('heading', { name: 'Review Queue' })).toBeVisible({ timeout: 10000 });
 
+    const selectAllButton = page.getByRole('button', { name: /select all/i });
+    await expect(selectAllButton).toBeVisible({ timeout: 10000 });
     await selectAllButton.click();
     await page.waitForTimeout(300);
 
@@ -138,19 +129,11 @@ test.describe('LLM Extraction Review Queue', () => {
     await page.goto('/review-queue');
     await page.waitForLoadState('domcontentloaded');
 
+    await expect(page.getByRole('heading', { name: 'Review Queue' })).toBeVisible({ timeout: 10000 });
+
     const viewEntityLink = page.getByRole('link', { name: /view entity/i }).first();
-    const viewRelationLink = page.getByRole('link', { name: /view relation/i }).first();
-
-    const hasEntity = await viewEntityLink.isVisible({ timeout: 2000 }).catch(() => false);
-    const hasRelation = await viewRelationLink.isVisible({ timeout: 1000 }).catch(() => false);
-
-    if (!hasEntity && !hasRelation) {
-      test.skip(true, 'Review queue is empty — seed staged_extractions data to exercise this test');
-      return;
-    }
-
-    const link = hasEntity ? viewEntityLink : viewRelationLink;
-    await link.click();
-    await expect(page).toHaveURL(/\/(entities|relations)\/[a-f0-9-]+/);
+    await expect(viewEntityLink).toBeVisible({ timeout: 10000 });
+    await viewEntityLink.click();
+    await expect(page).toHaveURL(/\/entities\/[a-f0-9-]+/);
   });
 });

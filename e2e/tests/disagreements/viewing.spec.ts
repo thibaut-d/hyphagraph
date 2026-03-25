@@ -66,11 +66,8 @@ test.describe('Disagreements View', () => {
     const disagreementsLink = page.getByRole('link', { name: /disagree/i }).or(
       page.getByRole('button', { name: /disagree/i })
     );
-    if (!await disagreementsLink.isVisible({ timeout: 3000 })) {
-      test.skip(true, 'Disagreements link not present on entity detail page');
-      return;
-    }
-    await disagreementsLink.click();
+    await expect(disagreementsLink.first()).toBeVisible({ timeout: 10000 });
+    await disagreementsLink.first().click();
     await expect(page).toHaveURL(new RegExp(`/entities/${entityId}/disagreements`));
   });
 
@@ -89,10 +86,7 @@ test.describe('Disagreements View', () => {
     const backButton = page.getByRole('button', { name: /back/i }).or(
       page.getByRole('link', { name: /back|entity/i })
     );
-    if (!await backButton.first().isVisible({ timeout: 3000 })) {
-      test.skip(true, 'Back button not present on disagreements page');
-      return;
-    }
+    await expect(backButton.first()).toBeVisible({ timeout: 10000 });
     await backButton.first().click();
     await expect(page).toHaveURL(new RegExp(`/entities/${entityId}$`));
   });
@@ -112,10 +106,7 @@ test.describe('Disagreements View', () => {
     const synthButton = page.getByRole('button', { name: /synthesis/i }).or(
       page.getByRole('link', { name: /synthesis/i })
     );
-    if (!await synthButton.first().isVisible({ timeout: 3000 })) {
-      test.skip(true, 'Synthesis button not present on disagreements page');
-      return;
-    }
+    await expect(synthButton.first()).toBeVisible({ timeout: 10000 });
     await synthButton.first().click();
     await expect(page).toHaveURL(new RegExp(`/entities/${entityId}/synthesis`));
   });

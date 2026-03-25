@@ -87,6 +87,129 @@ async def reset_database(db: AsyncSession = Depends(get_db)):
         )
 
 
+@router.post("/seed-review-queue", dependencies=[Depends(check_testing_mode)])
+async def seed_review_queue(db: AsyncSession = Depends(get_db)):
+    """
+    Seed the review queue with staged extraction records for E2E testing.
+
+    Creates a source, an entity, and pending staged extractions so that
+    review queue tests can exercise the approve/reject/select-all UI paths.
+
+    Only available when TESTING=True.
+    """
+    from datetime import datetime, timezone
+    from app.models.source import Source
+    from app.models.source_revision import SourceRevision
+    from app.models.entity import Entity
+    from app.models.entity_revision import EntityRevision
+    from app.models.staged_extraction import StagedExtraction
+
+    try:
+        # --- Source ---
+        source = Source()
+        db.add(source)
+        await db.flush()
+
+        source_rev = SourceRevision(
+            source_id=source.id,
+            kind="study",
+            title="E2E Seed Source",
+            url="https://example.com/seed-source",
+            status="confirmed",
+            is_current=True,
+        )
+        db.add(source_rev)
+
+        # --- Entity (needed for materialized_entity_id link) ---
+        entity = Entity()
+        db.add(entity)
+        await db.flush()
+
+        entity_rev = EntityRevision(
+            entity_id=entity.id,
+            slug=f"seed-entity-{str(entity.id)[:8]}",
+            status="confirmed",
+            is_current=True,
+        )
+        db.add(entity_rev)
+
+        # --- Staged Extractions ---
+        extractions = [
+            StagedExtraction(
+                extraction_type="entity",
+                status="pending",
+                source_id=source.id,
+                extraction_data={"slug": "aspirin", "summary": {"en": "A common painkiller"}},
+                validation_score=0.85,
+                materialized_entity_id=entity.id,
+            ),
+            StagedExtraction(
+                extraction_type="relation",
+                status="pending",
+                source_id=source.id,
+                extraction_data={"kind": "inhibits", "confidence": 0.9},
+                validation_score=0.78,
+            ),
+            StagedExtraction(
+                extraction_type="claim",
+                status="pending",
+                source_id=source.id,
+                extraction_data={"text": "Aspirin reduces inflammation", "confidence": 0.92},
+                validation_score=0.92,
+            ),
+        ]
+        for ex in extractions:
+            db.add(ex)
+
+        await db.commit()
+
+        return {
+            "message": "Review queue seeded successfully",
+            "source_id": str(source.id),
+            "entity_id": str(entity.id),
+            "extractions_created": len(extractions),
+        }
+
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to seed review queue: {str(e)}"
+        )
+
+
+@router.post("/seed-ui-categories", dependencies=[Depends(check_testing_mode)])
+async def seed_ui_categories(db: AsyncSession = Depends(get_db)):
+    """
+    Seed UI categories for E2E testing.
+
+    Creates sample UI categories so that entity filter tests can exercise
+    the category filter section in the filter drawer.
+
+    Only available when TESTING=True.
+    """
+    from app.models.ui_category import UiCategory
+
+    try:
+        categories = [
+            UiCategory(slug="drugs", labels={"en": "Drugs", "fr": "Médicaments"}, order=1),
+            UiCategory(slug="diseases", labels={"en": "Diseases", "fr": "Maladies"}, order=2),
+            UiCategory(slug="mechanisms", labels={"en": "Mechanisms", "fr": "Mécanismes"}, order=3),
+        ]
+        for cat in categories:
+            db.add(cat)
+
+        await db.commit()
+        return {"message": "UI categories seeded", "count": len(categories)}
+
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to seed UI categories: {str(e)}"
+        )
+
+
 @router.get("/health", dependencies=[Depends(check_testing_mode)])
 async def test_health():
     """

@@ -1,27 +1,35 @@
 import { useTranslation } from "react-i18next";
 import i18n from "i18next";
-import { IconButton, Tooltip } from "@mui/material";
+import { Button, Tooltip } from "@mui/material";
 import LanguageIcon from "@mui/icons-material/Language";
 
 /**
  * Language switcher component.
  *
  * Toggles between English and French languages.
+ * The button label shows the language you will switch TO (e.g. "FR" when current is English).
  */
 export function LanguageSwitch() {
   const { t } = useTranslation();
+  const nextLang = i18n.language === "en" ? "fr" : "en";
+  const nextLangLabel = i18n.language === "en" ? "FR" : "EN";
 
   const toggleLanguage = () => {
-    const newLang = i18n.language === "en" ? "fr" : "en";
-    i18n.changeLanguage(newLang);
-    localStorage.setItem("hyphagraph_lang", newLang);
+    i18n.changeLanguage(nextLang);
+    localStorage.setItem("hyphagraph_lang", nextLang);
   };
 
   return (
     <Tooltip title={t("common.change_language", "Change Language")}>
-      <IconButton color="inherit" onClick={toggleLanguage} size="large">
-        <LanguageIcon />
-      </IconButton>
+      <Button
+        color="inherit"
+        onClick={toggleLanguage}
+        size="small"
+        startIcon={<LanguageIcon />}
+        aria-label={nextLangLabel}
+      >
+        {nextLangLabel}
+      </Button>
     </Tooltip>
   );
 }

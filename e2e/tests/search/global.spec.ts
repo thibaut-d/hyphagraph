@@ -24,12 +24,9 @@ test.describe('Global Search', () => {
 
   test('should be accessible from the main navigation', async ({ page }) => {
     await page.goto('/');
-    // Search link or icon in the nav — optional UI element, skip if not present
+    await page.waitForLoadState('networkidle');
     const searchNavLink = page.getByRole('link', { name: /search/i }).first();
-    if (!await searchNavLink.isVisible({ timeout: 3000 })) {
-      test.skip(true, 'Search nav link not present in this environment');
-      return;
-    }
+    await expect(searchNavLink).toBeVisible({ timeout: 5000 });
     await searchNavLink.click();
     await expect(page).toHaveURL(/\/search/);
   });

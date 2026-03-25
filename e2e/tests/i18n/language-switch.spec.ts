@@ -16,15 +16,9 @@ test.describe('Language Switch (i18n)', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    // Language switcher: LanguageSwitch component in the AppBar
-    const langSwitcher = page.locator('[aria-label*="language"], [title*="language"]').or(
-      page.locator('text=/en|fr|english|français/i').first()
-    );
-    if (!await langSwitcher.first().isVisible({ timeout: 3000 })) {
-      test.skip(true, 'Language switcher not present — i18n may not be implemented in this environment');
-      return;
-    }
-    await expect(langSwitcher.first()).toBeVisible();
+    // LanguageSwitch component in the AppBar — shows "FR" button (to switch to French)
+    const langSwitcher = page.getByRole('button', { name: /^(fr|en)$/i });
+    await expect(langSwitcher.first()).toBeVisible({ timeout: 5000 });
   });
 
   test('should switch UI language to French', async ({ page }) => {
@@ -34,14 +28,9 @@ test.describe('Language Switch (i18n)', () => {
     // Note the current heading text in English
     await expect(page.getByRole('heading', { name: 'Entities' })).toBeVisible();
 
-    // Find and click the language switcher
-    const frButton = page.getByRole('button', { name: /fr|français/i }).or(
-      page.locator('[data-lang="fr"]')
-    );
-    if (!await frButton.first().isVisible({ timeout: 3000 })) {
-      test.skip(true, 'French language button not visible — language switcher may not be implemented');
-      return;
-    }
+    // Find and click the FR button (language switcher shows next lang to switch to)
+    const frButton = page.getByRole('button', { name: /^fr$/i });
+    await expect(frButton.first()).toBeVisible({ timeout: 5000 });
     await frButton.first().click();
 
     // After switching to French the heading must no longer read "Entities" in English
@@ -52,20 +41,13 @@ test.describe('Language Switch (i18n)', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    // Switch to French first if the button exists
-    const frButton = page.getByRole('button', { name: /fr|français/i }).or(
-      page.locator('[data-lang="fr"]')
-    );
-    if (!await frButton.first().isVisible({ timeout: 2000 })) {
-      test.skip(true, 'French language button not visible — language switcher may not be implemented');
-      return;
-    }
+    // Switch to French first
+    const frButton = page.getByRole('button', { name: /^fr$/i });
+    await expect(frButton.first()).toBeVisible({ timeout: 5000 });
     await frButton.first().click();
 
     // Then switch back to English
-    const enButton = page.getByRole('button', { name: /en|english/i }).or(
-      page.locator('[data-lang="en"]')
-    );
+    const enButton = page.getByRole('button', { name: /^en$/i });
     await expect(enButton.first()).toBeVisible({ timeout: 3000 });
     await enButton.first().click();
 
@@ -78,13 +60,8 @@ test.describe('Language Switch (i18n)', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    const frButton = page.getByRole('button', { name: /fr|français/i }).or(
-      page.locator('[data-lang="fr"]')
-    );
-    if (!await frButton.first().isVisible({ timeout: 2000 })) {
-      test.skip(true, 'French language button not visible — language switcher may not be implemented');
-      return;
-    }
+    const frButton = page.getByRole('button', { name: /^fr$/i });
+    await expect(frButton.first()).toBeVisible({ timeout: 5000 });
     await frButton.first().click();
 
     // Navigate to a different page

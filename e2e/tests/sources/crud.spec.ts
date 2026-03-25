@@ -147,13 +147,17 @@ test.describe('Source CRUD Operations', () => {
 
     // Go to sources list
     await page.goto('/sources');
+    await expect(page.getByRole('heading', { name: 'Sources' })).toBeVisible();
 
-    // Search for specific source
-    const searchInput = page.getByPlaceholder(/search/i);
-    if (!await searchInput.isVisible({ timeout: 2000 })) {
-      test.skip(true, 'Search input not present in sources list in this environment');
-      return;
+    // Open filter drawer to access search input
+    const filtersButton = page.getByRole('button', { name: /filters/i });
+    if (await filtersButton.isVisible({ timeout: 2000 })) {
+      await filtersButton.click();
     }
+
+    // Search for specific source (input is inside the filter drawer)
+    const searchInput = page.getByPlaceholder(/search/i).first();
+    await expect(searchInput).toBeVisible({ timeout: 5000 });
     await searchInput.fill(source1);
 
     // Should show matching source

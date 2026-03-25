@@ -50,15 +50,10 @@ test.describe('Relation Export', () => {
     await expect(exportButton).toBeVisible({ timeout: 5000 });
     await exportButton.click();
 
-    // After clicking, a menu or dialog may show format options.
-    // RDF is an optional export format — skip if the option is not present.
     const rdfOption = page.getByRole('menuitem', { name: /rdf/i }).or(
       page.getByRole('button', { name: /rdf/i })
     );
-    if (!await rdfOption.isVisible({ timeout: 2000 })) {
-      test.skip(true, 'RDF export option not present in this environment');
-      return;
-    }
+    await expect(rdfOption).toBeVisible({ timeout: 3000 });
     const [download] = await Promise.all([
       page.waitForEvent('download', { timeout: 10000 }),
       rdfOption.click(),

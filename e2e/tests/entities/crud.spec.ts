@@ -179,12 +179,9 @@ test.describe('Entity CRUD Operations', () => {
     for (const slug of [entity1, entity2]) {
       const resp = await page.request.post(`${API_URL}/api/entities/`, {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        data: { slug, summary_en: `Test entity ${slug}` },
+        data: { slug, summary: { en: `Test entity ${slug}` } },
       });
-      if (!resp.ok()) {
-        test.skip(true, `Entity creation via API failed: ${resp.status()} — seed entity data to run this test`);
-        return;
-      }
+      expect(resp.ok()).toBeTruthy();
     }
 
     // Go to entities list
@@ -192,10 +189,7 @@ test.describe('Entity CRUD Operations', () => {
 
     // Search for specific entity (autocomplete dropdown)
     const searchInput = page.getByPlaceholder(/search/i);
-    if (!await searchInput.isVisible({ timeout: 2000 })) {
-      test.skip(true, 'Search input not present on entities list — cannot test autocomplete');
-      return;
-    }
+    await expect(searchInput).toBeVisible({ timeout: 5000 });
     await searchInput.fill(entity1);
 
     // The search shows results in a listbox dropdown, not in the main list

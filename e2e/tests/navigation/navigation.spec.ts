@@ -44,14 +44,10 @@ test.describe('Navigation', () => {
     });
 
     test('should show review queue link only when authenticated', async ({ page }) => {
-      // Logged in: review queue link must exist in nav
-      await page.goto('/');
+      // Wait for networkidle so auth context has time to hydrate from localStorage
+      await page.goto('/', { waitUntil: 'networkidle' });
       const reviewLink = page.getByRole('link', { name: /review/i }).first();
-      if (!await reviewLink.isVisible({ timeout: 2000 })) {
-        test.skip(true, 'Review queue nav link not present in this environment');
-        return;
-      }
-      await expect(reviewLink).toBeVisible();
+      await expect(reviewLink).toBeVisible({ timeout: 10000 });
     });
   });
 
@@ -81,10 +77,7 @@ test.describe('Navigation', () => {
       await expect(page.locator('.MuiDrawer-paper')).toBeVisible({ timeout: 3000 });
       // Click a nav link in the drawer
       const entitiesLink = page.getByRole('link', { name: /entities/i }).first();
-      if (!await entitiesLink.isVisible({ timeout: 2000 })) {
-        test.skip(true, 'Entities link not found in mobile drawer');
-        return;
-      }
+      await expect(entitiesLink).toBeVisible({ timeout: 10000 });
       await entitiesLink.click();
       await expect(page).toHaveURL(/\/entities/);
     });

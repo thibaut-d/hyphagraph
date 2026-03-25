@@ -46,12 +46,7 @@ test.describe('PubMed Bulk Import', () => {
     await searchInput.fill('aspirin');
     await page.getByRole('button', { name: /search.*pubmed/i }).click();
 
-    // PubMed API requires live network — skip when unavailable
-    const table = page.getByRole('table');
-    if (!await table.isVisible({ timeout: 15000 })) {
-      test.skip(true, 'PubMed API unreachable — live network required to run this test');
-      return;
-    }
+    await expect(page.getByRole('table')).toBeVisible({ timeout: 20000 });
     await expect(page.getByRole('columnheader', { name: /article/i })).toBeVisible();
     await expect(page.getByRole('columnheader', { name: /authors/i })).toBeVisible();
   });
@@ -63,11 +58,7 @@ test.describe('PubMed Bulk Import', () => {
     await searchInput.fill('vitamin D');
     await page.getByRole('button', { name: /search.*pubmed/i }).click();
 
-    const table = page.getByRole('table');
-    if (!await table.isVisible({ timeout: 15000 })) {
-      test.skip(true, 'PubMed API unreachable — live network required to run this test');
-      return;
-    }
+    await expect(page.getByRole('table')).toBeVisible({ timeout: 20000 });
     const checkboxes = page.getByRole('checkbox');
     const secondCheckbox = checkboxes.nth(1);
     await expect(secondCheckbox).toBeChecked();
@@ -84,11 +75,7 @@ test.describe('PubMed Bulk Import', () => {
     await searchInput.fill('COVID-19 vaccine');
     await page.getByRole('button', { name: /search.*pubmed/i }).click();
 
-    const table = page.getByRole('table');
-    if (!await table.isVisible({ timeout: 15000 })) {
-      test.skip(true, 'PubMed API unreachable — live network required to run this test');
-      return;
-    }
+    await expect(page.getByRole('table')).toBeVisible({ timeout: 20000 });
     const importButton = page.getByRole('button', { name: /import.*article/i });
     await expect(importButton).toBeVisible();
     await expect(importButton).toBeEnabled();
@@ -114,13 +101,7 @@ test.describe('PubMed Bulk Import', () => {
     await searchInput.fill('https://pubmed.ncbi.nlm.nih.gov/?term=diabetes&filter=years.2023-2024');
     await page.getByRole('button', { name: /search.*pubmed/i }).click();
 
-    // PubMed API requires live network — skip when unavailable
-    const table = page.getByRole('table');
-    if (!await table.isVisible({ timeout: 15000 })) {
-      test.skip(true, 'PubMed API unreachable — live network required to run this test');
-      return;
-    }
-    await expect(table).toBeVisible();
+    await expect(page.getByRole('table')).toBeVisible({ timeout: 20000 });
   });
 
   test('should adjust max results with slider', async ({ page }) => {
@@ -145,11 +126,7 @@ test.describe('PubMed Bulk Import', () => {
     await searchInput.fill('cancer treatment');
     await page.getByRole('button', { name: /search.*pubmed/i }).click();
 
-    const table = page.getByRole('table');
-    if (!await table.isVisible({ timeout: 15000 })) {
-      test.skip(true, 'PubMed API unreachable — live network required to run this test');
-      return;
-    }
+    await expect(page.getByRole('table')).toBeVisible({ timeout: 20000 });
     await expect(page.getByRole('columnheader', { name: /article/i })).toBeVisible();
     await expect(page.getByRole('columnheader', { name: /authors/i })).toBeVisible();
     await expect(page.getByRole('columnheader', { name: /journal/i })).toBeVisible();
@@ -165,11 +142,7 @@ test.describe('PubMed Bulk Import', () => {
     await searchInput.fill('medicine');
     await page.getByRole('button', { name: /search.*pubmed/i }).click();
 
-    const table = page.getByRole('table');
-    if (!await table.isVisible({ timeout: 15000 })) {
-      test.skip(true, 'PubMed API unreachable — live network required to run this test');
-      return;
-    }
+    await expect(page.getByRole('table')).toBeVisible({ timeout: 20000 });
     const selectAllCheckbox = page.getByRole('checkbox').first();
     if (await selectAllCheckbox.isChecked()) {
       await selectAllCheckbox.click();

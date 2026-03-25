@@ -88,7 +88,7 @@ test.describe('Admin Panel', () => {
     const API_URL = process.env.API_URL || 'http://localhost:8001';
     const regResp = await page.request.post(`${API_URL}/api/auth/register`, {
       headers: { 'Content-Type': 'application/json' },
-      data: { email: testEmail, password: testPassword },
+      data: { email: testEmail, password: testPassword, password_confirmation: testPassword },
     });
     if (!regResp.ok()) return;
 
@@ -116,10 +116,10 @@ test.describe('Admin Panel', () => {
     // Register a regular (non-superuser) account
     const regResp = await page.request.post(`${API_URL}/api/auth/register`, {
       headers: { 'Content-Type': 'application/json' },
-      data: { email: testEmail, password: testPassword },
+      data: { email: testEmail, password: testPassword, password_confirmation: testPassword },
     });
     if (!regResp.ok()) {
-      test.skip(true, 'Regular user registration failed — email verification may be required');
+      test.skip(true, 'Regular user registration failed — check API availability');
       return;
     }
 
@@ -129,7 +129,7 @@ test.describe('Admin Panel', () => {
       form: { username: testEmail, password: testPassword },
     });
     if (!loginResp.ok()) {
-      test.skip(true, 'Regular user login failed — email verification may be required');
+      test.skip(true, 'Regular user login failed — check API availability');
       return;
     }
     const { access_token: regularToken } = await loginResp.json();
@@ -162,11 +162,6 @@ test.describe('Admin Panel', () => {
     await page.goto('/settings');
     await page.waitForLoadState('domcontentloaded');
 
-    const categoriesSection = page.locator('text=/categor/i').first();
-    if (!await categoriesSection.isVisible({ timeout: 3000 })) {
-      test.skip(true, 'UI categories section not present on /settings in this environment');
-      return;
-    }
-    await expect(categoriesSection).toBeVisible();
+    await expect(page.locator('text=/categor/i').first()).toBeVisible({ timeout: 10000 });
   });
 });

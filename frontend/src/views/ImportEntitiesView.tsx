@@ -148,7 +148,7 @@ export function ImportEntitiesView() {
               ref={fileInputRef}
               type="file"
               accept={format === "csv" ? ".csv,text/csv" : ".json,application/json"}
-              style={{ display: "none" }}
+              style={{ position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden" }}
               onChange={handleFileChange}
             />
             <Button

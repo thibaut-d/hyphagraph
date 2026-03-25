@@ -19,11 +19,14 @@ import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Alert,
+  Box,
+  Button,
   CircularProgress,
   Stack,
   Typography,
 } from "@mui/material";
 import InfoIcon from "@mui/icons-material/Info";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 import { SynthesisFooterSection } from "../components/synthesis/SynthesisFooterSection";
 import { SynthesisHeaderSection } from "../components/synthesis/SynthesisHeaderSection";
@@ -65,12 +68,24 @@ export function SynthesisView() {
     );
   }
 
-  // Error state
+  // Error state — always render back button so tests/users can navigate away
   if (error || !entity) {
     return (
-      <Alert severity="error">
-        {error || t("common.error", "An error occurred")}
-      </Alert>
+      <Stack spacing={2}>
+        <Box>
+          <Button
+            startIcon={<ArrowBackIcon />}
+            onClick={() => navigate(`/entities/${id}`)}
+            variant="outlined"
+            size="small"
+          >
+            {t("common.back", "Back")}
+          </Button>
+        </Box>
+        <Alert severity="error">
+          {error || t("common.error", "An error occurred")}
+        </Alert>
+      </Stack>
     );
   }
 

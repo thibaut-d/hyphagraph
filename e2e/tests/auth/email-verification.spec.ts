@@ -45,7 +45,7 @@ test.describe('Email Verification Flow', () => {
     // Register via API
     const regResp = await page.request.post(`${API_URL}/api/auth/register`, {
       headers: { 'Content-Type': 'application/json' },
-      data: { email, password },
+      data: { email, password, password_confirmation: password },
     });
     if (!regResp.ok()) {
       test.skip(true, 'Registration failed — cannot proceed with verification test');

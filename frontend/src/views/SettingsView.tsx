@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link as RouterLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Paper,
@@ -21,6 +21,7 @@ import {
   ArrowBack as ArrowBackIcon,
   Delete as DeleteIcon,
   PauseCircleOutline as DeactivateIcon,
+  Category as CategoryIcon,
 } from "@mui/icons-material";
 
 import { updateProfile, deactivateAccount, deleteAccount } from "../api/auth";
@@ -170,6 +171,31 @@ export function SettingsView() {
             </Stack>
           </form>
         </Box>
+
+        <Divider />
+
+        {/* Admin: UI categories (superusers only) */}
+        {user.is_superuser && (
+          <Box>
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+              {t("settings.categories_title", "UI Categories")}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {t(
+                "settings.categories_description",
+                "Manage the UI category taxonomy used to organise entities in the navigation."
+              )}
+            </Typography>
+            <Button
+              component={RouterLink}
+              to="/admin"
+              variant="outlined"
+              startIcon={<CategoryIcon />}
+            >
+              {t("settings.manage_categories", "Manage Categories")}
+            </Button>
+          </Box>
+        )}
 
         <Divider />
 

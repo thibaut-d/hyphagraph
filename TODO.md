@@ -1,10 +1,41 @@
 # Current Work
 
-**Last updated**: 2026-03-23 (full audit pass — 2 new open items added)
+**Last updated**: 2026-03-25 (E2E skipped-test fixes — all actionable skips resolved)
 
 ---
 
 ## Open Findings
+
+### E2E Skipped Tests — 2026-03-25
+
+Remaining `test.skip()` conditions after this session's fixes. All actionable skips resolved; remaining ones are intentional.
+
+#### Fixed
+
+- [x] **navigation.spec.ts** — Review queue link check: removed defensive skip; use `waitUntil:'networkidle'` + 10 s timeout for auth context hydration.
+- [x] **navigation.spec.ts** — Mobile drawer entities link: removed defensive skip; use `expect(...).toBeVisible({ timeout: 10000 })`.
+- [x] **relations/crud.spec.ts** — Entity select fields: `getByLabel(/^entity$/i)` doesn't find MUI v7 Select combobox buttons; changed to `getByRole('combobox', { name: /^entity$/i })`.
+- [x] **admin/panel.spec.ts** — "should restrict admin API" test: missing `password_confirmation` in registration → 422; fixed.
+- [x] **sources/crud.spec.ts** — Search test: search input is inside the filter drawer; updated test to open drawer first.
+- [x] **DisagreementsHeaderSection** — Synthesis button absent when no disagreements; added `Button component={RouterLink}` to the always-rendered header.
+- [x] **auth/email-verification.spec.ts** — Missing `password_confirmation` in registration call (prior session).
+- [x] **admin/panel.spec.ts** — Missing `password_confirmation` + misleading skip messages (prior session).
+- [x] **EntityDetailHeader** — No Synthesis or Disagreements navigation links (prior session).
+- [x] **SynthesisView / DisagreementsView** — Error state rendered with no back button when inference API fails (prior session).
+- [x] **LanguageSwitch** — Was `IconButton` with no text/aria-label; changed to `Button` showing next-language label ("FR"/"EN") (prior session).
+- [x] **SettingsView** — No UI-categories section; added superuser-only section linking to `/admin` (prior session).
+
+#### Intentional / acceptable skips
+
+- **PubMed import** tests: live network required — not fixable without network access or mocking.
+- **Review queue** tests: skip gracefully when `staged_extractions` table is empty — correct behavior.
+- **RDF export / CSV export**: optional features — skip if menu item absent is correct.
+- **Email verification** tests: skip when `EMAIL_VERIFICATION_REQUIRED=False` — correct for E2E env.
+- **File input** (`entities/import.spec.ts`): preview button stays disabled after Playwright `setInputFiles` on hidden input — browser automation limitation; test skips descriptively.
+- **LLM API key** (`document-upload.spec.ts`): requires `LLM_API_KEY` — environment-dependent.
+- **UI categories filter** (`entities/filters.spec.ts`): skip when no categories seeded — correct data-dependent behavior.
+
+---
 
 ### Data Flow Audit — Database to Frontend (2026-03-23)
 

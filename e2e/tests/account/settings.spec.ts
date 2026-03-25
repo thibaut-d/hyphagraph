@@ -88,12 +88,7 @@ test.describe('Account Settings', () => {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       form: { username: testEmail, password: originalPassword },
     });
-    if (!resp.ok()) {
-      // Email verification is likely required for new users in this environment.
-      // Skip with an explicit message rather than silently passing.
-      test.skip(true, 'Login failed for new user — email verification may be required; seed a verified user to run this test');
-      return;
-    }
+    expect(resp.ok()).toBeTruthy();
     const { access_token } = await resp.json();
 
     const BASE_URL = process.env.BASE_URL || 'http://localhost:3001';

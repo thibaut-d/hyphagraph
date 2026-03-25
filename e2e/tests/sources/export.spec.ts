@@ -99,15 +99,10 @@ test.describe('Source Export', () => {
     await expect(exportButton).toBeVisible({ timeout: 5000 });
     await exportButton.click();
 
-    // After clicking, a format menu or dialog may appear with CSV option.
-    // CSV is an optional export format — skip if not present.
     const csvOption = page.getByRole('menuitem', { name: /csv/i }).or(
       page.getByRole('button', { name: /csv/i })
     );
-    if (!await csvOption.isVisible({ timeout: 2000 })) {
-      test.skip(true, 'CSV export option not present in this environment');
-      return;
-    }
+    await expect(csvOption).toBeVisible({ timeout: 3000 });
     const [download] = await Promise.all([
       page.waitForEvent('download', { timeout: 10000 }),
       csvOption.click(),

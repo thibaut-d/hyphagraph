@@ -13,6 +13,8 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import SearchIcon from "@mui/icons-material/Search";
+import AutoGraphIcon from "@mui/icons-material/AutoGraph";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import { EntityRead } from "../../types/entity";
 import { EntityTermsDisplay } from "../EntityTermsDisplay";
 
@@ -38,7 +40,7 @@ export function EntityDetailHeader({
   return (
     <Paper sx={{ p: { xs: 2, sm: 3 } }}>
       <Stack spacing={2}>
-        <Box sx={{ display: "flex", gap: 1 }}>
+        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
           <Button
             component={RouterLink}
             to="/entities"
@@ -46,6 +48,25 @@ export function EntityDetailHeader({
             size="small"
           >
             {t("common.back", "Back")}
+          </Button>
+          <Button
+            component={RouterLink}
+            to={`/entities/${entity.id}/synthesis`}
+            startIcon={<AutoGraphIcon />}
+            size="small"
+            variant="outlined"
+          >
+            {t("entity.synthesis", "Synthesis")}
+          </Button>
+          <Button
+            component={RouterLink}
+            to={`/entities/${entity.id}/disagreements`}
+            startIcon={<WarningAmberIcon />}
+            size="small"
+            variant="outlined"
+            color="warning"
+          >
+            {t("entity.disagreements", "Disagreements")}
           </Button>
         </Box>
         <Stack

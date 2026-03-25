@@ -11,6 +11,7 @@ import {
   Typography,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import AutoGraphIcon from "@mui/icons-material/AutoGraph";
 import WarningIcon from "@mui/icons-material/Warning";
 
 interface DisagreementsHeaderSectionProps {
@@ -40,7 +41,7 @@ export function DisagreementsHeaderSection({
         </Typography>
       </Breadcrumbs>
 
-      <Box>
+      <Box sx={{ display: "flex", gap: 1 }}>
         <Button
           startIcon={<ArrowBackIcon />}
           onClick={onBack}
@@ -48,6 +49,15 @@ export function DisagreementsHeaderSection({
           size="small"
         >
           {t("common.back", "Back to entity")}
+        </Button>
+        <Button
+          component={RouterLink}
+          to={`/entities/${entityId}/synthesis`}
+          startIcon={<AutoGraphIcon />}
+          variant="outlined"
+          size="small"
+        >
+          {t("entity.synthesis", "Synthesis")}
         </Button>
       </Box>
 
