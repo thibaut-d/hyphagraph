@@ -132,7 +132,7 @@ export function Layout() {
 
           {/* Bug report */}
           <Tooltip title={t("bug_report.tooltip", "Report a bug")}>
-            <IconButton color="inherit" onClick={openBugReport} size="small">
+            <IconButton color="inherit" onClick={openBugReport} size="small" aria-label={t("bug_report.tooltip", "Report a bug")}>
               <BugReportIcon fontSize="small" />
             </IconButton>
           </Tooltip>

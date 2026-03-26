@@ -10,8 +10,8 @@ test.describe('Bug Report', () => {
   test.describe('Toolbar icon', () => {
     test('should show bug report icon on every page (anonymous)', async ({ page }) => {
       for (const path of ['/', '/entities', '/sources', '/search']) {
-        await page.goto(path, { waitUntil: 'domcontentloaded' });
-        await expect(page.getByRole('button', { name: /report a bug/i })).toBeVisible();
+        await page.goto(path, { waitUntil: 'networkidle' });
+        await expect(page.getByRole('button', { name: /report a bug/i })).toBeVisible({ timeout: 10000 });
       }
     });
 
@@ -91,8 +91,8 @@ test.describe('Bug Report', () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       expect(resp.ok()).toBeTruthy();
-      const { items } = await resp.json();
-      const found = items.some((r: { message: string }) => r.message === message);
+      const items: { message: string }[] = await resp.json();
+      const found = items.some((r) => r.message === message);
       expect(found).toBeTruthy();
     });
   });
