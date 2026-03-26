@@ -1,6 +1,6 @@
 # Current Work
 
-**Last updated**: 2026-03-25 (subject_slug/object_slug removed from ExtractedRelation)
+**Last updated**: 2026-03-26 (bug report system)
 
 ---
 

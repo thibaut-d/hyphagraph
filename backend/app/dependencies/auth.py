@@ -3,6 +3,8 @@ Authentication dependencies for FastAPI endpoints.
 
 Provides get_current_user dependency for protected endpoints.
 """
+from typing import Optional
+
 from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,6 +21,8 @@ from app.utils.errors import UnauthorizedException, ForbiddenException
 # OAuth2 scheme for token extraction
 # tokenUrl points to the login endpoint
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+# Same scheme but does not raise 401 when the header is absent
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
 
 async def get_current_user(
@@ -104,6 +108,24 @@ async def get_current_user(
         )
 
     return user
+
+
+async def get_optional_current_user(
+    token: Optional[str] = Depends(oauth2_scheme_optional),
+    db: AsyncSession = Depends(get_db),
+) -> Optional[User]:
+    """
+    Return the current user if a valid Bearer token is present, or None.
+
+    Never raises — use this for endpoints that accept both authenticated
+    and anonymous requests.
+    """
+    if not token:
+        return None
+    try:
+        return await get_current_user(token=token, db=db)
+    except Exception:
+        return None
 
 
 async def get_current_active_superuser(

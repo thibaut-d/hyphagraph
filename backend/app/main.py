@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import (
     admin,
     auth,
+    bug_reports,
     document_extraction,
     entities,
     entity_terms,
@@ -64,6 +65,7 @@ from app.models.refresh_token import RefreshToken  # noqa: F401
 from app.models.audit_log import AuditLog  # noqa: F401
 from app.models.relation_type import RelationType  # noqa: F401
 from app.models.staged_extraction import StagedExtraction  # noqa: F401
+from app.models.bug_report import BugReport  # noqa: F401
 
 
 def _load_test_helpers_router():
@@ -125,6 +127,7 @@ app.add_middleware(
 )
 
 # --- Routers (all under /api) ---
+app.include_router(bug_reports.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 app.include_router(sources.router, prefix="/api/sources", tags=["sources"])

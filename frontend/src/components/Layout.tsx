@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link as RouterLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
@@ -20,12 +20,14 @@ import HomeIcon from "@mui/icons-material/Home";
 import CategoryIcon from "@mui/icons-material/Category";
 import LibraryBooksIcon from "@mui/icons-material/LibraryBooks";
 import RateReviewIcon from "@mui/icons-material/RateReview";
+import BugReportIcon from "@mui/icons-material/BugReport";
 
 import { ProfileMenu } from "./ProfileMenu";
 import { LanguageSwitch } from "./layout/LanguageSwitch";
 import { DesktopNavigation } from "./layout/DesktopNavigation";
 import { MobileDrawer } from "./layout/MobileDrawer";
 import { MobileSearchDialog } from "./layout/MobileSearchDialog";
+import { BugReportDialog } from "./BugReportDialog";
 import { useAuthContext } from "../auth/AuthContext";
 import { usePageErrorHandler } from "../hooks/usePageErrorHandler";
 import { getEntityFilterOptions } from "../api/entities";
@@ -50,6 +52,9 @@ export function Layout() {
   // Mobile menu state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [bugReportOpen, setBugReportOpen] = useState(false);
+  const openBugReport = useCallback(() => setBugReportOpen(true), []);
+  const closeBugReport = useCallback(() => setBugReportOpen(false), []);
 
   // Entities dropdown state
   const [categories, setCategories] = useState<UICategoryOption[]>([]);
@@ -125,6 +130,13 @@ export function Layout() {
             </IconButton>
           </Tooltip>
 
+          {/* Bug report */}
+          <Tooltip title={t("bug_report.tooltip", "Report a bug")}>
+            <IconButton color="inherit" onClick={openBugReport} size="small">
+              <BugReportIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+
           {/* Language switch */}
           <LanguageSwitch />
 
@@ -154,6 +166,9 @@ export function Layout() {
         categories={categories}
         user={user}
       />
+
+      {/* Bug Report Dialog */}
+      <BugReportDialog open={bugReportOpen} onClose={closeBugReport} />
 
       {/* Mobile: Search Dialog */}
       <MobileSearchDialog
