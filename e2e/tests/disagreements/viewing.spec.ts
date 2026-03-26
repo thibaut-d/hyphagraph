@@ -104,11 +104,10 @@ test.describe('Disagreements View', () => {
     await page.goto(`/entities/${entityId}/disagreements`);
     await page.waitForLoadState('domcontentloaded');
 
-    const synthButton = page.getByRole('button', { name: /synthesis/i }).or(
-      page.getByRole('link', { name: /synthesis/i })
-    );
-    await expect(synthButton.first()).toBeVisible({ timeout: 10000 });
-    await synthButton.first().click();
+    // Use href-based selector: the synthesis nav is an anchor rendered by RouterLink
+    const synthLink = page.locator(`a[href*="/synthesis"]`);
+    await expect(synthLink.first()).toBeVisible({ timeout: 10000 });
+    await synthLink.first().click();
     await expect(page).toHaveURL(new RegExp(`/entities/${entityId}/synthesis`));
   });
 

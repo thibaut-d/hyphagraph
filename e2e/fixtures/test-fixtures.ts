@@ -56,7 +56,7 @@ function sanitize(str: string, maxLen: number): string {
  * Format: "[e2e] Suite Name > test name: label"
  */
 function makeTestLabel(testInfo: TestInfo, label: string): string {
-  const suite = testInfo.titlePath.slice(0, -1).join(' > ');
+  const suite = testInfo.titlePath.slice(0, -1).map(s => s.replace(/\\/g, '/')).join(' > ');
   return `[e2e] ${suite} > ${testInfo.title}: ${label}`;
 }
 

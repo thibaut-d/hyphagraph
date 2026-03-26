@@ -67,7 +67,7 @@ test.describe('Document Upload and Extraction', () => {
     await expect(fileInput).toBeAttached();
     await fileInput.setInputFiles(testFilePath);
 
-    await expect(page.getByText(/extracted.*entities/).or(page.getByRole('heading', { name: /extraction/i }))).toBeVisible({ timeout: 60000 });
+    await expect(page.getByText(/extracted.*entities/).or(page.getByRole('heading', { name: /^knowledge extraction$/i })).first()).toBeVisible({ timeout: 60000 });
   });
 
   test('should show extraction workflow components', async ({ page }) => {

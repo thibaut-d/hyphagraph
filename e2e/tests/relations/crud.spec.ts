@@ -51,16 +51,19 @@ test.describe('Relation CRUD Operations', () => {
     await page.getByRole('button', { name: /add role/i }).click();
     await page.getByRole('button', { name: /add role/i }).click();
 
-    const entitySelects = page.getByRole('combobox', { name: /^entity$/i });
+    // Use /entity/i (not anchored) so the selector still matches after MUI appends
+    // the selected value to the accessible name of the first combobox
+    const entitySelects = page.getByRole('combobox', { name: /entity/i });
     await expect(entitySelects).toHaveCount(2, { timeout: 5000 });
 
     await entitySelects.first().click();
     const firstEntityOption = page.getByRole('option').first();
     await expect(firstEntityOption).toBeVisible({ timeout: 5000 });
     await firstEntityOption.click();
+    await expect(page.getByRole('listbox')).not.toBeVisible({ timeout: 5000 }).catch(() => {});
     await page.getByRole('textbox', { name: 'Role' }).first().fill('subject');
 
-    await entitySelects.nth(1).click();
+    await page.getByRole('combobox', { name: /entity/i }).nth(1).click();
     const entityOptions = page.getByRole('option');
     const optionCount = await entityOptions.count();
     await entityOptions.nth(optionCount > 1 ? 1 : 0).click();

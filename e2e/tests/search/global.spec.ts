@@ -86,11 +86,14 @@ test.describe('Global Search', () => {
     await page.goto('/search');
     await page.waitForLoadState('networkidle');
 
-    const searchInput = page.getByRole('searchbox').or(page.getByPlaceholder(/search/i)).first();
+    // Target the main page search input (not the navbar autocomplete)
+    const searchInput = page.getByLabel(/search entities|search.*sources|search.*relations/i);
     await expect(searchInput).toBeVisible({ timeout: 5000 });
-    await searchInput.fill(sourceTitle.substring(0, 20));
+    // Use the plain label suffix (no special chars) as the search query
+    const searchQuery = 'searchable-source';
+    await searchInput.fill(searchQuery);
 
-    await expect(page.locator(`text=${sourceTitle}`).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(searchQuery).first()).toBeVisible({ timeout: 10000 });
   });
 
   test('should show autocomplete results from the nav search bar', async ({ page }) => {
@@ -99,7 +102,8 @@ test.describe('Global Search', () => {
 
     const searchInput = page.getByPlaceholder(/search/i).first();
     await expect(searchInput).toBeVisible({ timeout: 5000 });
-    await searchInput.fill('test');
+    // Use 'hypha' to match the always-present 'HyphaGraph Inference Engine' system source
+    await searchInput.fill('hypha');
 
     await expect(page.getByRole('listbox')).toBeVisible({ timeout: 5000 });
   });
