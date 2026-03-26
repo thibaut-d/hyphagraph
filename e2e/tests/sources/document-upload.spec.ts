@@ -1,6 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../fixtures/test-fixtures';
 import { loginAsAdminViaAPI, clearAuthState } from '../../fixtures/auth-helpers';
-import { generateSourceName } from '../../fixtures/test-data';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -31,22 +30,18 @@ test.describe('Document Upload and Extraction', () => {
     }
   });
 
-  test.beforeEach(async ({ page }) => {
-    // Login and create a source for testing
+  test.beforeEach(async ({ page, cleanup, testLabel, testSlug }) => {
     await loginAsAdminViaAPI(page);
 
-    // Create a source
-    const sourceTitle = generateSourceName('doc-upload-test');
+    const sourceTitle = testLabel('source');
     await page.goto('/sources/new');
     await page.getByRole('textbox', { name: 'Title' }).fill(sourceTitle);
-    await page.getByRole('textbox', { name: 'URL' }).fill('https://example.com/test-doc');
+    await page.getByRole('textbox', { name: 'URL' }).fill(`https://example.com/${testSlug('url')}`);
     await page.getByRole('button', { name: /create|submit/i }).click();
 
-    // Extract source ID from URL
     await page.waitForURL(/\/sources\/([a-f0-9-]+)/);
-    const url = page.url();
-    const match = url.match(/\/sources\/([a-f0-9-]+)/);
-    sourceId = match ? match[1] : '';
+    sourceId = page.url().match(/\/sources\/([a-f0-9-]+)/)?.[1] ?? '';
+    cleanup.track('source', sourceId);
   });
 
   test.afterEach(async ({ page }) => {
@@ -56,7 +51,6 @@ test.describe('Document Upload and Extraction', () => {
   test('should show upload document button on source detail page', async ({ page }) => {
     await page.goto(`/sources/${sourceId}`);
 
-    // Should show upload button (rendered as <span> inside a label for file input)
     const uploadButton = page.locator('label[for="document-upload"]');
     await expect(uploadButton).toBeVisible();
   });
@@ -69,42 +63,27 @@ test.describe('Document Upload and Extraction', () => {
 
     await page.goto(`/sources/${sourceId}`);
 
-    // Find the hidden file input
     const fileInput = page.locator('input[type="file"]');
     await expect(fileInput).toBeAttached();
-
-    // Upload the test file
     await fileInput.setInputFiles(testFilePath);
 
-    // Note: Upload happens so fast that checking for "Uploading..." state is flaky
-    // Skip transient state check and go straight to verifying the extraction preview
-
-    // After upload + extraction completes, should show extraction preview
-    // This may take a while as it calls the LLM
-    // Use more specific selector to avoid matching nav button
     await expect(page.getByText(/extracted.*entities/).or(page.getByRole('heading', { name: /extraction/i }))).toBeVisible({ timeout: 60000 });
   });
 
   test('should show extraction workflow components', async ({ page }) => {
     await page.goto(`/sources/${sourceId}`);
 
-    // Should show both upload and URL extraction options
-    // Upload button renders as <span> (MUI component="span") inside a label for the hidden file input
     await expect(page.locator('label[for="document-upload"]')).toBeVisible();
     await expect(page.getByRole('button', { name: /custom.*url/i })).toBeVisible();
-
-    // Should show knowledge extraction section heading
     await expect(page.getByText(/knowledge.*extraction/i)).toBeVisible();
   });
 
   test('should show file input for document upload', async ({ page }) => {
     await page.goto(`/sources/${sourceId}`);
 
-    // Should have a file input for PDF/TXT uploads
     const fileInput = page.locator('input[type="file"]');
     await expect(fileInput).toBeAttached();
 
-    // File input should accept PDF and TXT files
     const acceptAttr = await fileInput.getAttribute('accept');
     expect(acceptAttr).toContain('.pdf');
     expect(acceptAttr).toContain('.txt');
@@ -113,12 +92,7 @@ test.describe('Document Upload and Extraction', () => {
   test('should show error message section when upload fails', async ({ page }) => {
     await page.goto(`/sources/${sourceId}`);
 
-    // Error messages appear in the upload error state
-    // We can't easily trigger this without a real API failure
-    // Just verify the error container would be visible if there was an error
     const errorContainer = page.getByRole('alert').filter({ hasText: /error|fail/i });
-
-    // Should not be visible initially
     await expect(errorContainer).not.toBeVisible();
   });
 });

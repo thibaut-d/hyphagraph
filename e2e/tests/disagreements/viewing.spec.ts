@@ -1,6 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../fixtures/test-fixtures';
 import { loginAsAdminViaAPI, clearAuthState, getAccessToken } from '../../fixtures/auth-helpers';
-import { generateEntityName, generateSourceName } from '../../fixtures/test-data';
 
 test.describe('Disagreements View', () => {
   test.beforeEach(async ({ page }) => {
@@ -13,52 +12,52 @@ test.describe('Disagreements View', () => {
 
   // US-EXP-04 — View Disagreements
 
-  test('should load disagreements page for an entity', async ({ page }) => {
-    const entitySlug = generateEntityName('disagree-entity').toLowerCase().replace(/\s+/g, '-');
+  test('should load disagreements page for an entity', async ({ page, cleanup, testSlug }) => {
+    const entitySlug = testSlug('disagree-entity');
     await page.goto('/entities/new');
     await page.getByRole('textbox', { name: 'Slug' }).fill(entitySlug);
     await page.getByRole('textbox', { name: /summary.*english/i }).fill('Entity for disagreements test');
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/entities\/([a-f0-9-]+)/);
-    const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1];
+    const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1] ?? '';
+    cleanup.track('entity', entityId);
 
     await page.goto(`/entities/${entityId}/disagreements`);
     await page.waitForLoadState('domcontentloaded');
 
     await expect(page).toHaveURL(`/entities/${entityId}/disagreements`);
-    // Either shows disagreement groups or empty-state message
-    const content = page.locator(
-      'text=/disagree|contradict|no.*conflict|no.*contradict/i'
-    ).first();
-    await expect(content).toBeVisible({ timeout: 10000 });
+    await expect(
+      page.locator('text=/disagree|contradict|no.*conflict|no.*contradict/i').first()
+    ).toBeVisible({ timeout: 10000 });
   });
 
-  test('should show empty state when no contradictions exist', async ({ page }) => {
-    const entitySlug = generateEntityName('disagree-empty').toLowerCase().replace(/\s+/g, '-');
+  test('should show empty state when no contradictions exist', async ({ page, cleanup, testSlug }) => {
+    const entitySlug = testSlug('disagree-empty');
     await page.goto('/entities/new');
     await page.getByRole('textbox', { name: 'Slug' }).fill(entitySlug);
     await page.getByRole('textbox', { name: /summary.*english/i }).fill('No contradictions entity');
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/entities\/([a-f0-9-]+)/);
-    const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1];
+    const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1] ?? '';
+    cleanup.track('entity', entityId);
 
     await page.goto(`/entities/${entityId}/disagreements`);
     await page.waitForLoadState('domcontentloaded');
 
-    // Empty state alert should be visible (from DisagreementsView — success severity)
     await expect(
       page.locator('text=/no.*contradict|no.*conflict|no.*disagree/i').first()
     ).toBeVisible({ timeout: 10000 });
   });
 
-  test('should be accessible from entity detail page', async ({ page }) => {
-    const entitySlug = generateEntityName('disagree-nav').toLowerCase().replace(/\s+/g, '-');
+  test('should be accessible from entity detail page', async ({ page, cleanup, testSlug }) => {
+    const entitySlug = testSlug('disagree-nav');
     await page.goto('/entities/new');
     await page.getByRole('textbox', { name: 'Slug' }).fill(entitySlug);
     await page.getByRole('textbox', { name: /summary.*english/i }).fill('Disagreements nav entity');
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/entities\/([a-f0-9-]+)/);
-    const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1];
+    const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1] ?? '';
+    cleanup.track('entity', entityId);
 
     await page.goto(`/entities/${entityId}`);
     await page.waitForLoadState('domcontentloaded');
@@ -71,14 +70,15 @@ test.describe('Disagreements View', () => {
     await expect(page).toHaveURL(new RegExp(`/entities/${entityId}/disagreements`));
   });
 
-  test('should provide a back navigation to entity detail', async ({ page }) => {
-    const entitySlug = generateEntityName('disagree-back').toLowerCase().replace(/\s+/g, '-');
+  test('should provide a back navigation to entity detail', async ({ page, cleanup, testSlug }) => {
+    const entitySlug = testSlug('disagree-back');
     await page.goto('/entities/new');
     await page.getByRole('textbox', { name: 'Slug' }).fill(entitySlug);
     await page.getByRole('textbox', { name: /summary.*english/i }).fill('Disagreements back nav entity');
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/entities\/([a-f0-9-]+)/);
-    const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1];
+    const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1] ?? '';
+    cleanup.track('entity', entityId);
 
     await page.goto(`/entities/${entityId}/disagreements`);
     await page.waitForLoadState('domcontentloaded');
@@ -91,14 +91,15 @@ test.describe('Disagreements View', () => {
     await expect(page).toHaveURL(new RegExp(`/entities/${entityId}$`));
   });
 
-  test('should provide navigation to synthesis view', async ({ page }) => {
-    const entitySlug = generateEntityName('disagree-synth').toLowerCase().replace(/\s+/g, '-');
+  test('should provide navigation to synthesis view', async ({ page, cleanup, testSlug }) => {
+    const entitySlug = testSlug('disagree-synth');
     await page.goto('/entities/new');
     await page.getByRole('textbox', { name: 'Slug' }).fill(entitySlug);
     await page.getByRole('textbox', { name: /summary.*english/i }).fill('Disagree to synth entity');
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/entities\/([a-f0-9-]+)/);
-    const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1];
+    const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1] ?? '';
+    cleanup.track('entity', entityId);
 
     await page.goto(`/entities/${entityId}/disagreements`);
     await page.waitForLoadState('domcontentloaded');
@@ -112,47 +113,48 @@ test.describe('Disagreements View', () => {
   });
 
   // G2 + G4 — contradiction visibility with seeded contradictory data
-  test('should display contradictions when contradictory relations exist', async ({ page }) => {
+  test('should display contradictions when contradictory relations exist', async ({ page, cleanup, testLabel, testSlug }) => {
     const API_URL = process.env.API_URL || 'http://localhost:8001';
 
-    // Create two sources
-    const src1Title = generateSourceName('contra-source-a');
+    const src1Title = testLabel('contra-source-a');
     await page.goto('/sources/new');
     await page.getByRole('textbox', { name: 'Title' }).fill(src1Title);
-    await page.getByRole('textbox', { name: 'URL' }).fill('https://example.com/contra-a');
+    await page.getByRole('textbox', { name: 'URL' }).fill(`https://example.com/${testSlug('src-a')}`);
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/sources\/([a-f0-9-]+)/);
-    const src1Id = page.url().match(/\/sources\/([a-f0-9-]+)/)?.[1] || '';
+    const src1Id = page.url().match(/\/sources\/([a-f0-9-]+)/)?.[1] ?? '';
+    cleanup.track('source', src1Id);
 
-    const src2Title = generateSourceName('contra-source-b');
+    const src2Title = testLabel('contra-source-b');
     await page.goto('/sources/new');
     await page.getByRole('textbox', { name: 'Title' }).fill(src2Title);
-    await page.getByRole('textbox', { name: 'URL' }).fill('https://example.com/contra-b');
+    await page.getByRole('textbox', { name: 'URL' }).fill(`https://example.com/${testSlug('src-b')}`);
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/sources\/([a-f0-9-]+)/);
-    const src2Id = page.url().match(/\/sources\/([a-f0-9-]+)/)?.[1] || '';
+    const src2Id = page.url().match(/\/sources\/([a-f0-9-]+)/)?.[1] ?? '';
+    cleanup.track('source', src2Id);
 
-    // Create two entities
-    const entitySlug = generateEntityName('contra-entity').toLowerCase().replace(/\s+/g, '-');
+    const entitySlug = testSlug('contra-entity');
     await page.goto('/entities/new');
     await page.getByRole('textbox', { name: 'Slug' }).fill(entitySlug);
     await page.getByRole('textbox', { name: /summary.*english/i }).fill('Entity for contradiction test');
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/entities\/([a-f0-9-]+)/);
-    const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1] || '';
+    const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1] ?? '';
+    cleanup.track('entity', entityId);
 
-    const otherSlug = generateEntityName('contra-other').toLowerCase().replace(/\s+/g, '-');
+    const otherSlug = testSlug('contra-other');
     await page.goto('/entities/new');
     await page.getByRole('textbox', { name: 'Slug' }).fill(otherSlug);
     await page.getByRole('textbox', { name: /summary.*english/i }).fill('Other entity for contradiction');
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/entities\/([a-f0-9-]+)/);
-    const otherId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1] || '';
+    const otherId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1] ?? '';
+    cleanup.track('entity', otherId);
 
-    // Seed two relations with the same kind/entity but from different sources (potential contradiction)
     const token = await getAccessToken(page);
     for (const [srcId, direction] of [[src1Id, 'forward'], [src2Id, 'backward']] as [string, string][]) {
-      await page.request.post(`${API_URL}/api/relations/`, {
+      const relResp = await page.request.post(`${API_URL}/api/relations/`, {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         data: {
           source_id: srcId,
@@ -165,20 +167,20 @@ test.describe('Disagreements View', () => {
           ],
         },
       });
+      if (relResp.ok()) {
+        const { id: relId } = await relResp.json();
+        cleanup.track('relation', relId);
+      }
     }
 
-    // Navigate to disagreements page
     await page.goto(`/entities/${entityId}/disagreements`);
     await page.waitForLoadState('domcontentloaded');
 
     await expect(page).toHaveURL(`/entities/${entityId}/disagreements`);
 
-    // Page must render — either showing disagreement groups or an empty state
     const content = page.locator('text=/disagree|contradict|no.*conflict|no.*contradict/i').first();
     await expect(content).toBeVisible({ timeout: 10000 });
 
-    // G2 invariant: if disagreements are shown, there must be NO hidden/suppressed groups
-    // (i.e. no element with aria-hidden=true that contains "disagree" text)
     const hiddenDisagreements = page.locator('[aria-hidden="true"]').filter({ hasText: /disagree|contradict/i });
     const hiddenCount = await hiddenDisagreements.count();
     expect(hiddenCount).toBe(0);

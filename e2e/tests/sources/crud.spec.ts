@@ -1,166 +1,132 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../fixtures/test-fixtures';
 import { loginAsAdminViaAPI, clearAuthState } from '../../fixtures/auth-helpers';
-import { generateSourceName } from '../../fixtures/test-data';
 
 test.describe('Source CRUD Operations', () => {
   test.beforeEach(async ({ page }) => {
-    // Login before each test
     await loginAsAdminViaAPI(page);
   });
 
   test.afterEach(async ({ page }) => {
-    // Clear auth state to avoid polluting other tests
     await clearAuthState(page);
   });
 
-  test('should create a new source', async ({ page }) => {
-    const sourceTitle = generateSourceName('test-source');
+  test('should create a new source', async ({ page, cleanup, testLabel, testSlug }) => {
+    const sourceTitle = testLabel('source');
 
-    // Navigate to create source page
     await page.goto('/sources/new');
-
-    // Wait for form to load
     await expect(page.getByRole('heading', { name: 'Create Source' })).toBeVisible();
-
-    // Fill in source details (sources use Title and URL, not slug)
     await page.getByRole('textbox', { name: 'Title' }).fill(sourceTitle);
-    await page.getByRole('textbox', { name: 'URL' }).fill('https://example.com/test-source');
-    // Note: summary is in a collapsed "Advanced" section — Title and URL are sufficient
-
-    // Submit form
+    await page.getByRole('textbox', { name: 'URL' }).fill(`https://example.com/${testSlug('url')}`);
     await page.getByRole('button', { name: /create|submit/i }).click();
 
-    // Should navigate to source detail page
     await expect(page).toHaveURL(/\/sources\/[a-f0-9-]+/, { timeout: 10000 });
+    const sourceId = page.url().match(/\/sources\/([a-f0-9-]+)/)?.[1] ?? '';
+    cleanup.track('source', sourceId);
 
-    // Should show source details
     await expect(page.locator(`text=${sourceTitle}`)).toBeVisible();
   });
 
   test('should view source list', async ({ page }) => {
     await page.goto('/sources');
-
-    // Should show sources page
     await expect(page.getByRole('heading', { name: 'Sources' })).toBeVisible();
   });
 
-  test('should view source detail', async ({ page }) => {
-    // Create a source first
-    const sourceTitle = generateSourceName('view-test');
+  test('should view source detail', async ({ page, cleanup, testLabel, testSlug }) => {
+    const sourceTitle = testLabel('view-test');
 
     await page.goto('/sources/new');
     await page.getByRole('textbox', { name: 'Title' }).fill(sourceTitle);
-    await page.getByRole('textbox', { name: 'URL' }).fill('https://example.com/view-test');
+    await page.getByRole('textbox', { name: 'URL' }).fill(`https://example.com/${testSlug('url')}`);
     await page.getByRole('button', { name: /create|submit/i }).click();
 
-    // Wait for navigation to detail page
     await page.waitForURL(/\/sources\/[a-f0-9-]+/);
+    const sourceId = page.url().match(/\/sources\/([a-f0-9-]+)/)?.[1] ?? '';
+    cleanup.track('source', sourceId);
 
-    // Should show source details (title and URL are shown, summary is not displayed on detail page)
     await expect(page.locator(`text=${sourceTitle}`)).toBeVisible();
-    await expect(page.locator('text=https://example.com/view-test')).toBeVisible();
   });
 
-  test('should edit a source', async ({ page }) => {
-    // Create a source first
-    const originalTitle = generateSourceName('edit-test');
-    const updatedTitle = generateSourceName('edit-test-updated');
+  test('should edit a source', async ({ page, cleanup, testLabel, testSlug }) => {
+    const originalTitle = testLabel('edit-test');
+    const updatedTitle = testLabel('edit-test-updated');
 
     await page.goto('/sources/new');
     await page.getByRole('textbox', { name: 'Title' }).fill(originalTitle);
-    await page.getByRole('textbox', { name: 'URL' }).fill('https://example.com/edit-test');
+    await page.getByRole('textbox', { name: 'URL' }).fill(`https://example.com/${testSlug('url')}`);
     await page.getByRole('button', { name: /create|submit/i }).click();
 
-    // Wait for navigation to detail page
     await page.waitForURL(/\/sources\/[a-f0-9-]+/);
+    const sourceId = page.url().match(/\/sources\/([a-f0-9-]+)/)?.[1] ?? '';
+    cleanup.track('source', sourceId);
 
-    // Click edit button (it's an IconButton with RouterLink, renders as link with title="Edit")
     await page.getByRole('link', { name: 'Edit', exact: true }).click();
-
-    // Should navigate to edit page
     await expect(page).toHaveURL(/\/sources\/[a-f0-9-]+\/edit/);
 
-    // Update the title
     const titleField = page.getByRole('textbox', { name: 'Title' });
     await titleField.clear();
     await titleField.fill(updatedTitle);
-
-    // Submit form
     await page.getByRole('button', { name: /save|update/i }).click();
 
-    // Should navigate back to detail page
     await page.waitForURL(/\/sources\/[a-f0-9-]+$/);
-
-    // Edit successful - verify updated title is shown on the detail page
     await expect(page.locator(`text=${updatedTitle}`)).toBeVisible();
   });
 
-  test('should delete a source', async ({ page }) => {
-    // Create a source first
-    const sourceTitle = generateSourceName('delete-test');
+  test('should delete a source', async ({ page, cleanup, testLabel, testSlug }) => {
+    const sourceTitle = testLabel('delete-test');
 
     await page.goto('/sources/new');
     await page.getByRole('textbox', { name: 'Title' }).fill(sourceTitle);
-    await page.getByRole('textbox', { name: 'URL' }).fill('https://example.com/delete-test');
+    await page.getByRole('textbox', { name: 'URL' }).fill(`https://example.com/${testSlug('url')}`);
     await page.getByRole('button', { name: /create|submit/i }).click();
 
-    // Wait for navigation to detail page
     await page.waitForURL(/\/sources\/[a-f0-9-]+/);
+    const sourceId = page.url().match(/\/sources\/([a-f0-9-]+)/)?.[1] ?? '';
+    cleanup.track('source', sourceId); // Track even though test deletes it; 404 in cleanup is fine
 
-    // Click delete button
     await page.getByRole('button', { name: /delete/i }).click();
 
-    // Confirm deletion — scoped to the dialog to avoid matching other Delete buttons
     const dialog = page.locator('[role="dialog"]');
     if (await dialog.isVisible({ timeout: 2000 })) {
       await dialog.getByRole('button', { name: /confirm|yes|delete/i }).click();
     }
 
-    // Should navigate back to sources list
     await expect(page).toHaveURL(/\/sources$/);
   });
 
   test('should validate required fields', async ({ page }) => {
     await page.goto('/sources/new');
 
-    // Submit button should be disabled when required fields are empty
     const submitButton = page.getByRole('button', { name: /create|submit/i });
     await expect(submitButton).toBeDisabled();
-
-    // Verify we're still on the create form
     await expect(page.getByRole('heading', { name: 'Create Source' })).toBeVisible();
   });
 
-  test('should search/filter sources', async ({ page }) => {
-    // Create test sources
-    const prefix = Date.now().toString();
-    const source1 = `${prefix}-wikipedia`;
-    const source2 = `${prefix}-journal`;
+  test('should search/filter sources', async ({ page, cleanup, testLabel, testSlug }) => {
+    const source1Title = testLabel('wikipedia');
+    const source2Title = testLabel('journal');
 
-    for (const title of [source1, source2]) {
+    for (const [title, urlSuffix] of [[source1Title, 'wiki'], [source2Title, 'journal']] as [string, string][]) {
       await page.goto('/sources/new');
       await page.getByRole('textbox', { name: 'Title' }).fill(title);
-      await page.getByRole('textbox', { name: 'URL' }).fill(`https://example.com/${title}`);
+      await page.getByRole('textbox', { name: 'URL' }).fill(`https://example.com/${testSlug(urlSuffix)}`);
       await page.getByRole('button', { name: /create|submit/i }).click();
       await page.waitForURL(/\/sources\/[a-f0-9-]+/);
+      const sourceId = page.url().match(/\/sources\/([a-f0-9-]+)/)?.[1] ?? '';
+      cleanup.track('source', sourceId);
     }
 
-    // Go to sources list
     await page.goto('/sources');
     await expect(page.getByRole('heading', { name: 'Sources' })).toBeVisible();
 
-    // Open filter drawer to access search input
     const filtersButton = page.getByRole('button', { name: /filters/i });
     if (await filtersButton.isVisible({ timeout: 2000 })) {
       await filtersButton.click();
     }
 
-    // Search for specific source (input is inside the filter drawer)
     const searchInput = page.getByPlaceholder(/search/i).first();
     await expect(searchInput).toBeVisible({ timeout: 5000 });
-    await searchInput.fill(source1);
+    await searchInput.fill(source1Title);
 
-    // Should show matching source
-    await expect(page.locator(`text=${source1}`)).toBeVisible();
+    await expect(page.locator(`text=${source1Title}`)).toBeVisible();
   });
 });

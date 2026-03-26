@@ -142,22 +142,78 @@ await logout(page);
 await clearAuthState(page);
 ```
 
-### Test Data
+### Test Data & Cleanup
+
+Import from `test-fixtures` instead of `@playwright/test` to get automatic cleanup:
 
 ```typescript
-import { ADMIN_USER, generateEntityName } from '../../fixtures/test-data';
-
-const entityName = generateEntityName('test-entity');
+import { test, expect } from '../../fixtures/test-fixtures';
 ```
+
+Three fixtures are provided per test:
+
+| Fixture | Returns | Use for |
+|---------|---------|---------|
+| `testSlug(label)` | `e2e-{test-title}-{label}-{ts}` | Entity slugs, URL slugs |
+| `testLabel(label)` | `[e2e] Suite > Test: label` | Source titles, display names |
+| `cleanup.track(type, id)` | `void` | Register any created DB item |
+
+**Full example:**
+
+```typescript
+import { test, expect } from '../../fixtures/test-fixtures';
+import { loginAsAdminViaAPI, clearAuthState, getAccessToken } from '../../fixtures/auth-helpers';
+
+test.describe('My Feature', () => {
+  test.beforeEach(async ({ page }) => {
+    await loginAsAdminViaAPI(page);
+  });
+
+  test.afterEach(async ({ page }) => {
+    await clearAuthState(page);
+  });
+
+  // UI-created item: extract ID from URL, track it
+  test('should create an entity', async ({ page, cleanup, testSlug }) => {
+    const slug = testSlug('my-entity');
+    await page.goto('/entities/new');
+    await page.getByLabel(/slug/i).fill(slug);
+    await page.getByRole('button', { name: /create/i }).click();
+    await page.waitForURL(/\/entities\/[a-f0-9-]+/);
+    const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1] ?? '';
+    cleanup.track('entity', entityId);  // auto-deleted after test
+  });
+
+  // API-created item: get ID from response
+  test('should use a seeded source', async ({ page, cleanup, testLabel, testSlug }) => {
+    const API_URL = process.env.API_URL || 'http://localhost:8001';
+    const token = await getAccessToken(page);
+    const resp = await page.request.post(`${API_URL}/api/sources/`, {
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      data: { title: testLabel('source'), url: `https://example.com/${testSlug('url')}`, kind: 'study' },
+    });
+    const { id } = await resp.json();
+    cleanup.track('source', id);  // auto-deleted after test
+  });
+});
+```
+
+**Naming rules:**
+- Entity slugs must be URL-safe → use `testSlug(label)`
+- Source titles and other display fields → use `testLabel(label)`
+- The `[e2e]` prefix makes test data identifiable in the DB at a glance
+- If an item survives a run, its name tells you exactly which test created it
+
+**Cleanup:** runs automatically after each test (relations → sources → entities). Items the test itself deletes are silently skipped (404 is ignored).
 
 ### Best Practices
 
 1. **Use API login** for speed (except when testing login UI)
-2. **Generate unique names** for test data (use timestamps)
-3. **Wait for visibility** before interacting with elements
-4. **Use semantic selectors** (`getByRole`, `getByLabel`) over CSS selectors
-5. **Each test should be independent** — create its own data
-6. **Use fixtures** for reusable test data
+2. **Always track created items** with `cleanup.track(type, id)` — never leave orphan records
+3. **Use `testSlug` / `testLabel`** instead of raw timestamps — embeds the test name for traceability
+4. **Wait for visibility** before interacting with elements
+5. **Use semantic selectors** (`getByRole`, `getByLabel`) over CSS selectors
+6. **Each test should be independent** — create its own data, clean it up via `cleanup`
 
 ---
 

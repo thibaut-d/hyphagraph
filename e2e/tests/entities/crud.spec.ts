@@ -1,6 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../fixtures/test-fixtures';
 import { loginAsAdminViaAPI, clearAuthState, getAccessToken } from '../../fixtures/auth-helpers';
-import { generateEntityName } from '../../fixtures/test-data';
 
 test.describe('Entity CRUD Operations', () => {
   test.beforeEach(async ({ page }) => {
@@ -11,59 +10,45 @@ test.describe('Entity CRUD Operations', () => {
     await clearAuthState(page);
   });
 
-  test('should create a new entity', async ({ page }) => {
-    const entitySlug = generateEntityName('test-entity').toLowerCase().replace(/\s+/g, '-');
+  test('should create a new entity', async ({ page, cleanup, testSlug }) => {
+    const entitySlug = testSlug('entity');
 
-    // Navigate to create entity page
     await page.goto('/entities/new');
-
-    // Wait for form to load (use heading specifically to avoid strict mode violation)
     await expect(page.getByRole('heading', { name: 'Create Entity' })).toBeVisible();
-
-    // Fill in entity details
     await page.getByLabel(/slug/i).fill(entitySlug);
     await page.getByLabel(/summary.*english/i).fill('This is a test entity');
-
-    // Submit form
     await page.getByRole('button', { name: /create|submit/i }).click();
 
-    // Should navigate to entity detail page
     await expect(page).toHaveURL(/\/entities\/[a-f0-9-]+/, { timeout: 10000 });
+    const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1] ?? '';
+    cleanup.track('entity', entityId);
 
-    // Should show entity details
     await expect(page.locator(`text=${entitySlug}`)).toBeVisible();
   });
 
   test('should view entity list', async ({ page }) => {
     await page.goto('/entities');
-
-    // Should show entities page heading
     await expect(page.getByRole('heading', { name: 'Entities' })).toBeVisible();
-
-    // Should have some entities (at least the test data)
-    // Note: This depends on database state
   });
 
-  test('should view entity detail', async ({ page }) => {
-    // First, create an entity to view
-    const entitySlug = generateEntityName('view-test').toLowerCase().replace(/\s+/g, '-');
+  test('should view entity detail', async ({ page, cleanup, testSlug }) => {
+    const entitySlug = testSlug('view-test');
 
     await page.goto('/entities/new');
     await page.getByLabel(/slug/i).fill(entitySlug);
     await page.getByLabel(/summary.*english/i).fill('Entity for viewing');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
-    // Wait for navigation to detail page
     await page.waitForURL(/\/entities\/[a-f0-9-]+/);
+    const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1] ?? '';
+    cleanup.track('entity', entityId);
 
-    // Should show entity details
     await expect(page.locator(`text=${entitySlug}`)).toBeVisible();
     await expect(page.locator('text=Entity for viewing')).toBeVisible();
   });
 
-  test('should edit an entity', async ({ page }) => {
-    // Create an entity first
-    const originalSlug = generateEntityName('edit-test').toLowerCase().replace(/\s+/g, '-');
+  test('should edit an entity', async ({ page, cleanup, testSlug }) => {
+    const originalSlug = testSlug('edit-test');
     const updatedSummary = 'Updated summary for edit test';
 
     await page.goto('/entities/new');
@@ -71,110 +56,84 @@ test.describe('Entity CRUD Operations', () => {
     await page.getByLabel(/summary.*english/i).fill('Original summary');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
-    // Wait for navigation to detail page
     await page.waitForURL(/\/entities\/[a-f0-9-]+/);
+    const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1] ?? '';
+    cleanup.track('entity', entityId);
 
-    // Wait for page to stabilize (entity terms may fail to load for new entities)
     await page.waitForLoadState('domcontentloaded');
-
-    // Click edit link (it's a RouterLink, not a button)
     await page.getByRole('link', { name: /edit/i }).click({ timeout: 15000 });
-
-    // Should navigate to edit page
     await expect(page).toHaveURL(/\/entities\/[a-f0-9-]+\/edit/);
 
-    // Update the summary
     const summaryField = page.getByLabel(/summary.*english/i);
     await summaryField.clear();
     await summaryField.fill(updatedSummary);
-
-    // Submit form
     await page.getByRole('button', { name: /save|update/i }).click();
 
-    // Should navigate back to detail page
     await page.waitForURL(/\/entities\/[a-f0-9-]+$/);
-
-    // Should show updated summary
     await expect(page.locator(`text=${updatedSummary}`)).toBeVisible();
   });
 
-  test('should delete an entity', async ({ page }) => {
-    // Create an entity first
-    const entitySlug = generateEntityName('delete-test').toLowerCase().replace(/\s+/g, '-');
+  test('should delete an entity', async ({ page, cleanup, testSlug }) => {
+    const entitySlug = testSlug('delete-test');
 
     await page.goto('/entities/new');
     await page.getByLabel(/slug/i).fill(entitySlug);
     await page.getByLabel(/summary.*english/i).fill('Entity to be deleted');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
-    // Wait for navigation to detail page
     await page.waitForURL(/\/entities\/[a-f0-9-]+/);
+    const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1] ?? '';
+    cleanup.track('entity', entityId); // Track even though test deletes it; 404 in cleanup is fine
 
-    // Wait for page to fully load
     await page.waitForLoadState('domcontentloaded');
 
-    // Click delete button - find it specifically (should be near Edit button)
     const deleteButton = page.getByRole('button', { name: 'Delete' });
     await expect(deleteButton).toBeVisible();
     await deleteButton.click();
 
-    // Wait for confirmation dialog to appear - MUI Dialog uses role="presentation" on backdrop, need to find the dialog content
     await expect(page.locator('[role="dialog"]')).toBeVisible({ timeout: 5000 });
-
-    // Confirm deletion by clicking Delete button in dialog
     await page.locator('[role="dialog"]').getByRole('button', { name: 'Delete' }).click();
 
-    // Wait for navigation back to entities list after deletion
     await page.waitForURL(/\/entities$/, { timeout: 10000 });
-
-    // Verify we're back on entities list page
     await expect(page.getByRole('heading', { name: 'Entities' })).toBeVisible();
   });
 
-  test('should show validation error for duplicate slug', async ({ page }) => {
-    const duplicateSlug = generateEntityName('duplicate').toLowerCase().replace(/\s+/g, '-');
+  test('should show validation error for duplicate slug', async ({ page, cleanup, testSlug }) => {
+    const duplicateSlug = testSlug('duplicate');
 
     // Create first entity
     await page.goto('/entities/new');
     await page.getByLabel(/slug/i).fill(duplicateSlug);
     await page.getByLabel(/summary.*english/i).fill('First entity');
     await page.getByRole('button', { name: /create|submit/i }).click();
-
-    // Wait for success
     await page.waitForURL(/\/entities\/[a-f0-9-]+/);
+    const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1] ?? '';
+    cleanup.track('entity', entityId);
 
-    // Try to create another entity with the same slug - should fail
+    // Try to create a duplicate — stays on form, no ID to track
     await page.goto('/entities/new');
     await page.getByLabel(/slug/i).fill(duplicateSlug);
     await page.getByLabel(/summary.*english/i).fill('Duplicate entity');
     await page.getByRole('button', { name: /create|submit/i}).click();
 
-    // Should show error message in Alert component (may be multiple alerts on page)
     await expect(page.getByRole('alert').first()).toBeVisible({ timeout: 5000 });
     await expect(page.getByRole('alert').first()).toContainText(/already exists|duplicate/i);
   });
 
   test('should prevent submission with empty slug (HTML5 validation)', async ({ page }) => {
     await page.goto('/entities/new');
-
-    // Try to submit without filling slug - HTML5 required attribute should prevent submission
     await page.getByRole('button', { name: /create|submit/i }).click();
 
-    // Should remain on create page (form not submitted due to browser validation)
     await expect(page).toHaveURL('/entities/new');
-
-    // Slug field should still be visible and focused/marked invalid
-    const slugField = page.getByLabel(/slug/i);
-    await expect(slugField).toBeVisible();
+    await expect(page.getByLabel(/slug/i)).toBeVisible();
   });
 
-  test('should search/filter entities', async ({ page }) => {
-    // Create entities via API to avoid entity detail page background-call interference
+  test('should search/filter entities', async ({ page, cleanup, testSlug }) => {
     const API_URL = process.env.API_URL || 'http://localhost:8001';
-    const prefix = Date.now().toString().slice(-8); // 8 digits to keep slugs short
-    const entity1 = `srch-${prefix}-apple`;
-    const entity2 = `srch-${prefix}-banana`;
     const token = await getAccessToken(page);
+
+    const entity1 = testSlug('apple');
+    const entity2 = testSlug('banana');
 
     for (const slug of [entity1, entity2]) {
       const resp = await page.request.post(`${API_URL}/api/entities/`, {
@@ -182,58 +141,40 @@ test.describe('Entity CRUD Operations', () => {
         data: { slug, summary: { en: `Test entity ${slug}` } },
       });
       expect(resp.ok()).toBeTruthy();
+      const { id } = await resp.json();
+      cleanup.track('entity', id);
     }
 
-    // Go to entities list
     await page.goto('/entities');
-
-    // Search for specific entity (autocomplete dropdown)
     const searchInput = page.getByPlaceholder(/search/i);
     await expect(searchInput).toBeVisible({ timeout: 5000 });
     await searchInput.fill(entity1);
 
-    // The search shows results in a listbox dropdown, not in the main list
     const listbox = page.getByRole('listbox');
     await expect(listbox).toBeVisible({ timeout: 5000 });
-
-    // Should show matching entity in autocomplete dropdown
     await expect(listbox.getByRole('option', { name: new RegExp(entity1) })).toBeVisible();
-
-    // Click the matching result to navigate
     await listbox.getByRole('option', { name: new RegExp(entity1) }).first().click();
 
-    // Should navigate to the entity detail page
     await expect(page).toHaveURL(new RegExp(`/entities/.*`));
   });
 
-  test('should navigate between entities list and detail', async ({ page }) => {
-    // Create an entity
-    const entitySlug = generateEntityName('nav-test').toLowerCase().replace(/\s+/g, '-');
+  test('should navigate between entities list and detail', async ({ page, cleanup, testSlug }) => {
+    const entitySlug = testSlug('nav-test');
 
     await page.goto('/entities/new');
     await page.getByLabel(/slug/i).fill(entitySlug);
     await page.getByLabel(/summary.*english/i).fill('Navigation test entity');
     await page.getByRole('button', { name: /create|submit/i }).click();
 
-    // Wait for detail page
     await page.waitForURL(/\/entities\/[a-f0-9-]+/);
+    const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1] ?? '';
+    cleanup.track('entity', entityId);
 
-    // Store entity ID for direct navigation
-    const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1];
-
-    // Click back to list (it's a RouterLink, not a button)
     await page.getByRole('link', { name: /back/i }).click();
-
-    // Should be on entities list
     await expect(page).toHaveURL(/\/entities$/);
-
-    // Verify we're on the entities list page
     await expect(page.getByRole('heading', { name: 'Entities' })).toBeVisible({ timeout: 10000 });
 
-    // Navigate directly to entity using ID (instead of searching in paginated list)
     await page.goto(`/entities/${entityId}`);
-
-    // Should be on detail page again
     await expect(page).toHaveURL(/\/entities\/[a-f0-9-]+/, { timeout: 10000 });
     await expect(page.locator(`text=${entitySlug}`)).toBeVisible();
   });
@@ -241,11 +182,9 @@ test.describe('Entity CRUD Operations', () => {
   // E2E-G9 — Unknown ID 404 handling
   test('should show a not-found state for an unknown entity ID', async ({ page }) => {
     const nonExistentId = '00000000-0000-0000-0000-000000000000';
-
     await page.goto(`/entities/${nonExistentId}`);
     await page.waitForLoadState('domcontentloaded');
 
-    // Must show a user-facing not-found message — must NOT show a blank/broken page or JS error
     await expect(
       page.locator('text=/not found|does not exist|couldn\'t find|no entity/i').first()
         .or(page.getByRole('heading', { name: /404/i }))

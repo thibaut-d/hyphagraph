@@ -1,6 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../fixtures/test-fixtures';
 import { loginAsAdminViaAPI, clearAuthState } from '../../fixtures/auth-helpers';
-import { generateEntityName, generateSourceName } from '../../fixtures/test-data';
 
 test.describe('Global Search', () => {
   test.beforeEach(async ({ page }) => {
@@ -17,7 +16,6 @@ test.describe('Global Search', () => {
     await page.goto('/search');
     await page.waitForLoadState('networkidle');
     await expect(page).toHaveURL('/search');
-    // Search input should be present
     const searchInput = page.getByRole('searchbox').or(page.getByPlaceholder(/search/i)).first();
     await expect(searchInput).toBeVisible({ timeout: 10000 });
   });
@@ -31,39 +29,39 @@ test.describe('Global Search', () => {
     await expect(page).toHaveURL(/\/search/);
   });
 
-  test('should return entity results matching a query', async ({ page }) => {
-    // Create a uniquely named entity
-    const entitySlug = generateEntityName('searchable-entity').toLowerCase().replace(/\s+/g, '-');
+  test('should return entity results matching a query', async ({ page, cleanup, testSlug }) => {
+    const entitySlug = testSlug('searchable-entity');
     await page.goto('/entities/new');
     await page.getByRole('textbox', { name: 'Slug' }).fill(entitySlug);
     await page.getByRole('textbox', { name: /summary.*english/i }).fill('Searchable entity for global search');
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/entities\/[a-f0-9-]+/);
+    const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1] ?? '';
+    cleanup.track('entity', entityId);
 
     await page.goto('/search');
     await page.waitForLoadState('networkidle');
 
-    // Search input must always be present at /search
     const searchInput = page.getByRole('searchbox').or(page.getByPlaceholder(/search/i)).first();
     await expect(searchInput).toBeVisible({ timeout: 5000 });
     await searchInput.fill(entitySlug);
 
-    // Should show results containing the entity (assertion timeout covers debounce)
     await expect(page.locator(`text=${entitySlug}`).first()).toBeVisible({ timeout: 10000 });
   });
 
-  test('should navigate to entity detail when result is clicked', async ({ page }) => {
-    const entitySlug = generateEntityName('search-nav-entity').toLowerCase().replace(/\s+/g, '-');
+  test('should navigate to entity detail when result is clicked', async ({ page, cleanup, testSlug }) => {
+    const entitySlug = testSlug('search-nav-entity');
     await page.goto('/entities/new');
     await page.getByRole('textbox', { name: 'Slug' }).fill(entitySlug);
     await page.getByRole('textbox', { name: /summary.*english/i }).fill('Search nav entity');
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/entities\/[a-f0-9-]+/);
+    const entityId = page.url().match(/\/entities\/([a-f0-9-]+)/)?.[1] ?? '';
+    cleanup.track('entity', entityId);
 
     await page.goto('/search');
     await page.waitForLoadState('networkidle');
 
-    // Search input must always be present at /search
     const searchInput = page.getByRole('searchbox').or(page.getByPlaceholder(/search/i)).first();
     await expect(searchInput).toBeVisible({ timeout: 5000 });
     await searchInput.fill(entitySlug);
@@ -74,29 +72,28 @@ test.describe('Global Search', () => {
     await expect(page).toHaveURL(/\/entities\/[a-f0-9-]+/);
   });
 
-  test('should return source results matching a query', async ({ page }) => {
-    const sourceTitle = generateSourceName('searchable-source');
+  test('should return source results matching a query', async ({ page, cleanup, testLabel, testSlug }) => {
+    const sourceTitle = testLabel('searchable-source');
     await page.goto('/sources/new');
     await page.waitForLoadState('domcontentloaded');
     await page.getByRole('textbox', { name: 'Title' }).fill(sourceTitle);
-    await page.getByRole('textbox', { name: 'URL' }).fill('https://example.com/searchable-source');
+    await page.getByRole('textbox', { name: 'URL' }).fill(`https://example.com/${testSlug('url')}`);
     await page.getByRole('button', { name: /create|submit/i }).click();
     await page.waitForURL(/\/sources\/[a-f0-9-]+/);
+    const sourceId = page.url().match(/\/sources\/([a-f0-9-]+)/)?.[1] ?? '';
+    cleanup.track('source', sourceId);
 
     await page.goto('/search');
     await page.waitForLoadState('networkidle');
 
-    // Search input must always be present at /search
     const searchInput = page.getByRole('searchbox').or(page.getByPlaceholder(/search/i)).first();
     await expect(searchInput).toBeVisible({ timeout: 5000 });
     await searchInput.fill(sourceTitle.substring(0, 20));
 
-    // Source must appear in results (assertion timeout covers debounce)
     await expect(page.locator(`text=${sourceTitle}`).first()).toBeVisible({ timeout: 10000 });
   });
 
   test('should show autocomplete results from the nav search bar', async ({ page }) => {
-    // Entities list has an autocomplete search in its toolbar — must always be present
     await page.goto('/entities');
     await expect(page.getByRole('heading', { name: 'Entities' })).toBeVisible();
 
@@ -104,7 +101,6 @@ test.describe('Global Search', () => {
     await expect(searchInput).toBeVisible({ timeout: 5000 });
     await searchInput.fill('test');
 
-    // Listbox must appear when text is typed into the autocomplete
     await expect(page.getByRole('listbox')).toBeVisible({ timeout: 5000 });
   });
 });
