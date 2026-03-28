@@ -53,6 +53,12 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   web:
     build:
@@ -64,7 +70,8 @@ services:
     environment:
       VITE_API_URL: http://localhost:8001/api
     depends_on:
-      - api
+      api:
+        condition: service_healthy
 
 # No volumes for E2E - we want ephemeral storage
 # Data is recreated for each test run

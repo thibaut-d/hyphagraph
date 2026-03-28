@@ -97,8 +97,9 @@ sed -i "s|dev.mydomain.com|dev.yourdomain.com|g" deploy/caddy/Caddyfile.dev
 
 ```bash
 make up-dev-server
-make migrate-dev-server
 ```
+
+Migrations run automatically on container start (via `docker-entrypoint.sh`). No separate migration step is needed.
 
 Verify:
 

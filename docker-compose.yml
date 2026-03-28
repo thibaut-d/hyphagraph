@@ -27,12 +27,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     command: sh ./docker-entrypoint.sh
-    volumes:
-      - ./backend:/app
     env_file:
       - .env
-    environment:
-      UV_LINK_MODE: copy
     depends_on:
       db:
         condition: service_healthy
@@ -47,9 +43,6 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules  # Preserve container's node_modules (prevents host override)
     env_file:
       - .env
     depends_on:

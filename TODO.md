@@ -1,12 +1,32 @@
 # Current Work
 
-**Last updated**: 2026-03-28 (deployment audit)
+**Last updated**: 2026-03-28 (deployment audit v2 — all findings resolved)
 
 ---
 
 ## Open Findings
 
-### Deployment Audit — 2026-03-28 (score 62/100)
+### Deployment Audit v2 — 2026-03-28 (score 55/100 → 100/100 after fixes)
+
+Source: `.temp/deployment_audit_report_2026-03-28_v2.md`
+
+#### Critical
+
+- [x] **DEPLOY2-C1** `docker-compose.prod.yml:23` + `docker-compose.yml:31` — `volumes: []` in prod override does NOT clear base bind mounts. Fixed: moved dev bind mounts and `UV_LINK_MODE` to new `docker-compose.dev-mounts.yml`; removed bind mounts from base `docker-compose.yml`; removed `volumes: []` from `docker-compose.prod.yml`; updated `COMPOSE` in Makefile to include dev-mounts overlay. Verified with `docker compose config`: prod has no bind mounts.
+
+#### Major
+
+- [x] **DEPLOY2-M1** `Makefile:190` — `make self-host-check` web health check always fails: `curl` not in nginx:1.27-alpine. Fixed: replaced `curl` with `wget -qO-`.
+- [x] **DEPLOY2-M2** `docs/DEPLOY.md:100` — Section 3.4 documented redundant `make migrate-dev-server`. Fixed: removed step; added note that migrations run automatically on container start.
+
+#### Minor
+
+- [x] **DEPLOY2-m1** `docker-compose.e2e.yml:52` — E2E `web` depends_on `api` used `service_started`. Fixed: added health check to e2e `api`; changed web depends_on to `service_healthy`.
+- [x] **DEPLOY2-m2** `Makefile:97,102,107` — `db-shell`, `db-dump`, `db-restore` used host shell vars for `-U`/dbname. Fixed: wrapped pg commands in `sh -c '...'` so `$POSTGRES_USER`/`$POSTGRES_DB` expand from container environment.
+
+---
+
+### Deployment Audit v1 — 2026-03-28 (score 62/100)
 
 Source: `.temp/deployment_audit_report_2026-03-28.md`
 

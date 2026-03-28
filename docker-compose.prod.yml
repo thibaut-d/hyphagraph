@@ -20,14 +20,12 @@ services:
     command: >
       sh -c "uv run alembic upgrade head &&
              uv run uvicorn app.main:app --host 0.0.0.0 --port 8000"
-    volumes: []
     restart: unless-stopped
 
   web:
     build:
       context: ./frontend
       dockerfile: Dockerfile.prod
-    volumes: []
     restart: unless-stopped
 
 volumes:

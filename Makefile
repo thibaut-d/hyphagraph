@@ -2,7 +2,7 @@
 # HyphaGraph Makefile
 # =========================
 
-COMPOSE = docker compose
+COMPOSE = docker compose -f docker-compose.yml -f docker-compose.dev-mounts.yml
 PROJECT = hyphagraph
 COMPOSE_DEV = docker compose -p hyphagraph-dev -f docker-compose.yml -f docker-compose.server-dev.yml
 COMPOSE_PROD = docker compose -p hyphagraph-prod -f docker-compose.yml -f docker-compose.prod.yml
@@ -94,23 +94,23 @@ logs-caddy: ## Follow Caddy logs
 
 .PHONY: db-shell
 db-shell: ## Open a psql shell inside the database container
-	$(COMPOSE) exec db psql -U $$POSTGRES_USER $$POSTGRES_DB
+	$(COMPOSE) exec db sh -c 'psql -U $$POSTGRES_USER $$POSTGRES_DB'
 
 .PHONY: db-dump
 db-dump: ## Dump the database to ./backups/hyphagraph.sql
 	mkdir -p backups
-	$(COMPOSE) exec -T db pg_dump -U $$POSTGRES_USER $$POSTGRES_DB > backups/$(PROJECT).sql
+	$(COMPOSE) exec -T db sh -c 'pg_dump -U $$POSTGRES_USER $$POSTGRES_DB' > backups/$(PROJECT).sql
 	@echo "Database dumped to backups/$(PROJECT).sql"
 
 .PHONY: db-restore
 db-restore: ## Restore the database from ./backups/hyphagraph.sql
-	cat backups/$(PROJECT).sql | $(COMPOSE) exec -T db psql -U $$POSTGRES_USER $$POSTGRES_DB
+	cat backups/$(PROJECT).sql | $(COMPOSE) exec -T db sh -c 'psql -U $$POSTGRES_USER $$POSTGRES_DB'
 	@echo "Database restored from backups/$(PROJECT).sql"
 
 .PHONY: db-reset
 db-reset: ## Drop and recreate the database (DANGEROUS)
-	$(COMPOSE) exec db dropdb -U $$POSTGRES_USER $$POSTGRES_DB || true
-	$(COMPOSE) exec db createdb -U $$POSTGRES_USER $$POSTGRES_DB
+	$(COMPOSE) exec db sh -c 'dropdb -U $$POSTGRES_USER $$POSTGRES_DB' || true
+	$(COMPOSE) exec db sh -c 'createdb -U $$POSTGRES_USER $$POSTGRES_DB'
 	@echo "Database reset"
 
 ## -------------------------
@@ -171,7 +171,7 @@ self-host-logs: ## Follow logs for the self-hosted stack
 self-host-update: ## Back up DB, pull new images, and restart
 	@echo "Backing up database before update..."
 	@mkdir -p backups
-	$(COMPOSE_SELF_HOST) exec -T db pg_dump -U $$POSTGRES_USER $$POSTGRES_DB > backups/pre-update-$$(date +%Y%m%d%H%M%S).sql
+	$(COMPOSE_SELF_HOST) exec -T db sh -c 'pg_dump -U $$POSTGRES_USER $$POSTGRES_DB' > backups/pre-update-$$(date +%Y%m%d%H%M%S).sql
 	$(COMPOSE_SELF_HOST) pull
 	$(COMPOSE_SELF_HOST) up -d
 	@echo "Update complete."
@@ -179,7 +179,7 @@ self-host-update: ## Back up DB, pull new images, and restart
 .PHONY: self-host-backup
 self-host-backup: ## Dump the self-hosted database to ./backups/
 	mkdir -p backups
-	$(COMPOSE_SELF_HOST) exec -T db pg_dump -U $$POSTGRES_USER $$POSTGRES_DB > backups/hyphagraph-$$(date +%Y%m%d%H%M%S).sql
+	$(COMPOSE_SELF_HOST) exec -T db sh -c 'pg_dump -U $$POSTGRES_USER $$POSTGRES_DB' > backups/hyphagraph-$$(date +%Y%m%d%H%M%S).sql
 	@echo "Backup saved to backups/"
 
 .PHONY: self-host-check
@@ -187,7 +187,7 @@ self-host-check: ## Verify the self-hosted deployment is healthy
 	@$(COMPOSE_SELF_HOST) exec api curl -sf http://localhost:8000/health \
 		&& echo "API is healthy" \
 		|| (echo "API health check FAILED" && exit 1)
-	@$(COMPOSE_SELF_HOST) exec web curl -sf http://localhost:80/ > /dev/null \
+	@$(COMPOSE_SELF_HOST) exec web wget -qO- http://localhost:80/ > /dev/null \
 		&& echo "Web is healthy" \
 		|| (echo "Web health check FAILED" && exit 1)
 
