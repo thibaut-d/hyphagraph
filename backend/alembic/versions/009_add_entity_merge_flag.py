@@ -1,7 +1,7 @@
 """Add is_merged flag to entities table
 
 Revision ID: 009_add_entity_merge_flag
-Revises: 008_fix_relation_type_json_columns
+Revises: 008_fix_rel_type_json_cols
 Create Date: 2026-03-23
 """
 
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 revision = "009_add_entity_merge_flag"
-down_revision = "008_fix_relation_type_json_columns"
+down_revision = "008_fix_rel_type_json_cols"
 branch_labels = None
 depends_on = None
 

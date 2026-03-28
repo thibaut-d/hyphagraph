@@ -7,7 +7,7 @@ DB enforces valid JSON.
 The data migration casts each column's current text value to JSONB; rows
 that already contain valid JSON will convert transparently.
 
-Revision ID: 008_fix_relation_type_json_columns
+Revision ID: 008_fix_rel_type_json_cols
 Revises: 007_add_entity_merge_indexes
 Create Date: 2026-03-22
 """
@@ -17,7 +17,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import JSONB
 
 
-revision = "008_fix_relation_type_json_columns"
+revision = "008_fix_rel_type_json_cols"
 down_revision = "007_add_entity_merge_indexes"
 branch_labels = None
 depends_on = None

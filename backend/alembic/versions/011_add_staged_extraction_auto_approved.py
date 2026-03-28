@@ -4,8 +4,8 @@ Records whether a staged extraction was approved by the automated pipeline
 (no human reviewer). Allows operators to filter auto-approved items separately
 from human-approved ones in the review UI.
 
-Revision ID: 011_add_staged_extraction_auto_approved
-Revises: 010_add_revision_confirmation_fields
+Revision ID: 011_staged_ext_auto_approved
+Revises: 010_add_rev_confirm_fields
 Create Date: 2026-03-23
 """
 
@@ -13,8 +13,8 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = "011_add_staged_extraction_auto_approved"
-down_revision = "010_add_revision_confirmation_fields"
+revision = "011_staged_ext_auto_approved"
+down_revision = "010_add_rev_confirm_fields"
 branch_labels = None
 depends_on = None
 

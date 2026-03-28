@@ -7,7 +7,7 @@ recorded when a draft revision is promoted to confirmed.
 Also adds partial unique indexes to enforce the is_current invariant
 at the database level (only one current revision per parent).
 
-Revision ID: 010_add_revision_confirmation_fields
+Revision ID: 010_add_rev_confirm_fields
 Revises: 009_add_entity_merge_flag
 Create Date: 2026-03-23
 """
@@ -17,7 +17,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 
 
-revision = "010_add_revision_confirmation_fields"
+revision = "010_add_rev_confirm_fields"
 down_revision = "009_add_entity_merge_flag"
 branch_labels = None
 depends_on = None

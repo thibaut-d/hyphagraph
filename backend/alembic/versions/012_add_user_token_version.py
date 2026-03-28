@@ -6,7 +6,7 @@ access tokens without relying solely on the DB-presence check in
 get_current_user.
 
 Revision ID: 012_add_user_token_version
-Revises: 011_add_staged_extraction_auto_approved
+Revises: 011_staged_ext_auto_approved
 Create Date: 2026-03-24
 """
 
@@ -15,7 +15,7 @@ import sqlalchemy as sa
 
 
 revision = "012_add_user_token_version"
-down_revision = "011_add_staged_extraction_auto_approved"
+down_revision = "011_staged_ext_auto_approved"
 branch_labels = None
 depends_on = None
 
