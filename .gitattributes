@@ -1,0 +1,8 @@
+# Ensure shell scripts and Docker-related files always use LF line endings,
+# regardless of core.autocrlf, so they run correctly inside Linux containers.
+
+*.sh            text eol=lf
+Dockerfile*     text eol=lf
+docker-compose*.yml text eol=lf
+Caddyfile*      text eol=lf
+nginx.conf      text eol=lf
