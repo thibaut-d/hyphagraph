@@ -8,6 +8,12 @@ COPY package.json package-lock.json* ./
 RUN npm ci --legacy-peer-deps
 
 COPY . .
+
+# VITE_ vars must be present at build time; /api is correct for all deployments
+# (Caddy reverse-proxies /api/* to the backend, so this is always a relative URL).
+ARG VITE_API_URL=/api
+ENV VITE_API_URL=$VITE_API_URL
+
 RUN npm run build
 
 # Stage 2: serve the static bundle with nginx

@@ -113,7 +113,21 @@ info ".env written"
 
 heading "Configuring Caddy"
 
-sed -i "s|your-domain.com|${DOMAIN}|g" "$CADDYFILE"
+cat > "$CADDYFILE" <<CADDYEOF
+# Self-hosting Caddyfile
+# Caddy obtains and renews HTTPS certificates from Let's Encrypt automatically.
+# Requires ports 80 and 443 open to the internet.
+
+${DOMAIN} {
+    handle /api/* {
+        reverse_proxy api:8000
+    }
+
+    handle {
+        reverse_proxy web:80
+    }
+}
+CADDYEOF
 
 info "Caddyfile updated with domain: $DOMAIN"
 

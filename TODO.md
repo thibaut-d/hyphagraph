@@ -1,10 +1,76 @@
 # Current Work
 
-**Last updated**: 2026-03-26 (bug report system)
+**Last updated**: 2026-03-28 (deployment audit)
 
 ---
 
 ## Open Findings
+
+### Deployment Audit — 2026-03-28 (score 62/100)
+
+Source: `.temp/deployment_audit_report_2026-03-28.md`
+
+#### Critical
+
+- [x] **DEPLOY-C1** `docker-compose.prod.yml:20` — `api` command skips migrations. Fixed: added `alembic upgrade head` to api command; updated DEPLOY.md 6.3.
+- [x] **DEPLOY-C2** `docker-compose.prod.yml:27` — `web` service used `vite preview`. Fixed: wired `Dockerfile.prod` (nginx) into prod compose; updated Caddyfile.prod proxy to `web:80`; added `VITE_API_URL` build arg to `Dockerfile.prod`.
+
+#### Major
+
+- [x] **DEPLOY-M1** `deploy/caddy/Caddyfile.prod:1` — Placeholder domain. Fixed: added prominent REQUIRED comment; added concrete `sed` update step to DEPLOY.md 6.2.
+- [x] **DEPLOY-M2** `Makefile:173` — Backup `|| true` swallowed errors. Fixed: removed `|| true`; added `mkdir -p backups`.
+- [x] **DEPLOY-M3** `docker-compose.yml` — No API health check. Fixed: added `healthcheck` to `api` in base and self-host compose; updated `caddy` depends_on to `service_healthy`; added `curl` to backend Dockerfile.
+- [x] **DEPLOY-M4** `frontend/Dockerfile.prod` — Dead artifact. Fixed: wired into prod compose via DEPLOY-C2 fix.
+
+#### Minor
+
+- [ ] **DEPLOY-m1** `backend/.env.test:9,16` — Test-only credentials committed; left as-is per user decision.
+- [x] **DEPLOY-m2** `scripts/setup-self-host.sh:116` — Not idempotent. Fixed: replaced sed with `cat >` heredoc; re-running now overwrites the file correctly.
+- [x] **DEPLOY-m3** `Makefile:186-188` — `self-host-check` only checked API. Fixed: added web container curl check.
+- [x] **DEPLOY-m4** `deploy/caddy/Caddyfile.dev:1` — Placeholder domain. Fixed: added concrete sed step to DEPLOY.md 3.3.
+
+---
+
+### Full System Audit — 2026-03-26 (score 83/100)
+
+Source: `.temp/full_audit_report_2026-03-26.md`
+
+#### Critical
+
+- [ ] **AUD26-C1** `backend/app/dependencies/auth.py:127-128` — `get_optional_current_user()` bare `except Exception` swallows all errors and returns `None`, making auth system failures indistinguishable from anonymous requests. Catch only `HTTPException`/`UnauthorizedException`; log and re-raise everything else.
+- [ ] **AUD26-C2** `backend/app/services/document_extraction_processing.py:683-689` — Extraction silently discards relations on parse failure; API reports success while data is lost. Add `skipped_relations: list[SkippedRelationDetail]` to the result schema and surface it as a frontend warning.
+
+#### Major
+
+- [ ] **AUD26-M1** `backend/app/api/admin.py:105,146,181` — Route handlers execute raw `select()` queries instead of delegating to `AdminService`. Add `list_categories()`, `get_category()`, `delete_category()` service methods; call from routes.
+- [ ] **AUD26-M2** `backend/app/utils/audit.py:101-113` — Audit log failures are silently swallowed with no alerting. Add a consecutive-failure counter; emit `logger.critical(...)` after N failures.
+- [ ] **AUD26-M3** `backend/app/api/error_handlers.py:51` — `handle_extraction_errors` merges all exception types into `EXTRACTION_FAILED`. Catch specific types separately (LLM → 503, validation → 422) before the generic fallback.
+- [ ] **AUD26-M4** `backend/app/services/pubmed_fetcher.py:188-190,338-340,467-469` — Generic `except Exception` handler drops PMID context and error type. Include original exception message in `details`; distinguish retryable vs. non-retryable errors.
+- [ ] **AUD26-M5** `backend/app/api/test_helpers.py:35,91,182,214` — All four test-support endpoints return untyped dicts with no `response_model`. Define `DatabaseResetResponse`, `ReviewQueueSeedResponse`, `UICategoriesSeedResponse`, `TestHealthResponse` schemas and declare them as `response_model`.
+- [ ] **AUD26-M6** `backend/app/services/export_service.py:69,99-120` — Export service builds inline `dict` lists with no Pydantic schema. Define `EntityExportItem`, `SourceExportItem`, `RelationExportItem` and use `model_dump` for serialization.
+- [ ] **AUD26-M7** `frontend/src/components/layout/MobileDrawer.tsx:28,37` + `DesktopNavigation.tsx:18,25` — `icon: any` and `user: any` props defeat TypeScript safety for the entire navigation layer. Define `MenuItem` interface with `icon: ComponentType<SvgIconProps>` and import the existing `User` type.
+- [ ] **AUD26-M8** `e2e/tests/auth/token-refresh.spec.ts:20` — `waitForTimeout(1000)` anti-pattern causes flaky timing-dependent test. Replace with `waitForLoadState('networkidle')` or an element/network condition.
+- [ ] **AUD26-M9** `backend/app/api/document_extraction_dependencies.py:4-9` — Module-level re-exports of test helpers (suppressed with `# noqa: F401`) couple production module load to test scaffolding. Remove top-level imports; rely solely on the lazy-loading function.
+
+#### Minor
+
+- [ ] **AUD26-m1** `backend/app/utils/access_token_manager.py:34,72` — `SECRET_KEY` cached at init; runtime rotation won't take effect. Resolve lazily at call time or add a cache-invalidation check.
+- [ ] **AUD26-m2** `backend/app/api/service_dependencies.py` — Stateless service factories (`get_document_service`, `get_metadata_extractor_factory`) have no comment distinguishing them from DB-dependent ones. Add a short explanatory comment.
+- [ ] **AUD26-m3** `backend/app/services/` (disagreement visibility) — Thresholds like `> 0.1` / `> 0.5` are magic constants. Extract to named constants and document rationale in `docs/architecture/COMPUTED_RELATIONS.md`.
+- [ ] **AUD26-m4** `backend/app/main.py:45-46` — Token purge background task has no consecutive-failure escalation. Add failure counter; emit `logger.critical(...)` after N failures.
+- [ ] **AUD26-m5** `backend/app/services/bug_report_service.py:58-62` — CAPTCHA decode broad catch has no logging; systematic attacks are invisible. Log invalid attempts at WARN level.
+- [ ] **AUD26-m6** E2E runtime `test.skip(true, ...)` calls — `admin/panel.spec.ts:122`, `auth/email-verification.spec.ts:51,63,76`, `sources/document-upload.spec.ts:61`, `relations/edit-delete.spec.ts:72,83,127`. Prefer parse-time skips or explicit precondition hooks.
+- [ ] **AUD26-m7** `backend/tests/test_bug_report_service.py` — Missing boundary/concurrency coverage: max-length (4000 chars), concurrent CAPTCHA generation, malformed CAPTCHA JSON.
+- [ ] **AUD26-m8** `backend/tests/test_auth_endpoints.py` + `e2e/tests/auth/token-refresh.spec.ts` — Token rotation tests don't assert old token is rejected post-rotation. Add a test that uses the old refresh token after rotation and expects 401.
+- [ ] **AUD26-m9** `backend/app/services/inference/math.py:60` — `aggregate_evidence(relations_data: list[dict], ...) -> dict[str, float | None]` has undocumented internal structure. Define `RelationEvidence` and `AggregationResult` TypedDicts.
+- [ ] **AUD26-m10** `backend/app/services/inference/read_models.py:40` — `resolve_entity_slugs` returns bare `dict[UUID, str]`. Add a TypedDict or inline comment documenting the mapping shape.
+- [ ] **AUD26-m11** `backend/app/llm/prompts.py:10` — Unused `TypedDict` import; prompt functions lack return type annotations. Remove unused import; add `-> str` or `-> list[dict[str, str]]` return types.
+- [ ] **AUD26-m12** `backend/app/services/inference/read_models.py:59` — `matches_scope(relation, scope_filter: dict)` bare `dict` parameter. Define a `ScopeFilter` TypedDict.
+- [ ] **AUD26-m13** `backend/app/utils/auth.py:1-56` — Re-export facade with no documented rationale. Audit importers; delete if all use direct submodule imports, or add a header comment explaining its purpose.
+- [ ] **AUD26-m14** `frontend/src/i18n/fr.json` — 17 lines shorter than `en.json`; recent additions not yet translated to French. Diff top-level keys and add missing FR translations.
+- [ ] **AUD26-m15** `backend/app/api/test_helpers.py:35,91,182,214` — Functions missing return type annotations. Covered by M5 fix; add `-> XxxResponse` annotations simultaneously.
+
+---
 
 ### E2E Skipped Tests — 2026-03-25
 

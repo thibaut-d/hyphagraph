@@ -85,12 +85,13 @@ Edit `.env.dev` and at minimum update:
 - `ADMIN_PASSWORD`
 - LLM keys if needed
 
-### 3.3 Verify the dev domain
+### 3.3 Update the dev domain
 
-`deploy/caddy/Caddyfile.dev` already targets:
-- `dev.mydomain.com`
+`deploy/caddy/Caddyfile.dev` contains a placeholder domain. Replace it with your actual dev domain before starting:
 
-If your domain changes, update that file.
+```bash
+sed -i "s|dev.mydomain.com|dev.yourdomain.com|g" deploy/caddy/Caddyfile.dev
+```
 
 ### 3.4 Start the dev server stack
 
@@ -161,23 +162,32 @@ cp .env.prod.template .env.prod
 
 Fill all sensitive values.
 
-### 6.2 Verify production domain config
+### 6.2 Update production domain
 
-`deploy/caddy/Caddyfile.prod` includes:
-- `mydomain.com`
-- `www.mydomain.com`
+Edit `deploy/caddy/Caddyfile.prod` and replace both `mydomain.com` occurrences with your actual domain:
+
+```bash
+sed -i "s|mydomain.com|yourdomain.com|g" deploy/caddy/Caddyfile.prod
+```
+
+Verify the result before starting the stack:
+
+```bash
+cat deploy/caddy/Caddyfile.prod
+```
 
 ### 6.3 Start the production stack
 
 ```bash
 make up-prod
-make migrate-prod
 ```
 
-Production override already applies:
-- backend without `--reload`
-- frontend without bind mounts (no live code mount)
+Production override applies:
+- backend runs `alembic upgrade head` then uvicorn (no `--reload`)
+- frontend served by nginx (static build via `Dockerfile.prod`)
 - HTTPS Caddy with persisted certificates
+
+> Note: `make migrate-prod` still exists for manual migration runs (e.g. debugging), but it is no longer required as part of normal startup.
 
 ---
 

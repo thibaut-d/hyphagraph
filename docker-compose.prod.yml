@@ -17,14 +17,16 @@ services:
   api:
     env_file:
       - .env.prod
-    command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
+    command: >
+      sh -c "uv run alembic upgrade head &&
+             uv run uvicorn app.main:app --host 0.0.0.0 --port 8000"
     volumes: []
     restart: unless-stopped
 
   web:
-    env_file:
-      - .env.prod
-    command: sh -c "npm run build && npm run preview -- --host 0.0.0.0 --port 3000"
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
     volumes: []
     restart: unless-stopped
 

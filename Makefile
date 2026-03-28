@@ -170,7 +170,8 @@ self-host-logs: ## Follow logs for the self-hosted stack
 .PHONY: self-host-update
 self-host-update: ## Back up DB, pull new images, and restart
 	@echo "Backing up database before update..."
-	$(COMPOSE_SELF_HOST) exec -T db pg_dump -U $$POSTGRES_USER $$POSTGRES_DB > backups/pre-update-$$(date +%Y%m%d%H%M%S).sql || true
+	@mkdir -p backups
+	$(COMPOSE_SELF_HOST) exec -T db pg_dump -U $$POSTGRES_USER $$POSTGRES_DB > backups/pre-update-$$(date +%Y%m%d%H%M%S).sql
 	$(COMPOSE_SELF_HOST) pull
 	$(COMPOSE_SELF_HOST) up -d
 	@echo "Update complete."
@@ -186,6 +187,9 @@ self-host-check: ## Verify the self-hosted deployment is healthy
 	@$(COMPOSE_SELF_HOST) exec api curl -sf http://localhost:8000/health \
 		&& echo "API is healthy" \
 		|| (echo "API health check FAILED" && exit 1)
+	@$(COMPOSE_SELF_HOST) exec web curl -sf http://localhost:80/ > /dev/null \
+		&& echo "Web is healthy" \
+		|| (echo "Web health check FAILED" && exit 1)
 
 ## -------------------------
 ## Cleanup
