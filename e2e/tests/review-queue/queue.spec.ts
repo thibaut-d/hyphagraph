@@ -118,7 +118,6 @@ test.describe('LLM Extraction Review Queue', () => {
     const selectAllButton = page.getByRole('button', { name: /select all/i });
     await expect(selectAllButton).toBeVisible({ timeout: 10000 });
     await selectAllButton.click();
-    await page.waitForTimeout(300);
 
     await expect(page.getByRole('button', { name: /approve.*selected/i })).toBeVisible({ timeout: 3000 });
     await expect(page.getByRole('button', { name: /reject.*selected/i })).toBeVisible();

@@ -42,7 +42,7 @@ test.describe('Revision History', () => {
 
     await page.getByRole('button', { name: /save|update/i }).click();
     await page.waitForURL(/\/entities\/[a-f0-9-]+$/, { timeout: 10000 });
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle', { timeout: 5000 });
 
     const afterResp = await page.request.get(`${API_URL}/api/entities/${entityId}`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -124,7 +124,7 @@ test.describe('Revision History', () => {
 
     await page.getByRole('button', { name: /save|update/i }).click();
     await page.waitForURL(/\/(relations|sources)\/[a-f0-9-]+/, { timeout: 10000 });
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle', { timeout: 5000 });
 
     const afterResp = await page.request.get(`${API_URL}/api/relations/${relationId}`, {
       headers: { Authorization: `Bearer ${token}` },

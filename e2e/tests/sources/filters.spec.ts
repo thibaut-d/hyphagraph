@@ -72,7 +72,7 @@ test.describe('Source Filters', () => {
 
     // Close the drawer before asserting background content (MUI Drawer sets aria-hidden on bg)
     await page.keyboard.press('Escape');
-    await page.waitForTimeout(300);
+    await expect(page.locator('[role="presentation"]').first()).not.toBeVisible({ timeout: 3000 });
 
     // Page must remain functional after filter interaction
     await expect(page.getByRole('heading', { name: 'Sources' })).toBeVisible();
