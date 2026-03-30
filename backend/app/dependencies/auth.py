@@ -5,7 +5,10 @@ Provides get_current_user dependency for protected endpoints.
 """
 from typing import Optional
 
+import logging
+
 from fastapi import Depends
+from fastapi.exceptions import HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -20,6 +23,8 @@ from app.utils.errors import UnauthorizedException, ForbiddenException
 
 # OAuth2 scheme for token extraction
 # tokenUrl points to the login endpoint
+logger = logging.getLogger(__name__)
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 # Same scheme but does not raise 401 when the header is absent
 oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
@@ -124,8 +129,13 @@ async def get_optional_current_user(
         return None
     try:
         return await get_current_user(token=token, db=db)
-    except Exception:
+    except HTTPException:
+        # Expected: invalid/expired token, inactive user, unverified user — treat as anonymous.
         return None
+    except Exception:
+        # Unexpected: DB failure, programming error, etc. — do not mask, re-raise.
+        logger.exception("Unexpected error in get_optional_current_user")
+        raise
 
 
 async def get_current_active_superuser(

@@ -83,6 +83,36 @@ class DocumentService:
                 context={"size_mb": file.size / 1024 / 1024, "max_mb": max_size_mb or self.MAX_FILE_SIZE_MB, "filename": file.filename}
             )
 
+    async def _read_bounded(self, file: UploadFile, max_bytes: int) -> bytes:
+        """
+        Read file content up to max_bytes, raising 413 before full buffering.
+
+        Reads in 64 KB chunks so oversized uploads are rejected as soon as the
+        limit is crossed, rather than after the entire file is in memory.  This
+        is needed when UploadFile.size is absent (e.g. chunked transfer encoding).
+        """
+        chunks: list[bytes] = []
+        total = 0
+        chunk_size = 64 * 1024  # 64 KB
+
+        while True:
+            chunk = await file.read(chunk_size)
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > max_bytes:
+                max_mb = max_bytes // (1024 * 1024)
+                raise AppException(
+                    status_code=413,
+                    error_code=ErrorCode.DOCUMENT_TOO_LARGE,
+                    message="File too large",
+                    details=f"File size exceeds maximum of {max_mb}MB",
+                    context={"max_mb": max_mb, "filename": file.filename},
+                )
+            chunks.append(chunk)
+
+        return b"".join(chunks)
+
     async def extract_text_from_pdf(self, file: UploadFile) -> str:
         """
         Extract text from PDF file.
@@ -97,19 +127,8 @@ class DocumentService:
             HTTPException: If PDF extraction fails
         """
         try:
-            # Read file content with size check
-            content = await file.read()
-
-            # Validate file size after reading (in case size wasn't in headers)
             max_size = self.MAX_FILE_SIZE_MB * 1024 * 1024
-            if len(content) > max_size:
-                raise AppException(
-                    status_code=413,
-                    error_code=ErrorCode.DOCUMENT_TOO_LARGE,
-                    message="File too large",
-                    details=f"File size {len(content) / 1024 / 1024:.1f}MB exceeds maximum of {self.MAX_FILE_SIZE_MB}MB",
-                    context={"size_mb": len(content) / 1024 / 1024, "max_mb": self.MAX_FILE_SIZE_MB, "filename": file.filename}
-                )
+            content = await self._read_bounded(file, max_size)
 
             pdf_file = io.BytesIO(content)
 
@@ -159,19 +178,8 @@ class DocumentService:
             HTTPException: If text reading fails
         """
         try:
-            content = await file.read()
-
-            # Validate file size after reading (in case size wasn't in headers)
             max_size = self.MAX_FILE_SIZE_MB * 1024 * 1024
-            if len(content) > max_size:
-                raise AppException(
-                    status_code=413,
-                    error_code=ErrorCode.DOCUMENT_TOO_LARGE,
-                    message="File too large",
-                    details=f"File size {len(content) / 1024 / 1024:.1f}MB exceeds maximum of {self.MAX_FILE_SIZE_MB}MB",
-                    context={"size_mb": len(content) / 1024 / 1024, "max_mb": self.MAX_FILE_SIZE_MB, "filename": file.filename}
-                )
-
+            content = await self._read_bounded(file, max_size)
 
             # Try UTF-8 first, fall back to Latin-1 if that fails
             try:

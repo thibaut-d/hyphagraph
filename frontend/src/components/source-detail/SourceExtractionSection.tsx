@@ -121,6 +121,16 @@ export function SourceExtractionSection({
           </Alert>
         )}
 
+        {saveResult && saveResult.skipped_relations.length > 0 && (
+          <Alert severity="warning">
+            {t(
+              "sources.skipped_relations_warning",
+              "{{count}} relation(s) could not be reconciled due to data errors and were left in the review queue.",
+              { count: saveResult.skipped_relations.length }
+            )}
+          </Alert>
+        )}
+
         {hasUrl && (
           <Box>
             <Button

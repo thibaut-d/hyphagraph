@@ -106,7 +106,8 @@ export function search(filters: SearchFilters): Promise<SearchResponse> {
 export function getSuggestions(
   query: string,
   types?: ("entity" | "source")[],
-  limit?: number
+  limit?: number,
+  signal?: AbortSignal,
 ): Promise<SearchSuggestionsResponse> {
   const params = createSearchParams((params) => {
     appendOptionalParam(params, "query", query);
@@ -116,5 +117,6 @@ export function getSuggestions(
 
   return apiFetch(`/search/suggestions${buildQueryString(params)}`, {
     method: "POST",
+    signal,
   });
 }

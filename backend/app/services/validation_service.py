@@ -1,14 +1,5 @@
-from fastapi import HTTPException, status
-
 from app.schemas.relation import RelationWrite, RoleRevisionWrite
-
-
-class ValidationError(HTTPException):
-    def __init__(self, detail: str):
-        super().__init__(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail=detail,
-        )
+from app.utils.errors import ValidationException
 
 
 def validate_relation(payload: RelationWrite) -> None:
@@ -50,4 +41,4 @@ def _non_empty(value: str | None) -> bool:
 
 
 def _fail(message: str) -> None:
-    raise ValidationError(message)
+    raise ValidationException(message)

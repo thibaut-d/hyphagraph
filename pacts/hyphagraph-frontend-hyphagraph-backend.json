@@ -241,7 +241,8 @@
         "body": {
           "content": {
             "email": "newuser@example.com",
-            "password": "securepass123"
+            "password": "securepass123",
+            "password_confirmation": "securepass123"
           },
           "contentType": "application/json",
           "encoded": false
@@ -1940,6 +1941,10 @@
               {
                 "entity_id": "123e4567-e89b-42d3-a456-426614174000",
                 "role_type": "drug"
+              },
+              {
+                "entity_id": "223e4567-e89b-42d3-a456-426614174001",
+                "role_type": "condition"
               }
             ],
             "source_id": "223e4567-e89b-42d3-a456-426614174000"
@@ -2437,7 +2442,7 @@
           },
           "status": {}
         },
-        "status": 200
+        "status": 201
       },
       "type": "Synchronous/HTTP"
     },

@@ -136,6 +136,11 @@ export interface SaveExtractionRequest {
   relations_to_create: ExtractedRelation[];
 }
 
+export interface SkippedRelationDetail {
+  staged_extraction_id: string;
+  reason: string;
+}
+
 export interface SaveExtractionResult {
   entities_created: number;
   entities_linked: number;
@@ -143,6 +148,7 @@ export interface SaveExtractionResult {
   created_entity_ids: string[];
   created_relation_ids: string[];
   warnings: string[];
+  skipped_relations: SkippedRelationDetail[];
 }
 
 // =============================================================================

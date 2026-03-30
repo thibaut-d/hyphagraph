@@ -214,8 +214,8 @@ class LLMServiceUnavailableException(AppException):
         super().__init__(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             error_code=ErrorCode.LLM_SERVICE_UNAVAILABLE,
-            message="LLM service not available",
-            details=details or "Please configure OPENAI_API_KEY to enable LLM features",
+            message="AI service is unavailable. Please try again later.",
+            details=details or "LLM provider is not configured or is unreachable.",
         )
 
 

@@ -43,7 +43,7 @@ export function GlobalSearch() {
     const fetchSuggestions = async () => {
       setLoading(true);
       try {
-        const response = await getSuggestions(debouncedQuery, undefined, 10);
+        const response = await getSuggestions(debouncedQuery, undefined, 10, controller.signal);
         if (!controller.signal.aborted) {
           setSuggestions(response.suggestions);
         }

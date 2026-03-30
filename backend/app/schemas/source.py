@@ -153,6 +153,12 @@ class SaveExtractionRequest(Schema):
     # Note: source_id is in URL path, not needed in body
 
 
+class SkippedRelationDetail(Schema):
+    """A staged relation that could not be reconciled due to a parse error."""
+    staged_extraction_id: UUID
+    reason: str
+
+
 class SaveExtractionResult(Schema):
     """Result of saving extracted data."""
     entities_created: int
@@ -161,4 +167,5 @@ class SaveExtractionResult(Schema):
     created_entity_ids: List[UUID]
     created_relation_ids: List[UUID]
     warnings: List[str] = []
+    skipped_relations: List[SkippedRelationDetail] = []
 

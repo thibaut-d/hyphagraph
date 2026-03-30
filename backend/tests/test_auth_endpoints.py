@@ -92,10 +92,11 @@ class TestRegistrationEndpoint:
                 mock_service_class.return_value = mock_service
 
                 # Mock duplicate email error
-                from fastapi import HTTPException
-                mock_service.create.side_effect = HTTPException(
+                from app.utils.errors import AppException, ErrorCode
+                mock_service.create.side_effect = AppException(
                     status_code=400,
-                    detail="Email already registered"
+                    error_code=ErrorCode.USER_EMAIL_ALREADY_EXISTS,
+                    message="Email already registered",
                 )
 
                 response = await client.post(
@@ -104,7 +105,7 @@ class TestRegistrationEndpoint:
                 )
 
                 assert response.status_code == status.HTTP_400_BAD_REQUEST
-                assert "already registered" in response.json()["detail"].lower()
+                assert "already registered" in response.json()["error"]["message"].lower()
 
     @pytest.mark.asyncio
     async def test_register_invalid_email(self):
@@ -674,3 +675,38 @@ class TestAccountDeletion:
                     mock_service.delete.assert_called_once_with(sample_user.id)
         finally:
             app.dependency_overrides.clear()
+
+
+# =============================================================================
+# get_optional_current_user — exception handling
+# =============================================================================
+
+
+@pytest.mark.asyncio
+class TestGetOptionalCurrentUser:
+    """Unit tests for get_optional_current_user exception handling."""
+
+    async def test_returns_none_when_no_token(self, mock_db):
+        """Returns None for anonymous requests (no token)."""
+        from app.dependencies.auth import get_optional_current_user
+        result = await get_optional_current_user(token=None, db=mock_db)
+        assert result is None
+
+    async def test_returns_none_for_invalid_token(self, mock_db):
+        """Returns None when token is invalid (HTTPException expected path)."""
+        from app.dependencies.auth import get_optional_current_user
+        # An invalid JWT causes get_current_user to raise UnauthorizedException
+        result = await get_optional_current_user(token="not-a-valid-jwt", db=mock_db)
+        assert result is None
+
+    async def test_reraises_unexpected_exceptions(self, mock_db):
+        """Re-raises non-HTTPException errors so system failures are not hidden."""
+        from app.dependencies.auth import get_optional_current_user
+        from fastapi.exceptions import HTTPException
+
+        async def _raise_db_error(token, db):
+            raise RuntimeError("DB connection lost")
+
+        with patch("app.dependencies.auth.get_current_user", side_effect=RuntimeError("DB connection lost")):
+            with pytest.raises(RuntimeError, match="DB connection lost"):
+                await get_optional_current_user(token="any-token", db=mock_db)

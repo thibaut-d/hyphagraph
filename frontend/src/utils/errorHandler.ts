@@ -38,6 +38,7 @@ export enum ErrorCode {
   // Entity/Relation errors
   ENTITY_NOT_FOUND = "ENTITY_NOT_FOUND",
   ENTITY_SLUG_CONFLICT = "ENTITY_SLUG_CONFLICT",
+  ENTITY_HAS_RELATIONS = "ENTITY_HAS_RELATIONS",
   RELATION_NOT_FOUND = "RELATION_NOT_FOUND",
   RELATION_TYPE_NOT_FOUND = "RELATION_TYPE_NOT_FOUND",
   SOURCE_NOT_FOUND = "SOURCE_NOT_FOUND",
@@ -263,28 +264,32 @@ export function parseError(
     };
   }
 
-  // Handle Response objects
+  // Handle Response objects (status-only fallback — no structured body available).
+  // Update this map whenever ErrorCode adds a new status-mapped entry.
   if (isHttpLikeError(error)) {
     const statusCode = error.status;
-    let code = ErrorCode.UNKNOWN_ERROR;
-    let userMessage = fallbackMessage;
 
-    if (statusCode === 401) {
-      code = ErrorCode.UNAUTHORIZED;
-      userMessage = i18n.t("notifications.http_401");
-    } else if (statusCode === 403) {
-      code = ErrorCode.FORBIDDEN;
-      userMessage = i18n.t("notifications.http_403");
-    } else if (statusCode === 404) {
-      code = ErrorCode.NOT_FOUND;
-      userMessage = i18n.t("notifications.http_404");
-    } else if (statusCode === 429) {
-      code = ErrorCode.RATE_LIMIT_EXCEEDED;
-      userMessage = i18n.t("notifications.rate_limit");
-    } else if (statusCode >= 500) {
-      code = ErrorCode.INTERNAL_SERVER_ERROR;
-      userMessage = i18n.t("notifications.server_error");
-    }
+    const HTTP_STATUS_ERROR_CODES: Partial<Record<number, ErrorCode>> = {
+      401: ErrorCode.UNAUTHORIZED,
+      403: ErrorCode.FORBIDDEN,
+      404: ErrorCode.NOT_FOUND,
+      429: ErrorCode.RATE_LIMIT_EXCEEDED,
+    };
+
+    const HTTP_STATUS_MESSAGES: Partial<Record<number, string>> = {
+      401: i18n.t("notifications.http_401"),
+      403: i18n.t("notifications.http_403"),
+      404: i18n.t("notifications.http_404"),
+      429: i18n.t("notifications.rate_limit"),
+    };
+
+    const code =
+      HTTP_STATUS_ERROR_CODES[statusCode] ??
+      (statusCode >= 500 ? ErrorCode.INTERNAL_SERVER_ERROR : ErrorCode.UNKNOWN_ERROR);
+
+    const userMessage =
+      HTTP_STATUS_MESSAGES[statusCode] ??
+      (statusCode >= 500 ? i18n.t("notifications.server_error") : fallbackMessage);
 
     return {
       userMessage,
@@ -376,10 +381,14 @@ export function formatErrorForLogging(
 }
 
 /**
- * Check if an error code represents a user-facing error that should be shown.
+ * Check if an error code represents a user-facing error that should be shown in the UI.
+ *
+ * When this returns `false`, the caller MUST still log the error via
+ * `formatErrorForLogging()` before redirecting or silently swallowing it.
+ * Never discard an error without at least a `console.error` call.
  */
 export function shouldShowErrorToUser(code: ErrorCode): boolean {
-  // Don't show auth errors that redirect to login
+  // Auth-redirect codes trigger a navigation to /account; no toast is shown.
   if (code === ErrorCode.AUTH_TOKEN_EXPIRED || code === ErrorCode.AUTH_TOKEN_INVALID) {
     return false;
   }

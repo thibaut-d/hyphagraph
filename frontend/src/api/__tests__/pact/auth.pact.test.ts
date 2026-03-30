@@ -27,7 +27,7 @@ describe('Auth API — consumer contract', () => {
       .withRequest('POST', '/api/auth/register', (builder) => {
         builder
           .headers({ 'Content-Type': 'application/json' })
-          .jsonBody(like({ email: 'newuser@example.com', password: 'securepass123' }))
+          .jsonBody(like({ email: 'newuser@example.com', password: 'securepass123', password_confirmation: 'securepass123' }))
       })
       .willRespondWith(201, (builder) => {
         builder.jsonBody(
@@ -45,7 +45,7 @@ describe('Auth API — consumer contract', () => {
         const res = await fetch(`${mockServer.url}/api/auth/register`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: 'newuser@example.com', password: 'securepass123' }),
+          body: JSON.stringify({ email: 'newuser@example.com', password: 'securepass123', password_confirmation: 'securepass123' }),
         })
         const data = await res.json()
         expect(res.status).toBe(201)

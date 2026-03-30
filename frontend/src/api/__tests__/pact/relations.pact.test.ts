@@ -10,6 +10,7 @@ const { like, eachLike } = MatchersV3
 
 const PACT_DIR = path.resolve(__dirname, '../../../../../pacts')
 const ENTITY_ID = '123e4567-e89b-42d3-a456-426614174000'
+const ENTITY_ID_2 = '223e4567-e89b-42d3-a456-426614174001'
 const SOURCE_ID = '223e4567-e89b-42d3-a456-426614174000'
 const RELATION_ID = '323e4567-e89b-42d3-a456-426614174000'
 
@@ -99,7 +100,10 @@ describe('Relations API — consumer contract', () => {
               kind: 'treats',
               direction: 'positive',
               confidence: 0.8,
-              roles: [{ entity_id: ENTITY_ID, role_type: 'drug' }],
+              roles: [
+                { entity_id: ENTITY_ID, role_type: 'drug' },
+                { entity_id: ENTITY_ID_2, role_type: 'condition' },
+              ],
             })
           )
       })
@@ -122,7 +126,10 @@ describe('Relations API — consumer contract', () => {
             kind: 'treats',
             direction: 'positive',
             confidence: 0.8,
-            roles: [{ entity_id: ENTITY_ID, role_type: 'drug' }],
+            roles: [
+              { entity_id: ENTITY_ID, role_type: 'drug' },
+              { entity_id: ENTITY_ID_2, role_type: 'condition' },
+            ],
           }),
         })
         const data = await res.json()

@@ -16,6 +16,7 @@ def build_relation_read(*, direction: str | None, confidence: float | None, weig
     return RelationRead(
         id=uuid4(),
         created_at="2026-03-15T00:00:00Z",
+        updated_at="2026-03-15T00:00:00Z",
         source_id=uuid4(),
         direction=direction,
         confidence=confidence,

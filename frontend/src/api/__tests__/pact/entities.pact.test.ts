@@ -124,7 +124,7 @@ describe('Entities API — consumer contract', () => {
           })
           .jsonBody(like({ slug: 'new-entity' }))
       })
-      .willRespondWith(200, (builder) => {
+      .willRespondWith(201, (builder) => {
         builder.jsonBody(
           like({
             id: like(ENTITY_ID),
@@ -145,7 +145,7 @@ describe('Entities API — consumer contract', () => {
           body: JSON.stringify({ slug: 'new-entity' }),
         })
         const data = await res.json()
-        expect(res.status).toBe(200)
+        expect(res.status).toBe(201)
         expect(data).toHaveProperty('id')
         expect(data).toHaveProperty('slug')
         expect(data).toHaveProperty('created_at')

@@ -31,6 +31,7 @@ from app.schemas.source import (
     EntityLinkMatch,
     SaveExtractionRequest,
     SaveExtractionResult,
+    SkippedRelationDetail,
     SourceWrite,
 )
 from app.services.batch_extraction_orchestrator import BatchExtractionOrchestrator
@@ -618,7 +619,7 @@ async def reconcile_staged_extractions(
     approved_relations: list[ExtractedRelation],
     approved_relation_ids: list[UUID],
     user_id: UUID | None,
-) -> None:
+) -> list[SkippedRelationDetail]:
     """
     After save_extraction_to_graph, link staged extraction records to the newly
     created graph items and record the user's approval decision.
@@ -645,7 +646,7 @@ async def reconcile_staged_extractions(
     staged_items = result.scalars().all()
 
     if not staged_items:
-        return
+        return []
 
     now = datetime.datetime.now(datetime.UTC)
 
@@ -655,7 +656,7 @@ async def reconcile_staged_extractions(
         key = _relation_match_key(rel)
         relation_key_to_idx.setdefault(key, idx)
 
-    skipped_relations = 0
+    skipped: list[SkippedRelationDetail] = []
 
     for staged in staged_items:
         if staged.extraction_type == ExtractionType.ENTITY:
@@ -680,22 +681,27 @@ async def reconcile_staged_extractions(
                     staged.status = ExtractionStatus.APPROVED
                     staged.reviewed_by = user_id
                     staged.reviewed_at = now
-            except Exception:
-                skipped_relations += 1
+            except Exception as exc:
+                skipped.append(SkippedRelationDetail(
+                    staged_extraction_id=staged.id,
+                    reason=str(exc),
+                ))
                 logger.error(
-                    "Could not parse staged relation data for extraction %s — skipping",
+                    "Could not parse staged relation data for extraction %s — skipping: %s",
                     staged.id,
+                    exc,
                     exc_info=True,
                 )
 
-    if skipped_relations:
+    if skipped:
         logger.error(
             "Skipped %d staged relation(s) due to parse errors for source %s",
-            skipped_relations,
+            len(skipped),
             source_id,
         )
 
     await db.flush()
+    return skipped
 
 
 async def save_extraction_to_graph(
@@ -755,7 +761,7 @@ async def save_extraction_to_graph(
         for e in request.entities_to_create
         if e.slug in entity_mapping
     }
-    await reconcile_staged_extractions(
+    skipped_relations = await reconcile_staged_extractions(
         db,
         source_id=source_id,
         approved_entity_slugs_to_id=created_slug_to_id,
@@ -773,4 +779,5 @@ async def save_extraction_to_graph(
         created_entity_ids=list(entity_mapping.values()),
         created_relation_ids=relation_ids,
         warnings=all_warnings,
+        skipped_relations=skipped_relations,
     )

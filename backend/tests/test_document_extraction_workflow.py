@@ -496,3 +496,77 @@ class TestReconcileStagedExtractions:
 
         assert staged.status == ExtractionStatus.PENDING
         assert staged.reviewed_by is None
+
+    async def test_skips_staged_relation_with_corrupt_data(self, db_session, test_user):
+        """Corrupted staged relation data is skipped and returned as SkippedRelationDetail."""
+        source = await self._make_source(db_session)
+
+        # Staged relation with data that cannot be parsed into ExtractedRelation
+        staged = await self._make_staged(
+            db_session,
+            source_id=source.id,
+            extraction_type=ExtractionType.RELATION,
+            extraction_data={"broken": "data", "missing_required": True},
+        )
+
+        skipped = await reconcile_staged_extractions(
+            db_session,
+            source_id=source.id,
+            approved_entity_slugs_to_id={},
+            rejected_entity_slugs=set(),
+            approved_relations=[],
+            approved_relation_ids=[],
+            user_id=test_user.id,
+        )
+
+        # Skipped list must contain the failing staged extraction
+        assert len(skipped) == 1
+        assert skipped[0].staged_extraction_id == staged.id
+        assert skipped[0].reason  # non-empty parse error message
+
+        # Staged record must remain PENDING (not silently dropped)
+        await db_session.commit()
+        await db_session.refresh(staged)
+        assert staged.status == ExtractionStatus.PENDING
+
+    async def test_valid_relations_processed_alongside_corrupt_ones(self, db_session, test_user):
+        """Valid staged relations are approved even when a sibling has corrupt data."""
+        source = await self._make_source(db_session)
+        relation_id = await self._make_relation_id(db_session, source.id)
+        valid_rel = build_extracted_relation("aspirin", "pain")
+
+        # One valid staged relation
+        staged_good = await self._make_staged(
+            db_session,
+            source_id=source.id,
+            extraction_type=ExtractionType.RELATION,
+            extraction_data=valid_rel.model_dump(),
+        )
+        # One corrupted staged relation
+        staged_bad = await self._make_staged(
+            db_session,
+            source_id=source.id,
+            extraction_type=ExtractionType.RELATION,
+            extraction_data={"bad": "payload"},
+        )
+
+        skipped = await reconcile_staged_extractions(
+            db_session,
+            source_id=source.id,
+            approved_entity_slugs_to_id={},
+            rejected_entity_slugs=set(),
+            approved_relations=[valid_rel],
+            approved_relation_ids=[relation_id],
+            user_id=test_user.id,
+        )
+
+        await db_session.commit()
+        await db_session.refresh(staged_good)
+        await db_session.refresh(staged_bad)
+
+        assert staged_good.status == ExtractionStatus.APPROVED
+        assert staged_good.materialized_relation_id == relation_id
+
+        assert len(skipped) == 1
+        assert skipped[0].staged_extraction_id == staged_bad.id
+        assert staged_bad.status == ExtractionStatus.PENDING

@@ -167,7 +167,7 @@ async def test_list_entity_terms_nonexistent_entity(override_get_db):
             response = await client.get(f"/api/entities/{fake_id}/terms")
 
             assert response.status_code == 404
-            assert "not found" in response.json()["detail"].lower()
+            assert "not found" in response.json()["error"]["message"].lower()
     finally:
         app.dependency_overrides.clear()
 
@@ -256,7 +256,7 @@ async def test_create_entity_term_duplicate(override_get_db, override_auth, test
                 )
 
                 assert response.status_code == 409
-                assert "already exists" in response.json()["detail"]
+                assert "already exists" in response.json()["error"]["message"]
     finally:
         app.dependency_overrides.clear()
 
@@ -436,6 +436,6 @@ async def test_bulk_update_entity_terms_duplicate_in_payload(override_get_db, ov
                 )
 
                 assert response.status_code == 409
-                assert "duplicate" in response.json()["detail"].lower()
+                assert "duplicate" in response.json()["error"]["message"].lower()
     finally:
         app.dependency_overrides.clear()

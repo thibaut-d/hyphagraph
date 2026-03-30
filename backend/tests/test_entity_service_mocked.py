@@ -78,6 +78,7 @@ class TestEntityServiceMocked:
             slug="aspirin",
             summary={"en": "Pain reliever"},
             created_at=sample_entity.created_at,
+            updated_at=sample_entity.created_at,
         ))
         monkeypatch.setattr("app.services.entity_service.entity_to_read", mock_to_read)
 
@@ -152,6 +153,7 @@ class TestEntityServiceMocked:
             slug=sample_revision.slug,
             summary=sample_revision.summary,
             created_at=sample_entity.created_at,
+            updated_at=sample_entity.created_at,
         ))
         monkeypatch.setattr("app.services.entity_service.entity_to_read", mock_to_read)
 

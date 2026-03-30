@@ -222,7 +222,7 @@ class TestExplainEndpoint:
 
         # Assert
         assert response.status_code == 400
-        assert "Invalid JSON" in response.json()["detail"]
+        assert "Invalid JSON" in response.json()["error"]["message"]
 
     async def test_explain_inference_scope_not_dict(self, db_session, override_get_db):
         """Test explanation with non-dict scope parameter returns 400."""
@@ -263,7 +263,7 @@ class TestExplainEndpoint:
 
         # Assert
         assert response.status_code == 400
-        assert "must be a JSON object" in response.json()["detail"]
+        assert "must be a JSON object" in response.json()["error"]["message"]
 
     async def test_explain_inference_role_not_found(self, db_session, override_get_db):
         """Test explanation for non-existent role type returns 404."""
@@ -302,7 +302,7 @@ class TestExplainEndpoint:
 
         # Assert
         assert response.status_code == 404
-        assert "not found" in response.json()["detail"].lower()
+        assert "not found" in response.json()["error"]["message"].lower()
 
     async def test_explain_inference_invalid_entity_id(self, override_get_db):
         """Test explanation with invalid entity UUID returns 422."""

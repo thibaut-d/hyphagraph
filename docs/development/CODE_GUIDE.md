@@ -220,3 +220,35 @@ Avoid:
 - Put temporary reports and experiments in `.temp/`.
 - Keep agent workflow files in `docs/` and `AGENTS.md`.
 - Do not scatter scratch files into backend, frontend, or docs directories.
+
+---
+
+## 15. Frontend Error Handling
+
+### Error display rule
+
+| Situation | Pattern |
+|-----------|---------|
+| Async API call triggered by a user action (submit, delete, save) | `useAsyncAction` **without** `setError` → toast via `NotificationContext` |
+| Same, but error must appear next to a form field | `useAsyncAction(setError)` → inline display; **no toast** |
+| Data-fetch lifecycle (loading + data + error state in a view) | `useAsyncResource` |
+| One-off error outside of the above (e.g. manual `useEffect`) | `usePageErrorHandler` → toast |
+
+**Never** mix both patterns for the same error: `useAsyncAction(setError)` suppresses the toast automatically. If you also call `showError` manually, you will show two notifications for the same failure.
+
+### Error response contract
+
+All API errors return `{ "error": { "code", "message", "details", "field", "context" } }`.
+
+The frontend parses this into `ParsedAppError` with:
+- `userMessage` — shown in the Snackbar or inline alert
+- `developerMessage` — logged to `console.error` via `formatErrorForLogging()`; shown in the expandable "Dev details" section in the Snackbar (development builds only)
+- `code` — `ErrorCode` enum value (keep frontend and backend enums in sync; see `test_error_handlers.py::test_error_code_enum_matches_known_set`)
+- `field` — optional field name for form validation errors
+- `context` — optional structured context for debugging
+
+### What NOT to do
+
+- Do not use `useState<string>` for API error state. Use `useAsyncAction(setError)` where `setError` receives the parsed `userMessage` string.
+- Do not call both `showError(e)` and `setError(...)` for the same error.
+- Do not add a new `ErrorCode` value in backend without also adding it to the frontend enum and the `EXPECTED_BACKEND_ERROR_CODES` snapshot in `test_error_handlers.py`.

@@ -77,7 +77,6 @@ describe("DisagreementsView", () => {
 
   const createMockRelation = (overrides?: Partial<RelationRead>): RelationRead => ({
     id: "rel-1",
-    entity_id: "entity-123",
     kind: "therapeutic_use",
     direction: "supports",
     source_id: "source-1",
