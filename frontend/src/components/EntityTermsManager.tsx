@@ -45,7 +45,6 @@ import SaveIcon from "@mui/icons-material/Save";
 import CancelIcon from "@mui/icons-material/Cancel";
 import TranslateIcon from "@mui/icons-material/Translate";
 
-import { useNotification } from "../notifications/NotificationContext";
 import { usePageErrorHandler } from "../hooks/usePageErrorHandler";
 import {
   listEntityTerms,
@@ -68,15 +67,15 @@ interface TermFormData {
 }
 
 const LANGUAGE_OPTIONS = [
-  { code: "", label: "International / No language" },
-  { code: "en", label: "English" },
-  { code: "fr", label: "French" },
-  { code: "es", label: "Spanish" },
-  { code: "de", label: "German" },
-  { code: "it", label: "Italian" },
-  { code: "pt", label: "Portuguese" },
-  { code: "zh", label: "Chinese" },
-  { code: "ja", label: "Japanese" },
+  { code: "", key: "entityTerms.lang_international" },
+  { code: "en", key: "entityTerms.lang_en" },
+  { code: "fr", key: "entityTerms.lang_fr" },
+  { code: "es", key: "entityTerms.lang_es" },
+  { code: "de", key: "entityTerms.lang_de" },
+  { code: "it", key: "entityTerms.lang_it" },
+  { code: "pt", key: "entityTerms.lang_pt" },
+  { code: "zh", key: "entityTerms.lang_zh" },
+  { code: "ja", key: "entityTerms.lang_ja" },
 ];
 
 export function EntityTermsManager({
@@ -84,7 +83,6 @@ export function EntityTermsManager({
   readonly = false,
 }: EntityTermsManagerProps) {
   const { t } = useTranslation();
-  const { showError } = useNotification();
   const handlePageError = usePageErrorHandler();
 
   const [terms, setTerms] = useState<EntityTermRead[]>([]);
@@ -115,7 +113,6 @@ export function EntityTermsManager({
       const data = await listEntityTerms(entityId);
       setTerms(data);
     } catch (err) {
-      console.error("Failed to load terms:", err);
       const parsedError = handlePageError(err, "Failed to load terms");
       setError(parsedError.userMessage);
     } finally {
@@ -158,8 +155,7 @@ export function EntityTermsManager({
 
   const handleSave = async () => {
     if (!formData.term.trim()) {
-      setError("Term cannot be empty");
-      showError(new Error("Term cannot be empty"));
+      setError(t("entityTerms.validation_term_empty"));
       return;
     }
 
@@ -182,7 +178,6 @@ export function EntityTermsManager({
       await loadTerms();
       handleCancel();
     } catch (err: unknown) {
-      console.error("Failed to save term:", err);
       const parsedError = handlePageError(err, "Failed to save term");
       setError(parsedError.userMessage);
     } finally {
@@ -206,7 +201,6 @@ export function EntityTermsManager({
       setDeleteDialogOpen(false);
       setTermToDelete(null);
     } catch (err) {
-      console.error("Failed to delete term:", err);
       const parsedError = handlePageError(err, "Failed to delete term");
       setError(parsedError.userMessage);
     } finally {
@@ -215,9 +209,9 @@ export function EntityTermsManager({
   };
 
   const getLanguageLabel = (code: string | null): string => {
-    if (!code) return "International";
+    if (!code) return t("entityTerms.lang_international_short");
     const option = LANGUAGE_OPTIONS.find((opt) => opt.code === code);
-    return option ? option.label : code;
+    return option ? t(option.key) : code;
   };
 
   // Group terms by language for display
@@ -297,7 +291,7 @@ export function EntityTermsManager({
                 >
                   {LANGUAGE_OPTIONS.map((opt) => (
                     <MenuItem key={opt.code} value={opt.code}>
-                      {opt.label}
+                      {t(opt.key)}
                     </MenuItem>
                   ))}
                 </Select>
@@ -379,7 +373,7 @@ export function EntityTermsManager({
                         primary={term.term}
                         secondary={
                           term.display_order !== null
-                            ? `Display order: ${term.display_order}`
+                            ? t("entityTerms.display_order_value", { order: term.display_order })
                             : undefined
                         }
                       />

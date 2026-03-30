@@ -23,7 +23,7 @@ Source: `.temp/full_audit_report_2026-03-30.md`
 
 #### Minor
 
-- [ ] **AUD30-m1** `frontend/src/components/EntityTermsManager.tsx:70-80,118-120,160-162,217-220,382` - The entity-terms editor hardcodes language labels, validation copy, and fallback display text in component code. Move these user-facing strings into i18n resources and align unexpected-error logging with the shared frontend helpers.
+- [x] **AUD30-m1** `frontend/src/components/EntityTermsManager.tsx:70-80,118-120,160-162,217-220,382` - The entity-terms editor hardcodes language labels, validation copy, and fallback display text in component code. Fixed: `LANGUAGE_OPTIONS` entries carry `key` fields consumed via `t(opt.key)` in render and `getLanguageLabel`; `"International"` fallback and `"Display order: …"` secondary text use `t()`; `"Term cannot be empty"` validation uses `t("entityTerms.validation_term_empty")`; redundant `showError` on validation path removed; three `console.error` pre-log calls removed (covered by `handlePageError`); all 26 `entityTerms.*` keys added to en.json + fr.json.
 
 ### Error Propagation to UI Audit — 2026-03-28 (score 62/100 → 100/100)
 

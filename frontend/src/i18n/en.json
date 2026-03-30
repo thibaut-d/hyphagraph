@@ -621,5 +621,32 @@
     "invalid_token": "Invalid or missing verification token",
     "resend_link": "Resend Verification Email",
     "back_to_login": "Back to Login"
+  },
+  "entityTerms": {
+    "title": "Alternative Names & Aliases",
+    "description": "Add alternative names, synonyms, or translations to help users find this entity.",
+    "addTerm": "Add Term",
+    "addNew": "Add New Term",
+    "editTerm": "Edit Term",
+    "term": "Term",
+    "language": "Language",
+    "displayOrder": "Display Order",
+    "displayOrderHelp": "Lower numbers appear first (optional)",
+    "display_order_value": "Display order: {{order}}",
+    "noTerms": "No alternative names defined. Add terms to improve searchability.",
+    "totalTerms": "{{count}} term(s)",
+    "deleteConfirmTitle": "Delete Term?",
+    "deleteConfirmMessage": "Are you sure you want to delete the term \"{{term}}\"?",
+    "validation_term_empty": "Term cannot be empty",
+    "lang_international": "International / No language",
+    "lang_international_short": "International",
+    "lang_en": "English",
+    "lang_fr": "French",
+    "lang_es": "Spanish",
+    "lang_de": "German",
+    "lang_it": "Italian",
+    "lang_pt": "Portuguese",
+    "lang_zh": "Chinese",
+    "lang_ja": "Japanese"
   }
 }

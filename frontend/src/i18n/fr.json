@@ -603,5 +603,32 @@
     "invalid_token": "Jeton de vérification invalide ou manquant",
     "resend_link": "Renvoyer l'e-mail de vérification",
     "back_to_login": "Retour à la connexion"
+  },
+  "entityTerms": {
+    "title": "Noms alternatifs et alias",
+    "description": "Ajoutez des noms alternatifs, synonymes ou traductions pour aider les utilisateurs à trouver cette entité.",
+    "addTerm": "Ajouter un terme",
+    "addNew": "Ajouter un nouveau terme",
+    "editTerm": "Modifier le terme",
+    "term": "Terme",
+    "language": "Langue",
+    "displayOrder": "Ordre d'affichage",
+    "displayOrderHelp": "Les numéros inférieurs apparaissent en premier (facultatif)",
+    "display_order_value": "Ordre d'affichage : {{order}}",
+    "noTerms": "Aucun nom alternatif défini. Ajoutez des termes pour améliorer la recherche.",
+    "totalTerms": "{{count}} terme(s)",
+    "deleteConfirmTitle": "Supprimer le terme ?",
+    "deleteConfirmMessage": "Êtes-vous sûr de vouloir supprimer le terme « {{term}} » ?",
+    "validation_term_empty": "Le terme ne peut pas être vide",
+    "lang_international": "International / Sans langue",
+    "lang_international_short": "International",
+    "lang_en": "Anglais",
+    "lang_fr": "Français",
+    "lang_es": "Espagnol",
+    "lang_de": "Allemand",
+    "lang_it": "Italien",
+    "lang_pt": "Portugais",
+    "lang_zh": "Chinois",
+    "lang_ja": "Japonais"
   }
 }
