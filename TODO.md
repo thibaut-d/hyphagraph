@@ -113,7 +113,7 @@ Source: `.temp/full_audit_report_2026-03-26.md`
 - [ ] **AUD26-M5** `backend/app/api/test_helpers.py:35,91,182,214` — All four test-support endpoints return untyped dicts with no `response_model`. Define `DatabaseResetResponse`, `ReviewQueueSeedResponse`, `UICategoriesSeedResponse`, `TestHealthResponse` schemas and declare them as `response_model`.
 - [ ] **AUD26-M6** `backend/app/services/export_service.py:69,99-120` — Export service builds inline `dict` lists with no Pydantic schema. Define `EntityExportItem`, `SourceExportItem`, `RelationExportItem` and use `model_dump` for serialization.
 - [ ] **AUD26-M7** `frontend/src/components/layout/MobileDrawer.tsx:28,37` + `DesktopNavigation.tsx:18,25` — `icon: any` and `user: any` props defeat TypeScript safety for the entire navigation layer. Define `MenuItem` interface with `icon: ComponentType<SvgIconProps>` and import the existing `User` type.
-- [ ] **AUD26-M8** `e2e/tests/auth/token-refresh.spec.ts:20` — `waitForTimeout(1000)` anti-pattern causes flaky timing-dependent test. Replace with `waitForLoadState('networkidle')` or an element/network condition.
+- [x] **AUD26-M8** `e2e/tests/auth/token-refresh.spec.ts:20` — `waitForTimeout(1000)` anti-pattern causes flaky timing-dependent test. Fixed: removed sleep; preceding `waitForLoadState('networkidle')` already covers async token refresh network activity.
 - [ ] **AUD26-M9** `backend/app/api/document_extraction_dependencies.py:4-9` — Module-level re-exports of test helpers (suppressed with `# noqa: F401`) couple production module load to test scaffolding. Remove top-level imports; rely solely on the lazy-loading function.
 
 #### Minor

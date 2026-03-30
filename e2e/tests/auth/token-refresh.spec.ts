@@ -16,8 +16,6 @@ test.describe('Token Refresh Flow', () => {
     // Navigate to /entities — fresh page load; in-memory token is gone but httpOnly cookie remains
     await page.goto('/entities');
     await page.waitForLoadState('networkidle');
-    // Allow time for any async refresh to complete
-    await page.waitForTimeout(1000);
 
     // Must NOT show a 401 / unauthorized / session expired error banner
     const errorBanner = page.locator('text=/401|unauthorized|session expired/i').first();
