@@ -19,7 +19,7 @@ def disable_rate_limiting():
     yield
     limiter._enabled = True
 
-from app.api.document_extraction_dependencies import calculate_relevance
+from app.services.document_extraction_workflow import calculate_relevance
 from app.api.document_extraction_routes.discovery import (
     bulk_import_pubmed,
     bulk_search_pubmed,

@@ -9,13 +9,28 @@ import logging
 from uuid import UUID
 
 from sqlalchemy import select, func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.ui_category import UiCategory
 from app.models.user import User
 from app.schemas.admin import UserListItemRead, UserStatsRead, UserUpdate
+from app.schemas.ui_category import UICategoryRead, UICategoryWrite
 from app.utils.errors import AppException, ErrorCode, ValidationException
 
 logger = logging.getLogger(__name__)
+
+
+def _cat_to_read(cat: UiCategory) -> UICategoryRead:
+    return UICategoryRead(
+        id=cat.id,
+        slug=cat.slug,
+        labels=cat.labels,
+        description=cat.description,
+        order=cat.order,
+        created_at=getattr(cat, "created_at", None),
+        updated_at=getattr(cat, "updated_at", None),
+    )
 
 
 def _to_read(user: User) -> UserListItemRead:
@@ -146,6 +161,70 @@ class AdminService:
             raise
 
     # -------------------------------------------------------------------------
+    # UI Category management
+    # -------------------------------------------------------------------------
+
+    async def list_categories(self) -> list[UICategoryRead]:
+        """Return all UI categories ordered by display order."""
+        result = await self.db.execute(select(UiCategory).order_by(UiCategory.order))
+        return [_cat_to_read(c) for c in result.scalars().all()]
+
+    async def create_category(self, payload: UICategoryWrite) -> UICategoryRead:
+        """Create a new UI category. Raises 409 on slug conflict."""
+        cat = UiCategory(
+            slug=payload.slug,
+            labels=payload.labels,
+            description=payload.description,
+            order=payload.order,
+        )
+        self.db.add(cat)
+        try:
+            await self.db.commit()
+            await self.db.refresh(cat)
+        except IntegrityError:
+            await self.db.rollback()
+            raise AppException(
+                status_code=409,
+                error_code=ErrorCode.ENTITY_SLUG_CONFLICT,
+                message="Category slug already exists",
+                field="slug",
+                details=f"A UI category with slug '{payload.slug}' already exists.",
+            )
+        return _cat_to_read(cat)
+
+    async def get_category(self, category_id: UUID) -> UICategoryRead:
+        """Return a UI category by ID. Raises 404 if not found."""
+        cat = await self._require_category(category_id)
+        return _cat_to_read(cat)
+
+    async def update_category(self, category_id: UUID, payload: UICategoryWrite) -> UICategoryRead:
+        """Update a UI category. Raises 404 if not found, 409 on slug conflict."""
+        cat = await self._require_category(category_id)
+        cat.slug = payload.slug
+        cat.labels = payload.labels
+        cat.description = payload.description
+        cat.order = payload.order
+        try:
+            await self.db.commit()
+            await self.db.refresh(cat)
+        except IntegrityError:
+            await self.db.rollback()
+            raise AppException(
+                status_code=409,
+                error_code=ErrorCode.ENTITY_SLUG_CONFLICT,
+                message="Category slug already exists",
+                field="slug",
+                details=f"A UI category with slug '{payload.slug}' already exists.",
+            )
+        return _cat_to_read(cat)
+
+    async def delete_category(self, category_id: UUID) -> None:
+        """Delete a UI category. Raises 404 if not found."""
+        cat = await self._require_category(category_id)
+        await self.db.delete(cat)
+        await self.db.commit()
+
+    # -------------------------------------------------------------------------
     # Internal helpers
     # -------------------------------------------------------------------------
 
@@ -161,3 +240,15 @@ class AdminService:
                 context={"user_id": str(user_id)},
             )
         return user
+
+    async def _require_category(self, category_id: UUID) -> UiCategory:
+        result = await self.db.execute(select(UiCategory).where(UiCategory.id == category_id))
+        cat = result.scalar_one_or_none()
+        if not cat:
+            raise AppException(
+                status_code=404,
+                error_code=ErrorCode.NOT_FOUND,
+                message="Category not found",
+                details=f"No UI category with ID '{category_id}'.",
+            )
+        return cat

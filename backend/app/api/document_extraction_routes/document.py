@@ -7,10 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.service_dependencies import get_document_service
 from app.api.document_extraction_dependencies import (
     PubMedFetcher,
-    UrlFetcher,
     raise_internal_api_exception,
     require_llm,
 )
+from app.services.url_fetcher import UrlFetcher
 from app.api.document_extraction_schemas import UrlExtractionRequest
 from app.database import get_db
 from app.dependencies.auth import get_current_user

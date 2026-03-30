@@ -2,11 +2,8 @@ from fastapi import HTTPException, status
 
 from app.api.document_extraction_schemas import PubMedBulkSearchRequest, PubMedSearchResult
 from app.llm.client import is_llm_available
-from app.services.document_extraction_workflow import calculate_relevance  # noqa: F401 — re-exported for test suite
 from app.services.pubmed_fetcher import PubMedArticle, PubMedFetcher
-from app.services.url_fetcher import UrlFetcher  # noqa: F401 — re-exported for document route
 from app.utils.errors import LLMServiceUnavailableException
-from app.utils.source_quality import infer_trust_level_from_pubmed_metadata  # noqa: F401 — re-exported for discovery route
 
 
 def _get_test_support_module():

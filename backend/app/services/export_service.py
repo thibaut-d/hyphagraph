@@ -21,6 +21,7 @@ from app.models.source_revision import SourceRevision
 from app.models.relation import Relation
 from app.models.relation_revision import RelationRevision
 from app.models.relation_role_revision import RelationRoleRevision
+from app.schemas.export import EntityExportItem, RelationExportItem, RelationRoleExportItem, SourceExportItem
 
 
 ExportFormat = Literal["json", "csv", "rdf"]
@@ -66,25 +67,21 @@ class ExportService:
 
         for entity, revision in result:
             _summary = revision.summary or {}
-            entity_dict = {
-                'id': str(entity.id),
-                'slug': revision.slug,
-                'summary_en': _summary.get('en'),
-                'summary_fr': _summary.get('fr'),
-                'status': revision.status,
-                'ui_category_id': str(revision.ui_category_id) if revision.ui_category_id else None,
-            }
-
+            item = EntityExportItem(
+                id=str(entity.id),
+                slug=revision.slug,
+                summary_en=_summary.get('en'),
+                summary_fr=_summary.get('fr'),
+                status=revision.status,
+                ui_category_id=str(revision.ui_category_id) if revision.ui_category_id else None,
+            )
             if include_metadata:
-                entity_dict.update({
-                    'created_at': entity.created_at.isoformat() if entity.created_at else None,
-                    'revision_created_at': revision.created_at.isoformat() if revision.created_at else None,
-                    'created_with_llm': revision.created_with_llm,
-                    'created_by_user_id': str(revision.created_by_user_id) if revision.created_by_user_id else None,
-                    'llm_review_status': revision.llm_review_status,
-                })
-
-            entities_data.append(entity_dict)
+                item.created_at = entity.created_at.isoformat() if entity.created_at else None
+                item.revision_created_at = revision.created_at.isoformat() if revision.created_at else None
+                item.created_with_llm = revision.created_with_llm
+                item.created_by_user_id = str(revision.created_by_user_id) if revision.created_by_user_id else None
+                item.llm_review_status = revision.llm_review_status
+            entities_data.append(item)
 
         # Format output
         if format == "json":
@@ -96,16 +93,16 @@ class ExportService:
         else:
             raise ValueError(f"Unsupported format: {format}")
 
-    def _export_entities_json(self, entities: List[dict]) -> str:
+    def _export_entities_json(self, entities: List[EntityExportItem]) -> str:
         """Export entities as JSON."""
         return json.dumps({
             'export_type': 'entities',
             'export_date': datetime.utcnow().isoformat(),
             'count': len(entities),
-            'entities': entities
+            'entities': [e.model_dump(exclude_none=True) for e in entities]
         }, indent=2, ensure_ascii=False)
 
-    def _export_entities_csv(self, entities: List[dict]) -> str:
+    def _export_entities_csv(self, entities: List[EntityExportItem]) -> str:
         """Export entities as CSV."""
         if not entities:
             return "id,slug,summary_en,summary_fr,ui_category_id,created_at\n"
@@ -119,18 +116,18 @@ class ExportService:
         # Rows
         for entity in entities:
             writer.writerow([
-                entity['id'],
-                entity['slug'],
-                entity.get('summary_en', ''),
-                entity.get('summary_fr', ''),
-                entity.get('ui_category_id', ''),
-                entity.get('created_at', ''),
-                entity.get('created_with_llm', '')
+                entity.id,
+                entity.slug,
+                entity.summary_en or '',
+                entity.summary_fr or '',
+                entity.ui_category_id or '',
+                entity.created_at or '',
+                entity.created_with_llm if entity.created_with_llm is not None else '',
             ])
 
         return output.getvalue()
 
-    def _export_entities_rdf(self, entities: List[dict]) -> str:
+    def _export_entities_rdf(self, entities: List[EntityExportItem]) -> str:
         """Export entities as RDF Turtle format."""
         lines = [
             "@prefix hypha: <http://hyphagraph.org/entity/> .",
@@ -142,21 +139,18 @@ class ExportService:
         ]
 
         for entity in entities:
-            slug = entity['slug']
-            entity_id = entity['id']
+            lines.append(f"hypha:{entity.slug} a hypha:Entity ;")
+            lines.append(f'    rdfs:label "{_escape_turtle_string(entity.slug)}" ;')
 
-            lines.append(f"hypha:{slug} a hypha:Entity ;")
-            lines.append(f'    rdfs:label "{_escape_turtle_string(slug)}" ;')
+            if entity.summary_en:
+                lines.append(f'    rdfs:comment "{_escape_turtle_string(entity.summary_en)}"@en ;')
+            if entity.summary_fr:
+                lines.append(f'    rdfs:comment "{_escape_turtle_string(entity.summary_fr)}"@fr ;')
 
-            if entity.get('summary_en'):
-                lines.append(f'    rdfs:comment "{_escape_turtle_string(entity["summary_en"])}"@en ;')
-            if entity.get('summary_fr'):
-                lines.append(f'    rdfs:comment "{_escape_turtle_string(entity["summary_fr"])}"@fr ;')
+            lines.append(f'    dc:identifier "{entity.id}" ;')
 
-            lines.append(f'    dc:identifier "{entity_id}" ;')
-
-            if entity.get('created_at'):
-                lines.append(f'    dc:created "{entity["created_at"]}"^^xsd:dateTime ;')
+            if entity.created_at:
+                lines.append(f'    dc:created "{entity.created_at}"^^xsd:dateTime ;')
 
             lines.append("    .")
             lines.append("")
@@ -200,39 +194,34 @@ class ExportService:
 
             roles_result = await self.db.execute(roles_stmt)
             roles = []
-
             for role_rev, entity_rev in roles_result:
-                roles.append({
-                    'entity_slug': entity_rev.slug,
-                    'entity_id': str(role_rev.entity_id),
-                    'role_type': role_rev.role_type,
-                    'weight': role_rev.weight,
-                    'coverage': role_rev.coverage
-                })
+                roles.append(RelationRoleExportItem(
+                    entity_slug=entity_rev.slug,
+                    entity_id=str(role_rev.entity_id),
+                    role_type=role_rev.role_type,
+                    weight=role_rev.weight,
+                    coverage=role_rev.coverage,
+                ))
 
-            relation_dict = {
-                'id': str(relation.id),
-                'kind': rel_revision.kind,
-                'direction': rel_revision.direction,
-                'confidence': rel_revision.confidence,
-                'status': rel_revision.status,
-                'source_id': str(relation.source_id),
-                'source_title': source_revision.title,
-                'roles': roles
-            }
-
+            item = RelationExportItem(
+                id=str(relation.id),
+                kind=rel_revision.kind,
+                direction=rel_revision.direction,
+                confidence=rel_revision.confidence,
+                status=rel_revision.status,
+                source_id=str(relation.source_id),
+                source_title=source_revision.title,
+                roles=roles,
+            )
             if include_metadata:
-                relation_dict.update({
-                    'created_at': relation.created_at.isoformat() if relation.created_at else None,
-                    'revision_created_at': rel_revision.created_at.isoformat() if rel_revision.created_at else None,
-                    'scope': rel_revision.scope,
-                    'notes': rel_revision.notes,
-                    'created_with_llm': rel_revision.created_with_llm,
-                    'created_by_user_id': str(rel_revision.created_by_user_id) if rel_revision.created_by_user_id else None,
-                    'llm_review_status': rel_revision.llm_review_status,
-                })
-
-            relations_data.append(relation_dict)
+                item.created_at = relation.created_at.isoformat() if relation.created_at else None
+                item.revision_created_at = rel_revision.created_at.isoformat() if rel_revision.created_at else None
+                item.scope = rel_revision.scope
+                item.notes = rel_revision.notes
+                item.created_with_llm = rel_revision.created_with_llm
+                item.created_by_user_id = str(rel_revision.created_by_user_id) if rel_revision.created_by_user_id else None
+                item.llm_review_status = rel_revision.llm_review_status
+            relations_data.append(item)
 
         # Format output
         if format == "json":
@@ -244,16 +233,16 @@ class ExportService:
         else:
             raise ValueError(f"Unsupported format: {format}")
 
-    def _export_relations_json(self, relations: List[dict]) -> str:
+    def _export_relations_json(self, relations: List[RelationExportItem]) -> str:
         """Export relations as JSON."""
         return json.dumps({
             'export_type': 'relations',
             'export_date': datetime.utcnow().isoformat(),
             'count': len(relations),
-            'relations': relations
+            'relations': [r.model_dump(exclude_none=True) for r in relations]
         }, indent=2, ensure_ascii=False)
 
-    def _export_relations_csv(self, relations: List[dict]) -> str:
+    def _export_relations_csv(self, relations: List[RelationExportItem]) -> str:
         """Export relations as CSV (flattened)."""
         if not relations:
             return "id,kind,direction,confidence,source_id,source_title,created_at,roles_json\n"
@@ -268,26 +257,24 @@ class ExportService:
         ])
 
         for relation in relations:
-            roles = relation['roles']
             roles_json = json.dumps([
-                {'entity_slug': r['entity_slug'], 'role_type': r['role_type']}
-                for r in roles
+                {'entity_slug': r.entity_slug, 'role_type': r.role_type}
+                for r in relation.roles
             ])
-
             writer.writerow([
-                relation['id'],
-                relation['kind'],
-                relation['direction'],
-                relation['confidence'],
-                relation['source_id'],
-                relation.get('source_title', ''),
-                relation.get('created_at', ''),
+                relation.id,
+                relation.kind or '',
+                relation.direction or '',
+                relation.confidence,
+                relation.source_id,
+                relation.source_title or '',
+                relation.created_at or '',
                 roles_json,
             ])
 
         return output.getvalue()
 
-    def _export_relations_rdf(self, relations: List[dict]) -> str:
+    def _export_relations_rdf(self, relations: List[RelationExportItem]) -> str:
         """Export relations as RDF Turtle format."""
         lines = [
             "@prefix hypha: <http://hyphagraph.org/> .",
@@ -298,21 +285,15 @@ class ExportService:
         ]
 
         for relation in relations:
-            rel_id = relation['id']
-            kind = relation['kind']
-            direction = relation['direction']
-            confidence = relation['confidence']
-
-            roles = relation['roles']
-            subject = next((r for r in roles if r['role_type'] == 'subject'), None)
-            obj = next((r for r in roles if r['role_type'] == 'object'), None)
+            subject = next((r for r in relation.roles if r.role_type == 'subject'), None)
+            obj = next((r for r in relation.roles if r.role_type == 'object'), None)
 
             if subject and obj:
-                lines.append(f"hypha:{subject['entity_slug']} hypha:{kind} hypha:{obj['entity_slug']} ;")
-                lines.append(f'    dc:relation "{_escape_turtle_string(rel_id)}" ;')
-                lines.append(f'    hypha:direction "{_escape_turtle_string(direction or "")}" ;')
-                lines.append(f'    hypha:confidence {confidence} ;')
-                lines.append(f'    dc:source hypha:source/{relation["source_id"]} ;')
+                lines.append(f"hypha:{subject.entity_slug} hypha:{relation.kind} hypha:{obj.entity_slug} ;")
+                lines.append(f'    dc:relation "{_escape_turtle_string(relation.id)}" ;')
+                lines.append(f'    hypha:direction "{_escape_turtle_string(relation.direction or "")}" ;')
+                lines.append(f'    hypha:confidence {relation.confidence} ;')
+                lines.append(f'    dc:source hypha:source/{relation.source_id} ;')
                 lines.append("    .")
                 lines.append("")
 
@@ -364,32 +345,26 @@ class ExportService:
         sources_data = []
 
         for source, revision in result:
-            source_dict = {
-                "id": str(source.id),
-                "kind": revision.kind,
-                "title": revision.title,
-                "authors": revision.authors,
-                "year": revision.year,
-                "origin": revision.origin,
-                "url": revision.url,
-                "trust_level": revision.trust_level,
-                "status": revision.status,
-                "summary_en": (revision.summary or {}).get("en"),
-                "summary_fr": (revision.summary or {}).get("fr"),
-            }
+            item = SourceExportItem(
+                id=str(source.id),
+                kind=revision.kind,
+                title=revision.title,
+                authors=revision.authors,
+                year=revision.year,
+                origin=revision.origin,
+                url=revision.url,
+                trust_level=revision.trust_level,
+                status=revision.status,
+                summary_en=(revision.summary or {}).get("en"),
+                summary_fr=(revision.summary or {}).get("fr"),
+            )
             if include_metadata:
-                source_dict["created_at"] = (
-                    source.created_at.isoformat() if source.created_at else None
-                )
-                source_dict["revision_created_at"] = (
-                    revision.created_at.isoformat() if revision.created_at else None
-                )
-                source_dict["created_by_user_id"] = (
-                    str(revision.created_by_user_id) if revision.created_by_user_id else None
-                )
-                source_dict["created_with_llm"] = revision.created_with_llm
-                source_dict["llm_review_status"] = revision.llm_review_status
-            sources_data.append(source_dict)
+                item.created_at = source.created_at.isoformat() if source.created_at else None
+                item.revision_created_at = revision.created_at.isoformat() if revision.created_at else None
+                item.created_by_user_id = str(revision.created_by_user_id) if revision.created_by_user_id else None
+                item.created_with_llm = revision.created_with_llm
+                item.llm_review_status = revision.llm_review_status
+            sources_data.append(item)
 
         if format == "json":
             return json.dumps(
@@ -397,7 +372,7 @@ class ExportService:
                     "export_type": "sources",
                     "export_date": datetime.utcnow().isoformat(),
                     "count": len(sources_data),
-                    "sources": sources_data,
+                    "sources": [s.model_dump(exclude_none=True) for s in sources_data],
                 },
                 indent=2,
                 ensure_ascii=False,
@@ -407,17 +382,17 @@ class ExportService:
             writer = csv.writer(output)
             writer.writerow(["id", "kind", "title", "authors", "year", "origin", "url", "trust_level", "created_at"])
             for s in sources_data:
-                authors = s.get("authors") or []
+                authors = s.authors or []
                 writer.writerow([
-                    s["id"],
-                    s.get("kind", ""),
-                    s.get("title", ""),
+                    s.id,
+                    s.kind or '',
+                    s.title or '',
                     "; ".join(authors) if isinstance(authors, list) else str(authors),
-                    s.get("year", ""),
-                    s.get("origin", ""),
-                    s.get("url", ""),
-                    s.get("trust_level", ""),
-                    s.get("created_at", ""),
+                    s.year or '',
+                    s.origin or '',
+                    s.url or '',
+                    s.trust_level if s.trust_level is not None else '',
+                    s.created_at or '',
                 ])
             return output.getvalue()
         else:
@@ -459,30 +434,26 @@ class ExportService:
         sources_data = []
 
         for source, revision in result:
-            source_dict = {
-                'id': str(source.id),
-                'kind': revision.kind,
-                'title': revision.title,
-                'authors': revision.authors,
-                'year': revision.year,
-                'origin': revision.origin,
-                'url': revision.url,
-                'trust_level': revision.trust_level,
-                'status': revision.status,
-                'summary_en': (revision.summary or {}).get('en'),
-                'summary_fr': (revision.summary or {}).get('fr'),
-                'source_metadata': revision.source_metadata,
-            }
-
+            item = SourceExportItem(
+                id=str(source.id),
+                kind=revision.kind,
+                title=revision.title,
+                authors=revision.authors,
+                year=revision.year,
+                origin=revision.origin,
+                url=revision.url,
+                trust_level=revision.trust_level,
+                status=revision.status,
+                summary_en=(revision.summary or {}).get('en'),
+                summary_fr=(revision.summary or {}).get('fr'),
+                source_metadata=revision.source_metadata,
+            )
             if include_metadata:
-                source_dict.update({
-                    'created_at': source.created_at.isoformat() if source.created_at else None,
-                    'revision_created_at': revision.created_at.isoformat() if revision.created_at else None,
-                    'created_with_llm': revision.created_with_llm,
-                    'created_by_user_id': str(revision.created_by_user_id) if revision.created_by_user_id else None,
-                })
-
-            sources_data.append(source_dict)
+                item.created_at = source.created_at.isoformat() if source.created_at else None
+                item.revision_created_at = revision.created_at.isoformat() if revision.created_at else None
+                item.created_with_llm = revision.created_with_llm
+                item.created_by_user_id = str(revision.created_by_user_id) if revision.created_by_user_id else None
+            sources_data.append(item)
 
         # Combine all
         return json.dumps({
@@ -495,5 +466,5 @@ class ExportService:
             },
             'entities': entities_dict['entities'],
             'relations': relations_dict['relations'],
-            'sources': sources_data,
+            'sources': [s.model_dump(exclude_none=True) for s in sources_data],
         }, indent=2, ensure_ascii=False)

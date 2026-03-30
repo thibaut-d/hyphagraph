@@ -10,10 +10,10 @@ from app.api.document_extraction_dependencies import (
     build_pubmed_results,
     build_test_pubmed_articles_for_query,
     get_test_pubmed_articles_by_pmids,
-    infer_trust_level_from_pubmed_metadata,
     raise_internal_api_exception,
     resolve_pubmed_bulk_query,
 )
+from app.utils.source_quality import infer_trust_level_from_pubmed_metadata
 from app.api.document_extraction_schemas import (
     PubMedBulkImportRequest,
     PubMedBulkImportResponse,

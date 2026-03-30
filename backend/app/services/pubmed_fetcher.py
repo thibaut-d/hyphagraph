@@ -185,12 +185,13 @@ class PubMedFetcher:
             )
         except AppException:
             raise
-        except Exception:
+        except Exception as exc:
             logger.exception("Unexpected error fetching PMID %s", pmid)
             raise AppException(
                 status_code=500,
                 error_code=ErrorCode.INTERNAL_SERVER_ERROR,
                 message="Failed to process PubMed article",
+                details=str(exc) or type(exc).__name__,
                 context={"pmid": pmid}
             )
 
@@ -335,12 +336,13 @@ class PubMedFetcher:
             )
         except AppException:
             raise
-        except Exception:
+        except Exception as exc:
             logger.exception("Error parsing PubMed XML for PMID %s", pmid)
             raise AppException(
                 status_code=500,
                 error_code=ErrorCode.DOCUMENT_PARSE_ERROR,
                 message="Failed to extract article data",
+                details=str(exc) or type(exc).__name__,
                 context={"pmid": pmid}
             )
 
@@ -464,12 +466,13 @@ class PubMedFetcher:
             )
         except AppException:
             raise
-        except Exception:
+        except Exception as exc:
             logger.exception("Unexpected error searching PubMed for query %r", query)
             raise AppException(
                 status_code=500,
                 error_code=ErrorCode.INTERNAL_SERVER_ERROR,
                 message="Failed to process PubMed search",
+                details=str(exc) or type(exc).__name__,
                 context={"query": query}
             )
 

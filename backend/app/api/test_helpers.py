@@ -12,6 +12,12 @@ from sqlalchemy import text
 
 from app.database import get_db
 from app.config import settings
+from app.schemas.test_helpers import (
+    DatabaseResetResponse,
+    ReviewQueueSeedResponse,
+    TestHealthResponse,
+    UICategoriesSeedResponse,
+)
 from app.startup import run_bootstrap_tasks
 
 router = APIRouter(prefix="/test", tags=["test-helpers"])
@@ -31,7 +37,7 @@ def check_testing_mode():
         )
 
 
-@router.post("/reset-database", dependencies=[Depends(check_testing_mode)])
+@router.post("/reset-database", response_model=DatabaseResetResponse, dependencies=[Depends(check_testing_mode)])
 async def reset_database(db: AsyncSession = Depends(get_db)):
     """
     Reset the database by truncating all tables.
@@ -87,7 +93,7 @@ async def reset_database(db: AsyncSession = Depends(get_db)):
         )
 
 
-@router.post("/seed-review-queue", dependencies=[Depends(check_testing_mode)])
+@router.post("/seed-review-queue", response_model=ReviewQueueSeedResponse, dependencies=[Depends(check_testing_mode)])
 async def seed_review_queue(db: AsyncSession = Depends(get_db)):
     """
     Seed the review queue with staged extraction records for E2E testing.
@@ -178,7 +184,7 @@ async def seed_review_queue(db: AsyncSession = Depends(get_db)):
         )
 
 
-@router.post("/seed-ui-categories", dependencies=[Depends(check_testing_mode)])
+@router.post("/seed-ui-categories", response_model=UICategoriesSeedResponse, dependencies=[Depends(check_testing_mode)])
 async def seed_ui_categories(db: AsyncSession = Depends(get_db)):
     """
     Seed UI categories for E2E testing.
@@ -210,7 +216,7 @@ async def seed_ui_categories(db: AsyncSession = Depends(get_db)):
         )
 
 
-@router.get("/health", dependencies=[Depends(check_testing_mode)])
+@router.get("/health", response_model=TestHealthResponse, dependencies=[Depends(check_testing_mode)])
 async def test_health():
     """
     Health check endpoint for test helpers.

@@ -9,6 +9,7 @@ from collections.abc import Awaitable, Callable
 from typing import ParamSpec, TypeVar
 
 from fastapi import status
+from pydantic import ValidationError
 
 from app.utils.errors import AppException, ErrorCode
 
@@ -46,17 +47,32 @@ def handle_extraction_errors(
         try:
             return await func(*args, **kwargs)
         except AppException:
-            # Re-raise AppExceptions to preserve error details
+            # Re-raise AppExceptions to preserve their structured error details
             raise
-        except Exception:
+        except (ValueError, ValidationError) as exc:
+            logger.warning(
+                "Validation error in extraction endpoint %s: %s",
+                func.__name__,
+                exc,
+            )
+            raise AppException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                error_code=ErrorCode.VALIDATION_ERROR,
+                message="Invalid extraction input",
+                details=str(exc),
+            )
+        except Exception as exc:
             # Log with full traceback for server-side diagnostics
             logger.exception("Extraction operation failed in %s", func.__name__)
 
-            # Convert to standard AppException — do not leak exception details to client
+            # Wrap in AppException — preserve the original message as `details` so
+            # developer tooling (dev Snackbar, logs) can show the root cause while
+            # keeping the user-facing message generic.
             raise AppException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 error_code=ErrorCode.EXTRACTION_FAILED,
                 message=f"{func.__name__.replace('_', ' ').title()} failed",
+                details=str(exc) or type(exc).__name__,
             )
 
     return wrapper

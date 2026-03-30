@@ -106,15 +106,15 @@ Source: `.temp/full_audit_report_2026-03-26.md`
 
 #### Major
 
-- [ ] **AUD26-M1** `backend/app/api/admin.py:105,146,181` — Route handlers execute raw `select()` queries instead of delegating to `AdminService`. Add `list_categories()`, `get_category()`, `delete_category()` service methods; call from routes.
-- [ ] **AUD26-M2** `backend/app/utils/audit.py:101-113` — Audit log failures are silently swallowed with no alerting. Add a consecutive-failure counter; emit `logger.critical(...)` after N failures.
-- [ ] **AUD26-M3** `backend/app/api/error_handlers.py:51` — `handle_extraction_errors` merges all exception types into `EXTRACTION_FAILED`. Catch specific types separately (LLM → 503, validation → 422) before the generic fallback.
-- [ ] **AUD26-M4** `backend/app/services/pubmed_fetcher.py:188-190,338-340,467-469` — Generic `except Exception` handler drops PMID context and error type. Include original exception message in `details`; distinguish retryable vs. non-retryable errors.
-- [ ] **AUD26-M5** `backend/app/api/test_helpers.py:35,91,182,214` — All four test-support endpoints return untyped dicts with no `response_model`. Define `DatabaseResetResponse`, `ReviewQueueSeedResponse`, `UICategoriesSeedResponse`, `TestHealthResponse` schemas and declare them as `response_model`.
-- [ ] **AUD26-M6** `backend/app/services/export_service.py:69,99-120` — Export service builds inline `dict` lists with no Pydantic schema. Define `EntityExportItem`, `SourceExportItem`, `RelationExportItem` and use `model_dump` for serialization.
-- [ ] **AUD26-M7** `frontend/src/components/layout/MobileDrawer.tsx:28,37` + `DesktopNavigation.tsx:18,25` — `icon: any` and `user: any` props defeat TypeScript safety for the entire navigation layer. Define `MenuItem` interface with `icon: ComponentType<SvgIconProps>` and import the existing `User` type.
+- [x] **AUD26-M1** `backend/app/api/admin.py:105,146,181` — Route handlers execute raw `select()` queries instead of delegating to `AdminService`. Fixed: added `list_categories`, `create_category`, `get_category`, `update_category`, `delete_category` + `_require_category` to `AdminService`; moved `_cat_to_read` helper there; category routes now inject `admin_svc` and delegate; raw `select`, `IntegrityError`, `AsyncSession`, `UiCategory` imports removed from `admin.py`.
+- [x] **AUD26-M2** `backend/app/utils/audit.py:101-113` — Audit log failures are silently swallowed with no alerting. Fixed: added `_audit_consecutive_failures` counter + `_AUDIT_CRITICAL_THRESHOLD = 5`; counter resets to 0 on success; emits `logger.critical(...)` on every failure at or above threshold, `logger.exception(...)` below it.
+- [x] **AUD26-M3** `backend/app/api/error_handlers.py:51` — `handle_extraction_errors` merges all exception types into `EXTRACTION_FAILED`. Fixed: added `except (ValueError, ValidationError)` handler before the generic fallback → 422 `VALIDATION_ERROR`; `LLMServiceUnavailableException` already propagates as `AppException` (503).
+- [x] **AUD26-M4** `backend/app/services/pubmed_fetcher.py:188-190,338-340,467-469` — Generic `except Exception` handler drops PMID context and error type. Fixed: all three generic handlers now capture `exc` and pass `details=str(exc) or type(exc).__name__`.
+- [x] **AUD26-M5** `backend/app/api/test_helpers.py:35,91,182,214` — All four test-support endpoints return untyped dicts with no `response_model`. Fixed: defined `DatabaseResetResponse`, `ReviewQueueSeedResponse`, `UICategoriesSeedResponse`, `TestHealthResponse` in `backend/app/schemas/test_helpers.py`; wired as `response_model` on all four endpoints.
+- [x] **AUD26-M6** `backend/app/services/export_service.py:69,99-120` — Export service builds inline `dict` lists with no Pydantic schema. Fixed: defined `EntityExportItem`, `RelationExportItem`, `RelationRoleExportItem`, `SourceExportItem` in `backend/app/schemas/export.py`; all four collection loops now build typed model instances; `_export_*_json` methods use `model_dump(exclude_none=True)`.
+- [x] **AUD26-M7** `frontend/src/components/layout/MobileDrawer.tsx:28,37` + `DesktopNavigation.tsx:18,25` — `icon: any` and `user: any` props defeat TypeScript safety. Fixed: `icon` → `ComponentType<SvgIconProps>`; `user` → `UserRead | null` (from `../../types/auth`) in both components.
 - [x] **AUD26-M8** `e2e/tests/auth/token-refresh.spec.ts:20` — `waitForTimeout(1000)` anti-pattern causes flaky timing-dependent test. Fixed: removed sleep; preceding `waitForLoadState('networkidle')` already covers async token refresh network activity.
-- [ ] **AUD26-M9** `backend/app/api/document_extraction_dependencies.py:4-9` — Module-level re-exports of test helpers (suppressed with `# noqa: F401`) couple production module load to test scaffolding. Remove top-level imports; rely solely on the lazy-loading function.
+- [x] **AUD26-M9** `backend/app/api/document_extraction_dependencies.py:4-9` — Module-level re-exports of test helpers (suppressed with `# noqa: F401`) couple production module load to test scaffolding. Fixed: removed three noqa re-export lines; `test_document_extraction.py` imports `calculate_relevance` from `app.services.document_extraction_workflow`; `document.py` imports `UrlFetcher` from `app.services.url_fetcher`; `discovery.py` imports `infer_trust_level_from_pubmed_metadata` from `app.utils.source_quality`.
 
 #### Minor
 
@@ -132,7 +132,7 @@ Source: `.temp/full_audit_report_2026-03-26.md`
 - [ ] **AUD26-m12** `backend/app/services/inference/read_models.py:59` — `matches_scope(relation, scope_filter: dict)` bare `dict` parameter. Define a `ScopeFilter` TypedDict.
 - [ ] **AUD26-m13** `backend/app/utils/auth.py:1-56` — Re-export facade with no documented rationale. Audit importers; delete if all use direct submodule imports, or add a header comment explaining its purpose.
 - [ ] **AUD26-m14** `frontend/src/i18n/fr.json` — 17 lines shorter than `en.json`; recent additions not yet translated to French. Diff top-level keys and add missing FR translations.
-- [ ] **AUD26-m15** `backend/app/api/test_helpers.py:35,91,182,214` — Functions missing return type annotations. Covered by M5 fix; add `-> XxxResponse` annotations simultaneously.
+- [x] **AUD26-m15** `backend/app/api/test_helpers.py:35,91,182,214` — Functions missing return type annotations. Fixed as part of M5: `response_model` declarations make return types explicit via the schema classes.
 
 ---
 

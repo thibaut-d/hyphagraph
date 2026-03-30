@@ -14,6 +14,9 @@ from app.schemas.common_types import ContextObject
 
 logger = logging.getLogger(__name__)
 
+_audit_consecutive_failures = 0
+_AUDIT_CRITICAL_THRESHOLD = 5
+
 
 def get_client_ip(request: Request) -> str | None:
     """
@@ -97,19 +100,26 @@ async def log_audit_event(
 
         db.add(audit_log)
         await db.commit()
+        global _audit_consecutive_failures
+        _audit_consecutive_failures = 0
 
     except Exception:
-        # Log the error but don't raise - we don't want audit logging
-        # failures to break the application
-        logger.exception(
-            "Failed to log audit event",
-            extra={
-                "event_type": event_type,
-                "event_status": event_status,
-                "audit_user_id": str(user_id) if user_id else None,
-                "audit_user_email": user_email,
-            },
-        )
+        global _audit_consecutive_failures
+        _audit_consecutive_failures += 1
+        extra = {
+            "event_type": event_type,
+            "event_status": event_status,
+            "audit_user_id": str(user_id) if user_id else None,
+            "audit_user_email": user_email,
+        }
+        if _audit_consecutive_failures >= _AUDIT_CRITICAL_THRESHOLD:
+            logger.critical(
+                "Audit logging has failed %d consecutive times — audit trail may be incomplete",
+                _audit_consecutive_failures,
+                extra=extra,
+            )
+        else:
+            logger.exception("Failed to log audit event", extra=extra)
         await db.rollback()
 
 

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { ComponentType } from "react";
 import { Link as RouterLink, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -7,22 +8,24 @@ import {
   Menu,
   MenuItem,
 } from "@mui/material";
+import type { SvgIconProps } from "@mui/material";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 import { GlobalSearch } from "../GlobalSearch";
 import type { UICategoryOption } from "../../api/entities";
+import type { UserRead } from "../../types/auth";
 
 export interface MenuItem {
   key: string;
   path: string;
-  icon: any;
+  icon: ComponentType<SvgIconProps>;
   requiresAuth?: boolean;
 }
 
 interface DesktopNavigationProps {
   menuItems: MenuItem[];
   categories: UICategoryOption[];
-  user: any;
+  user: UserRead | null;
   onNavigate: (path: string) => void;
 }
 
