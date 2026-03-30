@@ -1,10 +1,54 @@
 # Current Work
 
-**Last updated**: 2026-03-28 (deployment audit v2 — all findings resolved)
+**Last updated**: 2026-03-28 (error propagation audit — all 10 findings resolved)
 
 ---
 
 ## Open Findings
+
+### Full Audit - 2026-03-30 (score 81/100)
+
+Source: `.temp/full_audit_report_2026-03-30.md`
+
+#### Critical
+
+- [x] **AUD30-C1** `backend/app/services/document_service.py:101-106,162-167,223` - Document upload size limit is enforced only after `await file.read()` when `UploadFile.size` is missing, so oversized uploads can still be fully buffered into memory on extraction endpoints. Fixed: added `_read_bounded()` chunked reader (64 KB chunks); replaced unbounded `file.read()` calls in `extract_text_from_pdf` and `extract_text_from_txt`; added 8 unit tests in `backend/tests/test_document_service.py`.
+
+#### Major
+
+- [x] **AUD30-M1** `frontend/src/components/GlobalSearch.tsx:41-63` + `frontend/src/api/search.ts:106-119` - `AbortController` cleanup never reaches the actual network request, so stale suggestion fetches still run to completion after rapid typing or unmount. Fixed: `signal` was already wired through `getSuggestions()` → `apiFetch()`; added `AbortError` early-exit in `apiRequest` catch block (`client.tsx:162-165`) so aborted requests re-throw without logging or wrapping — `GlobalSearch` already guards state updates with `controller.signal.aborted`.
+- [ ] **AUD30-M2** `frontend/src/views/ResendVerificationView.tsx:7-178` + `frontend/src/views/VerifyEmailView.tsx:7-176` - Auth recovery views bypass shared MUI/i18n patterns and `ResendVerificationView` shows both inline and toast errors for the same failure. Refactor these flows onto the shared auth UI surface and route submit errors through the documented single-path error hooks.
+- [ ] **AUD30-M3** `frontend/src/views/CreateSourceView.tsx:153,170,178,328-340,354,368` + `frontend/src/components/layout/MobileDrawer.tsx:204` - Primary UI still ships hardcoded and malformed user-visible text (for example corrupted checkmark/bullet glyphs, raw `English`/`Francais` labels, raw PubMed/DOI labels, and untranslated placeholders). Move these literals into translation keys and correct the corrupted UTF-8 strings.
+- [ ] **AUD30-M4** `e2e/tests/sources/filters.spec.ts:75`, `e2e/tests/review-queue/queue.spec.ts:121`, `e2e/tests/entities/revision-history.spec.ts:45,127` - New Playwright specs rely on fixed sleeps instead of observable conditions, making CI timing-dependent. Replace each `waitForTimeout(...)` with concrete waits for drawer closure, batch-action visibility, or persisted revision updates.
+
+#### Minor
+
+- [ ] **AUD30-m1** `frontend/src/components/EntityTermsManager.tsx:70-80,118-120,160-162,217-220,382` - The entity-terms editor hardcodes language labels, validation copy, and fallback display text in component code. Move these user-facing strings into i18n resources and align unexpected-error logging with the shared frontend helpers.
+
+### Error Propagation to UI Audit — 2026-03-28 (score 62/100 → 100/100)
+
+Source: `.temp/error_propagation_audit_report_2026-03-28.md`
+
+#### Critical
+
+- [x] **ERR-C1** `backend/app/middleware/error_handler.py:30-35` + `frontend/src/api/client.tsx:66-78` — Dual error envelope. Fixed: dropped `"detail"` key from `app_exception_handler` and `validation_exception_handler`; all handlers now return `{"error":{…}}` exclusively; simplified `extractBackendErrorPayload` in client; added 7 canonical-envelope tests in `test_error_handlers.py`.
+- [x] **ERR-C2** `backend/app/utils/errors.py:17-79` + `frontend/src/utils/errorHandler.ts:15-74` — ErrorCode enum drift. Fixed: added `ENTITY_HAS_RELATIONS` to frontend enum; added `test_error_code_enum_matches_known_set` snapshot test to `test_error_handlers.py`.
+
+#### Major
+
+- [x] **ERR-M1** `frontend/src/hooks/useAsyncAction.ts` — Duplicate toast+inline display. Fixed: when `setError` is provided, `useAsyncAction` now sets local state and suppresses the Snackbar toast; without `setError` it delegates to `showError` (toast only). Rule documented in `CODE_GUIDE.md §15`.
+- [x] **ERR-M2** `frontend/src/hooks/useAsyncAction.ts`, `useAsyncResource.ts`, `usePageErrorHandler.ts` — No selection guidance. Fixed: added §15 to `docs/development/CODE_GUIDE.md` with a table documenting when to use each hook.
+- [x] **ERR-M3** `frontend/src/notifications/NotificationContext.tsx` — Developer details invisible. Fixed: added expandable "Dev details" section inside the Snackbar (dev builds only, gated on `import.meta.env.DEV`); shows `code`, `developerMessage`, `field`, `context`.
+- [x] **ERR-M4** `backend/app/api/error_handlers.py:20-62` — `@handle_extraction_errors` discarded error context. Fixed: non-`AppException` errors now preserve `str(exc)` as the `details` field of the wrapped `EXTRACTION_FAILED` AppException.
+
+#### Minor
+
+- [x] **ERR-m1** `frontend/src/notifications/NotificationContext.tsx` — Ad-hoc console.error. Fixed: `showError()` now calls `formatErrorForLogging(parsedError)`.
+- [x] **ERR-m2** `frontend/src/utils/errorHandler.ts` — `shouldShowErrorToUser()` undocumented fallback. Fixed: added JSDoc stating callers must still log via `formatErrorForLogging()` before redirecting.
+- [x] **ERR-m3** `backend/app/utils/errors.py:211` — `LLMServiceUnavailableException` leaked `OPENAI_API_KEY`. Fixed: message changed to "AI service is unavailable. Please try again later."; hint moved to `details`.
+- [x] **ERR-m4** `frontend/src/utils/errorHandler.ts:267-295` — Hardcoded status→i18n keys. Fixed: replaced if/else chain with `HTTP_STATUS_ERROR_CODES` and `HTTP_STATUS_MESSAGES` maps.
+
+---
 
 ### Deployment Audit v2 — 2026-03-28 (score 55/100 → 100/100 after fixes)
 
@@ -57,8 +101,8 @@ Source: `.temp/full_audit_report_2026-03-26.md`
 
 #### Critical
 
-- [ ] **AUD26-C1** `backend/app/dependencies/auth.py:127-128` — `get_optional_current_user()` bare `except Exception` swallows all errors and returns `None`, making auth system failures indistinguishable from anonymous requests. Catch only `HTTPException`/`UnauthorizedException`; log and re-raise everything else.
-- [ ] **AUD26-C2** `backend/app/services/document_extraction_processing.py:683-689` — Extraction silently discards relations on parse failure; API reports success while data is lost. Add `skipped_relations: list[SkippedRelationDetail]` to the result schema and surface it as a frontend warning.
+- [x] **AUD26-C1** `backend/app/dependencies/auth.py:127-128` — `get_optional_current_user()` bare `except Exception` swallows all errors and returns `None`, making auth system failures indistinguishable from anonymous requests. Fixed: catch `HTTPException` only (covers `UnauthorizedException`/`ForbiddenException`); log and re-raise everything else. Tests added to `test_auth_endpoints.py::TestGetOptionalCurrentUser`.
+- [x] **AUD26-C2** `backend/app/services/document_extraction_processing.py:683-689` — Extraction silently discards relations on parse failure; API reports success while data is lost. Fixed: added `SkippedRelationDetail` schema (staged_extraction_id + reason); `reconcile_staged_extractions` now returns `list[SkippedRelationDetail]` instead of `None`; `save_extraction_to_graph` propagates list into `SaveExtractionResult.skipped_relations`; frontend type updated; `SourceExtractionSection` renders a warning `Alert` when any relations were skipped. 2 new tests in `test_document_extraction_workflow.py`.
 
 #### Major
 

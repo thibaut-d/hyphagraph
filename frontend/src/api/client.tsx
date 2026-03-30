@@ -65,13 +65,12 @@ async function parseSuccessResponse<T>(response: Response): Promise<T> {
 
 interface BackendErrorEnvelope {
   error?: unknown;
-  detail?: unknown;
 }
 
 function extractBackendErrorPayload(payload: unknown): unknown {
   if (payload && typeof payload === "object") {
     const envelope = payload as BackendErrorEnvelope;
-    return envelope.error ?? envelope.detail ?? payload;
+    return envelope.error ?? payload;
   }
 
   return payload;
@@ -161,6 +160,10 @@ async function apiRequest<T>(
       credentials: "include",
     });
   } catch (error) {
+    // Abort is an expected cancellation path — re-throw without logging or wrapping.
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw error;
+    }
     // Network error (e.g., no internet, CORS, DNS failure)
     const parsedError = parseError(error, "Network request failed");
     console.error(formatErrorForLogging(parsedError));
