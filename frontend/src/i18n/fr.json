@@ -5,7 +5,8 @@
     "sources": "Sources",
     "search": "Recherche",
     "review_queue": "File de révision",
-    "account": "Mon compte"
+    "account": "Mon compte",
+    "current_language": "Français"
   },
   "common": {
     "loading": "Chargement…",
@@ -181,7 +182,29 @@
     "summary_help": "Brève description optionnelle",
     "create": "Créer la source",
     "creating": "Création en cours...",
-    "error": "Échec de la création de la source"
+    "error": "Échec de la création de la source",
+    "description_autofill": "Collez une URL ci-dessous et cliquez sur 'Auto-remplir' pour extraire automatiquement les métadonnées depuis PubMed, arXiv ou toute page web.",
+    "or_smart_discovery": "Ou Découverte intelligente",
+    "extracting": "Extraction en cours...",
+    "auto_fill": "Auto-remplir",
+    "autofilled": "Métadonnées extraites avec succès !",
+    "review_below": "Vérifiez les champs ci-dessous et apportez des corrections si nécessaire.",
+    "manual_fallback": "Vous pouvez remplir le formulaire manuellement.",
+    "required_fields": "Champs requis",
+    "optional_fields": "Informations supplémentaires (optionnel)",
+    "learn_more": "En savoir plus sur la notation de qualité",
+    "next_step_hint": "Après avoir créé la source, vous pourrez extraire des connaissances et créer des relations.",
+    "pubmed_id_chip": "PubMed ID : {{id}}",
+    "doi_chip": "DOI : {{id}}",
+    "quality_scoring_header": "La notation de qualité est basée sur les standards Oxford CEBM et GRADE :",
+    "quality_level_1": "0,90-1,0 : Revues systématiques, méta-analyses (GRADE : Très élevé)",
+    "quality_level_2": "0,75-0,89 : ECR, études de cohorte (GRADE : Élevé / Modéré-élevé)",
+    "quality_level_3": "0,65-0,74 : Études cas-témoins (GRADE : Modéré)",
+    "quality_level_4": "0,50-0,64 : Séries de cas, observationnelles (GRADE : Faible-modéré)",
+    "quality_level_5": "0,30-0,49 : Rapports de cas, opinion d'expert (GRADE : Faible)",
+    "quality_level_6": "<0,30 : Preuves anecdotiques",
+    "summary_en_placeholder": "Brève description ou résumé...",
+    "summary_fr_placeholder": "Résumé ou abstract..."
   },
   "edit_source": {
     "title": "Modifier la source",

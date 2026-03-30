@@ -201,7 +201,7 @@ export function MobileDrawer({
       <Divider />
       <Box sx={{ p: 1, display: "flex", alignItems: "center", gap: 1 }}>
         <Typography variant="body2" sx={{ flexGrow: 1 }}>
-          {i18n.language === "en" ? "English" : "Français"}
+          {t("menu.current_language")}
         </Typography>
         <LanguageSwitch />
       </Box>

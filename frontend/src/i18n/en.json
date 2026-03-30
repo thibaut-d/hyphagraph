@@ -5,7 +5,10 @@
     "sources": "Sources",
     "search": "Search",
     "review_queue": "Review Queue",
-    "account": "My account"
+    "account": "My account",
+    "current_language": "English",
+    "navigation": "Navigation",
+    "all_entities": "All Entities"
   },
   "common": {
     "loading": "Loading…",
@@ -181,7 +184,29 @@
     "summary_help": "Optional brief description",
     "create": "Create Source",
     "creating": "Creating...",
-    "error": "Failed to create source"
+    "error": "Failed to create source",
+    "description_autofill": "Paste a URL below and click 'Auto-Fill' to automatically extract metadata from PubMed, arXiv, or any webpage.",
+    "or_smart_discovery": "Or Smart Discovery",
+    "extracting": "Extracting...",
+    "auto_fill": "Auto-Fill",
+    "autofilled": "Metadata extracted successfully!",
+    "review_below": "Review the fields below and make corrections if needed.",
+    "manual_fallback": "You can fill the form manually.",
+    "required_fields": "Required Fields",
+    "optional_fields": "Additional Information (Optional)",
+    "learn_more": "Learn about quality scoring",
+    "next_step_hint": "After creating the source, you can extract knowledge and create relations.",
+    "pubmed_id_chip": "PubMed ID: {{id}}",
+    "doi_chip": "DOI: {{id}}",
+    "quality_scoring_header": "Quality scoring is based on Oxford CEBM and GRADE standards:",
+    "quality_level_1": "0.90-1.0: Systematic Reviews, Meta-analyses (GRADE: Very High)",
+    "quality_level_2": "0.75-0.89: RCTs, Cohort Studies (GRADE: High / Moderate-High)",
+    "quality_level_3": "0.65-0.74: Case-Control Studies (GRADE: Moderate)",
+    "quality_level_4": "0.50-0.64: Case Series, Observational (GRADE: Low-Moderate)",
+    "quality_level_5": "0.30-0.49: Case Reports, Expert Opinion (GRADE: Low)",
+    "quality_level_6": "<0.30: Anecdotal evidence",
+    "summary_en_placeholder": "Brief description or abstract...",
+    "summary_fr_placeholder": "Résumé ou abstract..."
   },
   "edit_source": {
     "title": "Edit Source",

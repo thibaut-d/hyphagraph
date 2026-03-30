@@ -150,9 +150,9 @@ export function CreateSourceView() {
 
               {autofilled && (
                 <Alert severity="success" sx={{ mt: 1 }}>
-                  <strong>{t("create_source.autofilled", "✓ Metadata extracted successfully!")}</strong>
+                  <strong>{t("create_source.autofilled")}</strong>
                   {" "}
-                  {t("create_source.review_below", "Review the fields below and make corrections if needed.")}
+                  {t("create_source.review_below")}
                 </Alert>
               )}
 
@@ -167,7 +167,7 @@ export function CreateSourceView() {
               {sourceMetadata?.pmid && (
                 <Box sx={{ mt: 1, display: "flex", gap: 1, flexWrap: "wrap" }}>
                   <Chip
-                    label={`PubMed ID: ${sourceMetadata.pmid}`}
+                    label={t("create_source.pubmed_id_chip", { id: sourceMetadata.pmid })}
                     size="small"
                     color="primary"
                     variant="outlined"
@@ -175,7 +175,7 @@ export function CreateSourceView() {
                   />
                   {sourceMetadata?.doi && (
                     <Chip
-                      label={`DOI: ${sourceMetadata.doi}`}
+                      label={t("create_source.doi_chip", { id: sourceMetadata.doi })}
                       size="small"
                       color="primary"
                       variant="outlined"
@@ -325,19 +325,20 @@ export function CreateSourceView() {
                   <Collapse in={showAdvanced}>
                     <Alert severity="info" sx={{ mt: 1, fontSize: "0.875rem" }}>
                       <Typography variant="caption" component="div">
-                        <strong>Quality scoring is based on Oxford CEBM and GRADE standards:</strong>
+                        <strong>{t("create_source.quality_scoring_header")}</strong>
                       </Typography>
                       <Typography variant="caption" component="div" sx={{ mt: 1 }}>
-                        • 0.90-1.0: Systematic Reviews, Meta-analyses (GRADE ⊕⊕⊕⊕)
+                        {t("create_source.quality_level_1")}
                         <br />
-                        • 0.75-0.89: RCTs, Cohort Studies (GRADE ⊕⊕⊕⊕/⊕⊕⊕◯)
+                        {t("create_source.quality_level_2")}
                         <br />
-                        • 0.65-0.74: Case-Control Studies (GRADE ⊕⊕⊕◯)
+                        {t("create_source.quality_level_3")}
                         <br />
-                        • 0.50-0.64: Case Series, Observational (GRADE ⊕⊕◯◯)
+                        {t("create_source.quality_level_4")}
                         <br />
-                        • 0.30-0.49: Case Reports, Expert Opinion (GRADE ⊕◯◯◯)
-                        <br />• &lt;0.30: Anecdotal evidence
+                        {t("create_source.quality_level_5")}
+                        <br />
+                        {t("create_source.quality_level_6")}
                       </Typography>
                     </Alert>
                   </Collapse>
@@ -351,7 +352,7 @@ export function CreateSourceView() {
                   fullWidth
                   multiline
                   rows={3}
-                  placeholder="Brief description or abstract..."
+                  placeholder={t("create_source.summary_en_placeholder")}
                   sx={{
                     "& .MuiInputBase-root": autofilled && summaryEn ? { bgcolor: "success.50" } : {},
                   }}
@@ -365,7 +366,7 @@ export function CreateSourceView() {
                   fullWidth
                   multiline
                   rows={3}
-                  placeholder="Résumé ou abstract..."
+                  placeholder={t("create_source.summary_fr_placeholder")}
                 />
               </Stack>
             </Paper>
