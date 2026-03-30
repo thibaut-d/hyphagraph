@@ -569,5 +569,32 @@
     "select_sources_hint": "Select sources to import",
     "import_button": "Import {{count}} Sources",
     "importing": "Importing..."
+  },
+  "resend_verification": {
+    "title": "Resend Verification Email",
+    "subtitle": "Enter your email address and we'll send you a new verification link.",
+    "email_label": "Email Address",
+    "email_placeholder": "your-email@example.com",
+    "submit": "Resend Verification Email",
+    "sending": "Sending...",
+    "error": "Failed to resend verification email.",
+    "success_title": "Verification Email Sent",
+    "success_message": "A new verification email has been sent to {{email}}.",
+    "success_hint": "Please check your inbox and spam folder for the verification link.",
+    "back_to_login": "Back to Login"
+  },
+  "verify_email": {
+    "loading_title": "Verifying Email...",
+    "loading_message": "Please wait while we verify your email address.",
+    "success_title": "Email Verified!",
+    "success_message": "Your email address has been successfully verified.",
+    "success_hint": "You can now log in to your account.",
+    "success_redirect": "Redirecting to login...",
+    "go_to_login": "Go to Login Now",
+    "error_title": "Verification Failed",
+    "error_hint": "The verification link may have expired or is invalid.",
+    "invalid_token": "Invalid or missing verification token",
+    "resend_link": "Resend Verification Email",
+    "back_to_login": "Back to Login"
   }
 }

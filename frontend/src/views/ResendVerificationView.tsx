@@ -1,45 +1,25 @@
 import React, { useState } from "react";
-import { resendVerificationEmail } from "../api/auth";
 import { Link } from "react-router-dom";
-import { useNotification } from "../notifications/NotificationContext";
-import { parseError } from "../utils/errorHandler";
+import { useTranslation } from "react-i18next";
+import { resendVerificationEmail } from "../api/auth";
+import { useAsyncAction } from "../hooks/useAsyncAction";
 
 export default function ResendVerificationView() {
-  const { showError } = useNotification();
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const { isRunning: loading, run } = useAsyncAction((message) =>
+    setSubmitError(message ?? null),
+  );
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    try {
+    setSubmitError(null);
+    await run(async () => {
       await resendVerificationEmail(email);
       setSubmitted(true);
-    } catch (err: unknown) {
-      const parsedError = parseError(
-        err,
-        "Failed to resend verification email.",
-      );
-
-      // Handle specific errors
-      if (parsedError.userMessage.includes("already verified")) {
-        const message = "This email address is already verified. You can log in now.";
-        setError(message);
-        showError(new Error(message));
-      } else if (parsedError.userMessage.includes("not found")) {
-        const message = "No account found with this email address.";
-        setError(message);
-        showError(new Error(message));
-      } else {
-        setError(parsedError.userMessage);
-        showError(err);
-      }
-    } finally {
-      setLoading(false);
-    }
+    }, t("resend_verification.error"));
   };
 
   if (submitted) {
@@ -55,10 +35,10 @@ export default function ResendVerificationView() {
           }}
         >
           <h2 style={{ margin: "0 0 10px 0", color: "#0369a1" }}>
-            Verification Email Sent
+            {t("resend_verification.success_title")}
           </h2>
           <p style={{ margin: 0, color: "#0c4a6e" }}>
-            A new verification email has been sent to <strong>{email}</strong>.
+            {t("resend_verification.success_message", { email })}
           </p>
           <p
             style={{
@@ -67,7 +47,7 @@ export default function ResendVerificationView() {
               color: "#0c4a6e",
             }}
           >
-            Please check your inbox and spam folder for the verification link.
+            {t("resend_verification.success_hint")}
           </p>
         </div>
 
@@ -80,7 +60,7 @@ export default function ResendVerificationView() {
             textDecoration: "none",
           }}
         >
-          Back to Login
+          {t("resend_verification.back_to_login")}
         </Link>
       </div>
     );
@@ -88,12 +68,14 @@ export default function ResendVerificationView() {
 
   return (
     <div style={{ maxWidth: "400px", margin: "100px auto", padding: "20px" }}>
-      <h1 style={{ marginBottom: "10px" }}>Resend Verification Email</h1>
+      <h1 style={{ marginBottom: "10px" }}>
+        {t("resend_verification.title")}
+      </h1>
       <p style={{ color: "#666", marginBottom: "30px" }}>
-        Enter your email address and we'll send you a new verification link.
+        {t("resend_verification.subtitle")}
       </p>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={(e) => { void handleSubmit(e); }}>
         <div style={{ marginBottom: "20px" }}>
           <label
             style={{
@@ -102,7 +84,7 @@ export default function ResendVerificationView() {
               fontWeight: "500",
             }}
           >
-            Email Address
+            {t("resend_verification.email_label")}
           </label>
           <input
             type="email"
@@ -110,7 +92,7 @@ export default function ResendVerificationView() {
             onChange={(e) => setEmail(e.target.value)}
             required
             disabled={loading}
-            placeholder="your-email@example.com"
+            placeholder={t("resend_verification.email_placeholder")}
             style={{
               width: "100%",
               padding: "10px",
@@ -122,7 +104,7 @@ export default function ResendVerificationView() {
           />
         </div>
 
-        {error && (
+        {submitError && (
           <div
             style={{
               background: "#fee",
@@ -133,7 +115,7 @@ export default function ResendVerificationView() {
               color: "#c00",
             }}
           >
-            {error}
+            {submitError}
           </div>
         )}
 
@@ -152,7 +134,9 @@ export default function ResendVerificationView() {
             cursor: loading ? "not-allowed" : "pointer",
           }}
         >
-          {loading ? "Sending..." : "Resend Verification Email"}
+          {loading
+            ? t("resend_verification.sending")
+            : t("resend_verification.submit")}
         </button>
       </form>
 
@@ -170,7 +154,7 @@ export default function ResendVerificationView() {
             textDecoration: "none",
           }}
         >
-          Back to Login
+          {t("resend_verification.back_to_login")}
         </Link>
       </div>
     </div>

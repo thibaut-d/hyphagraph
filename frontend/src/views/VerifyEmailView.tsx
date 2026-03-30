@@ -1,23 +1,22 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { verifyEmail } from "../api/auth";
-import { useNotification } from "../notifications/NotificationContext";
 import { parseError } from "../utils/errorHandler";
 
 export default function VerifyEmailView() {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get("token");
-  const { showError } = useNotification();
 
   const [loading, setLoading] = useState(true);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
     if (!token) {
-      const message = "Invalid or missing verification token";
-      showError(new Error(message));
-      setError(message);
+      setError(t("verify_email.invalid_token"));
       setLoading(false);
       return;
     }
@@ -35,15 +34,15 @@ export default function VerifyEmailView() {
       } catch (err: unknown) {
         const parsedError = parseError(
           err,
-          "Failed to verify email. The link may have expired.",
+          t("verify_email.error_hint"),
         );
         setError(parsedError.userMessage);
         setLoading(false);
       }
     };
 
-    verify();
-  }, [token, navigate, showError]);
+    void verify();
+  }, [token, navigate, t]);
 
   if (loading) {
     return (
@@ -58,10 +57,10 @@ export default function VerifyEmailView() {
           }}
         >
           <h2 style={{ margin: "0 0 10px 0", color: "#0369a1" }}>
-            Verifying Email...
+            {t("verify_email.loading_title")}
           </h2>
           <p style={{ margin: 0, color: "#0c4a6e" }}>
-            Please wait while we verify your email address.
+            {t("verify_email.loading_message")}
           </p>
         </div>
       </div>
@@ -81,10 +80,10 @@ export default function VerifyEmailView() {
           }}
         >
           <h2 style={{ margin: "0 0 10px 0", color: "#15803d" }}>
-            Email Verified!
+            {t("verify_email.success_title")}
           </h2>
           <p style={{ margin: 0, color: "#166534" }}>
-            Your email address has been successfully verified.
+            {t("verify_email.success_message")}
           </p>
           <p
             style={{
@@ -93,7 +92,7 @@ export default function VerifyEmailView() {
               color: "#166534",
             }}
           >
-            You can now log in to your account.
+            {t("verify_email.success_hint")}
           </p>
           <p
             style={{
@@ -102,7 +101,7 @@ export default function VerifyEmailView() {
               color: "#166534",
             }}
           >
-            Redirecting to login...
+            {t("verify_email.success_redirect")}
           </p>
         </div>
 
@@ -115,7 +114,7 @@ export default function VerifyEmailView() {
             textDecoration: "none",
           }}
         >
-          Go to Login Now
+          {t("verify_email.go_to_login")}
         </Link>
       </div>
     );
@@ -133,7 +132,7 @@ export default function VerifyEmailView() {
         }}
       >
         <h2 style={{ margin: "0 0 10px 0", color: "#c00" }}>
-          Verification Failed
+          {t("verify_email.error_title")}
         </h2>
         <p style={{ margin: 0, color: "#900" }}>{error}</p>
         <p
@@ -143,7 +142,7 @@ export default function VerifyEmailView() {
             color: "#900",
           }}
         >
-          The verification link may have expired or is invalid.
+          {t("verify_email.error_hint")}
         </p>
       </div>
 
@@ -158,7 +157,7 @@ export default function VerifyEmailView() {
             fontWeight: "500",
           }}
         >
-          Resend Verification Email
+          {t("verify_email.resend_link")}
         </Link>
         <br />
         <Link
@@ -168,7 +167,7 @@ export default function VerifyEmailView() {
             textDecoration: "none",
           }}
         >
-          Back to Login
+          {t("verify_email.back_to_login")}
         </Link>
       </div>
     </div>

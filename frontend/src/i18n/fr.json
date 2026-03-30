@@ -553,5 +553,32 @@
     "select_sources_hint": "Sélectionnez des sources à importer",
     "import_button": "Importer {{count}} source(s)",
     "importing": "Import en cours..."
+  },
+  "resend_verification": {
+    "title": "Renvoyer l'e-mail de vérification",
+    "subtitle": "Entrez votre adresse e-mail et nous vous enverrons un nouveau lien de vérification.",
+    "email_label": "Adresse e-mail",
+    "email_placeholder": "votre-email@exemple.com",
+    "submit": "Renvoyer l'e-mail de vérification",
+    "sending": "Envoi en cours...",
+    "error": "Échec du renvoi de l'e-mail de vérification.",
+    "success_title": "E-mail de vérification envoyé",
+    "success_message": "Un nouvel e-mail de vérification a été envoyé à {{email}}.",
+    "success_hint": "Veuillez vérifier votre boîte de réception et votre dossier spam.",
+    "back_to_login": "Retour à la connexion"
+  },
+  "verify_email": {
+    "loading_title": "Vérification de l'e-mail...",
+    "loading_message": "Veuillez patienter pendant que nous vérifions votre adresse e-mail.",
+    "success_title": "E-mail vérifié !",
+    "success_message": "Votre adresse e-mail a été vérifiée avec succès.",
+    "success_hint": "Vous pouvez maintenant vous connecter à votre compte.",
+    "success_redirect": "Redirection vers la connexion...",
+    "go_to_login": "Aller à la connexion maintenant",
+    "error_title": "Échec de la vérification",
+    "error_hint": "Le lien de vérification a peut-être expiré ou est invalide.",
+    "invalid_token": "Jeton de vérification invalide ou manquant",
+    "resend_link": "Renvoyer l'e-mail de vérification",
+    "back_to_login": "Retour à la connexion"
   }
 }
