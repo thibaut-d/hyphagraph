@@ -48,7 +48,7 @@ test.describe('Email Verification Flow', () => {
       data: { email, password, password_confirmation: password },
     });
     if (!regResp.ok()) {
-      test.skip(true, 'Registration failed — cannot proceed with verification test');
+      throw new Error(`Registration failed (${regResp.status()}) — cannot proceed with verification test`);
     }
 
     // Try to login as the unverified user via API
@@ -57,11 +57,8 @@ test.describe('Email Verification Flow', () => {
       form: { username: email, password },
     });
 
-    if (loginResp.ok()) {
-      // Verification not enforced in this environment — skip assertion
-      // (acceptable for dev/test environments that don't require verification)
-      test.skip(true, 'Email verification is not enforced in this environment');
-    }
+    // When verification is not enforced, login succeeds — skip the 401/403 assertion.
+    test.skip(loginResp.ok(), 'Email verification is not enforced in this environment');
 
     // When verification IS enforced, login must return a 401/403 with a descriptive message
     expect([401, 403]).toContain(loginResp.status());
@@ -70,13 +67,10 @@ test.describe('Email Verification Flow', () => {
   });
 
   test('should complete login after clicking the verification link', async ({ page }) => {
-    // This test requires VERIFY_EMAIL_URL to be set in the environment.
-    // In CI with a real mail service, set this to the verification URL extracted from the email.
-    if (!process.env.VERIFY_EMAIL_URL) {
-      test.skip(true, 'VERIFY_EMAIL_URL not set — skipping full verification link test');
-    }
+    // Requires VERIFY_EMAIL_URL (extracted from email in CI with a real mail service).
+    test.skip(!process.env.VERIFY_EMAIL_URL, 'VERIFY_EMAIL_URL not set — skipping full verification link test');
 
-    await page.goto(process.env.VERIFY_EMAIL_URL);
+    await page.goto(process.env.VERIFY_EMAIL_URL!);
     await page.waitForLoadState('networkidle');
 
     // After verification, the app must show either a success message or the login form

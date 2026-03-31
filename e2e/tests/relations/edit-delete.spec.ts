@@ -69,7 +69,7 @@ test.describe('Relation Edit and Delete', () => {
 
   // US-REL-03 — Edit Relation
   test('should navigate to the relation edit page', async ({ page }) => {
-    if (!relationId) test.skip(true, 'No relation was created in beforeEach — seed relation data to run this test');
+    expect(relationId, 'No relation was created in beforeAll — seed relation data to run this test').toBeTruthy();
 
     await page.goto(`/relations/${relationId}/edit`);
     await expect(page).toHaveURL(`/relations/${relationId}/edit`);
@@ -80,7 +80,7 @@ test.describe('Relation Edit and Delete', () => {
   });
 
   test('should pre-fill form with current relation values', async ({ page }) => {
-    if (!relationId) test.skip();
+    expect(relationId, 'No relation was created in beforeAll — seed relation data to run this test').toBeTruthy();
 
     await page.goto(`/relations/${relationId}/edit`);
     await page.waitForLoadState('domcontentloaded');
@@ -110,7 +110,7 @@ test.describe('Relation Edit and Delete', () => {
 
     await page.getByRole('button', { name: /save|update/i }).click();
     await page.waitForURL(/\/(relations|sources)\/[a-f0-9-]+/, { timeout: 10000 });
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle', { timeout: 5000 });
 
     const afterResp = await page.request.get(`${API_URL}/api/relations/${relationId}`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -124,7 +124,7 @@ test.describe('Relation Edit and Delete', () => {
 
   // US-REL-04 — Delete Relation
   test('should delete a relation from the source detail page', async ({ page }) => {
-    if (!relationId) test.skip(true, 'No relation was created in beforeEach — seed relation data to run this test');
+    expect(relationId, 'No relation was created in beforeAll — seed relation data to run this test').toBeTruthy();
 
     await page.goto(`/sources/${sourceId}`);
     await page.waitForLoadState('domcontentloaded');
@@ -138,7 +138,7 @@ test.describe('Relation Edit and Delete', () => {
     const confirmButton = page.locator('[role="dialog"]').getByRole('button', { name: /delete|confirm/i });
     await expect(confirmButton).toBeVisible({ timeout: 3000 });
     await confirmButton.click();
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle', { timeout: 5000 });
 
     await expect(page).toHaveURL(new RegExp(`/sources/${sourceId}`));
   });

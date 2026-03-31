@@ -56,10 +56,11 @@ test.describe('Document Upload and Extraction', () => {
   });
 
   test('should upload text file and show extraction preview', async ({ page }) => {
-    // This test calls the LLM — requires LLM_API_KEY to be set in the E2E environment.
-    if (!process.env.LLM_API_KEY && !process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
-      test.skip(true, 'LLM API key not set — skipping extraction test. Set LLM_API_KEY to enable.');
-    }
+    // Requires an LLM API key — skipped when none is configured.
+    test.skip(
+      !process.env.LLM_API_KEY && !process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY,
+      'LLM API key not set — set LLM_API_KEY to enable this test',
+    );
 
     await page.goto(`/sources/${sourceId}`);
 

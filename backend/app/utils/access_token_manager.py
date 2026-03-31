@@ -15,25 +15,42 @@ class AccessTokenManager:
     JWT access token creation and validation.
 
     Handles encoding/decoding of JWT tokens with configurable expiration.
+
+    SECRET_KEY is resolved lazily from settings at call time so that runtime
+    key rotation (e.g. via environment variable reload) takes effect without
+    requiring a process restart.
     """
 
     def __init__(
         self,
-        secret_key: str = settings.SECRET_KEY,
-        algorithm: str = settings.ALGORITHM,
-        expire_minutes: int = settings.ACCESS_TOKEN_EXPIRE_MINUTES
+        secret_key: Optional[str] = None,
+        algorithm: Optional[str] = None,
+        expire_minutes: Optional[int] = None,
     ):
         """
         Initialize the access token manager.
 
         Args:
-            secret_key: Secret key for JWT signing (default from settings)
+            secret_key: Secret key for JWT signing. If None, resolved lazily
+                from settings at each call so rotation takes effect immediately.
             algorithm: JWT algorithm (default from settings)
             expire_minutes: Token expiration in minutes (default from settings)
         """
-        self.secret_key = secret_key
-        self.algorithm = algorithm
-        self.expire_minutes = expire_minutes
+        self._secret_key = secret_key
+        self._algorithm = algorithm
+        self._expire_minutes = expire_minutes
+
+    @property
+    def secret_key(self) -> str:
+        return self._secret_key if self._secret_key is not None else settings.SECRET_KEY
+
+    @property
+    def algorithm(self) -> str:
+        return self._algorithm if self._algorithm is not None else settings.ALGORITHM
+
+    @property
+    def expire_minutes(self) -> int:
+        return self._expire_minutes if self._expire_minutes is not None else settings.ACCESS_TOKEN_EXPIRE_MINUTES
 
     def create_access_token(
         self,

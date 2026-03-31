@@ -119,8 +119,7 @@ test.describe('Admin Panel', () => {
       data: { email: testEmail, password: testPassword, password_confirmation: testPassword },
     });
     if (!regResp.ok()) {
-      test.skip(true, 'Regular user registration failed — check API availability');
-      return;
+      throw new Error(`Regular user registration failed (${regResp.status()}) — check API availability`);
     }
 
     // Login as the regular user via API
@@ -129,8 +128,7 @@ test.describe('Admin Panel', () => {
       form: { username: testEmail, password: testPassword },
     });
     if (!loginResp.ok()) {
-      test.skip(true, 'Regular user login failed — check API availability');
-      return;
+      throw new Error(`Regular user login failed (${loginResp.status()}) — check API availability`);
     }
     const { access_token: regularToken } = await loginResp.json();
 

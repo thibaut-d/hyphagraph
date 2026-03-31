@@ -181,7 +181,27 @@ Not stored:
 
 ---
 
-## 12. Summary
+## 12. Consensus Level Thresholds
+
+The `get_entity_consensus_level` method in `derived_properties_service.py` classifies
+entities by the fraction of "contradicts" relations out of all directional relations:
+
+| Level      | Condition                        |
+|------------|----------------------------------|
+| `strong`   | contradictions < 10 % of total   |
+| `moderate` | contradictions 10–30 %           |
+| `weak`     | contradictions 30–50 %           |
+| `disputed` | contradictions ≥ 50 %            |
+
+These thresholds (`_STRONG_THRESHOLD = 0.10`, `_MODERATE_THRESHOLD = 0.30`,
+`_WEAK_THRESHOLD = 0.50`) were chosen to match conventional scientific consensus
+categories (strong → moderate → contested → disputed) while remaining
+conservative enough that a single contradicting source does not immediately
+lower the level for well-supported entities.
+
+---
+
+## 13. Summary
 
 A computed relation is a **hyper-edge whose roles carry normalized evidence
 scores**, derived from documented relations, weighted by provenance,

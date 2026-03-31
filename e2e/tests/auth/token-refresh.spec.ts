@@ -38,4 +38,41 @@ test.describe('Token Refresh Flow', () => {
     // Must present the login button
     await expect(page.getByRole('button', { name: /login/i })).toBeVisible({ timeout: 5000 });
   });
+
+  // G1b — refresh token rotation: old token rejected after rotation
+  test('should reject the original refresh token after it has been rotated', async ({ page }) => {
+    const API_URL = process.env.API_URL || 'http://localhost:8001';
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'admin';
+
+    // Login to obtain a refresh token via the httpOnly cookie path
+    const loginResp = await page.request.post(`${API_URL}/api/auth/login`, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      form: { username: adminEmail, password: adminPassword },
+    });
+    if (!loginResp.ok()) {
+      throw new Error(`Login failed (${loginResp.status()}) — check admin credentials`);
+    }
+
+    // Extract the Set-Cookie refresh_token value from the login response
+    const setCookieHeader = loginResp.headers()['set-cookie'] ?? '';
+    const match = setCookieHeader.match(/refresh_token=([^;]+)/);
+    if (!match) {
+      test.skip(true, 'refresh_token not exposed as a readable cookie in this environment');
+      return;
+    }
+    const originalToken = match[1];
+
+    // First refresh — rotates the token, original becomes revoked
+    const firstResp = await page.request.post(`${API_URL}/api/auth/refresh`, {
+      headers: { Cookie: `refresh_token=${originalToken}` },
+    });
+    expect(firstResp.ok()).toBe(true);
+
+    // Second refresh using the original (now-revoked) token must be rejected
+    const secondResp = await page.request.post(`${API_URL}/api/auth/refresh`, {
+      headers: { Cookie: `refresh_token=${originalToken}` },
+    });
+    expect([401, 403]).toContain(secondResp.status());
+  });
 });

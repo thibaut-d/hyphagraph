@@ -86,6 +86,11 @@ def get_extraction_review_service(
     return ExtractionReviewService(db)
 
 
+# --- Stateless factories (no DB session) ------------------------------------
+# These two services hold no per-request state and need no database session.
+# They are listed here alongside DB-bound factories for discoverability, but
+# callers may also instantiate them directly without going through Depends().
+
 def get_document_service() -> DocumentService:
     """Return a stateless DocumentService (no database session required)."""
     return DocumentService()

@@ -319,6 +319,48 @@ class TestRefreshToken:
                 assert mock_log_refresh.await_args.kwargs["success"] is False
                 assert mock_log_refresh.await_args.kwargs["error_message"] == "Invalid or expired refresh token"
 
+    @pytest.mark.asyncio
+    async def test_old_refresh_token_rejected_after_rotation(self):
+        """After a successful refresh the original token must be rejected (rotation)."""
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            with patch("app.api.auth.UserService") as mock_service_class, \
+                 patch("app.api.auth.log_token_refresh", new_callable=AsyncMock):
+                mock_service = AsyncMock()
+                mock_service_class.return_value = mock_service
+
+                user = User(
+                    id=uuid4(),
+                    email="rotation@example.com",
+                    hashed_password="$2b$12$hashed_password_here",
+                    is_active=True,
+                    is_superuser=False,
+                    is_verified=True,
+                    created_at=datetime.now(timezone.utc),
+                )
+
+                # First call rotates: returns new tokens.
+                # Second call with the old token: service raises because it's now revoked.
+                mock_service.refresh_access_token_with_user.side_effect = [
+                    ("new_access_token", "new_refresh_token_789", user),
+                    UnauthorizedException(
+                        message="Invalid or expired refresh token",
+                        details="The provided refresh token is invalid, expired, or has been revoked",
+                    ),
+                ]
+
+                first = await client.post(
+                    "/api/auth/refresh",
+                    cookies={"refresh_token": "original_token"},
+                )
+                assert first.status_code == status.HTTP_200_OK
+
+                # Re-presenting the original (now-rotated) token must be rejected
+                second = await client.post(
+                    "/api/auth/refresh",
+                    cookies={"refresh_token": "original_token"},
+                )
+                assert second.status_code == status.HTTP_401_UNAUTHORIZED
+
 
 class TestLogout:
     """Test /auth/logout endpoint."""

@@ -6,7 +6,9 @@
     "search": "Recherche",
     "review_queue": "File de révision",
     "account": "Mon compte",
-    "current_language": "Français"
+    "current_language": "Français",
+    "navigation": "Navigation",
+    "all_entities": "Toutes les entités"
   },
   "common": {
     "loading": "Chargement…",
@@ -630,5 +632,21 @@
     "lang_pt": "Portugais",
     "lang_zh": "Chinois",
     "lang_ja": "Japonais"
+  },
+  "evidence_trace": {
+    "empty": "Aucune preuve de source disponible.",
+    "columns": {
+      "source": "Source",
+      "kind": "Type",
+      "direction": "Direction",
+      "confidence": "Confiance",
+      "contribution": "Contribution",
+      "trust": "Autorité",
+      "year": "Année"
+    },
+    "direction": {
+      "supports": "Soutient",
+      "contradicts": "Contredit"
+    }
   }
 }

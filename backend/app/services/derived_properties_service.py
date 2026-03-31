@@ -21,6 +21,13 @@ from app.models.relation_revision import RelationRevision
 from app.models.relation_role_revision import RelationRoleRevision
 from app.models.source_revision import SourceRevision
 
+# Disagreement thresholds — fraction of "contradicts" relations out of total.
+# See docs/architecture/COMPUTED_RELATIONS.md for the evidence-weighting rationale.
+_STRONG_THRESHOLD = 0.10   # < 10 % contradictions → strong consensus
+_MODERATE_THRESHOLD = 0.30  # 10–30 % → moderate consensus
+_WEAK_THRESHOLD = 0.50      # 30–50 % → weak consensus
+# ≥ 50 % → disputed
+
 
 class DerivedPropertiesService:
     """Service for computing derived/aggregated properties for filtering."""
@@ -108,11 +115,11 @@ class DerivedPropertiesService:
         # Guard against division by zero (should not happen since we check total == 0 above)
         disagreement_ratio = contradicts_count / total if total > 0 else 0.0
 
-        if disagreement_ratio < 0.10:
+        if disagreement_ratio < _STRONG_THRESHOLD:
             return "strong"
-        elif disagreement_ratio < 0.30:
+        elif disagreement_ratio < _MODERATE_THRESHOLD:
             return "moderate"
-        elif disagreement_ratio < 0.50:
+        elif disagreement_ratio < _WEAK_THRESHOLD:
             return "weak"
         else:
             return "disputed"

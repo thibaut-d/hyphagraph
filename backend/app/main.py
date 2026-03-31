@@ -34,16 +34,26 @@ from app.utils.rate_limit import limiter
 
 _logger = logging.getLogger(__name__)
 _PURGE_INTERVAL_SECONDS = 24 * 60 * 60  # 24 hours
+_PURGE_CRITICAL_THRESHOLD = 5
 
 
 async def _token_purge_loop() -> None:
     """Background task: purge expired/revoked refresh tokens every 24 hours."""
+    consecutive_failures = 0
     while True:
         try:
             async with AsyncSessionLocal() as db:
                 await purge_expired_tokens(db)
+            consecutive_failures = 0
         except Exception:
-            _logger.exception("Token purge failed; will retry in %d s", _PURGE_INTERVAL_SECONDS)
+            consecutive_failures += 1
+            if consecutive_failures >= _PURGE_CRITICAL_THRESHOLD:
+                _logger.critical(
+                    "Token purge has failed %d consecutive times — expired tokens may accumulate",
+                    consecutive_failures,
+                )
+            else:
+                _logger.exception("Token purge failed; will retry in %d s", _PURGE_INTERVAL_SECONDS)
         await asyncio.sleep(_PURGE_INTERVAL_SECONDS)
 
 # Import all models to ensure SQLAlchemy discovers all tables and relationships

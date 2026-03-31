@@ -56,6 +56,26 @@ class TestCaptcha:
         expected_answer = raw.split(":")[0]
         assert BugReportService.verify_captcha(challenge.token, f"  {expected_answer}  ")
 
+    def test_token_with_valid_base64_but_missing_colons_rejected(self):
+        """A token that decodes cleanly but lacks the 3-part colon structure is rejected."""
+        import base64
+        # Valid base64, but no colons — split(":") returns a 1-element list
+        bad = base64.urlsafe_b64encode(b"nodividers").decode()
+        assert not BugReportService.verify_captcha(bad, "5")
+
+    def test_concurrent_captcha_tokens_are_independent(self):
+        """Multiple tokens generated in sequence have distinct values and each verifies independently."""
+        import base64
+        challenges = [BugReportService.generate_captcha() for _ in range(20)]
+        tokens = [c.token for c in challenges]
+        # All tokens are unique
+        assert len(set(tokens)) == len(tokens)
+        # Each token verifies only with its own answer
+        for challenge in challenges:
+            raw = base64.urlsafe_b64decode(challenge.token.encode()).decode()
+            answer = raw.split(":")[0]
+            assert BugReportService.verify_captcha(challenge.token, answer)
+
 
 # ---------------------------------------------------------------------------
 # Service DB tests

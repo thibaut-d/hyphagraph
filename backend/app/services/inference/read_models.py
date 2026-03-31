@@ -12,7 +12,7 @@ Boundary rules:
 import logging
 from collections import defaultdict
 from uuid import UUID, uuid4
-from typing import Optional
+from typing import Optional, TypedDict
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +32,10 @@ from app.schemas.inference import InferenceRead, RoleInference
 from app.utils.hashing import compute_scope_hash
 
 from .math import aggregate_evidence, compute_confidence, compute_disagreement, normalize_direction
+
+
+class ScopeFilter(TypedDict, total=False):
+    """Arbitrary key-value pairs used to filter relations by their current-revision scope field."""
 
 
 async def resolve_entity_slugs(
@@ -56,7 +60,7 @@ async def resolve_entity_slugs(
     return {row.entity_id: row.slug for row in result.all()}
 
 
-def matches_scope(relation, scope_filter: dict) -> bool:
+def matches_scope(relation, scope_filter: ScopeFilter) -> bool:
     """
     Return True if relation's current revision scope contains all scope_filter key-value pairs.
 

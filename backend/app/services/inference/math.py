@@ -7,9 +7,23 @@ disagreement. The aggregation model is documented in docs/architecture/COMPUTED_
 """
 import logging
 import math
-from typing import Optional
+from typing import Optional, TypedDict
 
 logger = logging.getLogger(__name__)
+
+
+class RelationEvidence(TypedDict):
+    """Shape of each entry in the ``relations_data`` list passed to :func:`aggregate_evidence`."""
+
+    weight: float  # source confidence; defaults to 1.0 when absent
+    roles: dict[str, Optional[float]]  # role_type → signed contribution (None if unscored)
+
+
+class AggregationResult(TypedDict):
+    """Return type of :func:`aggregate_evidence`."""
+
+    score: Optional[float]  # weighted mean contribution, or None when no evidence
+    coverage: float  # sum of weights for relations that carried the role
 
 CANONICAL_DIRECTIONS = {"supports", "contradicts", "neutral"}
 
@@ -57,7 +71,7 @@ def compute_role_contribution(claims: list[float]) -> Optional[float]:
     return max(-1.0, min(1.0, contribution))
 
 
-def aggregate_evidence(relations_data: list[dict], role: str) -> dict[str, float | None]:
+def aggregate_evidence(relations_data: list[RelationEvidence], role: str) -> AggregationResult:
     """
     Aggregate weighted evidence from multiple relations for a given role.
 
