@@ -40,6 +40,7 @@ export interface StagedExtractionRead {
   llm_provider?: string;
   auto_commit_eligible: boolean;
   auto_commit_threshold?: number | null;
+  auto_approved: boolean;
   created_at: string;
 }
 

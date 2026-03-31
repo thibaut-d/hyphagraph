@@ -45,6 +45,7 @@ function makeExtraction(overrides: Partial<StagedExtractionRead> = {}): StagedEx
     validation_score: 0.75,
     validation_flags: [],
     auto_commit_eligible: false,
+    auto_approved: false,
     llm_model: "gpt-4",
     llm_provider: "openai",
     created_at: "2026-01-01T00:00:00Z",

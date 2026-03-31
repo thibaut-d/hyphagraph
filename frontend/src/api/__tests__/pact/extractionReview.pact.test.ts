@@ -69,6 +69,7 @@ describe('Extraction Review API — consumer contract', () => {
               confidence_adjustment: like(0.0),
               validation_flags: like([]),
               auto_commit_eligible: like(false),
+              auto_approved: like(false),
               created_at: like('2024-01-01T00:00:00'),
               extraction_data: like({ slug: 'aspirin' }),
             }),
