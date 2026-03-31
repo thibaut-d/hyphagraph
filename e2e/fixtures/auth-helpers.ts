@@ -9,6 +9,19 @@ import { ADMIN_USER } from './test-data';
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost';
 
+async function waitForAuthenticatedIndicator(page: Page, email?: string): Promise<void> {
+  await page.waitForSelector('text=/Logged in as/i', { timeout: 20000 });
+
+  if (email) {
+    await page.waitForSelector(`text=${email}`, { timeout: 10000 });
+  }
+}
+
+async function waitForAuthenticatedAccount(page: Page, email?: string): Promise<void> {
+  await page.goto('/account', { waitUntil: 'networkidle' });
+  await waitForAuthenticatedIndicator(page, email);
+}
+
 /**
  * Login via the UI
  */
@@ -40,8 +53,7 @@ export async function loginViaUI(
   // Click login button
   await loginButton.click();
 
-  // Wait for successful login — token is in-memory, check the UI indicator
-  await page.waitForSelector('text=/Logged in as/i', { timeout: 20000 });
+  await waitForAuthenticatedIndicator(page, email);
 }
 
 /**
@@ -79,16 +91,14 @@ export async function loginViaAPI(
   });
 
   if (!response.ok()) {
-    throw new Error(`Login failed: ${response.status()}`);
+    throw new Error(`Login failed: ${response.status()} ${await response.text()}`);
   }
 
   const { access_token } = await response.json();
 
-  // Navigate to the app. The AuthContext will call /auth/refresh on mount,
-  // receive a new access token (using the httpOnly cookie set above), and
-  // store it in memory. waitUntil:'networkidle' ensures the refresh + /me
-  // requests complete before tests begin.
-  await page.goto(BASE_URL, { waitUntil: 'networkidle' });
+  // Navigate to the authenticated account screen and wait for the session to be
+  // fully restored via the refresh cookie before tests continue.
+  await waitForAuthenticatedAccount(page, email);
 
   return {
     accessToken: access_token,
@@ -124,17 +134,15 @@ export async function getAccessToken(page: Page): Promise<string> {
  * Logout via the UI
  */
 export async function logoutViaUI(page: Page): Promise<void> {
-  // Go to account page
-  await page.goto('/account');
+  await waitForAuthenticatedAccount(page);
 
-  // Click logout button
   await page.getByRole('button', { name: /logout/i }).click();
 
-  // Wait for redirect to home page or login form
-  await page.waitForURL(/\/(account)?$/, { timeout: 5000 });
-
-  // Give time for auth state to clear
-  await page.waitForTimeout(500);
+  await page.goto('/account', { waitUntil: 'networkidle' });
+  await page.getByRole('button', { name: /login/i }).waitFor({
+    state: 'visible',
+    timeout: 10000,
+  });
 }
 
 /**
@@ -160,8 +168,19 @@ export async function clearAuthState(page: Page): Promise<void> {
  * Check if user is authenticated by checking UI state
  */
 export async function isAuthenticated(page: Page): Promise<boolean> {
-  await page.goto(BASE_URL, { waitUntil: 'networkidle' });
-  return page.locator('text=/Logged in as/i').isVisible().catch(() => false);
+  const logoutButton = page.getByRole('button', { name: /logout/i });
+  const loggedInBanner = page.locator('text=/Logged in as/i');
+
+  if (await logoutButton.isVisible().catch(() => false)) {
+    return true;
+  }
+
+  if (await loggedInBanner.isVisible().catch(() => false)) {
+    return true;
+  }
+
+  await page.goto('/account', { waitUntil: 'networkidle' });
+  return logoutButton.isVisible().catch(() => false);
 }
 
 /**

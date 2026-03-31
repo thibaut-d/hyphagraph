@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link as RouterLink } from "react-router-dom";
+import { useNavigate, Link as RouterLink, Navigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Paper,
@@ -33,7 +33,7 @@ export function SettingsView() {
   const { t } = useTranslation();
   const { showError } = useNotification();
   const navigate = useNavigate();
-  const { user, logout } = useAuthContext();
+  const { user, logout, loading: authLoading } = useAuthContext();
 
   const [email, setEmail] = useState(user?.email || "");
   const [error, setError] = useState<string | null>(null);
@@ -44,10 +44,12 @@ export function SettingsView() {
   const { isRunning: deleteLoading, run: runDeleteAccount } = useAsyncAction(setError);
   const { isRunning: deactivateLoading, run: runDeactivateAccount } = useAsyncAction(setError);
 
-  // Redirect to login if not authenticated
-  if (!user) {
-    navigate("/account");
+  if (authLoading) {
     return null;
+  }
+
+  if (!user) {
+    return <Navigate to="/account" replace />;
   }
 
   const handleUpdateEmail = async (e: React.FormEvent) => {

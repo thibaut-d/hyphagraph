@@ -155,6 +155,8 @@ export function ImportSourcesView() {
               ref={fileInputRef}
               type="file"
               accept={FORMAT_ACCEPT[format]}
+              aria-hidden="true"
+              tabIndex={-1}
               style={{ position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden" }}
               onChange={handleFileChange}
             />

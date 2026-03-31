@@ -30,6 +30,7 @@ export interface MenuItem {
   path: string;
   icon: ComponentType<SvgIconProps>;
   requiresAuth?: boolean;
+  requiresSuperuser?: boolean;
 }
 
 interface MobileDrawerProps {
@@ -91,7 +92,11 @@ export function MobileDrawer({
       {/* Navigation Links */}
       <List>
         {menuItems
-          .filter((item) => !item.requiresAuth || user)
+          .filter(
+            (item) =>
+              (!item.requiresAuth || user) &&
+              (!item.requiresSuperuser || user?.is_superuser),
+          )
           .map((item) => {
             const Icon = item.icon;
             const isActive =

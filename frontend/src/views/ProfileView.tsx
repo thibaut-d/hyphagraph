@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Paper,
@@ -20,12 +20,14 @@ import { UserAvatar } from "../components/UserAvatar";
 export function ProfileView() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { user, logout } = useAuthContext();
+  const { user, logout, loading: authLoading } = useAuthContext();
 
-  // Redirect to login if not authenticated
-  if (!user) {
-    navigate("/account");
+  if (authLoading) {
     return null;
+  }
+
+  if (!user) {
+    return <Navigate to="/account" replace />;
   }
 
   return (

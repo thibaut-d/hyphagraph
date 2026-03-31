@@ -1,33 +1,60 @@
 import { Link as RouterLink } from "react-router-dom";
 import {
-  Typography,
+  Alert,
+  Box,
+  Button,
   Card,
   CardContent,
-  Stack,
   Chip,
-  Box,
   LinearProgress,
-  Alert,
-  Button,
   Link,
+  Stack,
+  Typography,
 } from "@mui/material";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
-import { InferenceRead, RoleInference, EntityRoleInference } from "../types/inference";
-import { RelationRead } from "../types/relation";
+import { useTranslation } from "react-i18next";
+
+import type { InferenceRead, RoleInference } from "../types/inference";
+import type { RelationRead } from "../types/relation";
+import {
+  formatDirectionLabel,
+  formatRelationClaim,
+  formatRelationContext,
+  normalizeRelationDirection,
+} from "../utils/relationPresentation";
+
+function getScoreInterpretation(score: number | null): {
+  key: "supports" | "contradicts" | "mixed" | "none";
+  color: "success" | "error" | "warning" | "default";
+} {
+  if (score === null) {
+    return { key: "none", color: "default" };
+  }
+  if (score >= 0.3) {
+    return { key: "supports", color: "success" };
+  }
+  if (score <= -0.3) {
+    return { key: "contradicts", color: "error" };
+  }
+  return { key: "mixed", color: "warning" };
+}
 
 function ScoreBar({ score }: { score: number | null }) {
+  const { t } = useTranslation();
+
   if (score === null) {
-    return <Typography variant="body2" color="text.secondary">No data</Typography>;
+    return (
+      <Typography variant="body2" color="text.secondary">
+        {t("inference.no_score", "No computed score yet")}
+      </Typography>
+    );
   }
 
-  // Map score from [-1, 1] to [0, 100] for display
   const percentage = ((score + 1) / 2) * 100;
-
-  // Color based on score
-  const color = score > 0.3 ? "success" : score < -0.3 ? "error" : "warning";
+  const { color } = getScoreInterpretation(score);
 
   return (
-    <Box sx={{ width: '100%' }}>
+    <Box sx={{ width: "100%" }}>
       <Stack direction="row" spacing={2} alignItems="center">
         <Box sx={{ flex: 1 }}>
           <LinearProgress
@@ -41,12 +68,23 @@ function ScoreBar({ score }: { score: number | null }) {
           variant="h6"
           sx={{
             minWidth: 60,
-            textAlign: 'right',
+            textAlign: "right",
             color: `${color}.main`,
-            fontWeight: 'bold'
+            fontWeight: "bold",
           }}
         >
           {score.toFixed(2)}
+        </Typography>
+      </Stack>
+      <Stack direction="row" justifyContent="space-between" mt={1}>
+        <Typography variant="caption" color="text.secondary">
+          {t("inference.score_negative", "More contradicting evidence")}
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          {t("inference.score_neutral", "Mixed or limited signal")}
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          {t("inference.score_positive", "More supporting evidence")}
         </Typography>
       </Stack>
     </Box>
@@ -54,155 +92,114 @@ function ScoreBar({ score }: { score: number | null }) {
 }
 
 function RelationDisplay({ relation, kind }: { relation: RelationRead; kind: string }) {
-  // Sort roles by role_type (subject first, then object, then others)
-  const sortedRoles = [...relation.roles].sort((a, b) => {
-    const order: Record<string, number> = { subject: 0, object: 1 };
-    return (order[a.role_type] ?? 2) - (order[b.role_type] ?? 2);
-  });
-
-  // Find subject and object roles
-  const subject = sortedRoles.find(r => r.role_type === "subject");
-  const object = sortedRoles.find(r => r.role_type === "object");
-
-  // Build natural language sentence
-  let sentence = "";
-
-  if (subject?.entity_slug && object?.entity_slug) {
-    // Use natural language based on relation kind
-    const kindLower = kind.toLowerCase();
-
-    if (kindLower.includes("treat") || kindLower === "treats") {
-      sentence = `${subject.entity_slug} treats ${object.entity_slug}`;
-    } else if (kindLower.includes("biomarker")) {
-      sentence = `${subject.entity_slug} is biomarker for ${object.entity_slug}`;
-    } else if (kindLower.includes("affect") || kindLower.includes("population")) {
-      sentence = `${subject.entity_slug} affects ${object.entity_slug}`;
-    } else if (kindLower.includes("cause") || kindLower === "causes") {
-      sentence = `${subject.entity_slug} causes ${object.entity_slug}`;
-    } else if (kindLower.includes("correlate") || kindLower === "correlates") {
-      sentence = `${subject.entity_slug} correlates with ${object.entity_slug}`;
-    } else {
-      // Default: just display as "subject kind object"
-      sentence = `${subject.entity_slug} ${kind} ${object.entity_slug}`;
-    }
-  } else {
-    // Fallback: display all roles with their types
-    sentence = sortedRoles
-      .map(r => `${r.entity_slug || r.entity_id} (${r.role_type})`)
-      .join(" → ");
-  }
+  const { t } = useTranslation();
+  const direction = normalizeRelationDirection(relation.direction);
+  const contextParts = formatRelationContext(relation);
 
   return (
-    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-      <Chip
-        label={relation.direction || "neutral"}
-        size="small"
-        color={
-          relation.direction === "supports" ? "success" :
-          relation.direction === "contradicts" ? "error" : "default"
-        }
-      />
-      <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
-        {subject?.entity_slug && (
-          <Link
-            component={RouterLink}
-            to={`/entities/${subject.entity_id}`}
-            sx={{ fontWeight: 'bold', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
-          >
-            {subject.entity_slug}
-          </Link>
-        )}
-        {subject?.entity_slug && object?.entity_slug && (
-          <span style={{ marginLeft: 4, marginRight: 4 }}>
-            {kind.toLowerCase().includes("treat") ? "treats" :
-             kind.toLowerCase().includes("biomarker") ? "is biomarker for" :
-             kind.toLowerCase().includes("affect") ? "affects" :
-             kind.toLowerCase().includes("cause") ? "causes" :
-             kind.toLowerCase().includes("correlate") ? "correlates with" :
-             kind}
-          </span>
-        )}
-        {object?.entity_slug && (
-          <Link
-            component={RouterLink}
-            to={`/entities/${object.entity_id}`}
-            sx={{ fontWeight: 'bold', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
-          >
-            {object.entity_slug}
-          </Link>
-        )}
-        {!subject?.entity_slug && !object?.entity_slug && (
-          <span>{sentence}</span>
-        )}
+    <Box sx={{ p: 1.5, bgcolor: "background.default", borderRadius: 1 }}>
+      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" mb={0.75}>
+        <Chip
+          label={formatDirectionLabel(relation.direction)}
+          size="small"
+          color={
+            direction === "supports"
+              ? "success"
+              : direction === "contradicts"
+                ? "error"
+                : "default"
+          }
+        />
+        <Chip
+          label={t("inference.evidence_confidence", {
+            defaultValue: "Evidence confidence: {{value}}%",
+            value: relation.confidence != null ? Math.round(relation.confidence * 100) : "N/A",
+          })}
+          size="small"
+          variant="outlined"
+        />
+      </Stack>
+      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+        {formatRelationClaim(relation, kind)}
       </Typography>
-      <Typography variant="caption" color="text.secondary">
-        confidence: {relation.confidence?.toFixed(2) || "N/A"}
-      </Typography>
-    </Stack>
+      {contextParts.length > 0 && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+          {contextParts.join(" • ")}
+        </Typography>
+      )}
+      <Link
+        component={RouterLink}
+        to={`/sources/${relation.source_id}`}
+        variant="caption"
+        sx={{ display: "inline-block", mt: 0.75 }}
+      >
+        {t("inference.open_source", "Open source evidence")}
+      </Link>
+    </Box>
   );
 }
 
-function EntityInferenceItem({
-  entityInference,
-}: {
-  entityInference: EntityRoleInference;
-}) {
-  const { entity_slug, score, confidence, disagreement } = entityInference;
+function InferenceLegend() {
+  const { t } = useTranslation();
 
   return (
-    <Box sx={{ mb: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
-        <Link
-          component={RouterLink}
-          to={`/entities/${entity_slug}`}
-          variant="body1"
-          sx={{ fontWeight: 600, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
-        >
-          {entity_slug}
-        </Link>
-        <Stack direction="row" spacing={1}>
-          <Chip
-            label={`${(confidence * 100).toFixed(0)}% confidence`}
-            size="small"
-            color={confidence > 0.7 ? "success" : confidence > 0.4 ? "warning" : "default"}
-            variant="outlined"
-          />
-        </Stack>
-      </Stack>
-      <ScoreBar score={score} />
-      {disagreement > 0.3 && (
-        <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
-          {(disagreement * 100).toFixed(0)}% disagreement
-        </Typography>
-      )}
-    </Box>
+    <Alert severity="info" sx={{ mb: 2 }}>
+      <Typography variant="body2">
+        {t(
+          "inference.legend_text",
+          "Read these metrics together: score shows whether evidence leans supportive or contradictory, confidence shows how much evidence backs that reading, coverage counts how many relations were included, and disagreement highlights conflict between sources."
+        )}
+      </Typography>
+    </Alert>
   );
 }
 
 function RoleInferenceCard({
   roleInference,
   entityId,
-  currentEntitySlug
 }: {
   roleInference: RoleInference;
   entityId: string;
-  currentEntitySlug?: string;
 }) {
+  const { t } = useTranslation();
   const { role_type, score, coverage, confidence, disagreement } = roleInference;
+  const interpretation = getScoreInterpretation(score);
+
+  const interpretationText = {
+    supports: t(
+      "inference.role_supports",
+      "The current evidence leans toward this role being supported for the entity."
+    ),
+    contradicts: t(
+      "inference.role_contradicts",
+      "The current evidence leans toward this role being contradicted for the entity."
+    ),
+    mixed: t(
+      "inference.role_mixed",
+      "The current evidence is mixed, weak, or too balanced to support a strong reading."
+    ),
+    none: t("inference.role_none", "No computed reading is available for this role yet."),
+  }[interpretation.key];
 
   return (
     <Card variant="outlined">
       <CardContent>
-        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={2}>
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          justifyContent="space-between"
+          alignItems={{ xs: "flex-start", sm: "flex-start" }}
+          spacing={2}
+          mb={2}
+        >
           <Box sx={{ flex: 1 }}>
             <Typography variant="h6">
-              {role_type} role
+              {t("inference.role_heading", {
+                defaultValue: "{{role}} role",
+                role: role_type,
+              })}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              Coverage: {coverage.toFixed(0)} relations
-              {score !== null && ` • Score: ${score.toFixed(2)}`}
-              {` • Confidence: ${(confidence * 100).toFixed(0)}%`}
-              {disagreement > 0 && ` • Disagreement: ${(disagreement * 100).toFixed(0)}%`}
+              {interpretationText}
             </Typography>
           </Box>
           <Button
@@ -212,8 +209,48 @@ function RoleInferenceCard({
             startIcon={<HelpOutlineIcon />}
             variant="outlined"
           >
-            Explain
+            {t("inference.explain", "Explain")}
           </Button>
+        </Stack>
+
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <Chip
+            label={t("inference.coverage_chip", {
+              defaultValue: "{{count}} relation{{suffix}} reviewed",
+              count: coverage.toFixed(0),
+              suffix: coverage === 1 ? "" : "s",
+            })}
+            size="small"
+            variant="outlined"
+          />
+          {score !== null && (
+            <Chip
+              label={t("inference.score_chip", {
+                defaultValue: "Score {{value}}",
+                value: score.toFixed(2),
+              })}
+              size="small"
+              variant="outlined"
+            />
+          )}
+          <Chip
+            label={t("inference.confidence_chip", {
+              defaultValue: "{{value}}% confidence",
+              value: Math.round(confidence * 100),
+            })}
+            size="small"
+            color={confidence > 0.7 ? "success" : confidence > 0.4 ? "warning" : "default"}
+            variant="outlined"
+          />
+          <Chip
+            label={t("inference.disagreement_chip", {
+              defaultValue: "{{value}}% disagreement",
+              value: Math.round(disagreement * 100),
+            })}
+            size="small"
+            color={disagreement > 0.3 ? "warning" : "default"}
+            variant="outlined"
+          />
         </Stack>
 
         {score !== null && (
@@ -226,53 +263,68 @@ function RoleInferenceCard({
   );
 }
 
-export function InferenceBlock({ inference, currentEntitySlug }: { inference: InferenceRead | null; currentEntitySlug?: string }) {
+export function InferenceBlock({
+  inference,
+}: {
+  inference: InferenceRead | null;
+  currentEntitySlug?: string;
+}) {
+  const { t } = useTranslation();
+
   if (!inference) {
     return null;
   }
 
   return (
     <Stack spacing={3}>
-      {/* Computed Inference Scores */}
       {inference.role_inferences && inference.role_inferences.length > 0 && (
         <Box>
           <Typography variant="h5" gutterBottom>
-            Computed Inference
+            {t("inference.computed_reading_title", "Computed Reading of the Evidence")}
           </Typography>
+          <Typography variant="body2" color="text.secondary" paragraph>
+            {t(
+              "inference.computed_reading_description",
+              "This section summarizes how the current evidence reads for each role. It is a computed interpretation of the evidence base, not an unquestionable conclusion."
+            )}
+          </Typography>
+          <InferenceLegend />
           <Stack spacing={2}>
             {inference.role_inferences.map((roleInf) => (
               <RoleInferenceCard
                 key={roleInf.role_type}
                 roleInference={roleInf}
                 entityId={inference.entity_id}
-                currentEntitySlug={currentEntitySlug}
               />
             ))}
           </Stack>
         </Box>
       )}
 
-      {/* Source Relations (grouped by kind) */}
       <Box>
         <Typography variant="h5" gutterBottom>
-          Source Evidence
+          {t("inference.source_evidence_title", "Source Evidence")}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" paragraph>
+          {t(
+            "inference.source_evidence_description",
+            "These source-backed relations are the evidence the computed reading is built from. Use them to inspect the exact claims, their direction, and their context."
+          )}
         </Typography>
         <Stack spacing={2}>
-          {Object.entries(inference.relations_by_kind).map(
-            ([kind, relations]) => (
-              <Card key={kind} variant="outlined">
-                <CardContent>
-                  <Typography variant="h6">{kind}</Typography>
+          {Object.entries(inference.relations_by_kind).map(([kind, relations]) => (
+            <Card key={kind} variant="outlined">
+              <CardContent>
+                <Typography variant="h6">{kind}</Typography>
 
-                  <Stack spacing={1} mt={1}>
-                    {relations.map((r) => (
-                      <RelationDisplay key={r.id} relation={r} kind={kind} />
-                    ))}
-                  </Stack>
-                </CardContent>
-              </Card>
-            )
-          )}
+                <Stack spacing={1} mt={1}>
+                  {relations.map((relation) => (
+                    <RelationDisplay key={relation.id} relation={relation} kind={kind} />
+                  ))}
+                </Stack>
+              </CardContent>
+            </Card>
+          ))}
         </Stack>
       </Box>
     </Stack>

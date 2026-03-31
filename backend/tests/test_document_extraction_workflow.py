@@ -275,6 +275,7 @@ class TestSaveExtractionToGraph:
         assert result.relations_created == 1
         assert result.created_relation_ids == [created_relation_id]
         assert set(result.created_entity_ids) == {created_entity_id, linked_entity_id}
+        assert result.skipped_relations == []
 
 
 @pytest.mark.asyncio
@@ -497,37 +498,43 @@ class TestReconcileStagedExtractions:
         assert staged.status == ExtractionStatus.PENDING
         assert staged.reviewed_by is None
 
-    async def test_skips_staged_relation_with_corrupt_data(self, db_session, test_user):
+    async def test_returns_skipped_relation_details_on_parse_failure(self, db_session, test_user):
         """Corrupted staged relation data is skipped and returned as SkippedRelationDetail."""
         source = await self._make_source(db_session)
 
-        # Staged relation with data that cannot be parsed into ExtractedRelation
         staged = await self._make_staged(
             db_session,
             source_id=source.id,
             extraction_type=ExtractionType.RELATION,
-            extraction_data={"broken": "data", "missing_required": True},
+            extraction_data={
+                "relation_type": "treats",
+                "roles": "not-a-list",
+                "confidence": "high",
+                "text_span": "aspirin treats pain",
+                "notes": None,
+            },
         )
 
-        skipped = await reconcile_staged_extractions(
+        skipped_relations = await reconcile_staged_extractions(
             db_session,
             source_id=source.id,
             approved_entity_slugs_to_id={},
             rejected_entity_slugs=set(),
-            approved_relations=[],
-            approved_relation_ids=[],
+            approved_relations=[build_extracted_relation("aspirin", "pain")],
+            approved_relation_ids=[uuid4()],
             user_id=test_user.id,
         )
-
-        # Skipped list must contain the failing staged extraction
-        assert len(skipped) == 1
-        assert skipped[0].staged_extraction_id == staged.id
-        assert skipped[0].reason  # non-empty parse error message
-
-        # Staged record must remain PENDING (not silently dropped)
         await db_session.commit()
         await db_session.refresh(staged)
+
+        # Skipped list must contain the failing staged extraction
         assert staged.status == ExtractionStatus.PENDING
+        assert staged.materialized_relation_id is None
+        assert len(skipped_relations) == 1
+        assert skipped_relations[0].extraction_id == staged.id
+        assert skipped_relations[0].relation_type == "treats"
+        assert skipped_relations[0].text_span == "aspirin treats pain"
+        assert skipped_relations[0].error  # non-empty parse error message
 
     async def test_valid_relations_processed_alongside_corrupt_ones(self, db_session, test_user):
         """Valid staged relations are approved even when a sibling has corrupt data."""
@@ -550,7 +557,7 @@ class TestReconcileStagedExtractions:
             extraction_data={"bad": "payload"},
         )
 
-        skipped = await reconcile_staged_extractions(
+        skipped_relations = await reconcile_staged_extractions(
             db_session,
             source_id=source.id,
             approved_entity_slugs_to_id={},
@@ -567,6 +574,6 @@ class TestReconcileStagedExtractions:
         assert staged_good.status == ExtractionStatus.APPROVED
         assert staged_good.materialized_relation_id == relation_id
 
-        assert len(skipped) == 1
-        assert skipped[0].staged_extraction_id == staged_bad.id
+        assert len(skipped_relations) == 1
+        assert skipped_relations[0].extraction_id == staged_bad.id
         assert staged_bad.status == ExtractionStatus.PENDING

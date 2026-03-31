@@ -49,6 +49,12 @@ class TestCaptcha:
     def test_malformed_token_rejected(self):
         assert not BugReportService.verify_captcha("not-base64!!!", "5")
 
+    def test_malformed_token_logs_warning(self):
+        with patch("app.services.bug_report_service.logger.warning") as warning_mock:
+            assert not BugReportService.verify_captcha("not-base64!!!", "5")
+
+        warning_mock.assert_called_once_with("Rejected malformed CAPTCHA token")
+
     def test_whitespace_in_answer_stripped(self):
         challenge = BugReportService.generate_captcha()
         import base64

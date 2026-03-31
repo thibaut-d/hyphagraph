@@ -41,6 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Prevents the getMe() effect from treating the initial null token as a
   // logout before the session-restore attempt has finished.
   const sessionRestoreAttemptedRef = useRef(false);
+  const sessionRestoreStartedRef = useRef(false);
   // Incremented by logout to cancel any in-flight session restore.
   const sessionRestoreVersionRef = useRef(0);
 
@@ -83,6 +84,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // cookie. If the cookie is present the refresh endpoint returns a new access
   // token; if not, we fall through to the unauthenticated state.
   useEffect(() => {
+    if (sessionRestoreStartedRef.current) {
+      return;
+    }
+    sessionRestoreStartedRef.current = true;
+
     const restoreVersion = ++sessionRestoreVersionRef.current;
     refreshAccessToken()
       .then(({ access_token }) => {

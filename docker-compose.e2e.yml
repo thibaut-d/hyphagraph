@@ -32,7 +32,7 @@ services:
       # Override production settings for testing
       DATABASE_URL: postgresql+asyncpg://hyphagraph_test:hyphagraph_test_password@db:5432/hyphagraph_test
       SECRET_KEY: test-secret-key-for-e2e-testing-only
-      ENVIRONMENT: test
+      ENV: test
       TESTING: "true"
       # Admin user credentials (must match test-data.ts)
       ADMIN_EMAIL: admin@example.com
@@ -45,16 +45,20 @@ services:
       # SMTP settings - use a test SMTP service or disable email
       SMTP_HOST: localhost
       SMTP_PORT: 1025
-      SMTP_USERNAME: ""
+      SMTP_USER: ""
       SMTP_PASSWORD: ""
-      SMTP_FROM_EMAIL: "test@example.com"
+      EMAIL_FROM: "test@example.com"
       # Disable email verification for tests
-      REQUIRE_EMAIL_VERIFICATION: "false"
+      EMAIL_VERIFICATION_REQUIRED: "false"
     depends_on:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "curl -sf http://localhost:8000/api/test/health | grep -q '\"testing_mode\":true' && curl -sf http://localhost:8000/api/test/health | grep -q '\"env\":\"test\"' && curl -sf http://localhost:8000/api/test/health | grep -q '\"email_from\":\"test@example.com\"' && curl -sf http://localhost:8000/api/test/health | grep -q '\"email_verification_required\":false' || exit 1",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5

@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Query, status
 from uuid import UUID
 
 from app.api.service_dependencies import get_extraction_review_service
-from app.dependencies.auth import get_current_user, get_current_active_superuser
+from app.dependencies.auth import get_current_active_superuser
 from app.models.user import User
 from app.schemas.staged_extraction import (
     StagedExtractionRead,
@@ -35,43 +35,32 @@ router = APIRouter(prefix="/extraction-review", tags=["extraction-review"])
 
 @router.get("/pending", response_model=StagedExtractionListResponse)
 async def list_pending_extractions(
-    page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=50, ge=1, le=100),
-    extraction_type: str | None = None,
-    min_validation_score: float | None = Query(None, ge=0.0, le=1.0),
-    has_flags: bool | None = None,
+    filters: StagedExtractionFilters = Depends(),
     service: ExtractionReviewService = Depends(get_extraction_review_service),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_superuser),
 ):
     """
     List pending extractions awaiting review.
 
     Supports filtering by type, validation score, and flag presence.
     """
-    filters = StagedExtractionFilters(
-        status="pending",
-        extraction_type=extraction_type,
-        min_validation_score=min_validation_score,
-        has_flags=has_flags,
-        page=page,
-        page_size=page_size,
-    )
+    pending_filters = filters.model_copy(update={"status": "pending"})
 
-    extractions, total = await service.list_extractions(filters)
+    extractions, total = await service.list_extractions(pending_filters)
 
     return StagedExtractionListResponse(
         extractions=[StagedExtractionRead.model_validate(e) for e in extractions],
         total=total,
-        page=page,
-        page_size=page_size,
-        has_more=(page * page_size) < total,
+        page=pending_filters.page,
+        page_size=pending_filters.page_size,
+        has_more=(pending_filters.page * pending_filters.page_size) < total,
     )
 
 
 @router.get("/stats", response_model=ReviewStats)
 async def get_review_stats(
     service: ExtractionReviewService = Depends(get_extraction_review_service),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_superuser),
 ):
     """
     Get statistics about staged extractions.
@@ -119,7 +108,7 @@ async def list_all_extractions(
 async def get_extraction(
     extraction_id: UUID,
     service: ExtractionReviewService = Depends(get_extraction_review_service),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_superuser),
 ):
     """
     Get details of a specific staged extraction.

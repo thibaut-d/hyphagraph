@@ -15,6 +15,7 @@ from app.utils.auth import (
     verify_refresh_token,
 )
 from app.config import settings
+from app.utils.access_token_manager import AccessTokenManager
 
 
 class TestPasswordHashing:
@@ -132,6 +133,16 @@ class TestJWTTokens:
 
         assert payload is not None
         assert payload["tv"] == 7
+
+    def test_access_token_manager_uses_current_secret_key(self, monkeypatch):
+        manager = AccessTokenManager(secret_key=None)
+        monkeypatch.setattr(settings, "SECRET_KEY", "rotated-secret")
+
+        token = manager.create_access_token(data={"sub": "rotated-user"})
+        payload = manager.decode_access_token_payload(token)
+
+        assert payload is not None
+        assert payload["sub"] == "rotated-user"
 
 
 class TestRefreshTokens:

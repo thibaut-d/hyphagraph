@@ -30,6 +30,49 @@ describe("SynthesisView actions", () => {
     });
   });
 
+  it("shows representative evidence statements and a single explicit property-detail action", async () => {
+    const user = userEvent.setup();
+    mockSuccessfulSynthesisData(
+      createMockInference({
+        relations_by_kind: {
+          treats: [
+            createMockRelation({
+              id: "rel-1",
+              kind: "treats",
+              source_id: "source-1",
+              direction: "supports",
+              roles: [
+                { entity_id: "drug-1", entity_slug: "paracetamol", role_type: "subject" },
+                { entity_id: "condition-1", entity_slug: "fever", role_type: "object" },
+              ],
+              scope: { population: "adults" },
+            }),
+            createMockRelation({
+              id: "rel-2",
+              kind: "treats",
+              source_id: "source-2",
+              direction: "contradicts",
+              roles: [
+                { entity_id: "drug-1", entity_slug: "paracetamol", role_type: "subject" },
+                { entity_id: "condition-2", entity_slug: "headache", role_type: "object" },
+              ],
+            }),
+          ],
+        },
+      }),
+    );
+
+    renderSynthesisView();
+
+    const treatsSection = await screen.findByText("treats");
+    await user.click(treatsSection);
+
+    expect(screen.getByText(/Representative evidence statements are shown below/i)).toBeInTheDocument();
+    expect(screen.getByText("paracetamol treats fever")).toBeInTheDocument();
+    expect(screen.getByText(/Supports • Confidence: 85% • Population: adults/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open property detail" })).toBeInTheDocument();
+  });
+
   it("shows the disagreements action when contradictions exist and navigates correctly", async () => {
     const user = userEvent.setup();
     mockSuccessfulSynthesisData(

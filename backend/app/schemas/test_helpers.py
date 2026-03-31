@@ -1,30 +1,35 @@
 """
-Response schemas for test helper endpoints.
+Schemas for testing-only helper endpoints.
 
 Only used when TESTING=True.
 """
-from pydantic import BaseModel
+from app.schemas.base import Schema
 
 
-class DatabaseResetResponse(BaseModel):
+class DatabaseResetResponse(Schema):
     message: str
     tables_truncated: int
-    tables: list[str]
+    tables: list[str] = []
 
 
-class ReviewQueueSeedResponse(BaseModel):
+class ReviewQueueSeedResponse(Schema):
     message: str
     source_id: str
     entity_id: str
     extractions_created: int
 
 
-class UICategoriesSeedResponse(BaseModel):
+class UICategoriesSeedResponse(Schema):
     message: str
     count: int
 
 
-class TestHealthResponse(BaseModel):
+class TestHealthResponse(Schema):
+    __test__ = False
+
     status: str
     testing_mode: bool
+    env: str
+    email_from: str
+    email_verification_required: bool
     message: str

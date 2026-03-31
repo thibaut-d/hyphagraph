@@ -92,7 +92,10 @@ export function SourceExtractionSection({
         )}
 
         {saveResult && (
-          <Alert severity="success" onClose={onClearSaveResult}>
+          <Alert
+            severity={saveResult.skipped_relations.length > 0 ? "warning" : "success"}
+            onClose={onClearSaveResult}
+          >
             <strong>{t("sources.save_success", "✓ Successfully saved to knowledge graph!")}</strong>
             <br />
             {saveResult.entities_created > 0 && (
@@ -116,6 +119,24 @@ export function SourceExtractionSection({
                 {t("sources.relations_created", "{{count}} relations created", {
                   count: saveResult.relations_created,
                 })}
+                <br />
+              </>
+            )}
+            {saveResult.skipped_relations.length > 0 && (
+              <>
+                {t(
+                  "sources.skipped_relations_warning",
+                  "{{count}} staged relations could not be linked and were left pending for review.",
+                  { count: saveResult.skipped_relations.length }
+                )}
+                <br />
+                {saveResult.skipped_relations.map((relation) => (
+                  <span key={relation.extraction_id}>
+                    {relation.relation_type || t("sources.unknown_relation", "Unknown relation")}
+                    {relation.text_span ? `: ${relation.text_span}` : ""}
+                    <br />
+                  </span>
+                ))}
               </>
             )}
           </Alert>

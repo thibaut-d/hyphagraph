@@ -26,6 +26,11 @@ import ThumbUpIcon from "@mui/icons-material/ThumbUp";
 
 import type { DisagreementGroupRead } from "../../types/inference";
 import type { RelationRead } from "../../types/relation";
+import {
+  formatRelationClaim,
+  formatRelationContext,
+  formatScopeFilterLabel,
+} from "../../utils/relationPresentation";
 
 export type DisagreementGroup = DisagreementGroupRead;
 
@@ -66,27 +71,64 @@ function EvidenceTable({
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell>{t("disagreements.table.kind", "Kind")}</TableCell>
+                  <TableCell>{t("disagreements.table.claim", "Claim")}</TableCell>
+                  <TableCell>{t("disagreements.table.context", "Context")}</TableCell>
                   <TableCell>{t("disagreements.table.confidence", "Confidence")}</TableCell>
                   <TableCell>{t("disagreements.table.source", "Source")}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {relations.map((relation, index) => (
-                  <TableRow key={index}>
-                    <TableCell>{relation.kind || fallbackKind}</TableCell>
-                    <TableCell>
-                      {relation.confidence != null
-                        ? `${Math.round(relation.confidence * 100)}%`
-                        : "-"}
-                    </TableCell>
-                    <TableCell>
-                      <Link component={RouterLink} to={`/sources/${relation.source_id}`} variant="body2">
-                        {t("disagreements.table.view_source", "View Source")}
-                      </Link>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {relations.map((relation) => {
+                  const contextParts = formatRelationContext(relation);
+                  const scopeLabels =
+                    relation.scope && Object.keys(relation.scope).length > 0
+                      ? Object.entries(relation.scope).map(([key, value]) =>
+                          formatScopeFilterLabel(key, String(value))
+                        )
+                      : [];
+
+                  return (
+                    <TableRow key={relation.id}>
+                      <TableCell sx={{ minWidth: 220 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {formatRelationClaim(relation, fallbackKind)}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {relation.kind || fallbackKind}
+                        </Typography>
+                      </TableCell>
+                      <TableCell sx={{ minWidth: 180 }}>
+                        <Stack spacing={0.5}>
+                          {scopeLabels.slice(0, 2).map((label) => (
+                            <Typography key={label} variant="caption" color="text.secondary">
+                              {label}
+                            </Typography>
+                          ))}
+                          {contextParts.map((part) => (
+                            <Typography key={part} variant="caption" color="text.secondary">
+                              {part}
+                            </Typography>
+                          ))}
+                          {scopeLabels.length === 0 && contextParts.length === 0 && (
+                            <Typography variant="caption" color="text.secondary">
+                              {t("disagreements.table.no_context", "No extra context")}
+                            </Typography>
+                          )}
+                        </Stack>
+                      </TableCell>
+                      <TableCell>
+                        {relation.confidence != null
+                          ? `${Math.round(relation.confidence * 100)}%`
+                          : "-"}
+                      </TableCell>
+                      <TableCell>
+                        <Link component={RouterLink} to={`/sources/${relation.source_id}`} variant="body2">
+                          {t("disagreements.table.view_source", "View Source")}
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </TableContainer>
@@ -114,7 +156,7 @@ export function DisagreementsGroupsSection({
       <Typography variant="body2" color="text.secondary" paragraph>
         {t(
           "disagreements.groups.description",
-          "Each section shows supporting evidence vs. contradicting evidence side-by-side."
+          "Each section shows supporting evidence versus contradicting evidence side by side, with the actual claim wording and context kept visible."
         )}
       </Typography>
 
@@ -158,7 +200,10 @@ export function DisagreementsGroupsSection({
               <Grid container spacing={2}>
                 <Grid size={{ xs: 12, md: 6 }}>
                   <EvidenceTable
-                    title={t("disagreements.supporting", "Supporting ({{count}})", { count: group.supporting.length })}
+                    title={t("disagreements.supporting", {
+                      defaultValue: "Supporting ({{count}})",
+                      count: group.supporting.length,
+                    })}
                     titleColor="success.main"
                     icon={<ThumbUpIcon color="success" />}
                     emptyLabel={t("disagreements.no_supporting", "No supporting evidence")}
@@ -169,7 +214,10 @@ export function DisagreementsGroupsSection({
 
                 <Grid size={{ xs: 12, md: 6 }}>
                   <EvidenceTable
-                    title={t("disagreements.contradicting", "Contradicting ({{count}})", { count: group.contradicting.length })}
+                    title={t("disagreements.contradicting", {
+                      defaultValue: "Contradicting ({{count}})",
+                      count: group.contradicting.length,
+                    })}
                     titleColor="error.main"
                     icon={<ThumbDownIcon color="error" />}
                     relations={group.contradicting}

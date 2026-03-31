@@ -19,6 +19,24 @@ def _get_test_support_module():
     return document_extraction_support
 
 
+def calculate_relevance(text: str, entity_names: list[str]) -> float:
+    from app.services.document_extraction_workflow import calculate_relevance as _calculate_relevance
+
+    return _calculate_relevance(text, entity_names)
+
+
+def UrlFetcher(*args, **kwargs):
+    from app.services.url_fetcher import UrlFetcher as _UrlFetcher
+
+    return _UrlFetcher(*args, **kwargs)
+
+
+def infer_trust_level_from_pubmed_metadata(*args, **kwargs):
+    from app.utils.source_quality import infer_trust_level_from_pubmed_metadata as _infer_trust_level
+
+    return _infer_trust_level(*args, **kwargs)
+
+
 def raise_internal_api_exception(
     *,
     message: str,

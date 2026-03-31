@@ -38,6 +38,14 @@ class DraftRevisionListResponse(Schema):
     has_more: bool
 
 
+class DraftRevisionCountsResponse(Schema):
+    """Count of current draft revisions per kind."""
+    entity: int
+    relation: int
+    source: int
+    total: int
+
+
 class ConfirmRevisionResponse(Schema):
     """Result of confirming a draft revision."""
     id: UUID

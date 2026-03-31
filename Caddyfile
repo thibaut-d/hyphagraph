@@ -1,6 +1,6 @@
 # Caddyfile (development)
 :80 {
-	# API (preserve /api prefix for backend)
+	# Preserve /api because FastAPI routers are mounted under that prefix.
 	handle /api/* {
 		reverse_proxy api:8000
 	}

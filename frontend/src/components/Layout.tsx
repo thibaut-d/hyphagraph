@@ -37,7 +37,13 @@ const menuItems = [
   { key: "menu.entities", path: "/entities", icon: CategoryIcon },
   { key: "menu.sources", path: "/sources", icon: LibraryBooksIcon },
   { key: "menu.search", path: "/search", icon: SearchIcon },
-  { key: "menu.review_queue", path: "/review-queue", icon: RateReviewIcon, requiresAuth: true },
+  {
+    key: "menu.review_queue",
+    path: "/review-queue",
+    icon: RateReviewIcon,
+    requiresAuth: true,
+    requiresSuperuser: true,
+  },
 ];
 
 export function Layout() {

@@ -28,6 +28,16 @@ class AggregationResult(TypedDict):
 CANONICAL_DIRECTIONS = {"supports", "contradicts", "neutral"}
 
 
+class RelationEvidence(TypedDict):
+    weight: float
+    roles: dict[str, float | None]
+
+
+class AggregationResult(TypedDict):
+    score: float | None
+    coverage: float
+
+
 def normalize_direction(direction: str | None) -> str:
     """
     Normalise legacy direction values to canonical form.
@@ -119,7 +129,7 @@ def compute_confidence(coverage: float, lambda_param: float = 1.0) -> float:
     return 1 - math.exp(-lambda_param * coverage)
 
 
-def compute_disagreement(relations_data: list[dict], role: str) -> float:
+def compute_disagreement(relations_data: list[RelationEvidence], role: str) -> float:
     """
     Measure how much sources disagree on a role's direction.
 

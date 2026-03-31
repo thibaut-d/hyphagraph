@@ -59,7 +59,7 @@ class BugReportService:
             raw = urlsafe_b64decode(token.encode()).decode()
             expected_answer, expiry_str, stored_sig = raw.split(":", 2)
         except Exception:
-            logging.getLogger(__name__).warning(
+            logger.warning(
                 "CAPTCHA decode failed — malformed token (possible tampering attempt)"
             )
             return False

@@ -5,8 +5,10 @@ import pytest
 from datetime import datetime, timezone
 from uuid import uuid4
 
+from app.models.ui_category import UiCategory
 from app.models.user import User
 from app.schemas.admin import UserUpdate
+from app.schemas.ui_category import UICategoryWrite
 from app.services.admin_service import AdminService
 from app.utils.errors import AppException, ValidationException
 
@@ -140,3 +142,87 @@ class TestAdminService:
         with pytest.raises(ValidationException) as exc:
             await svc.delete_user(admin.id, admin_id=admin.id)
         assert "delete yourself" in exc.value.detail.lower()
+
+    async def test_list_categories_returns_ordered_items(self, db_session):
+        db_session.add(UiCategory(slug="b", labels={"en": "B"}, order=2))
+        db_session.add(UiCategory(slug="a", labels={"en": "A"}, order=1))
+        await db_session.commit()
+
+        svc = AdminService(db_session)
+        categories = await svc.list_categories()
+
+        assert [category.slug for category in categories] == ["a", "b"]
+
+    async def test_create_category_persists_record(self, db_session):
+        svc = AdminService(db_session)
+
+        category = await svc.create_category(
+            UICategoryWrite(
+                slug="drugs",
+                labels={"en": "Drugs"},
+                description={"en": "Drug category"},
+                order=1,
+            )
+        )
+
+        assert category.slug == "drugs"
+        assert category.labels["en"] == "Drugs"
+
+    async def test_get_category_not_found_raises_404(self, db_session):
+        svc = AdminService(db_session)
+
+        with pytest.raises(AppException) as exc:
+            await svc.get_category(uuid4())
+
+        assert exc.value.status_code == 404
+
+    async def test_update_category_changes_fields(self, db_session):
+        category = UiCategory(slug="drugs", labels={"en": "Drugs"}, order=1)
+        db_session.add(category)
+        await db_session.commit()
+
+        svc = AdminService(db_session)
+        updated = await svc.update_category(
+            category.id,
+            UICategoryWrite(
+                slug="medications",
+                labels={"en": "Medications"},
+                description={"en": "Updated"},
+                order=5,
+            ),
+        )
+
+        assert updated.slug == "medications"
+        assert updated.labels["en"] == "Medications"
+        assert updated.order == 5
+
+    async def test_delete_category_removes_record(self, db_session):
+        category = UiCategory(slug="drugs", labels={"en": "Drugs"}, order=1)
+        db_session.add(category)
+        await db_session.commit()
+
+        svc = AdminService(db_session)
+        await svc.delete_category(category.id)
+
+        with pytest.raises(AppException) as exc:
+            await svc.get_category(category.id)
+
+        assert exc.value.status_code == 404
+
+    async def test_create_category_duplicate_slug_raises_conflict(self, db_session):
+        db_session.add(UiCategory(slug="drugs", labels={"en": "Drugs"}, order=1))
+        await db_session.commit()
+
+        svc = AdminService(db_session)
+
+        with pytest.raises(AppException) as exc:
+            await svc.create_category(
+                UICategoryWrite(
+                    slug="drugs",
+                    labels={"en": "Duplicate Drugs"},
+                    description=None,
+                    order=2,
+                )
+            )
+
+        assert exc.value.status_code == 409

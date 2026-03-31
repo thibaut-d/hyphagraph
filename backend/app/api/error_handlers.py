@@ -11,6 +11,7 @@ from typing import ParamSpec, TypeVar
 from fastapi import status
 from pydantic import ValidationError
 
+from app.llm.base import LLMError
 from app.utils.errors import AppException, ErrorCode
 
 logger = logging.getLogger(__name__)
@@ -49,7 +50,38 @@ def handle_extraction_errors(
         except AppException:
             # Re-raise AppExceptions to preserve their structured error details
             raise
-        except (ValueError, ValidationError) as exc:
+        except LLMError as exc:
+            logger.exception("LLM extraction operation failed in %s", func.__name__)
+            raise AppException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                error_code=ErrorCode.LLM_SERVICE_UNAVAILABLE,
+                message="LLM service not available",
+                details=str(exc),
+            ) from exc
+        except ValidationError as exc:
+            logger.exception("Extraction validation failed in %s", func.__name__)
+
+            errors = exc.errors()
+            if errors:
+                first_error = errors[0]
+                field = ".".join(str(loc) for loc in first_error.get("loc", []))
+                message = first_error.get("msg", "Validation error")
+                display_message = f"Invalid {field}: {message}" if field else message
+                details = f"Field '{field}' failed validation: {message}" if field else message
+            else:
+                field = None
+                display_message = "Validation error"
+                details = "The extraction response failed validation"
+
+            raise AppException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                error_code=ErrorCode.VALIDATION_ERROR,
+                message=display_message,
+                details=details,
+                field=field,
+                context={"validation_errors": errors} if errors else None,
+            ) from exc
+        except ValueError as exc:
             logger.warning(
                 "Validation error in extraction endpoint %s: %s",
                 func.__name__,

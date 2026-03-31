@@ -73,6 +73,8 @@ async def explain_inference(
             message="Role type not found",
             context={"entity_id": str(entity_id), "role_type": role_type}
         )
+    except AppException:
+        raise
     except Exception:
         # Unexpected error
         logger.exception("Failed to generate explanation for entity %s role %s", entity_id, role_type)

@@ -6,8 +6,10 @@ including scope filtering, error handling, and response validation.
 """
 import pytest
 import json
+from unittest.mock import AsyncMock
 from httpx import AsyncClient, ASGITransport
 
+from app.api.inference_dependencies import get_explanation_service
 from app.main import app
 from app.database import get_db
 from app.services.entity_service import EntityService
@@ -17,6 +19,7 @@ from app.schemas.entity import EntityWrite
 from fixtures.scientific_data import ScientificEntities
 from app.schemas.source import SourceWrite
 from app.schemas.relation import RelationWrite, RoleRevisionWrite as RoleWrite
+from app.utils.errors import AppException, ErrorCode
 
 
 @pytest.fixture
@@ -333,6 +336,26 @@ class TestExplainEndpoint:
 
         # Assert - should get 404 because role not found
         assert response.status_code == 404
+
+    async def test_explain_inference_preserves_app_exceptions(self, override_get_db):
+        fake_entity_id = "123e4567-e89b-12d3-a456-426614174000"
+        service = AsyncMock()
+        service.explain_inference.side_effect = AppException(
+            status_code=403,
+            error_code=ErrorCode.FORBIDDEN,
+            message="Forbidden explanation access",
+        )
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_explanation_service] = lambda: service
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                response = await client.get(f"/api/explain/inference/{fake_entity_id}/drug")
+        finally:
+            app.dependency_overrides.clear()
+
+        assert response.status_code == 403
+        assert response.json()["detail"] == "Forbidden explanation access"
 
     async def test_explain_inference_multiple_sources(self, db_session, override_get_db):
         """Test explanation with multiple sources returns all contributions."""

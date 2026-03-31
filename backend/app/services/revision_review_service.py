@@ -5,6 +5,7 @@ Draft revisions (status='draft') are created by bulk_creation_service when
 created_with_llm is set.  Humans confirm or discard them via this service.
 """
 import logging
+from datetime import datetime, timezone
 from uuid import UUID
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -122,7 +123,7 @@ class RevisionReviewService:
     # ------------------------------------------------------------------
 
     async def confirm(
-        self, revision_kind: str, revision_id: UUID
+        self, revision_kind: str, revision_id: UUID, reviewed_by_user_id: UUID
     ) -> bool:
         """Set status='confirmed' and is_current=True on a draft revision.  Returns False if not found."""
         model = self._model_for(revision_kind)
@@ -149,6 +150,8 @@ class RevisionReviewService:
 
         revision.status = "confirmed"
         revision.is_current = True
+        revision.confirmed_by_user_id = reviewed_by_user_id
+        revision.confirmed_at = datetime.now(timezone.utc)
         if revision.created_with_llm:
             revision.llm_review_status = "confirmed"
         await self.db.flush()
@@ -216,13 +219,13 @@ class RevisionReviewService:
     async def get_draft_counts(self) -> dict[str, int]:
         """Return count of draft revisions per kind."""
         entity_count = await self.db.scalar(
-            select(func.count()).where(EntityRevision.status == "draft")
+            select(func.count()).where(EntityRevision.status == "draft", EntityRevision.is_current == True)
         ) or 0
         relation_count = await self.db.scalar(
-            select(func.count()).where(RelationRevision.status == "draft")
+            select(func.count()).where(RelationRevision.status == "draft", RelationRevision.is_current == True)
         ) or 0
         source_count = await self.db.scalar(
-            select(func.count()).where(SourceRevision.status == "draft")
+            select(func.count()).where(SourceRevision.status == "draft", SourceRevision.is_current == True)
         ) or 0
         return {
             "entity": entity_count,

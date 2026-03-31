@@ -40,6 +40,7 @@ vi.mock("react-i18next", () => ({
         "menu.entities": "Entities",
         "menu.sources": "Sources",
         "menu.search": "Search",
+        "menu.review_queue": "Review Queue",
         "auth.login": "Login",
         "common.change_language": "Change language",
       };
@@ -153,6 +154,42 @@ describe("Layout", () => {
 
       expect(screen.getByTestId("profile-menu")).toBeInTheDocument();
       expect(screen.queryByText("Login")).not.toBeInTheDocument();
+    });
+
+    it("hides review queue navigation for non-superusers", () => {
+      mockUseAuthContext.mockReturnValue({
+        user: {
+          id: "user-123",
+          email: "test@example.com",
+          is_superuser: false,
+        },
+      } as any);
+
+      render(
+        <BrowserRouter>
+          <Layout />
+        </BrowserRouter>
+      );
+
+      expect(screen.queryByText("Review Queue")).not.toBeInTheDocument();
+    });
+
+    it("shows review queue navigation for superusers", () => {
+      mockUseAuthContext.mockReturnValue({
+        user: {
+          id: "admin-123",
+          email: "admin@example.com",
+          is_superuser: true,
+        },
+      } as any);
+
+      render(
+        <BrowserRouter>
+          <Layout />
+        </BrowserRouter>
+      );
+
+      expect(screen.getByText("Review Queue")).toBeInTheDocument();
     });
   });
 

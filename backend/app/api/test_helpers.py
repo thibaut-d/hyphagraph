@@ -23,7 +23,7 @@ from app.startup import run_bootstrap_tasks
 router = APIRouter(prefix="/test", tags=["test-helpers"])
 
 
-def check_testing_mode():
+def check_testing_mode() -> None:
     """
     Dependency to ensure test endpoints are only accessible in testing mode.
 
@@ -37,8 +37,8 @@ def check_testing_mode():
         )
 
 
-@router.post("/reset-database", response_model=DatabaseResetResponse, dependencies=[Depends(check_testing_mode)])
-async def reset_database(db: AsyncSession = Depends(get_db)):
+@router.post("/reset-database", dependencies=[Depends(check_testing_mode)], response_model=DatabaseResetResponse)
+async def reset_database(db: AsyncSession = Depends(get_db)) -> DatabaseResetResponse:
     """
     Reset the database by truncating all tables.
 
@@ -61,7 +61,7 @@ async def reset_database(db: AsyncSession = Depends(get_db)):
         tables = [row[0] for row in result.fetchall()]
 
         if not tables:
-            return {"message": "No tables to truncate", "tables_truncated": 0}
+            return DatabaseResetResponse(message="No tables to truncate", tables_truncated=0)
 
         # Disable foreign key checks temporarily
         await db.execute(text("SET session_replication_role = 'replica';"))
@@ -79,11 +79,11 @@ async def reset_database(db: AsyncSession = Depends(get_db)):
         # and rely on system-owned records after a reset.
         await run_bootstrap_tasks(db)
 
-        return {
-            "message": f"Successfully truncated {len(tables)} tables",
-            "tables_truncated": len(tables),
-            "tables": tables
-        }
+        return DatabaseResetResponse(
+            message=f"Successfully truncated {len(tables)} tables",
+            tables_truncated=len(tables),
+            tables=tables,
+        )
 
     except Exception as e:
         await db.rollback()
@@ -93,8 +93,8 @@ async def reset_database(db: AsyncSession = Depends(get_db)):
         )
 
 
-@router.post("/seed-review-queue", response_model=ReviewQueueSeedResponse, dependencies=[Depends(check_testing_mode)])
-async def seed_review_queue(db: AsyncSession = Depends(get_db)):
+@router.post("/seed-review-queue", dependencies=[Depends(check_testing_mode)], response_model=ReviewQueueSeedResponse)
+async def seed_review_queue(db: AsyncSession = Depends(get_db)) -> ReviewQueueSeedResponse:
     """
     Seed the review queue with staged extraction records for E2E testing.
 
@@ -169,12 +169,12 @@ async def seed_review_queue(db: AsyncSession = Depends(get_db)):
 
         await db.commit()
 
-        return {
-            "message": "Review queue seeded successfully",
-            "source_id": str(source.id),
-            "entity_id": str(entity.id),
-            "extractions_created": len(extractions),
-        }
+        return ReviewQueueSeedResponse(
+            message="Review queue seeded successfully",
+            source_id=str(source.id),
+            entity_id=str(entity.id),
+            extractions_created=len(extractions),
+        )
 
     except Exception as e:
         await db.rollback()
@@ -184,8 +184,8 @@ async def seed_review_queue(db: AsyncSession = Depends(get_db)):
         )
 
 
-@router.post("/seed-ui-categories", response_model=UICategoriesSeedResponse, dependencies=[Depends(check_testing_mode)])
-async def seed_ui_categories(db: AsyncSession = Depends(get_db)):
+@router.post("/seed-ui-categories", dependencies=[Depends(check_testing_mode)], response_model=UICategoriesSeedResponse)
+async def seed_ui_categories(db: AsyncSession = Depends(get_db)) -> UICategoriesSeedResponse:
     """
     Seed UI categories for E2E testing.
 
@@ -206,7 +206,7 @@ async def seed_ui_categories(db: AsyncSession = Depends(get_db)):
             db.add(cat)
 
         await db.commit()
-        return {"message": "UI categories seeded", "count": len(categories)}
+        return UICategoriesSeedResponse(message="UI categories seeded", count=len(categories))
 
     except Exception as e:
         await db.rollback()
@@ -216,16 +216,19 @@ async def seed_ui_categories(db: AsyncSession = Depends(get_db)):
         )
 
 
-@router.get("/health", response_model=TestHealthResponse, dependencies=[Depends(check_testing_mode)])
-async def test_health():
+@router.get("/health", dependencies=[Depends(check_testing_mode)], response_model=TestHealthResponse)
+async def test_health() -> TestHealthResponse:
     """
     Health check endpoint for test helpers.
 
     Returns:
         dict: Status message confirming testing mode is enabled
     """
-    return {
-        "status": "ok",
-        "testing_mode": settings.TESTING,
-        "message": "Test helper endpoints are available"
-    }
+    return TestHealthResponse(
+        status="ok",
+        testing_mode=settings.TESTING,
+        env=settings.ENV,
+        email_from=settings.EMAIL_FROM,
+        email_verification_required=settings.EMAIL_VERIFICATION_REQUIRED,
+        message="Test helper endpoints are available",
+    )

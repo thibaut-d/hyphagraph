@@ -11,6 +11,7 @@ from fastapi import HTTPException
 
 from app.api.test_helpers import check_testing_mode, reset_database, test_health
 from app.config import settings
+from app.schemas.test_helpers import DatabaseResetResponse, TestHealthResponse
 
 
 class TestTestHelpers:
@@ -75,10 +76,11 @@ class TestTestHelpers:
             result = await reset_database(db=mock_db)
 
         # Assert
-        assert result["tables_truncated"] == 3
-        assert "entities" in result["tables"]
-        assert "sources" in result["tables"]
-        assert "relations" in result["tables"]
+        assert isinstance(result, DatabaseResetResponse)
+        assert result.tables_truncated == 3
+        assert "entities" in result.tables
+        assert "sources" in result.tables
+        assert "relations" in result.tables
 
         # Verify correct SQL sequence
         sql_commands = " ".join(executed_commands)
@@ -110,8 +112,9 @@ class TestTestHelpers:
         result = await reset_database(db=mock_db)
 
         # Assert
-        assert result["tables_truncated"] == 0
-        assert "No tables to truncate" in result["message"]
+        assert isinstance(result, DatabaseResetResponse)
+        assert result.tables_truncated == 0
+        assert "No tables to truncate" in result.message
 
     @pytest.mark.asyncio
     async def test_reset_database_rollback_on_error(self):
@@ -141,8 +144,9 @@ class TestTestHelpers:
             result = await test_health()
 
             # Assert
-            assert result["status"] == "ok"
-            assert result["testing_mode"] is True
-            assert "Test helper endpoints are available" in result["message"]
+            assert isinstance(result, TestHealthResponse)
+            assert result.status == "ok"
+            assert result.testing_mode is True
+            assert "Test helper endpoints are available" in result.message
         finally:
             settings.TESTING = original_testing

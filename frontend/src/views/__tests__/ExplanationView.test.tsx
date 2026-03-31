@@ -19,11 +19,23 @@ vi.mock('../../api/explanations', () => ({
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, defaultValueOrOptions?: string | { defaultValue?: string }) => {
+    t: (
+      key: string,
+      defaultValueOrOptions?: string | { defaultValue?: string; [key: string]: unknown }
+    ) => {
       if (typeof defaultValueOrOptions === 'string') {
         return defaultValueOrOptions;
       }
-      return defaultValueOrOptions?.defaultValue || key;
+      if (defaultValueOrOptions && typeof defaultValueOrOptions === 'object') {
+        let result = defaultValueOrOptions.defaultValue || key;
+        Object.entries(defaultValueOrOptions).forEach(([field, value]) => {
+          if (field !== 'defaultValue') {
+            result = result.replace(`{{${field}}}`, String(value));
+          }
+        });
+        return result;
+      }
+      return key;
     },
   }),
   initReactI18next: { type: '3rdParty', init: () => {} },
@@ -83,8 +95,42 @@ describe('ExplanationView', () => {
       },
     ],
     contradictions: {
-      supporting_sources: [],
-      contradicting_sources: [],
+      supporting_sources: [
+        {
+          source_id: 'source-1',
+          source_title: 'Study 1',
+          source_authors: ['Author A'],
+          source_year: 2020,
+          source_kind: 'study',
+          source_trust: 0.8,
+          source_url: 'https://example.com/1',
+          relation_id: 'rel-1',
+          relation_kind: 'effect',
+          relation_direction: 'supports',
+          relation_confidence: 0.9,
+          relation_scope: { population: 'adults' },
+          role_weight: 0.9,
+          contribution_percentage: 70.0,
+        },
+      ],
+      contradicting_sources: [
+        {
+          source_id: 'source-2',
+          source_title: 'Study 2',
+          source_authors: ['Author B'],
+          source_year: 2021,
+          source_kind: 'study',
+          source_trust: 0.6,
+          source_url: 'https://example.com/2',
+          relation_id: 'rel-2',
+          relation_kind: 'effect',
+          relation_direction: 'contradicts',
+          relation_confidence: 0.65,
+          relation_scope: { population: 'children' },
+          role_weight: 0.4,
+          contribution_percentage: 30.0,
+        },
+      ],
       disagreement_score: 0.15,
     },
     source_chain: [
@@ -237,8 +283,17 @@ describe('ExplanationView', () => {
       renderWithRouter('123e4567-e89b-12d3-a456-426614174000', 'drug');
 
       await waitFor(() => {
-        // Should render the source chain table
-        expect(screen.getByRole('table')).toBeInTheDocument();
+        expect(screen.getAllByRole('table').length).toBeGreaterThan(1);
+      });
+    });
+
+    it('splits contradiction evidence into supporting and contradicting sections', async () => {
+      renderWithRouter('123e4567-e89b-12d3-a456-426614174000', 'drug');
+
+      await waitFor(() => {
+        expect(screen.getByText(/supporting evidence \(1\)/i)).toBeInTheDocument();
+        expect(screen.getByText(/contradicting evidence \(1\)/i)).toBeInTheDocument();
+        expect(screen.getByText(/what supports or challenges it/i)).toBeInTheDocument();
       });
     });
   });
@@ -335,8 +390,8 @@ describe('ExplanationView', () => {
         ...mockExplanation,
         disagreement: 0.6,
         contradictions: {
-          supporting_sources: [],
-          contradicting_sources: [],
+          supporting_sources: mockExplanation.contradictions!.supporting_sources,
+          contradicting_sources: mockExplanation.contradictions!.contradicting_sources,
           disagreement_score: 0.6,
         },
       };
@@ -356,8 +411,8 @@ describe('ExplanationView', () => {
         ...mockExplanation,
         disagreement: 0.3,
         contradictions: {
-          supporting_sources: [],
-          contradicting_sources: [],
+          supporting_sources: mockExplanation.contradictions!.supporting_sources,
+          contradicting_sources: mockExplanation.contradictions!.contradicting_sources,
           disagreement_score: 0.3,
         },
       };

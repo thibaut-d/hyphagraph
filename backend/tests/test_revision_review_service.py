@@ -20,6 +20,7 @@ from app.models.relation import Relation
 from app.models.relation_revision import RelationRevision
 from app.models.source import Source
 from app.models.source_revision import SourceRevision
+from app.models.user import User
 from app.services.revision_review_service import RevisionReviewService
 
 
@@ -92,6 +93,20 @@ async def _make_source_revision(db: AsyncSession, status: str = "draft") -> Sour
     db.add(rev)
     await db.flush()
     return rev
+
+
+async def _make_reviewer(db: AsyncSession) -> User:
+    reviewer = User(
+        id=uuid4(),
+        email=f"reviewer-{uuid4().hex[:6]}@example.com",
+        hashed_password="hashed",
+        is_active=True,
+        is_superuser=True,
+        is_verified=True,
+    )
+    db.add(reviewer)
+    await db.flush()
+    return reviewer
 
 
 # ---------------------------------------------------------------------------
@@ -170,7 +185,8 @@ class TestConfirm:
     async def test_sets_status_confirmed(self, db_session: AsyncSession):
         rev = await _make_entity_revision(db_session, status="draft")
         svc = RevisionReviewService(db_session)
-        ok = await svc.confirm("entity", rev.id)
+        reviewer = await _make_reviewer(db_session)
+        ok = await svc.confirm("entity", rev.id, reviewed_by_user_id=reviewer.id)
         assert ok is True
 
         result = await db_session.execute(
@@ -178,22 +194,25 @@ class TestConfirm:
         )
         updated = result.scalar_one()
         assert updated.status == "confirmed"
+        assert updated.confirmed_by_user_id == reviewer.id
+        assert updated.confirmed_at is not None
 
     async def test_returns_false_for_unknown_id(self, db_session: AsyncSession):
         svc = RevisionReviewService(db_session)
-        ok = await svc.confirm("entity", uuid4())
+        ok = await svc.confirm("entity", uuid4(), reviewed_by_user_id=uuid4())
         assert ok is False
 
     async def test_returns_false_for_already_confirmed(self, db_session: AsyncSession):
         rev = await _make_entity_revision(db_session, status="confirmed")
         svc = RevisionReviewService(db_session)
-        ok = await svc.confirm("entity", rev.id)
+        ok = await svc.confirm("entity", rev.id, reviewed_by_user_id=uuid4())
         assert ok is False
 
     async def test_confirm_relation_revision(self, db_session: AsyncSession):
         rev = await _make_relation_revision(db_session, status="draft")
         svc = RevisionReviewService(db_session)
-        ok = await svc.confirm("relation", rev.id)
+        reviewer = await _make_reviewer(db_session)
+        ok = await svc.confirm("relation", rev.id, reviewed_by_user_id=reviewer.id)
         assert ok is True
 
         result = await db_session.execute(
@@ -201,17 +220,27 @@ class TestConfirm:
         )
         updated = result.scalar_one()
         assert updated.status == "confirmed"
+        assert updated.confirmed_by_user_id == reviewer.id
+        assert updated.confirmed_at is not None
 
     async def test_confirm_source_revision(self, db_session: AsyncSession):
         rev = await _make_source_revision(db_session, status="draft")
         svc = RevisionReviewService(db_session)
-        ok = await svc.confirm("source", rev.id)
+        reviewer = await _make_reviewer(db_session)
+        ok = await svc.confirm("source", rev.id, reviewed_by_user_id=reviewer.id)
         assert ok is True
+
+        result = await db_session.execute(
+            select(SourceRevision).where(SourceRevision.id == rev.id)
+        )
+        updated = result.scalar_one()
+        assert updated.confirmed_by_user_id == reviewer.id
+        assert updated.confirmed_at is not None
 
     async def test_invalid_kind_raises(self, db_session: AsyncSession):
         svc = RevisionReviewService(db_session)
         with pytest.raises(ValueError, match="Unknown revision_kind"):
-            await svc.confirm("bogus", uuid4())
+            await svc.confirm("bogus", uuid4(), reviewed_by_user_id=uuid4())
 
 
 # ---------------------------------------------------------------------------
@@ -288,6 +317,17 @@ class TestGetDraftCounts:
         svc = RevisionReviewService(db_session)
         counts = await svc.get_draft_counts()
         assert counts["total"] == counts["entity"] + counts["relation"] + counts["source"]
+
+    async def test_non_current_drafts_are_not_counted(self, db_session: AsyncSession):
+        current_revision = await _make_entity_revision(db_session)
+        stale_revision = await _make_entity_revision(db_session)
+        stale_revision.is_current = False
+        await db_session.flush()
+
+        svc = RevisionReviewService(db_session)
+        counts = await svc.get_draft_counts()
+        assert counts["entity"] == 1
+        assert counts["total"] == 1
 
 
 # ---------------------------------------------------------------------------
@@ -396,7 +436,8 @@ class TestLlmReviewStatus:
         await db_session.flush()
 
         svc = RevisionReviewService(db_session)
-        ok = await svc.confirm("entity", rev.id)
+        reviewer = await _make_reviewer(db_session)
+        ok = await svc.confirm("entity", rev.id, reviewed_by_user_id=reviewer.id)
         assert ok is True
 
         result = await db_session.execute(
@@ -422,7 +463,8 @@ class TestLlmReviewStatus:
         await db_session.flush()
 
         svc = RevisionReviewService(db_session)
-        ok = await svc.confirm("entity", rev.id)
+        reviewer = await _make_reviewer(db_session)
+        ok = await svc.confirm("entity", rev.id, reviewed_by_user_id=reviewer.id)
         assert ok is True
 
         result = await db_session.execute(

@@ -1,6 +1,7 @@
 import { createBrowserRouter } from "react-router-dom";
 import { Layout } from "../components/Layout";
 import { ProtectedRoute } from "../components/ProtectedRoute";
+import { SuperuserRoute } from "../components/SuperuserRoute";
 
 import { HomeView } from "../views/HomeView";
 import { EntitiesView } from "../views/EntitiesView";
@@ -72,7 +73,7 @@ export const router = createBrowserRouter([
       { path: "profile", element: <ProfileView /> },
       { path: "change-password", element: <ChangePasswordView /> },
       { path: "settings", element: <SettingsView /> },
-      { path: "admin", element: <ProtectedRoute><AdminView /></ProtectedRoute> },
+      { path: "admin", element: <SuperuserRoute><AdminView /></SuperuserRoute> },
       { path: "forgot-password", element: <RequestPasswordResetView /> },
       { path: "reset-password", element: <ResetPasswordView /> },
       { path: "verify-email", element: <VerifyEmailView /> },
@@ -83,7 +84,7 @@ export const router = createBrowserRouter([
       { path: "relations/batch", element: <ProtectedRoute><BatchCreateRelationsView /></ProtectedRoute> },
       { path: "relations/:id/edit", element: <ProtectedRoute><EditRelationView /></ProtectedRoute> },
 
-      { path: "review-queue", element: <ProtectedRoute><ReviewQueueView /></ProtectedRoute> },
+      { path: "review-queue", element: <SuperuserRoute><ReviewQueueView /></SuperuserRoute> },
       { path: "notification-demo", element: <NotificationDemoView /> },
     ],
   },

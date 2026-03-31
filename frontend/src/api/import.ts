@@ -5,7 +5,7 @@
  * 1. previewEntityImport — validate rows, get per-row status (no DB writes)
  * 2. executeEntityImport — write new entities to the knowledge graph
  */
-import { apiFetch } from "./client";
+import { apiFetchFormData } from "./client";
 
 export type ImportRowStatus = "new" | "duplicate" | "invalid";
 
@@ -52,7 +52,7 @@ export async function previewEntityImport(
   format: "csv" | "json" = "csv"
 ): Promise<ImportPreviewResult> {
   const form = buildFormData(file, format);
-  return apiFetch<ImportPreviewResult>("/api/import/entities/preview", {
+  return apiFetchFormData<ImportPreviewResult>("/import/entities/preview", {
     method: "POST",
     body: form,
   });
@@ -66,7 +66,7 @@ export async function executeEntityImport(
   format: "csv" | "json" = "csv"
 ): Promise<ImportResult> {
   const form = buildFormData(file, format);
-  return apiFetch<ImportResult>("/api/import/entities", {
+  return apiFetchFormData<ImportResult>("/import/entities", {
     method: "POST",
     body: form,
   });
@@ -119,7 +119,7 @@ export async function previewSourceImport(
   format: SourceImportFormat = "bibtex"
 ): Promise<SourceImportPreviewResult> {
   const form = buildSourceFormData(file, format);
-  return apiFetch<SourceImportPreviewResult>("/api/import/sources/preview", {
+  return apiFetchFormData<SourceImportPreviewResult>("/import/sources/preview", {
     method: "POST",
     body: form,
   });
@@ -133,7 +133,7 @@ export async function executeSourceImport(
   format: SourceImportFormat = "bibtex"
 ): Promise<SourceImportResult> {
   const form = buildSourceFormData(file, format);
-  return apiFetch<SourceImportResult>("/api/import/sources", {
+  return apiFetchFormData<SourceImportResult>("/import/sources", {
     method: "POST",
     body: form,
   });

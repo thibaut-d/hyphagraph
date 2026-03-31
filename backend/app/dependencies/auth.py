@@ -3,12 +3,10 @@ Authentication dependencies for FastAPI endpoints.
 
 Provides get_current_user dependency for protected endpoints.
 """
+import logging
 from typing import Optional
 
-import logging
-
-from fastapi import Depends
-from fastapi.exceptions import HTTPException
+from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -20,11 +18,11 @@ from app.models.user import User
 from app.utils.auth import decode_access_token_payload
 from app.utils.errors import UnauthorizedException, ForbiddenException
 
+logger = logging.getLogger(__name__)
+
 
 # OAuth2 scheme for token extraction
 # tokenUrl points to the login endpoint
-logger = logging.getLogger(__name__)
-
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 # Same scheme but does not raise 401 when the header is absent
 oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)

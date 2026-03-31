@@ -60,6 +60,12 @@ The API container applies migrations automatically on startup — no manual `ale
 | API docs | http://localhost/api/docs |
 | Default admin | `admin@example.com` / `changeme123` |
 
+Verify the proxy against a real API route after startup:
+
+```bash
+make dev-check
+```
+
 ### Common commands
 
 ```bash

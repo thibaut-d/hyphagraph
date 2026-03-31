@@ -17,6 +17,12 @@ COMPOSE_PROD = docker compose -p hyphagraph-prod -f docker-compose.yml -f docker
 up: ## Start the full dev stack (Caddy, API, DB, Frontend)
 	$(COMPOSE) up -d
 
+.PHONY: dev-check
+dev-check: ## Verify the local dev stack through Caddy using a real proxied API route
+	@curl -sf http://localhost/api/entities/filter-options > /dev/null \
+		&& echo "Caddy proxied API check passed" \
+		|| (echo "Caddy proxied API check FAILED" && exit 1)
+
 .PHONY: up-dev-server
 up-dev-server: ## Start remote dev stack (requires .env.dev)
 	@test -f .env.dev || (echo "Missing .env.dev (copy from .env.dev.template)" && exit 1)

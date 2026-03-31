@@ -10,11 +10,12 @@ from uuid import UUID
 
 from app.database import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.dependencies.auth import get_current_user, get_current_active_superuser
+from app.dependencies.auth import get_current_active_superuser
 from app.models.user import User
 from app.services.revision_review_service import RevisionReviewService
 from app.schemas.review import (
     DraftRevisionListResponse,
+    DraftRevisionCountsResponse,
     ConfirmRevisionResponse,
     DiscardRevisionResponse,
 )
@@ -37,7 +38,7 @@ async def list_draft_revisions(
     page_size: int = Query(default=50, ge=1, le=100),
     revision_kind: str | None = Query(default=None),
     service: RevisionReviewService = Depends(_get_service),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_superuser),
 ):
     """List all LLM-generated draft revisions awaiting human review."""
     if revision_kind is not None and revision_kind not in VALID_KINDS:
@@ -49,13 +50,13 @@ async def list_draft_revisions(
     return await service.list_drafts(page=page, page_size=page_size, revision_kind=revision_kind)
 
 
-@router.get("/counts")
+@router.get("/counts", response_model=DraftRevisionCountsResponse)
 async def get_draft_counts(
     service: RevisionReviewService = Depends(_get_service),
-    current_user: User = Depends(get_current_user),
-) -> dict[str, int]:
+    current_user: User = Depends(get_current_active_superuser),
+) -> DraftRevisionCountsResponse:
     """Return count of draft revisions per kind."""
-    return await service.get_draft_counts()
+    return DraftRevisionCountsResponse(**(await service.get_draft_counts()))
 
 
 @router.post("/{revision_kind}/{revision_id}/confirm", response_model=ConfirmRevisionResponse)
@@ -72,7 +73,7 @@ async def confirm_revision(
             error_code=ErrorCode.VALIDATION_ERROR,
             message=f"revision_kind must be one of {sorted(VALID_KINDS)}",
         )
-    ok = await service.confirm(revision_kind, revision_id)
+    ok = await service.confirm(revision_kind, revision_id, reviewed_by_user_id=current_user.id)
     if not ok:
         raise AppException(
             status_code=404,

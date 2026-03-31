@@ -151,6 +151,12 @@ Access:
 - `http://localhost`
 - `http://localhost/api/docs`
 
+Smoke-check the proxied API path:
+
+```bash
+make dev-check
+```
+
 ---
 
 ## 6. Production deployment (when ready)
@@ -229,4 +235,3 @@ Docker cleanup:
 ```bash
 docker system prune -f
 ```
-

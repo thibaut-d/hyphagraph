@@ -44,6 +44,18 @@ def _to_read(user: User) -> UserListItemRead:
     )
 
 
+def _category_to_read(category: UiCategory) -> UICategoryRead:
+    return UICategoryRead(
+        id=category.id,
+        slug=category.slug,
+        labels=category.labels,
+        description=category.description,
+        order=category.order,
+        created_at=getattr(category, "created_at", None),
+        updated_at=getattr(category, "updated_at", None),
+    )
+
+
 class AdminService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
@@ -159,6 +171,74 @@ class AdminService:
             logger.error("Failed to delete user %s: %s", user_id, e, exc_info=True)
             await self.db.rollback()
             raise
+
+    async def list_categories(self) -> list[UICategoryRead]:
+        """Return all UI categories ordered for admin management."""
+        result = await self.db.execute(select(UiCategory).order_by(UiCategory.order))
+        return [_category_to_read(category) for category in result.scalars().all()]
+
+    async def get_category(self, category_id: UUID) -> UiCategory:
+        """Return a UI category model or raise 404 if missing."""
+        result = await self.db.execute(select(UiCategory).where(UiCategory.id == category_id))
+        category = result.scalar_one_or_none()
+        if not category:
+            raise AppException(
+                status_code=404,
+                error_code=ErrorCode.NOT_FOUND,
+                message="Category not found",
+                details=f"No UI category with ID '{category_id}'.",
+            )
+        return category
+
+    async def create_category(self, payload: UICategoryWrite) -> UICategoryRead:
+        """Create a new UI category."""
+        category = UiCategory(
+            slug=payload.slug,
+            labels=payload.labels,
+            description=payload.description,
+            order=payload.order,
+        )
+        self.db.add(category)
+        try:
+            await self.db.commit()
+            await self.db.refresh(category)
+        except IntegrityError:
+            await self.db.rollback()
+            raise AppException(
+                status_code=409,
+                error_code=ErrorCode.ENTITY_SLUG_CONFLICT,
+                message="Category slug already exists",
+                field="slug",
+                details=f"A UI category with slug '{payload.slug}' already exists.",
+            )
+        return _category_to_read(category)
+
+    async def update_category(self, category_id: UUID, payload: UICategoryWrite) -> UICategoryRead:
+        """Update an existing UI category."""
+        category = await self.get_category(category_id)
+        category.slug = payload.slug
+        category.labels = payload.labels
+        category.description = payload.description
+        category.order = payload.order
+        try:
+            await self.db.commit()
+            await self.db.refresh(category)
+        except IntegrityError:
+            await self.db.rollback()
+            raise AppException(
+                status_code=409,
+                error_code=ErrorCode.ENTITY_SLUG_CONFLICT,
+                message="Category slug already exists",
+                field="slug",
+                details=f"A UI category with slug '{payload.slug}' already exists.",
+            )
+        return _category_to_read(category)
+
+    async def delete_category(self, category_id: UUID) -> None:
+        """Delete a UI category or raise 404 if it does not exist."""
+        category = await self.get_category(category_id)
+        await self.db.delete(category)
+        await self.db.commit()
 
     # -------------------------------------------------------------------------
     # UI Category management

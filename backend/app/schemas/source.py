@@ -154,9 +154,12 @@ class SaveExtractionRequest(Schema):
 
 
 class SkippedRelationDetail(Schema):
-    """A staged relation that could not be reconciled due to a parse error."""
-    staged_extraction_id: UUID
-    reason: str
+    """Visible details for a relation that could not be reconciled after save."""
+
+    extraction_id: UUID
+    relation_type: str | None = None
+    text_span: str | None = None
+    error: str
 
 
 class SaveExtractionResult(Schema):

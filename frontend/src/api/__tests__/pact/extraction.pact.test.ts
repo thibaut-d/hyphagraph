@@ -47,6 +47,7 @@ describe('Extraction API — consumer contract', () => {
             created_entity_ids: like([]),
             created_relation_ids: like([]),
             warnings: like([]),
+            skipped_relations: like([]),
           })
         )
       })

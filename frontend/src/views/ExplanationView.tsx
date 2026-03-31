@@ -36,6 +36,29 @@ import { useNotification } from "../notifications/NotificationContext";
 import { useAsyncResource } from "../hooks/useAsyncResource";
 import { usePageErrorHandler } from "../hooks/usePageErrorHandler";
 
+function ContradictionEvidenceSection({
+  title,
+  description,
+  sourceChain,
+}: {
+  title: string;
+  description: string;
+  sourceChain: ExplanationRead["source_chain"];
+}) {
+  return (
+    <Card variant="outlined">
+      <CardContent>
+        <Typography variant="h6" gutterBottom>
+          {title}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" paragraph>
+          {description}
+        </Typography>
+        <EvidenceTrace sourceChain={sourceChain} />
+      </CardContent>
+    </Card>
+  );
+}
 
 export function ExplanationView() {
   const { entityId, roleType } = useParams<{ entityId: string; roleType: string }>();
@@ -93,7 +116,7 @@ export function ExplanationView() {
   }
 
   // Score color based on value
-  const scoreColor = explanation.score
+  const scoreColor = explanation.score !== null
     ? explanation.score > 0.3
       ? "success"
       : explanation.score < -0.3
@@ -108,6 +131,11 @@ export function ExplanationView() {
       : explanation.confidence > 0.4
       ? "warning"
       : "error";
+  const contradictions = explanation.contradictions;
+  const hasContradictions =
+    contradictions &&
+    (contradictions.supporting_sources.length > 0 || contradictions.contradicting_sources.length > 0) &&
+    explanation.disagreement > 0.1;
 
   return (
     <Stack spacing={3}>
@@ -168,6 +196,12 @@ export function ExplanationView() {
               variant="outlined"
             />
           </Stack>
+          <Alert severity="info">
+            {t(
+              "explanation.reading_note",
+              "Use this page to inspect how the score was computed. The summary is a reading of the evidence, and the source sections below show what supports or challenges it."
+            )}
+          </Alert>
         </Stack>
       </Paper>
 
@@ -219,7 +253,7 @@ export function ExplanationView() {
       </Paper>
 
       {/* Contradictions (if any) */}
-      {explanation.contradictions && explanation.disagreement > 0.1 && (
+      {hasContradictions && (
         <Paper sx={{ p: 3 }}>
           <Stack direction="row" spacing={1} alignItems="center" mb={2}>
             <WarningIcon color="warning" />
@@ -241,9 +275,33 @@ export function ExplanationView() {
           <Typography variant="body2" color="text.secondary">
             {t(
               "explanation.contradictions_note",
-              "The sources below show opposing evidence. Review them carefully to understand the full picture."
+              "The evidence is separated below so you can compare what supports the reading versus what pushes against it."
             )}
           </Typography>
+          <Stack spacing={2} mt={3}>
+            <ContradictionEvidenceSection
+              title={t("explanation.supporting_sources", {
+                defaultValue: "Supporting evidence ({{count}})",
+                count: contradictions.supporting_sources.length,
+              })}
+              description={t(
+                "explanation.supporting_sources_desc",
+                "These sources contribute evidence in the same direction as the computed reading."
+              )}
+              sourceChain={contradictions.supporting_sources}
+            />
+            <ContradictionEvidenceSection
+              title={t("explanation.contradicting_sources", {
+                defaultValue: "Contradicting evidence ({{count}})",
+                count: contradictions.contradicting_sources.length,
+              })}
+              description={t(
+                "explanation.contradicting_sources_desc",
+                "These sources challenge the computed reading and are the main reason disagreement remains visible."
+              )}
+              sourceChain={contradictions.contradicting_sources}
+            />
+          </Stack>
         </Paper>
       )}
 

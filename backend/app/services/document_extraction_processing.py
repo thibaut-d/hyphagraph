@@ -656,7 +656,7 @@ async def reconcile_staged_extractions(
         key = _relation_match_key(rel)
         relation_key_to_idx.setdefault(key, idx)
 
-    skipped: list[SkippedRelationDetail] = []
+    skipped_relations: list[SkippedRelationDetail] = []
 
     for staged in staged_items:
         if staged.extraction_type == ExtractionType.ENTITY:
@@ -682,10 +682,14 @@ async def reconcile_staged_extractions(
                     staged.reviewed_by = user_id
                     staged.reviewed_at = now
             except Exception as exc:
-                skipped.append(SkippedRelationDetail(
-                    staged_extraction_id=staged.id,
-                    reason=str(exc),
-                ))
+                skipped_relations.append(
+                    SkippedRelationDetail(
+                        extraction_id=staged.id,
+                        relation_type=staged.extraction_data.get("relation_type"),
+                        text_span=staged.extraction_data.get("text_span"),
+                        error=str(exc),
+                    )
+                )
                 logger.error(
                     "Could not parse staged relation data for extraction %s — skipping: %s",
                     staged.id,
@@ -693,15 +697,15 @@ async def reconcile_staged_extractions(
                     exc_info=True,
                 )
 
-    if skipped:
+    if skipped_relations:
         logger.error(
             "Skipped %d staged relation(s) due to parse errors for source %s",
-            len(skipped),
+            len(skipped_relations),
             source_id,
         )
 
     await db.flush()
-    return skipped
+    return skipped_relations
 
 
 async def save_extraction_to_graph(

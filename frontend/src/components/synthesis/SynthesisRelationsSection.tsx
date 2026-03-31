@@ -4,17 +4,23 @@ import {
   AccordionDetails,
   AccordionSummary,
   Box,
+  Button,
   Chip,
   List,
   ListItem,
-  ListItemButton,
   ListItemText,
   Stack,
   Typography,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+
 import type { RelationKindSummaryRead } from "../../types/inference";
 import type { RelationRead } from "../../types/relation";
+import {
+  formatDirectionLabel,
+  formatRelationClaim,
+  formatRelationContext,
+} from "../../utils/relationPresentation";
 
 interface SynthesisRelationsSectionProps {
   summaries?: RelationKindSummaryRead[];
@@ -55,13 +61,18 @@ export function SynthesisRelationsSection({
         {t("synthesis.relations.title", "Relations by Type")}
       </Typography>
       <Typography variant="body2" color="text.secondary" paragraph>
-        {t("synthesis.relations.description", "Click any relation type to see details and explanation.")}
+        {t(
+          "synthesis.relations.description",
+          "Each section summarizes one relation type, shows a few representative evidence statements, and then links to the full property detail."
+        )}
       </Typography>
 
       <Stack spacing={1}>
         {displaySummaries.map((summary) => {
           const relationArray = relationsByKind[summary.kind] || [];
           const kindConfidence = summary.average_confidence;
+          const examples = relationArray.slice(0, 3);
+          const hiddenCount = Math.max(relationArray.length - examples.length, 0);
 
           return (
             <Accordion key={summary.kind}>
@@ -121,37 +132,52 @@ export function SynthesisRelationsSection({
                     variant="outlined"
                   />
                 </Stack>
+
+                <Typography variant="body2" color="text.secondary" paragraph>
+                  {t(
+                    "synthesis.relations.examples_description",
+                    "Representative evidence statements are shown below. Open the property detail for the full trace, filters, and explanation."
+                  )}
+                </Typography>
+
                 <List dense>
-                  {relationArray.map((relation, index) => (
-                    <ListItem key={index} disablePadding>
-                      <ListItemButton onClick={() => onSelectKind(summary.kind)}>
+                  {examples.map((relation) => {
+                    const contextParts = formatRelationContext(relation);
+                    const secondaryParts = [
+                      formatDirectionLabel(relation.direction),
+                      relation.confidence != null
+                        ? t("synthesis.relation.confidence", {
+                            defaultValue: "Confidence: {{value}}%",
+                            value: Math.round(relation.confidence * 100),
+                          })
+                        : null,
+                      ...contextParts,
+                    ].filter(Boolean);
+
+                    return (
+                      <ListItem key={relation.id} disablePadding sx={{ py: 0.5 }}>
                         <ListItemText
-                          primary={
-                            <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-                              <Typography variant="body2">
-                                {relation.kind || summary.kind}
-                              </Typography>
-                              {relation.direction && (
-                                <Chip
-                                  label={relation.direction}
-                                  size="small"
-                                  color={relation.direction === "supports" ? "success" : "error"}
-                                />
-                              )}
-                            </Box>
-                          }
-                          secondary={
-                            relation.confidence != null
-                              ? t("synthesis.relation.confidence", "Confidence: {{value}}%", {
-                                  value: Math.round(relation.confidence * 100),
-                                })
-                              : undefined
-                          }
+                          primary={formatRelationClaim(relation, summary.kind)}
+                          secondary={secondaryParts.join(" • ")}
                         />
-                      </ListItemButton>
-                    </ListItem>
-                  ))}
+                      </ListItem>
+                    );
+                  })}
                 </List>
+
+                {hiddenCount > 0 && (
+                  <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 2 }}>
+                    {t("synthesis.relations.more_examples", {
+                      defaultValue: "{{count}} more evidence item{{suffix}} available in the property detail.",
+                      count: hiddenCount,
+                      suffix: hiddenCount === 1 ? "" : "s",
+                    })}
+                  </Typography>
+                )}
+
+                <Button variant="outlined" onClick={() => onSelectKind(summary.kind)}>
+                  {t("synthesis.relations.open_property", "Open property detail")}
+                </Button>
               </AccordionDetails>
             </Accordion>
           );

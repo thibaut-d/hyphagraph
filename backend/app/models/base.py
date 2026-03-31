@@ -1,3 +1,4 @@
+from sqlalchemy import DateTime
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from uuid import UUID as PyUUID, uuid4
@@ -18,6 +19,7 @@ class UUIDMixin:
 
 class TimestampMixin:
     created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
         default=lambda: datetime.datetime.now(datetime.timezone.utc),
         nullable=False,
     )

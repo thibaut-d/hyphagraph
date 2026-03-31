@@ -7,6 +7,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { ProtectedRoute } from "../ProtectedRoute";
+import { SuperuserRoute } from "../SuperuserRoute";
 
 // Mock useAuth hook
 const mockUseAuth = vi.fn();
@@ -121,5 +122,54 @@ describe("ProtectedRoute", () => {
 
     expect(screen.getByText("Dashboard")).toBeInTheDocument();
     expect(screen.getByText("Welcome back!")).toBeInTheDocument();
+  });
+});
+
+describe("SuperuserRoute", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("redirects authenticated non-superusers to home", () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: "user-123", email: "test@example.com", is_superuser: false },
+      loading: false,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/review-queue"]}>
+        <Routes>
+          <Route
+            path="/review-queue"
+            element={
+              <SuperuserRoute>
+                <div>Review Queue</div>
+              </SuperuserRoute>
+            }
+          />
+          <Route path="/" element={<div>Home Page</div>} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText("Home Page")).toBeInTheDocument();
+    expect(screen.queryByText("Review Queue")).not.toBeInTheDocument();
+  });
+
+  it("renders children for superusers", () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: "admin-123", email: "admin@example.com", is_superuser: true },
+      loading: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <SuperuserRoute>
+          <div>Review Queue</div>
+        </SuperuserRoute>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText("Review Queue")).toBeInTheDocument();
   });
 });

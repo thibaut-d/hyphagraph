@@ -5,10 +5,13 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi import status
 from fastapi.exceptions import RequestValidationError
+from pydantic import BaseModel
 from pydantic_core import InitErrorDetails
 from sqlalchemy.exc import IntegrityError, OperationalError
 from starlette.requests import Request
 
+from app.api.error_handlers import handle_extraction_errors
+from app.llm.base import LLMError
 from app.middleware.error_handler import (
     app_exception_handler,
     generic_exception_handler,
@@ -120,7 +123,7 @@ async def test_rate_limit_exception_handler_returns_standardized_error_shape():
     request = _make_request()
     exception = SimpleNamespace(detail="5 per minute")
 
-    response = await rate_limit_exception_handler(request, exception)  # type: ignore[arg-type]
+    response = await rate_limit_exception_handler(request, exception)
 
     assert response.status_code == status.HTTP_429_TOO_MANY_REQUESTS
     payload = json.loads(response.body)
@@ -203,3 +206,53 @@ def test_error_code_enum_matches_known_set():
     removed = EXPECTED_BACKEND_ERROR_CODES - actual
     assert not added, f"New ErrorCode values not yet in frontend enum: {added}"
     assert not removed, f"ErrorCode values removed but still in snapshot: {removed}"
+
+
+# ---------------------------------------------------------------------------
+# handle_extraction_errors decorator tests
+# ---------------------------------------------------------------------------
+
+class _ExampleModel(BaseModel):
+    name: str
+
+
+@pytest.mark.asyncio
+async def test_handle_extraction_errors_maps_llm_failures_to_503():
+    @handle_extraction_errors
+    async def wrapped() -> None:
+        raise LLMError("OpenAI provider not available")
+
+    with pytest.raises(AppException) as exc_info:
+        await wrapped()
+
+    assert exc_info.value.status_code == 503
+    assert exc_info.value.error_detail.code == ErrorCode.LLM_SERVICE_UNAVAILABLE
+    assert exc_info.value.error_detail.details == "OpenAI provider not available"
+
+
+@pytest.mark.asyncio
+async def test_handle_extraction_errors_maps_validation_failures_to_422():
+    @handle_extraction_errors
+    async def wrapped() -> None:
+        _ExampleModel.model_validate({})
+
+    with pytest.raises(AppException) as exc_info:
+        await wrapped()
+
+    assert exc_info.value.status_code == 422
+    assert exc_info.value.error_detail.code == ErrorCode.VALIDATION_ERROR
+    assert exc_info.value.error_detail.field == "name"
+    assert "Field 'name' failed validation" in (exc_info.value.error_detail.details or "")
+
+
+@pytest.mark.asyncio
+async def test_handle_extraction_errors_keeps_generic_failures_as_extraction_failed():
+    @handle_extraction_errors
+    async def wrapped() -> None:
+        raise RuntimeError("unexpected failure")
+
+    with pytest.raises(AppException) as exc_info:
+        await wrapped()
+
+    assert exc_info.value.status_code == 500
+    assert exc_info.value.error_detail.code == ErrorCode.EXTRACTION_FAILED

@@ -20,6 +20,7 @@ export interface MenuItem {
   path: string;
   icon: ComponentType<SvgIconProps>;
   requiresAuth?: boolean;
+  requiresSuperuser?: boolean;
 }
 
 interface DesktopNavigationProps {
@@ -61,7 +62,11 @@ export function DesktopNavigation({
         }}
       >
         {menuItems
-          .filter((item) => !item.requiresAuth || user)
+          .filter(
+            (item) =>
+              (!item.requiresAuth || user) &&
+              (!item.requiresSuperuser || user?.is_superuser),
+          )
           .map((item) => {
             const isActive =
               location.pathname === item.path ||

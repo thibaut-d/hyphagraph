@@ -92,11 +92,15 @@ def get_extraction_review_service(
 # callers may also instantiate them directly without going through Depends().
 
 def get_document_service() -> DocumentService:
+    # Stateless utility: routes can construct a fresh instance because it does
+    # not capture request or database state.
     """Return a stateless DocumentService (no database session required)."""
     return DocumentService()
 
 
 def get_metadata_extractor_factory() -> MetadataExtractorFactory:
+    # Stateless factory: this dependency exposes constructor wiring only, unlike
+    # the database-bound providers above.
     """Return a stateless MetadataExtractorFactory (no database session required)."""
     return MetadataExtractorFactory()
 

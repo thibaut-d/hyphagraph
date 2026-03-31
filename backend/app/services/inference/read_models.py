@@ -47,6 +47,8 @@ async def resolve_entity_slugs(
 
     Returns a mapping of entity_id → slug using the is_current=True revision.
     Missing or unknown entity IDs are omitted from the result.
+
+    Mapping shape: `{entity_id: current_slug}` for the current confirmed revision row.
     """
     if not entity_ids:
         return {}

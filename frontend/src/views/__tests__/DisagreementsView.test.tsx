@@ -81,9 +81,13 @@ describe("DisagreementsView", () => {
     direction: "supports",
     source_id: "source-1",
     confidence: 0.85,
-    scope: null,
+    scope: { population: "adults" },
+    notes: "Observed in randomized trial",
     created_at: "2025-01-01T00:00:00Z",
-    roles: [],
+    roles: [
+      { entity_id: "drug-1", entity_slug: "paracetamol", role_type: "subject" },
+      { entity_id: "condition-1", entity_slug: "fever", role_type: "object" },
+    ],
     ...overrides,
   });
 
@@ -201,7 +205,7 @@ describe("DisagreementsView", () => {
       });
 
       expect(screen.getByText("Entities")).toBeInTheDocument();
-      expect(screen.getAllByText("Paracetamol").length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/paracetamol/i).length).toBeGreaterThan(0);
       expect(screen.getByText("Disagreements")).toBeInTheDocument();
     });
 
@@ -224,6 +228,27 @@ describe("DisagreementsView", () => {
       expect(
         screen.getByText(/We never hide contradictions/i)
       ).toBeInTheDocument();
+    });
+
+    it("shows claim wording and context inside the side-by-side comparison tables", async () => {
+      vi.spyOn(entitiesApi, "getEntity").mockResolvedValue(mockEntity);
+      vi.spyOn(inferencesApi, "getInferenceDetailForEntity").mockResolvedValue(
+        createMockInference()
+      );
+
+      render(
+        <BrowserRouter>
+          <DisagreementsView />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getAllByText("Claim").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("Context").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("paracetamol therapeutic_use fever").length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/Population: adults/i).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/Observed in randomized trial/i).length).toBeGreaterThan(0);
+      });
     });
   });
 

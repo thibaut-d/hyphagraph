@@ -148,6 +148,8 @@ export function ImportEntitiesView() {
               ref={fileInputRef}
               type="file"
               accept={format === "csv" ? ".csv,text/csv" : ".json,application/json"}
+              aria-hidden="true"
+              tabIndex={-1}
               style={{ position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden" }}
               onChange={handleFileChange}
             />

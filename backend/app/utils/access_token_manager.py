@@ -52,6 +52,9 @@ class AccessTokenManager:
     def expire_minutes(self) -> int:
         return self._expire_minutes if self._expire_minutes is not None else settings.ACCESS_TOKEN_EXPIRE_MINUTES
 
+    def _get_secret_key(self) -> str:
+        return self.secret_key or settings.SECRET_KEY
+
     def create_access_token(
         self,
         data: dict,
@@ -86,7 +89,7 @@ class AccessTokenManager:
         # Encode JWT
         encoded_jwt = jwt.encode(
             to_encode,
-            self.secret_key,
+            self._get_secret_key(),
             algorithm=self.algorithm
         )
 
@@ -105,7 +108,7 @@ class AccessTokenManager:
         try:
             payload = jwt.decode(
                 token,
-                self.secret_key,
+                self._get_secret_key(),
                 algorithms=[self.algorithm]
             )
             user_id: str = payload.get("sub")
@@ -121,7 +124,7 @@ class AccessTokenManager:
             Full decoded payload dict if valid, None otherwise
         """
         try:
-            return jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
+            return jwt.decode(token, self._get_secret_key(), algorithms=[self.algorithm])
         except JWTError:
             return None
 

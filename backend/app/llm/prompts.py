@@ -15,20 +15,25 @@ from app.schemas.common_types import I18nText
 # System Prompts
 # =============================================================================
 
-MEDICAL_KNOWLEDGE_SYSTEM_PROMPT = """You are a medical knowledge extraction assistant specializing in biomedical literature analysis.
+MEDICAL_KNOWLEDGE_SYSTEM_PROMPT = """You are a biomedical extraction worker for HyphaGraph.
 
 Your role is to:
-1. Extract factual information from scientific and medical texts
+1. Extract source-grounded information from scientific and medical texts
 2. Identify entities (drugs, diseases, symptoms, treatments, etc.)
 3. Identify relations between entities (drug treats disease, drug causes side effect, etc.)
-4. Maintain accuracy and avoid speculation
+4. Preserve uncertainty, negation, and contradictions exactly as stated
 5. Cite specific text spans when possible
 
 Guidelines:
+- You are not an author, reviewer, or reasoner. Do not add outside medical knowledge.
+- Extract only what is explicitly supported by the provided text.
+- If support is missing or ambiguous, omit the item instead of guessing.
 - Be precise and conservative in extraction
-- Distinguish between established facts and hypotheses
+- Distinguish between established facts, hypotheses, and reported findings
 - Note uncertainty levels when present in the source
-- Use standardized medical terminology when possible
+- Preserve population, dosage, comparator, timeframe, and study conditions when present
+- Never merge or reconcile conflicting statements into a single output item
+- Use standardized medical terminology only when it is already present in the text or is a direct surface-form normalization of the same mention
 - Preserve numerical values and dosages exactly as stated
 """
 
@@ -41,10 +46,16 @@ ENTITY_EXTRACTION_PROMPT = """Extract all relevant biomedical entities from the 
 
 For each entity, provide:
 - slug: A unique identifier following STRICT format rules (see below)
-- summary: A brief description (1-2 sentences) in English
+- summary: A brief source-bounded description in English (prefer a short phrase or single sentence)
 - category: The entity type (drug, disease, symptom, biological_mechanism, treatment, biomarker, population, outcome)
 - confidence: Your confidence in this extraction (high, medium, low)
 - text_span: The exact text from the source that mentions this entity
+
+SUMMARY RULES:
+- Keep the summary grounded in the source mention and its immediate local context
+- Do NOT add background medical facts that are not stated in the provided text
+- Do NOT expand the summary into a general encyclopedia definition
+- If the text gives only the entity name with no local description, use a minimal summary closely matching the mention
 
 CRITICAL SLUG FORMAT REQUIREMENTS:
 - MUST start with a lowercase letter (a-z)
@@ -73,21 +84,21 @@ Respond with a JSON object containing an "entities" key. Example format:
   "entities": [
   {{
     "slug": "aspirin",
-    "summary": "Aspirin is a nonsteroidal anti-inflammatory drug (NSAID) used for pain relief, fever reduction, and anti-platelet effects.",
+    "summary": "Aspirin (acetylsalicylic acid), as named in the source text.",
     "category": "drug",
     "confidence": "high",
     "text_span": "aspirin (acetylsalicylic acid)"
   }},
   {{
     "slug": "migraine-headache",
-    "summary": "Migraine is a neurological condition characterized by recurrent severe headaches, often with nausea and light sensitivity.",
+    "summary": "Migraine headaches mentioned as the treated condition.",
     "category": "disease",
     "confidence": "high",
     "text_span": "migraine headaches"
   }},
   {{
     "slug": "cox-enzyme-inhibition",
-    "summary": "COX enzyme inhibition is the mechanism by which NSAIDs block prostaglandin synthesis.",
+    "summary": "Cyclooxygenase (COX) enzyme inhibition described in the source.",
     "category": "biological_mechanism",
     "confidence": "high",
     "text_span": "irreversibly inhibiting cyclooxygenase (COX) enzymes"
@@ -96,7 +107,8 @@ Respond with a JSON object containing an "entities" key. Example format:
 }}
 ```
 
-Only extract entities that are explicitly mentioned or clearly implied in the text.
+Only extract entities that are explicitly mentioned in the text.
+Do not create entities purely from implication, world knowledge, or inferred study context.
 """
 
 
@@ -128,6 +140,11 @@ Consider:
 - Abbreviations (NSAID = nonsteroidal anti-inflammatory drug)
 - Generic vs brand names
 - Spelling variations
+
+Be conservative:
+- If the match is uncertain, return "NEW"
+- Do not merge mentions based only on broad class membership or relatedness
+- Do not use external knowledge beyond the provided mentions and existing-entity summaries
 """
 
 
@@ -149,6 +166,12 @@ For each relation, provide:
 - confidence: Your confidence in this relation (high, medium, low)
 - text_span: The exact text that states this relation
 - notes: Any important caveats, conditions, or context
+
+RELATION EXTRACTION RULES:
+- Extract only relations that are explicitly stated in the text
+- Do not create a relation from background knowledge or weak implication alone
+- Preserve negation, uncertainty, study conditions, dosage, timeframe, comparator, and population in notes when relevant
+- If the text presents competing or contradictory findings, output separate relations rather than merging them
 
 SEMANTIC ROLES (use these instead of subject/object):
 - agent: Entity performing action (drug, treatment)
@@ -217,7 +240,7 @@ Respond with a JSON object containing a "relations" key:
 }}
 ```
 
-Only extract relations that are explicitly stated or strongly implied in the text.
+Only extract relations that are explicitly stated in the text.
 Be conservative - avoid inferring relations that are not clearly supported.
 """
 
@@ -232,12 +255,19 @@ Text to analyze:
 {text}
 
 For each claim, provide:
-- claim_text: The factual statement being made
+- claim_text: The statement being reported, written as a faithful source-bounded paraphrase
 - entities_involved: List of entity slugs mentioned in the claim
 - claim_type: Type of claim (efficacy, safety, mechanism, epidemiology, other)
 - evidence_strength: Strength of evidence (strong, moderate, weak, anecdotal)
 - confidence: Your confidence in extracting this claim (high, medium, low)
 - text_span: The exact text supporting this claim
+
+CLAIM RULES:
+- Preserve uncertainty, negation, modality, and qualifiers from the source
+- Keep claim_text close to the source; do not strengthen or generalize it
+- Do not collapse multiple competing claims into one synthesized claim
+- Assign evidence_strength conservatively based on what the text explicitly indicates about study design or evidence quality
+- If evidence quality is unclear, prefer a lower evidence_strength rather than upgrading it
 
 Claim types:
 - efficacy: Claims about treatment effectiveness
@@ -273,6 +303,8 @@ Focus on:
 - Population specifics (who the claim applies to)
 - Conditions and caveats
 - Statistical significance when mentioned
+
+Only extract claims that are explicitly stated in the text.
 """
 
 
@@ -280,10 +312,17 @@ Focus on:
 # Batch Extraction Prompt (All-in-One)
 # =============================================================================
 
-BATCH_EXTRACTION_PROMPT = """Analyze the following biomedical text and extract all relevant knowledge.
+BATCH_EXTRACTION_PROMPT = """Analyze the following biomedical text and extract source-grounded knowledge only.
 
 Text to analyze:
 {text}
+
+GLOBAL RULES:
+- Extract only information explicitly supported by the provided text
+- Do not use outside medical knowledge
+- Do not reconcile contradictions or competing findings; keep them as separate items
+- Preserve uncertainty, negation, dosage, population, comparator, timeframe, and study conditions
+- If an item is not clearly supported, omit it instead of guessing
 
 Extract:
 1. **Entities**: All drugs, diseases, symptoms, treatments, biomarkers, and other relevant entities
@@ -298,6 +337,7 @@ Extract:
 
    - category: drug, disease, symptom, biological_mechanism, treatment, biomarker, population, outcome, other
    - confidence: high, medium, low
+   - summaries must stay source-bounded and must not add background facts not present in the text
 
 2. **Relations**: Relationships between entities
 
@@ -334,6 +374,7 @@ Extract:
      Example: "vas measures pain" (NOT "pain measures vas")
 
    - confidence: high, medium, low
+   - extract only explicitly stated relations and preserve caveats in notes
 
 3. **Claims**: Factual statements with evidence
 
@@ -353,6 +394,7 @@ Extract:
    - anecdotal
 
    - confidence: high, medium, low
+   - claim_text must remain a faithful source-bounded paraphrase, not a stronger synthesis
 
 Respond with JSON containing three arrays:
 ```json
@@ -442,7 +484,7 @@ CRITICAL REMINDERS:
 - Claim types: ONLY use efficacy, safety, mechanism, epidemiology, or other
 - Evidence strength: ONLY use strong, moderate, weak, or anecdotal
 
-Be thorough but conservative. Only extract information that is clearly stated or strongly implied.
+Be thorough but conservative. Only extract information that is clearly and explicitly stated in the text.
 """
 
 

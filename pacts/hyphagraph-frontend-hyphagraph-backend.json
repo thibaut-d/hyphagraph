@@ -2505,6 +2505,7 @@
             "entities_created": 0,
             "entities_linked": 0,
             "relations_created": 0,
+            "skipped_relations": [],
             "warnings": []
           },
           "contentType": "application/json",
@@ -2558,6 +2559,14 @@
               ]
             },
             "$.relations_created": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.skipped_relations": {
               "combine": "AND",
               "matchers": [
                 {

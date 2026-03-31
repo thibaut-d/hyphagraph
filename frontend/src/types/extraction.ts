@@ -137,8 +137,10 @@ export interface SaveExtractionRequest {
 }
 
 export interface SkippedRelationDetail {
-  staged_extraction_id: string;
-  reason: string;
+  extraction_id: string;
+  relation_type?: string | null;
+  text_span?: string | null;
+  error: string;
 }
 
 export interface SaveExtractionResult {
