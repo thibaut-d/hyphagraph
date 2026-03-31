@@ -1,10 +1,24 @@
 # Current Work
 
-**Last updated**: 2026-03-31 (information architecture audit findings added)
+**Last updated**: 2026-03-31 (comprehensive UX audit findings added)
 
 ---
 
 ## Open Findings
+
+### Comprehensive UX Audit — 2026-03-31
+
+Source: `.temp/comprehensive_ux_audit_2026-03-31.md`
+
+#### Major
+
+- [ ] **UXA31-M1** `frontend/src/components/GlobalSearch.tsx:66-79,133-190` + `frontend/src/views/SearchView.tsx` — The header search presents itself as a global search entry point, but its interaction model is narrower and less explicit than the full search experience. It only deep-links entity and source suggestions, omits relation results from direct navigation, labels result types with raw backend terms, and relies on placeholder-only input text (`"Search entities, sources..."`) instead of an explicit field label. Align the header search with the full search scope, add a real accessible label, and make result kinds and destinations consistent so users do not have to learn two different search models.
+- [ ] **UXA31-M2** `frontend/src/views/CreateRelationView.tsx:169-216,231-272` — Relation creation depends on expert memory instead of guided input. Users must pick from long ungrouped source/entity dropdowns and type free-form `kind`, `direction`, and role labels with no examples, controlled vocabulary, or inline explanation of the expected schema. Replace the raw form with guided selectors/autocomplete, examples or presets for relation kinds and role labels, and field help that explains how to create a valid relation from evidence without guessing internal terminology.
+- [ ] **UXA31-M3** `frontend/src/views/RelationsView.tsx:21-71` + `frontend/src/app/routes.tsx:82-85` — The top-level Relations destination behaves like a navigational dead end. It is exposed as a first-class page in routing and navigation, offers export/create actions, but the main body only states that no global relations list exists and sends users back to Sources. Either provide a real browseable relation index or demote this route from primary navigation and redirect users straight into the source-centered relation workflow.
+
+#### Minor
+
+- [ ] **UXA31-m1** `frontend/src/components/ProfileMenu.tsx:79-83` — The account/profile menu trigger is not an actual interactive control. The avatar is wrapped in a clickable `Box` with no button semantics, keyboard handling, focus treatment, or accessible name, so keyboard and assistive-technology users can miss or fail to open the account menu. Replace the trigger with `IconButton` or `button` semantics, add an accessible label and expanded-state attributes, and verify keyboard/focus behavior.
 
 ### Information Architecture Audit — 2026-03-31
 
@@ -155,7 +169,7 @@ Source: `.temp/communication_audit_2026-03-29.md`
 #### Major
 
 - [x] **AUD29K-M1** `backend/app/schemas/entity.py:34-53` + `backend/app/schemas/source.py:58-82` + `backend/app/schemas/relation.py:58-77` + `frontend/src/types/entity.ts:1-12` + `frontend/src/types/source.ts:3-20` + `frontend/src/types/relation.ts:1-38` — Core read-contract type drift between backend and frontend bricks is no longer present. The frontend resource types now include the provenance/review/document fields returned by the backend. Remaining contract-coverage weakness is tracked separately in `COMM31-M1`.
-- [ ] **AUD29K-M2** `backend/app/schemas/review.py:15-29` + `backend/app/services/revision_review_service.py:57-116` + `frontend/src/api/revisionReview.ts:15-26` — The revision-review API contract is inconsistent across bricks: backend draft-revision responses include `llm_review_status`, but the frontend `DraftRevisionRead` type omits it. Add the missing field to the frontend client type and cover it in the review-queue contract tests so the queue UI and API agree on the shape.
+- [x] **AUD29K-M2** `backend/app/schemas/review.py:15-29` + `backend/app/services/revision_review_service.py:57-116` + `frontend/src/api/revisionReview.ts:15-26` — The revision-review API contract is inconsistent across bricks: backend draft-revision responses include `llm_review_status`, but the frontend `DraftRevisionRead` type omits it. Add the missing field to the frontend client type and cover it in the review-queue contract tests so the queue UI and API agree on the shape.
 - [ ] **AUD29K-M3** `backend/app/schemas/pagination.py:14-56` + `frontend/src/api/entities.ts:44-49` + `frontend/src/api/sources.ts:24-29` — Pagination is named like a shared abstraction but behaves like separate contracts. Backend `PaginatedResponse` defines derived metadata (`has_more`, `current_page`, `total_pages`) as Python properties that are not serialized, while frontend clients separately define narrower pagination interfaces. Either expose the derived fields as real API fields or remove them from the backend schema and standardize one documented wire contract mirrored in the frontend.
 
 ### Contract Audit — 2026-03-29

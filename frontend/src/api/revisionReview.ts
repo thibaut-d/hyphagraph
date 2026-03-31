@@ -23,6 +23,7 @@ export interface DraftRevisionRead {
   kind?: string | null;
   title?: string | null;
   status: string;
+  llm_review_status?: string | null;
 }
 
 

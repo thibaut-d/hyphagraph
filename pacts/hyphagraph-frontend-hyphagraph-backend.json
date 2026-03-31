@@ -1546,6 +1546,195 @@
       "type": "Synchronous/HTTP"
     },
     {
+      "description": "a request to list draft revisions",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "some draft revisions exist"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/api/review/revisions"
+      },
+      "response": {
+        "body": {
+          "content": {
+            "has_more": false,
+            "items": [
+              {
+                "created_at": "2025-01-01T00:00:00Z",
+                "created_by_user_id": null,
+                "created_with_llm": "claude-sonnet-4-6",
+                "id": "00000000-0000-0000-0000-000000000001",
+                "kind": null,
+                "llm_review_status": null,
+                "parent_id": "00000000-0000-0000-0000-000000000002",
+                "revision_kind": "entity",
+                "slug": "aspirin",
+                "status": "draft",
+                "title": null
+              }
+            ],
+            "page": 1,
+            "page_size": 20,
+            "total": 3
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.has_more": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.items": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.items[*].created_at": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.items[*].created_by_user_id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "null"
+                }
+              ]
+            },
+            "$.items[*].created_with_llm": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.items[*].id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.items[*].kind": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "null"
+                }
+              ]
+            },
+            "$.items[*].llm_review_status": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "null"
+                }
+              ]
+            },
+            "$.items[*].parent_id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.items[*].revision_kind": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.items[*].slug": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.items[*].status": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.items[*].title": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "null"
+                }
+              ]
+            },
+            "$.page": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.page_size": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.total": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          },
+          "status": {}
+        },
+        "status": 200
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
       "description": "a request to list pending extractions",
       "pending": false,
       "providerStates": [
@@ -3203,9 +3392,6 @@
     }
   ],
   "metadata": {
-    "pact-js": {
-      "version": "13.2.0"
-    },
     "pactRust": {
       "ffi": "0.4.22",
       "models": "1.2.3"
