@@ -2902,6 +2902,145 @@
       "type": "Synchronous/HTTP"
     },
     {
+      "description": "an authenticated request to extract from document for source 223e4567-e89b-42d3-a456-426614174000",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "source with id 223e4567-e89b-42d3-a456-426614174000 exists"
+        }
+      ],
+      "request": {
+        "headers": {
+          "Authorization": [
+            "Bearer token"
+          ]
+        },
+        "matchingRules": {
+          "header": {
+            "Authorization": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "method": "POST",
+        "path": "/api/sources/223e4567-e89b-42d3-a456-426614174000/extract-from-document"
+      },
+      "response": {
+        "body": {
+          "content": {
+            "auto_verified_count": 0,
+            "avg_validation_score": 0.9,
+            "entities": [],
+            "entity_count": 0,
+            "link_suggestions": [],
+            "needs_review_count": 0,
+            "relation_count": 0,
+            "relations": [],
+            "source_id": "223e4567-e89b-42d3-a456-426614174000"
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.auto_verified_count": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.avg_validation_score": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.entities": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.entity_count": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.link_suggestions": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.needs_review_count": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.relation_count": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.relations": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.source_id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          },
+          "status": {}
+        },
+        "status": 200
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
       "description": "an authenticated request to save extraction for source 223e4567-e89b-42d3-a456-426614174000",
       "pending": false,
       "providerStates": [

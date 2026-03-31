@@ -123,7 +123,9 @@ export interface DocumentExtractionPreview {
   entity_count: number;
   relation_count: number;
   link_suggestions: EntityLinkMatch[];
-  extracted_text?: string;  // Full extracted text from document (optional)
+  needs_review_count?: number | null;
+  auto_verified_count?: number | null;
+  avg_validation_score?: number | null;
 }
 
 // =============================================================================

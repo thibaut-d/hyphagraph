@@ -541,7 +541,6 @@
     "linked_entities": "{{count}} linked entities",
     "skipped_entities": "{{count}} skipped entities",
     "relations": "{{count}} relations",
-    "extracted_text": "Extracted Text ({{count}} characters)",
     "entities_section": "Entities ({{count}})",
     "relations_section": "Relations ({{count}})",
     "no_entities_alert": "No entities selected. Please select at least one entity to create or link before saving.",

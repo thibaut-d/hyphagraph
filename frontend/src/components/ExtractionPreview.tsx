@@ -16,9 +16,6 @@ import {
   Alert,
   Divider,
   CircularProgress,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
 } from "@mui/material";
 import {
   CheckCircle as CheckCircleIcon,
@@ -26,8 +23,6 @@ import {
   AddCircle as AddCircleIcon,
   RemoveCircle as RemoveCircleIcon,
   Save as SaveIcon,
-  ExpandMore as ExpandMoreIcon,
-  Article as ArticleIcon,
 } from "@mui/icons-material";
 import type {
   DocumentExtractionPreview,
@@ -204,36 +199,6 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
         </Box>
 
         <Divider />
-
-        {/* Extracted Text (Optional) */}
-        {preview.extracted_text && (
-          <Accordion>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <ArticleIcon />
-                <Typography variant="h6">
-                  {t("extraction_preview.extracted_text", { count: preview.extracted_text.length })}
-                </Typography>
-              </Box>
-            </AccordionSummary>
-            <AccordionDetails>
-              <Box
-                sx={{
-                  maxHeight: 400,
-                  overflowY: "auto",
-                  p: 2,
-                  bgcolor: "grey.50",
-                  borderRadius: 1,
-                  whiteSpace: "pre-wrap",
-                  fontFamily: "monospace",
-                  fontSize: "0.875rem",
-                }}
-              >
-                {preview.extracted_text}
-              </Box>
-            </AccordionDetails>
-          </Accordion>
-        )}
 
         {/* Entity Linking Suggestions */}
         <Box>

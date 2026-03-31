@@ -525,7 +525,6 @@
     "linked_entities": "{{count}} entités liées",
     "skipped_entities": "{{count}} entités ignorées",
     "relations": "{{count}} relations",
-    "extracted_text": "Texte extrait ({{count}} caractères)",
     "entities_section": "Entités ({{count}})",
     "relations_section": "Relations ({{count}})",
     "no_entities_alert": "Aucune entité sélectionnée. Veuillez sélectionner au moins une entité à créer ou à lier avant d'enregistrer.",
