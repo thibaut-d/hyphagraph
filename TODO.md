@@ -1,6 +1,6 @@
 # Current Work
 
-**Last updated**: 2026-03-31 (comprehensive UX audit findings added)
+**Last updated**: 2026-03-31 (UX audit program findings consolidated)
 
 ---
 
@@ -22,20 +22,49 @@ Source: page-family IA audit across core list/detail/computed/review surfaces
 - [ ] **PIA31-H3** `frontend/src/views/InferencesView.tsx:67-167,177-242,269-317` — The inferences page is architected as a stack of asynchronous entity cards rather than as a true analysis index. That structure hides the page’s purpose, weakens scanning, and scales poorly when many entities and many inferred roles exist. Redesign it as a dense, filterable inference index with explicit columns/grouping for role, score direction, confidence, disagreement, and evidence counts.
 - [ ] **PIA31-H4** `frontend/src/views/ReviewQueueView.tsx:110-307` — The review queue page tries to house two different review systems in one shell without a strong page model. The top-level tabs mix staged extraction review and LLM draft review, the first tab label is vague, and the page hierarchy shifts abruptly between queue summary cards, filters, batch actions, and record cards. Reframe the page around explicit queue types with stronger tab labels, queue-specific introductions, and a stable section order: queue identity, summary metrics, filters, batch tools, then items.
 
+### Navigation And Orientation Audit — 2026-03-31
+
+Source: cross-page navigation and detail-page orientation audit
+
+#### High
+
+- [ ] **NAV31-H1** `frontend/src/views/SourceDetailView.tsx:212-249` + `frontend/src/components/entity/EntityDetailHeader.tsx:40-71` + `frontend/src/components/synthesis/SynthesisHeaderSection.tsx:24-46` + `frontend/src/views/ExplanationView.tsx:142-173` — Detail page families use inconsistent orientation patterns. Source and entity detail rely on sparse back-navigation with no breadcrumb trail, while synthesis and explanation pages include breadcrumbs and clearer parent context. Standardize detail-page orientation with consistent breadcrumbs, parent links, and local sibling exits so users can tell where a page sits in the object hierarchy without relying on browser history.
+
+### Evidence Traceability Audit — 2026-03-31
+
+Source: provenance, evidence-linking, and audit-trail audit
+
+#### Critical
+
+- [ ] **ET31-C1** `frontend/src/components/EvidenceTrace.tsx:148-216` + `frontend/src/views/SourceDetailView.tsx:212-249` + `frontend/src/components/source-detail/SourceRelationsSection.tsx:57-114` — The audit trail stops at the source document level instead of landing users on the exact supporting evidence item. Evidence and explanation tables link only to `/sources/:id`, and the source page then shows a flat relation list without passage highlighting, deep-linking, or a stable target for the contributing relation or claim. Add relation- or claim-specific deep links from evidence and explanation surfaces into source detail, preserve passage text or text-span context on the destination, and support highlighting or scrolling to the exact evidence row so provenance inspection remains low-friction and trustworthy.
+
+#### High
+
+- [ ] **ET31-H1** `frontend/src/components/EvidenceTrace.tsx:93-221` + `frontend/src/views/ExplanationView.tsx` + `frontend/src/views/PropertyDetailView.tsx` — The reusable evidence-trace table surfaces source metadata and numeric contribution signals, but it omits the actual supporting statement or passage that made the source relevant. Users can see that a source contributed, but not what it contributed, unless they navigate away. Add a dedicated claim or passage column with concise quoted evidence and keep the current source/provenance metadata as secondary context.
+
+### Synthesis Explainability Audit — 2026-03-31
+
+Source: synthesis and computed-conclusion page audit
+
+#### High
+
+- [ ] **SYN31-H1** `frontend/src/views/SynthesisView.tsx:141-177` + `frontend/src/components/synthesis/SynthesisHeaderSection.tsx:36-61` + `frontend/src/components/synthesis/SynthesisRelationsSection.tsx:49-164` — The synthesis page presents metrics, counts, and relation-type summaries, but it does not begin with a concise synthesis statement that tells the user what the evidence currently says about the entity. Users must infer the overall conclusion from stats and accordions. Add a top-level synthesis summary block that states the current computed reading, leading support/contradiction pattern, and remaining uncertainty before the metric sections.
+
+### Scalability Of IA Audit — 2026-03-31
+
+Source: page-structure stress test for larger evidence sets
+
+#### High
+
+- [ ] **SCALE31-H1** `frontend/src/components/source-detail/SourceRelationsSection.tsx:35-117` + `frontend/src/views/SourceDetailView.tsx:245-249` — The source detail relation section does not scale structurally when a source has many linked relations. It renders one flat list with no grouping, filtering, sorting, or local search, so verification degrades into long scrolling and manual scanning. Redesign the section around scalable relation browsing: summary counts by kind and direction, filter chips, expandable groups, and deep links into a full relation or claim detail view.
+
 ### Holistic Product UX Audit — 2026-03-31
 
 Source: in-app code-path audit across navigation, source/evidence/inference surfaces
 
-#### Critical
-
-- [ ] **HPUX31-C1** `frontend/src/app/routes.tsx:49-67,82-85` + `frontend/src/views/SourceDetailView.tsx:212-249` + `frontend/src/api/search.ts:11-25,54-70` + `frontend/src/components/ClaimsList.tsx:1-206` — Claims/assertions are treated as a core domain object in the product story, but the UI does not expose them as a first-class navigable layer. Routes cover entities, sources, relations, evidence, synthesis, and explanation; source detail renders metadata, extraction, and relations only; search only indexes `entity`/`source`/`relation`; and the only dedicated claim UI component is orphaned and unused. Add a first-class claim surface with clear entry points from sources and evidence views, searchable/discoverable claim objects, and claim detail/deep-link patterns that preserve the distinction between raw source-backed assertions, relations, and computed conclusions.
-- [ ] **HPUX31-C2** `frontend/src/components/EvidenceTrace.tsx:148-216` + `frontend/src/views/SourceDetailView.tsx:212-249` + `frontend/src/components/source-detail/SourceRelationsSection.tsx:57-114` — The audit trail stops at the source document level instead of landing users on the exact supporting evidence item. Evidence/explanation tables link only to `/sources/:id`, and the source page then shows a flat relation list without passage highlighting, deep-linking, or a stable target for the contributing relation/claim. Add relation- or claim-specific deep links from evidence/explanation surfaces into source detail, preserve passage text or text-span context on the destination, and support highlighting or scrolling to the exact evidence row so provenance inspection remains low-friction and trustworthy.
-
 #### Major
 
-- [ ] **HPUX31-M1** `frontend/src/app/routes.tsx:57-59` + `frontend/src/views/ExplanationView.tsx:140-205` + `frontend/src/views/PropertyDetailView.tsx:176-247` — HyphaGraph exposes two separate destinations for the same computed object (`/explain/:entityId/:roleType` and `/entities/:id/properties/:roleType`), both backed by the same explanation data but framed differently. This splits the mental model for “what a computed property explanation is,” creates redundant navigation paths, and makes it harder for users to predict where to inspect a role-level conclusion. Consolidate these into one canonical property-explanation page and make the secondary route redirect or alias cleanly, with one consistent name, breadcrumb path, and action model.
 - [ ] **HPUX31-M2** `frontend/src/components/layout/DesktopNavigation.tsx:75-148` — The desktop `Entities` item behaves as a category picker instead of a predictable top-level destination. Clicking the global nav label opens a dropdown rather than taking users to the entity index, while other top-level items navigate directly, so the object model becomes less learnable and less consistent. Keep the global `Entities` item as a direct link to the full entity list, and expose categories as a secondary affordance such as an adjacent filter button, submenu chevron, or in-page filter preset.
-- [ ] **HPUX31-M3** `frontend/src/views/InferencesView.tsx:67-167,177-242,269-317` — The global inferences index does not scale into a serious expert analysis surface. It loads entity cards first and then fetches inference payloads one entity at a time, offers no filtering/sorting/grouping controls, and reduces each entity to a shallow list of role chips plus an `Explain` button. Replace the current N+1 browse view with a dedicated inference index model that supports server-backed filtering/sorting, explicit grouping by role/signal/disagreement, and dense comparison workflows so experts can triage the knowledge base instead of paging through disconnected cards.
 - [ ] **HPUX31-M4** `frontend/src/views/InferencesView.tsx:113-162,205-237` — Per-entity inference failures are not surfaced to the user. The page records `"Failed to load inferences"` into each card item, but `EntityInferenceCard` renders loading and success states only, so a failed card collapses into an ambiguous blank area rather than an explicit error. Render a card-level error state with retry affordance and a clear explanation that the entity exists but its computed reading could not be loaded, so users do not confuse transport failure with “no inference.”
 
 #### Minor
