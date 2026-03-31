@@ -2,6 +2,7 @@
 Pagination response schemas.
 
 Provides generic paginated response format with total count.
+Wire shape: { items, total, limit, offset } — the four real fields.
 """
 
 from typing import Generic, TypeVar, List
@@ -15,8 +16,10 @@ class PaginatedResponse(BaseModel, Generic[T]):
     """
     Generic paginated response with total count.
 
-    Includes the current page of results along with metadata
-    about the total number of results available.
+    Wire shape: items + total + limit + offset.
+    Callers that need derived values (has_more, current_page) should
+    compute them from these four fields rather than expecting them on
+    the wire.
     """
     items: List[T] = Field(
         ...,
@@ -40,18 +43,3 @@ class PaginatedResponse(BaseModel, Generic[T]):
         description="Number of items skipped",
         ge=0
     )
-
-    @property
-    def has_more(self) -> bool:
-        """Whether there are more items available."""
-        return self.offset + len(self.items) < self.total
-
-    @property
-    def current_page(self) -> int:
-        """Current page number (1-indexed)."""
-        return (self.offset // self.limit) + 1 if self.limit > 0 else 1
-
-    @property
-    def total_pages(self) -> int:
-        """Total number of pages."""
-        return (self.total + self.limit - 1) // self.limit if self.limit > 0 else 1
