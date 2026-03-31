@@ -47,6 +47,7 @@ class RelationRepository:
             .join(RelationRevision)
             .join(RelationRoleRevision)
             .where(RelationRevision.is_current == True)
+            .where(RelationRevision.status == "confirmed")
             .where(RelationRoleRevision.entity_id == entity_id)
             .where(Relation.is_rejected == False)
         )

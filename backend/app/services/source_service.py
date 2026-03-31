@@ -102,6 +102,8 @@ class SourceService:
             parent_id_field='source_id',
             parent_id=source.id,
         )
+        if current_revision is None or current_revision.status != "confirmed":
+            raise SourceNotFoundException(source_id=str(source_id))
 
         return source_to_read(source, current_revision)
 
@@ -139,6 +141,7 @@ class SourceService:
             select(Source, SourceRevision)
             .join(SourceRevision, Source.id == SourceRevision.source_id)
             .where(SourceRevision.is_current == True)
+            .where(SourceRevision.status == "confirmed")
         )
 
         if not filters:

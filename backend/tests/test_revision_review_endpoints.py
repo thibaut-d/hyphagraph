@@ -112,6 +112,31 @@ class TestRevisionReviewEndpointAuthorization:
         revision_review_service.get_draft_counts.assert_not_awaited()
 
     @pytest.mark.asyncio
+    async def test_counts_response_shape(self, revision_review_service, superuser):
+        """Counts endpoint must return exactly entity/relation/source/total as integers."""
+        revision_review_service.get_draft_counts.return_value = {
+            "entity": 3,
+            "relation": 7,
+            "source": 1,
+            "total": 11,
+        }
+
+        async def override_superuser():
+            return superuser
+
+        app.dependency_overrides[get_current_active_superuser] = override_superuser
+        app.dependency_overrides[_get_service] = _override_service(revision_review_service)
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get("/api/review/revisions/counts")
+
+        assert response.status_code == status.HTTP_200_OK
+        body = response.json()
+        assert body == {"entity": 3, "relation": 7, "source": 1, "total": 11}
+        # Ensure no unexpected keys leak through
+        assert set(body.keys()) == {"entity", "relation", "source", "total"}
+
+    @pytest.mark.asyncio
     async def test_confirm_passes_current_superuser_id(self, revision_review_service, superuser):
         revision_id = uuid4()
 

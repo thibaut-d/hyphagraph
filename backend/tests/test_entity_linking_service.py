@@ -181,3 +181,47 @@ class TestEntityLinkingService:
         assert matches[0].matched_entity_slug == "aspirin"
         assert matches[1].matched_entity_slug == "acetylsalicylic-acid"
         assert matches[2].matched_entity_id is None
+
+    async def test_draft_entity_not_matched_by_exact_slug(self, db_session, ui_category):
+        """Draft entities must not be matched by exact slug lookup (AUD29F-M1)."""
+        entity = Entity()
+        db_session.add(entity)
+        await db_session.flush()
+        db_session.add(EntityRevision(
+            entity_id=entity.id,
+            slug="draft-drug",
+            ui_category_id=ui_category.id,
+            status="draft",
+            is_current=True,
+        ))
+        await db_session.commit()
+
+        service = EntityLinkingService(db_session)
+        match = await service._find_exact_slug_match("draft-drug")
+
+        assert match is None
+
+    async def test_draft_entity_not_matched_by_synonym(self, db_session, ui_category):
+        """Draft entities must not be matched by synonym lookup (AUD29F-M1)."""
+        entity = Entity()
+        db_session.add(entity)
+        await db_session.flush()
+        db_session.add(EntityRevision(
+            entity_id=entity.id,
+            slug="draft-compound",
+            ui_category_id=ui_category.id,
+            status="draft",
+            is_current=True,
+        ))
+        db_session.add(EntityTerm(
+            entity_id=entity.id,
+            term="draft-synonym",
+            language="en",
+            display_order=1,
+        ))
+        await db_session.commit()
+
+        service = EntityLinkingService(db_session)
+        match = await service._find_synonym_match("draft-synonym")
+
+        assert match is None

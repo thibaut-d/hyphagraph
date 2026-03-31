@@ -143,7 +143,8 @@ class EntityLinkingService:
             .where(
                 and_(
                     EntityRevision.slug == slug,
-                    EntityRevision.is_current == True
+                    EntityRevision.is_current == True,
+                    EntityRevision.status == "confirmed",
                 )
             )
             .limit(1)
@@ -178,7 +179,8 @@ class EntityLinkingService:
             .where(
                 and_(
                     EntityTerm.term == term,
-                    EntityRevision.is_current == True
+                    EntityRevision.is_current == True,
+                    EntityRevision.status == "confirmed",
                 )
             )
             .limit(1)

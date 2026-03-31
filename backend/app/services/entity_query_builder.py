@@ -48,6 +48,7 @@ class EntityQueryBuilder:
             select(Entity, EntityRevision)
             .join(EntityRevision, Entity.id == EntityRevision.entity_id)
             .where(EntityRevision.is_current == True)
+            .where(EntityRevision.status == "confirmed")
             .where(Entity.is_rejected == False)
         )
 
@@ -72,10 +73,6 @@ class EntityQueryBuilder:
         if filters.search:
             search_term = f"%{filters.search.lower()}%"
             query = query.where(EntityRevision.slug.ilike(search_term))
-
-        # Filter by revision status (draft / confirmed)
-        if filters.status:
-            query = query.where(EntityRevision.status.in_(filters.status))
 
         return query
 

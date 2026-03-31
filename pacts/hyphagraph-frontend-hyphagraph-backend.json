@@ -464,6 +464,83 @@
       "type": "Synchronous/HTTP"
     },
     {
+      "description": "a request for draft revision counts",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "some draft revisions exist"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/api/review/revisions/counts"
+      },
+      "response": {
+        "body": {
+          "content": {
+            "entity": 2,
+            "relation": 5,
+            "source": 1,
+            "total": 8
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.entity": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.relation": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.source": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.total": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          },
+          "status": {}
+        },
+        "status": 200
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
       "description": "a request for entity 123e4567-e89b-42d3-a456-426614174000",
       "pending": false,
       "providerStates": [

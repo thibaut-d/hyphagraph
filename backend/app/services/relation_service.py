@@ -130,6 +130,8 @@ class RelationService:
             parent_id=relation.id,
             load_relationships=['roles'],
         )
+        if current_revision is None or current_revision.status != "confirmed":
+            raise RelationNotFoundException(relation_id=str(relation_id))
 
         entity_ids = {role.entity_id for role in current_revision.roles}
         entity_slug_map = await resolve_entity_slugs(self.db, entity_ids)
@@ -150,6 +152,8 @@ class RelationService:
             )
             if current_revision is None:
                 logger.warning("Relation %s has no current revision, skipping", relation.id)
+                continue
+            if current_revision.status != "confirmed":
                 continue
             revisions.append((relation, current_revision))
 

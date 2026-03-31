@@ -113,7 +113,7 @@ class EntityService:
             parent_id_field='entity_id',
             parent_id=entity.id,
         )
-        if current_revision is None:
+        if current_revision is None or current_revision.status != "confirmed":
             raise EntityNotFoundException(entity_id=str(entity_id))
 
         result = entity_to_read(entity, current_revision)
