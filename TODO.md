@@ -1,10 +1,15 @@
 # Current Work
 
-**Last updated**: 2026-03-31 (UX audit program findings consolidated)
+**Last updated**: 2026-03-31 (aligned with UX audit protocol)
 
 ---
 
 ## Open Findings
+
+Audit-protocol note:
+
+- Near-term prioritized findings below should reflect `current-model defect` or `implementation gap`.
+- `future-model proposal` items should be captured separately as structural redesign candidates, not mixed into the main immediate-fix queue.
 
 ### Page Information Architecture Audit — 2026-03-31
 
@@ -12,12 +17,11 @@ Source: page-family IA audit across core list/detail/computed/review surfaces
 
 #### Critical
 
-- [ ] **PIA31-C1** `frontend/src/app/routes.tsx:49-70,82-88` + `frontend/src/views/SourceDetailView.tsx:212-249` + `frontend/src/components/ClaimsList.tsx:1-206` + `frontend/src/api/search.ts:11-25,54-70` — The application has no first-class claim/assertion page family even though claims are a core domain object in the product model. There is no claim list route, no claim detail route, source detail does not expose claims as a structured page section, and search omits claims entirely. Introduce claim list/detail pages and source-level claim sections so users can inspect source-backed assertions directly instead of inferring them indirectly from relations and computed views.
 - [ ] **PIA31-C2** `frontend/src/app/routes.tsx:82-85` + `frontend/src/views/RelationsView.tsx:1-58` + `frontend/src/components/source-detail/SourceRelationsSection.tsx:57-114` + `frontend/src/components/extraction/ExtractionCard.tsx:148-166` — Relations are treated as first-class objects in the domain and appear in multiple surfaces, but the app still has no relation detail page. Users can create, edit, export, search toward, and review relations, yet the only dedicated route family is a dead-end list page plus edit forms. Add a relation detail page that foregrounds semantic meaning, participants/roles, supporting source context, and audit links, then point relation CTAs and search results to it.
 
 #### High
 
-- [ ] **PIA31-H1** `frontend/src/views/SourceDetailView.tsx:212-249` + `frontend/src/components/source-detail/SourceMetadataSection.tsx:29-90` + `frontend/src/components/source-detail/SourceExtractionSection.tsx:53-234` + `frontend/src/components/source-detail/SourceRelationsSection.tsx:35-117` — The source detail page is not architected primarily as a verification page. After the identity block it foregrounds extraction controls, then only later shows the current evidence structure, and it still lacks a dedicated excerpt/claim layer. Reorganize the source page around: identity and relevance summary, source-backed claims/excerpts, linked relations/entities, then extraction/curation actions. Keep extraction available, but demote it below the reading and verification content.
+- [ ] **PIA31-H1** `frontend/src/views/SourceDetailView.tsx:212-249` + `frontend/src/components/source-detail/SourceMetadataSection.tsx:29-90` + `frontend/src/components/source-detail/SourceExtractionSection.tsx:53-234` + `frontend/src/components/source-detail/SourceRelationsSection.tsx:35-117` — The source detail page is not architected primarily as a verification page. After the identity block it foregrounds extraction controls, then only later shows the current evidence structure, and it still lacks a dedicated excerpt or document-grounded statement layer. Reorganize the source page around: identity and relevance summary, source-backed excerpts/statements, linked relations/entities, then extraction/curation actions. Keep extraction available, but demote it below the reading and verification content.
 - [ ] **PIA31-H2** `frontend/src/app/routes.tsx:57-59` + `frontend/src/views/ExplanationView.tsx:140-217` + `frontend/src/views/PropertyDetailView.tsx:176-249` — The product currently has two page types for the same computed role-level object: `Explanation` and `Property detail`. Both are backed by the same explanation payload, but they present different page identities, headers, and navigation logic. Collapse these into one canonical page type with one stable name and one stable place in the entity page hierarchy.
 - [ ] **PIA31-H3** `frontend/src/views/InferencesView.tsx:67-167,177-242,269-317` — The inferences page is architected as a stack of asynchronous entity cards rather than as a true analysis index. That structure hides the page’s purpose, weakens scanning, and scales poorly when many entities and many inferred roles exist. Redesign it as a dense, filterable inference index with explicit columns/grouping for role, score direction, confidence, disagreement, and evidence counts.
 - [ ] **PIA31-H4** `frontend/src/views/ReviewQueueView.tsx:110-307` — The review queue page tries to house two different review systems in one shell without a strong page model. The top-level tabs mix staged extraction review and LLM draft review, the first tab label is vague, and the page hierarchy shifts abruptly between queue summary cards, filters, batch actions, and record cards. Reframe the page around explicit queue types with stronger tab labels, queue-specific introductions, and a stable section order: queue identity, summary metrics, filters, batch tools, then items.
@@ -40,7 +44,7 @@ Source: provenance, evidence-linking, and audit-trail audit
 
 #### High
 
-- [ ] **ET31-H1** `frontend/src/components/EvidenceTrace.tsx:93-221` + `frontend/src/views/ExplanationView.tsx` + `frontend/src/views/PropertyDetailView.tsx` — The reusable evidence-trace table surfaces source metadata and numeric contribution signals, but it omits the actual supporting statement or passage that made the source relevant. Users can see that a source contributed, but not what it contributed, unless they navigate away. Add a dedicated claim or passage column with concise quoted evidence and keep the current source/provenance metadata as secondary context.
+- [ ] **ET31-H1** `frontend/src/components/EvidenceTrace.tsx:93-221` + `frontend/src/views/ExplanationView.tsx` + `frontend/src/views/PropertyDetailView.tsx` — The reusable evidence-trace table surfaces source metadata and numeric contribution signals, but it omits the actual supporting statement or passage that made the source relevant. Users can see that a source contributed, but not what it contributed, unless they navigate away. Add a dedicated statement or passage column with concise quoted evidence and keep the current source/provenance metadata as secondary context.
 
 ### Synthesis Explainability Audit — 2026-03-31
 
@@ -56,7 +60,15 @@ Source: page-structure stress test for larger evidence sets
 
 #### High
 
-- [ ] **SCALE31-H1** `frontend/src/components/source-detail/SourceRelationsSection.tsx:35-117` + `frontend/src/views/SourceDetailView.tsx:245-249` — The source detail relation section does not scale structurally when a source has many linked relations. It renders one flat list with no grouping, filtering, sorting, or local search, so verification degrades into long scrolling and manual scanning. Redesign the section around scalable relation browsing: summary counts by kind and direction, filter chips, expandable groups, and deep links into a full relation or claim detail view.
+- [ ] **SCALE31-H1** `frontend/src/components/source-detail/SourceRelationsSection.tsx:35-117` + `frontend/src/views/SourceDetailView.tsx:245-249` — The source detail relation section does not scale structurally when a source has many linked relations. It renders one flat list with no grouping, filtering, sorting, or local search, so verification degrades into long scrolling and manual scanning. Redesign the section around scalable relation browsing: summary counts by kind and direction, filter chips, expandable groups, and deep links into a full relation detail view or exact evidence target.
+
+### Structural Redesign Candidates — Future-Model Proposals
+
+Source: items intentionally beyond the current `relation (claim)` product model; track separately from near-term implementation defects
+
+#### High
+
+- [ ] **FMP31-H1** `frontend/src/app/routes.tsx:49-70,82-88` + `frontend/src/views/SourceDetailView.tsx:212-249` + `frontend/src/components/ClaimsList.tsx:1-206` + `frontend/src/api/search.ts:11-25,54-70` — Future-model proposal: introduce a first-class claim/assertion page family separate from relations if the product intentionally splits raw document-grounded statements from normalized relation objects. That would require claim list/detail routes, source-level claim sections, and claim-aware search, but it should not be treated as an immediate defect while the current model still defines `relation (claim)` as the primary fact layer.
 
 ### Holistic Product UX Audit — 2026-03-31
 
