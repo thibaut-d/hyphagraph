@@ -27,6 +27,8 @@ describe("useEntityData", () => {
     slug: "aspirin",
     summary: { en: "Pain reliever" },
     created_at: "2025-01-01T00:00:00Z",
+    updated_at: "2025-01-01T00:00:00Z",
+    status: "confirmed",
   };
 
   beforeEach(() => {

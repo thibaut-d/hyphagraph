@@ -73,8 +73,13 @@ describe('Entities API — consumer contract', () => {
             id: like(ENTITY_ID),
             slug: like('aspirin'),
             created_at: like('2024-01-01T00:00:00'),
+            updated_at: like('2024-01-01T00:00:00'),
             summary: like(null),
             ui_category_id: like(null),
+            created_with_llm: like(null),
+            created_by_user_id: like(null),
+            status: like('confirmed'),
+            llm_review_status: like(null),
           })
         )
       })
@@ -85,6 +90,8 @@ describe('Entities API — consumer contract', () => {
         expect(data).toHaveProperty('id')
         expect(data).toHaveProperty('slug')
         expect(data).toHaveProperty('created_at')
+        expect(data).toHaveProperty('updated_at')
+        expect(data).toHaveProperty('status')
       }))
 
   it('GET /api/entities/filter-options returns filter option lists', () =>

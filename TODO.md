@@ -1,10 +1,42 @@
 # Current Work
 
-**Last updated**: 2026-03-30 (entity inference UX fixes implemented)
+**Last updated**: 2026-03-31 (information architecture audit findings added)
 
 ---
 
 ## Open Findings
+
+### Information Architecture Audit — 2026-03-31
+
+Source: `.temp/information_architecture_audit_2026-03-31.md`
+
+#### Major
+
+- [ ] **IA31-M1** `frontend/src/views/HomeView.tsx:183-301` — The home "Knowledge Graph Overview" grid mixes unlike content types under the same visual grammar. Entities and Sources are quantitative status cards with counts plus creation/view actions, while Relations and Inferences are descriptive shortcut cards with no comparable metric payload, yet all four share the same size, placement, and card treatment. Split dashboard metrics from navigation shortcuts, or redesign the cards so common visual structure implies common meaning.
+- [ ] **IA31-M2** `frontend/src/views/SourcesView.tsx:190-260` + `frontend/src/views/EntitiesView.tsx:218-265` — The list-page top bars overload one horizontal action cluster with unrelated tasks and inconsistent emphasis. Filters, exports, imports, discovery, and creation all compete in one row, and on mobile the labels collapse into an icon strip that depends on memory instead of clear grouping. Reorganize these controls into explicit action groups with clearer primary/secondary hierarchy and mobile-safe labeling.
+- [ ] **IA31-M3** `frontend/src/components/source-detail/SourceExtractionSection.tsx:94-153` — Source extraction save feedback duplicates the same skipped-relation message across two alerts. The first alert already reports skipped relations and lists them, then a second warning restates that they were left in the review queue with slightly different wording. Collapse the post-save outcome into a single status block so one event yields one message path.
+
+#### Minor
+
+- [ ] **IA31-m1** `frontend/src/components/source-detail/SourceExtractionSection.tsx:155-234` — The extraction panel layers promotional, instructional, and status copy without a clear narrative hierarchy. A large emoji-heavy CTA, high-quality hint, manual-option divider, uploaded-file chip, and closing explanatory caption all compete for attention around one workflow, which dilutes the main decision path. Reduce duplicate explanation copy and structure the section around one primary action, one alternative path, and one compact status area.
+
+### Frontend UX Bug Audit — 2026-03-31
+
+Source: `.temp/frontend_ux_bug_audit_2026-03-31.md`
+
+#### Major
+
+- [ ] **UX31-M1** `frontend/src/views/ReviewQueueView.tsx:46-67,82-99,223-245` + `frontend/src/hooks/useReviewQueue.ts:51-55` + `frontend/src/hooks/useSelection.ts:24-44` — Review-queue batch actions can target hidden items after the visible list changes. The queue clears and refetches extractions when filters/type change, but the independent `selectedIds` set is not reset, so the selection bar can keep acting on rows that are no longer visible in the current review context. Clear selection whenever the visible extraction set or filter context changes, and add a test that proves filter changes cannot leave stale hidden selections behind.
+- [ ] **UX31-M2** `frontend/src/components/extraction/ExtractionCard.tsx:161-168` + `frontend/src/app/routes.tsx:82-85` — The review queue exposes a broken "View Relation" action after materialization. `ExtractionCard` links to `/relations/:id`, but the router only defines `/relations`, `/relations/new`, `/relations/batch`, and `/relations/:id/edit`, so the CTA sends users to a non-existent route. Point the action to a real destination or add the missing relation-detail route, and cover the navigation target in a routing test.
+
+### Communication Audit — 2026-03-31
+
+Source: `.temp/communication_audit_2026-03-31.md`
+
+#### Major
+
+- [ ] **COMM31-M1** `frontend/src/api/__tests__/pact/entities.pact.test.ts:31-50` + `frontend/src/api/__tests__/pact/sources.pact.test.ts:22-41` + `frontend/src/api/__tests__/pact/relations.pact.test.ts:25-43` — Core consumer-contract tests under-specify the wire shapes shared between backend and frontend bricks. The runtime clients/types expect richer entity/source/relation payloads, but the pact fixtures only pin partial list items, so backend regressions in fields like `updated_at`, `status`, `llm_review_status`, role metadata, or pagination `offset` can slip through contract verification unnoticed. Tighten these pact tests to match the actual `EntityRead`/`SourceRead`/`RelationRead` list payloads, ideally from shared contract fixtures rather than hand-trimmed examples.
+- [ ] **COMM31-M2** `frontend/src/api/extractionReview.ts:96-128,192-205` + `backend/app/schemas/staged_extraction.py:97-113,204-233` — The extraction-review client advertises a broader shared filter contract than it actually sends over the wire. `StagedExtractionFilters` includes `source_id`, `auto_approved`, score bounds, flag filtering, auto-commit filtering, and sorting, but `listPendingExtractions()` and `listAllExtractions()` serialize only subsets, so callers can pass filters that are silently dropped before reaching the backend. Either send the full supported filter set or narrow the frontend type so unsupported filters are impossible to pass.
 
 ### LLM Prompt Audit — 2026-03-31
 
@@ -122,7 +154,7 @@ Source: `.temp/communication_audit_2026-03-29.md`
 
 #### Major
 
-- [ ] **AUD29K-M1** `backend/app/schemas/entity.py:34-53` + `backend/app/schemas/source.py:58-82` + `backend/app/schemas/relation.py:58-77` + `frontend/src/types/entity.ts:1-9` + `frontend/src/types/source.ts:3-15` + `frontend/src/types/relation.ts:25-36` — Core read contracts have drifted between backend and frontend bricks. The backend now returns provenance/review/document fields such as `updated_at`, `created_with_llm`, `created_by_user_id`, `llm_review_status`, `document_format`, `document_file_name`, and `document_extracted_at`, but the frontend’s handwritten resource types still model older, smaller payloads. Sync the frontend types with the backend schemas, then add contract coverage so future schema changes cannot silently widen the gap.
+- [x] **AUD29K-M1** `backend/app/schemas/entity.py:34-53` + `backend/app/schemas/source.py:58-82` + `backend/app/schemas/relation.py:58-77` + `frontend/src/types/entity.ts:1-12` + `frontend/src/types/source.ts:3-20` + `frontend/src/types/relation.ts:1-38` — Core read-contract type drift between backend and frontend bricks is no longer present. The frontend resource types now include the provenance/review/document fields returned by the backend. Remaining contract-coverage weakness is tracked separately in `COMM31-M1`.
 - [ ] **AUD29K-M2** `backend/app/schemas/review.py:15-29` + `backend/app/services/revision_review_service.py:57-116` + `frontend/src/api/revisionReview.ts:15-26` — The revision-review API contract is inconsistent across bricks: backend draft-revision responses include `llm_review_status`, but the frontend `DraftRevisionRead` type omits it. Add the missing field to the frontend client type and cover it in the review-queue contract tests so the queue UI and API agree on the shape.
 - [ ] **AUD29K-M3** `backend/app/schemas/pagination.py:14-56` + `frontend/src/api/entities.ts:44-49` + `frontend/src/api/sources.ts:24-29` — Pagination is named like a shared abstraction but behaves like separate contracts. Backend `PaginatedResponse` defines derived metadata (`has_more`, `current_page`, `total_pages`) as Python properties that are not serialized, while frontend clients separately define narrower pagination interfaces. Either expose the derived fields as real API fields or remove them from the backend schema and standardize one documented wire contract mirrored in the frontend.
 

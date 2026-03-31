@@ -24,6 +24,8 @@ describe("EntityDetailFilters", () => {
     origin: "Journal",
     url: "https://example.com",
     trust_level: 0.8,
+    created_at: new Date().toISOString(),
+    status: "confirmed",
     ...overrides,
   });
 

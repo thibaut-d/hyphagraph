@@ -46,6 +46,8 @@ export const mockEntity: EntityRead = {
   ui_category_id: "drug",
   summary: { en: "A common pain reliever" },
   created_at: "2025-01-01T00:00:00Z",
+  updated_at: "2025-01-01T00:00:00Z",
+  status: "confirmed",
 };
 
 export const mockRelations: RelationRead[] = [
@@ -55,9 +57,12 @@ export const mockRelations: RelationRead[] = [
     kind: "treats",
     direction: "supports",
     confidence: 0.8,
+    created_at: "2025-01-01T00:00:00Z",
+    updated_at: "2025-01-01T00:00:00Z",
+    status: "confirmed",
     roles: [
-      { entity_id: "entity-1", role_type: "agent", entity_slug: "paracetamol" },
-      { entity_id: "entity-1", role_type: "patient", entity_slug: "paracetamol" },
+      { id: "role-1", relation_revision_id: "rev-1", entity_id: "entity-1", role_type: "agent", entity_slug: "paracetamol" },
+      { id: "role-2", relation_revision_id: "rev-1", entity_id: "entity-1", role_type: "patient", entity_slug: "paracetamol" },
     ],
     notes: "Strong evidence",
   },
@@ -67,9 +72,12 @@ export const mockRelations: RelationRead[] = [
     kind: "causes_side_effect",
     direction: "contradicts",
     confidence: 0.6,
+    created_at: "2025-01-01T00:00:00Z",
+    updated_at: "2025-01-01T00:00:00Z",
+    status: "confirmed",
     roles: [
-      { entity_id: "entity-1", role_type: "agent", entity_slug: "paracetamol" },
-      { entity_id: "entity-3", role_type: "outcome", entity_slug: "nausea" },
+      { id: "role-3", relation_revision_id: "rev-2", entity_id: "entity-1", role_type: "agent", entity_slug: "paracetamol" },
+      { id: "role-4", relation_revision_id: "rev-2", entity_id: "entity-3", role_type: "outcome", entity_slug: "nausea" },
     ],
   },
   {
@@ -78,7 +86,10 @@ export const mockRelations: RelationRead[] = [
     kind: "treats",
     direction: "supports",
     confidence: 0.9,
-    roles: [{ entity_id: "entity-1", role_type: "agent", entity_slug: "paracetamol" }],
+    created_at: "2025-01-01T00:00:00Z",
+    updated_at: "2025-01-01T00:00:00Z",
+    status: "confirmed",
+    roles: [{ id: "role-5", relation_revision_id: "rev-3", entity_id: "entity-1", role_type: "agent", entity_slug: "paracetamol" }],
   },
 ];
 
@@ -91,7 +102,9 @@ export const mockSources: SourceRead[] = [
     kind: "clinical_trial",
     origin: "journal",
     trust_level: 0.9,
+    url: "https://example.com/source-1",
     created_at: "2025-01-01T00:00:00Z",
+    status: "confirmed",
   },
   {
     id: "source-2",
@@ -101,7 +114,9 @@ export const mockSources: SourceRead[] = [
     kind: "observational_study",
     origin: "journal",
     trust_level: 0.7,
+    url: "https://example.com/source-2",
     created_at: "2025-01-01T00:00:00Z",
+    status: "confirmed",
   },
   {
     id: "source-3",
@@ -111,7 +126,9 @@ export const mockSources: SourceRead[] = [
     kind: "meta_analysis",
     origin: "journal",
     trust_level: 0.95,
+    url: "https://example.com/source-3",
     created_at: "2025-01-01T00:00:00Z",
+    status: "confirmed",
   },
 ];
 

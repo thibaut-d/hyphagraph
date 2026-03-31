@@ -58,6 +58,7 @@ export const mockSource: SourceRead = {
   url: "https://example.com/study",
   authors: ["Author A", "Author B"],
   created_at: new Date().toISOString(),
+  status: "confirmed",
 };
 
 export const mockRelations: RelationRead[] = [
@@ -67,8 +68,10 @@ export const mockRelations: RelationRead[] = [
     kind: "effect",
     direction: "positive",
     confidence: 0.9,
-    roles: [{ role_type: "drug", entity_id: "entity-1" }],
+    roles: [{ id: "role-1", relation_revision_id: "rev-1", role_type: "drug", entity_id: "entity-1" }],
     created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    status: "confirmed",
   },
   {
     id: "rel-2",
@@ -76,8 +79,10 @@ export const mockRelations: RelationRead[] = [
     kind: "mechanism",
     direction: "supports",
     confidence: 0.8,
-    roles: [{ role_type: "drug", entity_id: "entity-2" }],
+    roles: [{ id: "role-2", relation_revision_id: "rev-2", role_type: "drug", entity_id: "entity-2" }],
     created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    status: "confirmed",
   },
 ];
 

@@ -48,6 +48,8 @@ describe('EditEntityView', () => {
     summary: { en: 'Analgesic drug', fr: 'Médicament analgésique' },
     ui_category_id: 'cat-1',
     created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    status: 'confirmed' as const,
   };
 
   beforeEach(() => {

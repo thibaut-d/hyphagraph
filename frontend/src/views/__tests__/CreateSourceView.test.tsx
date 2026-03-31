@@ -143,6 +143,7 @@ describe('CreateSourceView', () => {
         url: 'https://example.com',
         trust_level: 0.5,
         created_at: new Date().toISOString(),
+        status: 'confirmed' as const,
       };
 
       vi.mocked(sourceApi.createSource).mockResolvedValue(mockSource);
@@ -173,6 +174,7 @@ describe('CreateSourceView', () => {
         url: 'https://example.com/article',
         trust_level: 0.5,
         created_at: new Date().toISOString(),
+        status: 'confirmed' as const,
       };
 
       vi.mocked(sourceApi.createSource).mockResolvedValue(mockSource);
@@ -218,6 +220,7 @@ describe('CreateSourceView', () => {
         trust_level: 0.9,
         summaries: { en: 'English summary', fr: 'French summary' },
         created_at: new Date().toISOString(),
+        status: 'confirmed' as const,
       };
 
       vi.mocked(sourceApi.createSource).mockResolvedValue(mockSource);
@@ -276,6 +279,7 @@ describe('CreateSourceView', () => {
         authors: ['Smith', 'Jones', 'Brown'],
         trust_level: 0.5,
         created_at: new Date().toISOString(),
+        status: 'confirmed' as const,
       };
 
       vi.mocked(sourceApi.createSource).mockResolvedValue(mockSource);
@@ -310,6 +314,7 @@ describe('CreateSourceView', () => {
         url: 'https://example.com',
         trust_level: 0.5,
         created_at: new Date().toISOString(),
+        status: 'confirmed' as const,
       };
 
       vi.mocked(sourceApi.createSource).mockResolvedValue(mockSource);

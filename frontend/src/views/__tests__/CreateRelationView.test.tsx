@@ -55,11 +55,15 @@ describe('CreateRelationView', () => {
       id: 'entity-1',
       slug: 'aspirin',
       created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      status: 'confirmed',
     },
     {
       id: 'entity-2',
       slug: 'headache',
       created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      status: 'confirmed',
     },
   ];
 
@@ -68,15 +72,19 @@ describe('CreateRelationView', () => {
       id: 'source-1',
       kind: 'study',
       title: 'Study on Aspirin',
+      url: 'https://example.com/source-1',
       trust_level: 0.9,
       created_at: new Date().toISOString(),
+      status: 'confirmed',
     },
     {
       id: 'source-2',
       kind: 'article',
       title: 'Medical Article',
+      url: 'https://example.com/source-2',
       trust_level: 0.8,
       created_at: new Date().toISOString(),
+      status: 'confirmed',
     },
   ];
 

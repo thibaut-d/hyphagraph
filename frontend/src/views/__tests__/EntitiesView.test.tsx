@@ -85,6 +85,8 @@ describe('EntitiesView', () => {
       summary: { en: 'Analgesic drug' },
       ui_category_id: 'cat-1',
       created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      status: 'confirmed' as const,
     },
     {
       id: 'entity-2',
@@ -92,6 +94,8 @@ describe('EntitiesView', () => {
       summary: { en: 'Metabolic disease' },
       ui_category_id: 'cat-2',
       created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      status: 'confirmed' as const,
     },
     {
       id: 'entity-3',
@@ -99,6 +103,8 @@ describe('EntitiesView', () => {
       summary: { en: 'Elevated body temperature' },
       ui_category_id: undefined, // No category
       created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      status: 'confirmed' as const,
     },
   ];
 

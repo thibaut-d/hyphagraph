@@ -42,8 +42,8 @@ describe("SynthesisView actions", () => {
               source_id: "source-1",
               direction: "supports",
               roles: [
-                { entity_id: "drug-1", entity_slug: "paracetamol", role_type: "subject" },
-                { entity_id: "condition-1", entity_slug: "fever", role_type: "object" },
+                { id: "role-1", relation_revision_id: "rev-1", entity_id: "drug-1", entity_slug: "paracetamol", role_type: "subject" },
+                { id: "role-2", relation_revision_id: "rev-1", entity_id: "condition-1", entity_slug: "fever", role_type: "object" },
               ],
               scope: { population: "adults" },
             }),
@@ -53,8 +53,8 @@ describe("SynthesisView actions", () => {
               source_id: "source-2",
               direction: "contradicts",
               roles: [
-                { entity_id: "drug-1", entity_slug: "paracetamol", role_type: "subject" },
-                { entity_id: "condition-2", entity_slug: "headache", role_type: "object" },
+                { id: "role-3", relation_revision_id: "rev-2", entity_id: "drug-1", entity_slug: "paracetamol", role_type: "subject" },
+                { id: "role-4", relation_revision_id: "rev-2", entity_id: "condition-2", entity_slug: "headache", role_type: "object" },
               ],
             }),
           ],

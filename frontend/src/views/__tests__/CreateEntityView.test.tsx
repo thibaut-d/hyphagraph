@@ -90,6 +90,8 @@ describe('CreateEntityView', () => {
       id: '123',
       slug: 'aspirin',
       created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      status: 'confirmed' as const,
     };
 
     vi.mocked(entityApi.createEntity).mockResolvedValue(mockEntity);
@@ -167,6 +169,8 @@ describe('CreateEntityView', () => {
       id: '123',
       slug: 'aspirin',
       created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      status: 'confirmed' as const,
     };
 
     vi.mocked(entityApi.createEntity).mockResolvedValue(mockEntity);
@@ -207,6 +211,8 @@ describe('CreateEntityView', () => {
       id: '123',
       slug: 'aspirin',
       created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      status: 'confirmed' as const,
     };
 
     vi.mocked(entityApi.createEntity).mockResolvedValue(mockEntity);

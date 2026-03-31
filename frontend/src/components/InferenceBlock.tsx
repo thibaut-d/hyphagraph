@@ -52,6 +52,7 @@ function ScoreBar({ score }: { score: number | null }) {
 
   const percentage = ((score + 1) / 2) * 100;
   const { color } = getScoreInterpretation(score);
+  const progressColor = color === "default" ? "primary" : color;
 
   return (
     <Box sx={{ width: "100%" }}>
@@ -60,7 +61,7 @@ function ScoreBar({ score }: { score: number | null }) {
           <LinearProgress
             variant="determinate"
             value={percentage}
-            color={color}
+            color={progressColor}
             sx={{ height: 8, borderRadius: 1 }}
           />
         </Box>
@@ -216,8 +217,8 @@ function RoleInferenceCard({
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
           <Chip
             label={t("inference.coverage_chip", {
-              defaultValue: "{{count}} relation{{suffix}} reviewed",
-              count: coverage.toFixed(0),
+              defaultValue: "{{n}} relation{{suffix}} reviewed",
+              n: coverage.toFixed(0),
               suffix: coverage === 1 ? "" : "s",
             })}
             size="small"

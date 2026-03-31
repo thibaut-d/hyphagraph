@@ -64,6 +64,14 @@ describe('Sources API — consumer contract', () => {
             title: like('Test Study'),
             url: like('https://example.com'),
             trust_level: like(0.8),
+            created_at: like('2024-01-01T00:00:00'),
+            created_with_llm: like(null),
+            created_by_user_id: like(null),
+            status: like('confirmed'),
+            llm_review_status: like(null),
+            document_format: like(null),
+            document_file_name: like(null),
+            document_extracted_at: like(null),
           })
         )
       })
@@ -74,6 +82,8 @@ describe('Sources API — consumer contract', () => {
         expect(data).toHaveProperty('id')
         expect(data).toHaveProperty('kind')
         expect(data).toHaveProperty('title')
+        expect(data).toHaveProperty('status')
+        expect(data).toHaveProperty('created_at')
       }))
 
   it('POST /api/sources creates a source when authenticated', () =>

@@ -73,6 +73,8 @@ describe("DisagreementsView", () => {
     slug: "paracetamol",
     summary: { en: "Common pain reliever" },
     created_at: "2025-01-01T00:00:00Z",
+    updated_at: "2025-01-01T00:00:00Z",
+    status: "confirmed",
   };
 
   const createMockRelation = (overrides?: Partial<RelationRead>): RelationRead => ({
@@ -84,9 +86,11 @@ describe("DisagreementsView", () => {
     scope: { population: "adults" },
     notes: "Observed in randomized trial",
     created_at: "2025-01-01T00:00:00Z",
+    updated_at: "2025-01-01T00:00:00Z",
+    status: "confirmed" as const,
     roles: [
-      { entity_id: "drug-1", entity_slug: "paracetamol", role_type: "subject" },
-      { entity_id: "condition-1", entity_slug: "fever", role_type: "object" },
+      { id: "role-1", relation_revision_id: "rev-1", entity_id: "drug-1", entity_slug: "paracetamol", role_type: "subject" },
+      { id: "role-2", relation_revision_id: "rev-1", entity_id: "condition-1", entity_slug: "fever", role_type: "object" },
     ],
     ...overrides,
   });

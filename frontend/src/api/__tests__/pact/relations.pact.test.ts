@@ -69,9 +69,17 @@ describe('Relations API — consumer contract', () => {
             kind: like('treats'),
             direction: like('positive'),
             confidence: like(0.8),
+            created_at: like('2024-01-01T00:00:00'),
+            updated_at: like('2024-01-01T00:00:00'),
+            created_with_llm: like(null),
+            status: like('confirmed'),
+            llm_review_status: like(null),
             roles: eachLike({
+              id: like('423e4567-e89b-42d3-a456-426614174000'),
+              relation_revision_id: like(RELATION_ID),
               entity_id: like(ENTITY_ID),
               role_type: like('drug'),
+              disagreement: like(null),
             }),
           })
         )
@@ -82,8 +90,14 @@ describe('Relations API — consumer contract', () => {
         expect(res.status).toBe(200)
         expect(data).toHaveProperty('id')
         expect(data).toHaveProperty('source_id')
+        expect(data).toHaveProperty('updated_at')
+        expect(data).toHaveProperty('status')
         expect(data).toHaveProperty('roles')
         expect(Array.isArray(data.roles)).toBe(true)
+        if (data.roles.length > 0) {
+          expect(data.roles[0]).toHaveProperty('id')
+          expect(data.roles[0]).toHaveProperty('relation_revision_id')
+        }
       }))
 
   it('POST /api/relations creates a relation when authenticated', () =>

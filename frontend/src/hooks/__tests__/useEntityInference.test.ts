@@ -40,6 +40,8 @@ describe("useEntityInference", () => {
           confidence: 0.8,
           roles: [],
           created_at: "2025-01-01T00:00:00Z",
+          updated_at: "2025-01-01T00:00:00Z",
+          status: "confirmed" as const,
         },
       ],
     },
@@ -57,8 +59,10 @@ describe("useEntityInference", () => {
     year: 2024,
     kind: "paper",
     origin: "journal",
+    url: "https://example.com/source-1",
     trust_level: 0.9,
     created_at: "2025-01-01T00:00:00Z",
+    status: "confirmed",
   };
 
   beforeEach(() => {

@@ -135,6 +135,8 @@ describe('EntityDetailView', () => {
     id: '123e4567-e89b-12d3-a456-426614174000',
     slug: 'aspirin',
     created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    status: 'confirmed' as const,
   };
 
   const mockInference: InferenceRead = {
@@ -149,6 +151,8 @@ describe('EntityDetailView', () => {
           confidence: 0.9,
           roles: [],
           created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          status: 'confirmed' as const,
         },
       ],
     },

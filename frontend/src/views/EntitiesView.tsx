@@ -291,7 +291,7 @@ export function EntitiesView() {
           <>
             <List>
               {entities.map((e) => {
-                const categoryLabel = getCategoryLabel(e.ui_category_id);
+                const categoryLabel = getCategoryLabel(e.ui_category_id ?? undefined);
                 const consensusColor: Record<string, "success" | "warning" | "error" | "default"> = {
                   strong: "success",
                   moderate: "warning",
