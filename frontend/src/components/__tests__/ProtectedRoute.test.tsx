@@ -5,7 +5,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter, Routes, Route } from "react-router-dom";
+import { MemoryRouter, Routes, Route, useLocation } from "react-router-dom";
 import { ProtectedRoute } from "../ProtectedRoute";
 import { SuperuserRoute } from "../SuperuserRoute";
 
@@ -56,6 +56,37 @@ describe("ProtectedRoute", () => {
 
     expect(screen.getByText("Login Page")).toBeInTheDocument();
     expect(screen.queryByText("Protected Content")).not.toBeInTheDocument();
+  });
+
+  it("passes the attempted path as returnTo state when redirecting", () => {
+    mockUseAuth.mockReturnValue({ user: null, loading: false });
+
+    // Capture the location state on the /account route
+    let capturedState: unknown = undefined;
+    function AccountCapture() {
+      const loc = useLocation();
+      capturedState = loc.state;
+      return <div>Login Page</div>;
+    }
+
+    render(
+      <MemoryRouter initialEntries={["/entities/abc/edit"]}>
+        <Routes>
+          <Route
+            path="/entities/:id/edit"
+            element={
+              <ProtectedRoute>
+                <div>Edit Page</div>
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/account" element={<AccountCapture />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText("Login Page")).toBeInTheDocument();
+    expect(capturedState).toEqual({ returnTo: "/entities/abc/edit" });
   });
 
   it("renders children when authenticated", () => {

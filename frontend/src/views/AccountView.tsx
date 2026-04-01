@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import {
   Paper,
@@ -17,6 +17,8 @@ import { useAsyncAction } from "../hooks/useAsyncAction";
 export function AccountView() {
   const { t } = useTranslation();
   const { user, login, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -25,6 +27,7 @@ export function AccountView() {
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [error, setError] = useState("");
   const { isRunning, run } = useAsyncAction((message) => setError(message ?? ""));
+  const returnTo = typeof location.state?.returnTo === "string" ? location.state.returnTo : null;
 
   const handleLogin = async () => {
     setError("");
@@ -40,6 +43,8 @@ export function AccountView() {
     if (!result.ok) {
       return;
     }
+
+    navigate(returnTo ?? "/", { replace: true });
   };
 
   const handleRegister = async () => {
@@ -108,6 +113,11 @@ export function AccountView() {
         spacing={2}
         onSubmit={(event) => {
           event.preventDefault();
+          const submitterAction = (event.nativeEvent as SubmitEvent).submitter?.getAttribute("data-action");
+          if (submitterAction === "register" || (!submitterAction && passwordConfirm.trim().length > 0)) {
+            void handleRegister();
+            return;
+          }
           void handleLogin();
         }}
       >
@@ -141,6 +151,12 @@ export function AccountView() {
           onChange={(e) => {
             setPasswordConfirm(e.target.value);
             setPasswordConfirmError("");
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              void handleRegister();
+            }
           }}
           error={!!passwordConfirmError}
           helperText={passwordConfirmError || t("account.password_confirm_hint", "Only required for registration")}
@@ -182,17 +198,15 @@ export function AccountView() {
           </Paper>
         )}
 
-        <Button type="submit" variant="contained" disabled={isRunning}>
+        <Button type="submit" variant="contained" disabled={isRunning} data-action="login">
           {t("account.login", "Login")}
         </Button>
 
         <Button
-          type="button"
+          type="submit"
           variant="outlined"
           disabled={isRunning}
-          onClick={() => {
-            void handleRegister();
-          }}
+          data-action="register"
         >
           {t("account.register", "Register")}
         </Button>
