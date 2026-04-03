@@ -1,6 +1,6 @@
 # Current Work
 
-**Last updated**: 2026-03-31 (aligned with UX audit protocol)
+**Last updated**: 2026-04-03 (full 15-category audit)
 
 ---
 
@@ -10,6 +10,54 @@ Audit-protocol note:
 
 - Near-term prioritized findings below should reflect `current-model defect` or `implementation gap`.
 - `future-model proposal` items should be captured separately as structural redesign candidates, not mixed into the main immediate-fix queue.
+
+### Full Codebase Audit — 2026-04-03 (all 15 categories)
+
+Source: `.temp/full_audit_2026-04-03.md`
+
+#### Critical
+
+- [ ] **AUD03-C1** `backend/app/services/explanation_read_models.py:24-25` — `build_contradiction_detail()` collects supporting and contradicting sources from evidence evidence but returns empty lists for both, hiding contradictions from users. Fix: return the actually-collected source lists instead of discarding them.
+- [ ] **AUD03-C2** `.env.sample:33,39,46` — Contains `changeme123` as `ADMIN_PASSWORD` and weak `SECRET_KEY`/`JWT_SECRET_KEY` placeholders that can be accidentally deployed. Fix: replace with generation-command prompts, remove unused `JWT_SECRET_KEY`, add deployment note.
+- [ ] **AUD03-C3** `frontend/src/views/InferencesView.tsx:46,115,157,232` — "No data", "No inferences computed yet", "Explain" button, and "Failed to load inferences" are hardcoded English strings missing i18n. The error path at line 232 also never renders an error state in `EntityInferenceCard` — failed cards collapse into blank areas. Fix: replace all four with `t()` calls, add keys to en.json/fr.json, render card-level error state with retry affordance.
+
+#### Major
+
+- [ ] **AUD03-M1** `backend/app/` (77 instances, critical in `audit.py` and `document_extraction_routes.py`) — 77 bare `except Exception:` clauses swallow root causes throughout the backend. Fix: replace with specific exception types or add `logger.exception(...)` before re-raising in each catch block.
+- [ ] **AUD03-M2** `backend/app/services/batch_extraction_orchestrator.py`, `backend/app/services/document_extraction_processing.py` — These services return empty collections on failure without logging, making it impossible for callers to distinguish valid-empty from silently-failed extraction. Fix: add `logger.warning(...)` before each empty-collection return in failure paths.
+- [ ] **AUD03-M3** `backend/app/startup.py:75-77` — Admin bootstrap only emits a `warning`-level rotation reminder, easily missed. Fix: elevate to `logger.critical()` with clear instruction to change password via `/auth/change-password`.
+- [ ] **AUD03-M4** `backend/app/services/import_service.py` (791 lines) — Monolithic module handling CSV/JSON/BibTeX/RIS parsing, validation, preview, and bulk import. Exceeds 800-line limit and is a high-risk AI edit target. Fix: extract BibTeX parsing to `bibtex_parser.py`, RIS parsing to `ris_parser.py`; keep `ImportService` as orchestrator (~400 lines target).
+- [ ] **AUD03-M5** `backend/app/services/document_extraction_processing.py` (787 lines) — God module mixing protocol definitions, preview orchestration, URL/PubMed fetch, source-revision enrichment, staged-extraction reconciliation, and graph materialization. 19 local imports. Also tracked as AUD29D-M5. Fix: extract `_fetch_document_from_url()` to `document_fetcher.py`; extract batch result aggregation; remove broad re-export from `document_extraction_workflow.py`.
+- [ ] **AUD03-M6** `frontend/src/views/AdminView.tsx` (611 lines) — 611-line view with 11 `useState` calls, no dedicated tests. High-risk AI edit target. Fix: create `frontend/src/views/__tests__/AdminView.test.tsx` covering user list, create/edit/delete dialogs, category management, error states, and superuser authorization.
+- [ ] **AUD03-M7** `backend/app/api/*.py`, `backend/app/services/*.py` (338+ functions) — Most public async API endpoint functions and many service methods lack `-> ReturnType` annotations. Fix: add return type annotations to all public functions; start with most-called services (inference, explanation, entity, relation).
+- [ ] **AUD03-M8** `backend/app/api/document_extraction_dependencies.py:28-37` — `UrlFetcher` and `infer_trust_level_from_pubmed_metadata` use bare `*args, **kwargs` with no type hints or return types. Fix: add explicit parameter and return type annotations.
+- [ ] **AUD03-M9** `backend/app/services/revision_review_service.py:242` — `@staticmethod def _model_for(revision_kind: str):` has no return type despite returning one of three revision model types. Fix: add `-> type[EntityRevision | RelationRevision | SourceRevision]`.
+- [ ] **AUD03-M10** `frontend/src/views/InferencesView.tsx:136-142` — Inference confidence and disagreement values displayed as crisp percentages with no contextual framing that these are computed metrics subject to evidence gaps. Fix: add tooltip or subtitle explaining "Computed confidence based on available evidence" and visual distinction from verified data.
+- [ ] **AUD03-M11** `docs/architecture/ERROR_HANDLING_ARCHITECTURE.md:653,658,691,708,746,752,787,792` — Multiple TODO comments describe retry logic, log levels, error metrics, and log aggregation that don't yet exist in code. Readers cannot distinguish documented-and-implemented from planned. Fix: move all TODO items to a clearly labeled "Planned Enhancements" section at the end, or track in TODO.md.
+- [ ] **AUD03-M12** `docs/architecture/API_COMMUNICATION_AUDIT.md:329` — References `docs/development/API_GUIDE.md (TODO)` — that file does not exist. Fix: create `docs/development/API_GUIDE.md` with API naming/versioning/request-response conventions, or point the reference to an existing doc section.
+- [ ] **AUD03-M13** `backend/app/services/extraction_service.py` (365 lines) — Core LLM-based extraction logic with zero unit tests. Fix: create `backend/tests/test_extraction_service.py` covering relation extraction, role extraction, confidence scoring, and LLM failure handling.
+- [ ] **AUD03-M14** `backend/app/services/batch_extraction_orchestrator.py` (527 lines) — Large batch operations service with zero unit tests. Fix: create `backend/tests/test_batch_extraction_orchestrator.py` covering batch orchestration, progress tracking, error recovery, cancellation, and empty-result paths.
+- [ ] **AUD03-M15** `backend/app/api/entities.py`, `relations.py`, `sources.py`, `inferences.py`, `extraction.py`, `search.py`, `admin.py`, `users.py`, `import_routes.py`, `entity_terms.py`, `relation_types.py` — 16 core API endpoint files without dedicated tests (only 8/16+ covered). Fix: create endpoint test files prioritized as: `test_entities_endpoints.py`, `test_relations_endpoints.py`, `test_sources_endpoints.py`, `test_inferences_endpoints.py`, `test_extraction_endpoints.py`, `test_search_endpoints.py`.
+- [ ] **AUD03-M16** `backend/app/services/derived_properties_service.py` (471 lines) — Large service with zero unit tests. Fix: create `backend/tests/test_derived_properties_service.py`.
+- [ ] **AUD03-M17** `backend/app/services/entity_query_builder.py` (320 lines) — Critical query building logic with zero unit tests; construction errors would silently return wrong data. Fix: create `backend/tests/test_entity_query_builder.py` covering filter application, sort logic, and edge cases.
+- [ ] **AUD03-M18** `backend/app/services/extraction_text_span_validator.py` (279 lines) — Text validation service with zero unit tests. Fix: create `backend/tests/test_extraction_text_span_validator.py`.
+- [ ] **AUD03-M19** `frontend/src/components/admin/` (2 files), `frontend/src/components/synthesis/` (5 files), `frontend/src/components/smart-discovery/` (4 files), `frontend/src/components/evidence/` (2 files) — 13+ critical UI components with zero test coverage, including synthesis and admin dialogs. Fix: create component test files; prioritize synthesis components (knowledge integrity invariant) and admin dialogs.
+- [ ] **AUD03-M20** `backend/app/services/bulk_creation_service.py` (274 lines) — Bulk data creation service with zero unit tests. Fix: create `backend/tests/test_bulk_creation_service.py`.
+- [ ] **AUD03-M21** `backend/app/config.py:39`, `.env.sample:39` — `JWT_SECRET_KEY` is declared in config and `.env.sample` but code only uses `SECRET_KEY` for JWT operations. Dead config field causes confusion. Fix: remove `JWT_SECRET_KEY` from both files.
+
+#### Minor
+
+- [ ] **AUD03-m1** `backend/app/services/semantic_role_service.py` (144 lines), `validation_service.py` (44 lines), `url_fetcher.py`, `pubmed_fetcher.py`, `pmc_fetcher.py` — Secondary services with no unit tests. Fix: create unit tests for each; prioritize `semantic_role_service.py`.
+- [ ] **AUD03-m2** `frontend/src/components/layout/` (5 files), `frontend/src/components/evidence/` (2 files), `frontend/src/components/disagreements/` (4 files) — Secondary UI components with zero test coverage. Fix: create component tests; prioritize disagreements components (contradiction visibility invariant).
+- [ ] **AUD03-m3** `e2e/tests/` — No E2E tests for document extraction workflows or error recovery flows; complex filter combinations not tested end-to-end. Fix: add E2E specs for full document extraction workflow, error state recovery, and multi-filter combinations.
+- [ ] **AUD03-m4** `backend/app/config.py:54`, `backend/app/llm/client.py:36` — `OPENAI_API_KEY` format not validated at startup; misconfiguration only fails at LLM runtime. Fix: add `@model_validator` in `config.py` to warn if key is set but doesn't start with `sk-`.
+- [ ] **AUD03-m5** `frontend/src/i18n/` — No automated test validates that `t()` calls reference keys present in en.json/fr.json; missing keys silently show raw key strings. Fix: add a test or lint rule validating all `t("key")` calls against both translation files.
+- [ ] **AUD03-m6** `docs/product/UX.md` — ExplanationView, SynthesisView, and DisagreementsView exist in code but are not documented with expected user flows, page hierarchy, or i18n requirements. Fix: add sections covering each view's purpose, user flow, and i18n expectations.
+- [ ] **AUD03-m7** `frontend/src/hooks/__tests__/*.test.ts` (4 instances) — Test mocks use `as any` instead of `Partial<T>` or typed mock objects, weakening fixture type safety. Fix: replace `as any` with properly typed test fixtures.
+- [ ] **AUD03-m8** `backend/app/llm/prompts.py` (547 lines) — All LLM prompt templates in one file; no runtime logic but difficult to navigate. Fix: split into `prompts/entity_extraction.py`, `prompts/relation_extraction.py`, `prompts/claim_extraction.py` with a barrel `prompts/__init__.py`.
+- [ ] **AUD03-m9** `backend/app/services/semantic_role_service.py:138`, `backend/app/services/revision_review_service.py:230` — Two service methods construct and return raw dicts instead of typed Pydantic schemas. Fix: define response schemas for these return shapes and update methods to return schema instances.
+
+---
 
 ### Page Information Architecture Audit — 2026-03-31
 
@@ -752,7 +800,8 @@ From completed audits — low priority, no blocking risk.
 
 ## Audit Reports Index
 
-- `.temp/full_audit_report_2026-03-23.md` *(current — score 95/100, 1 major, 2 minor open)*
+- `.temp/full_audit_2026-04-03.md` *(current — score 68/100, 3 critical, 21 major, 10 minor open)*
+- `.temp/full_audit_report_2026-03-23.md` *(previous — score 95/100)*
 
 - `.temp/audit_entity_write_flow_2026-03-22.md`
 - `.temp/audit_entity_creation_2026-03-22.md`
