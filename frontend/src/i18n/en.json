@@ -8,7 +8,8 @@
     "account": "My account",
     "current_language": "English",
     "navigation": "Navigation",
-    "all_entities": "All Entities"
+    "all_entities": "All Entities",
+    "entities_by_category": "Filter by category"
   },
   "common": {
     "loading": "Loading…",
@@ -60,8 +61,22 @@
   },
   "search": {
     "title": "Search",
-    "placeholder": "Search entities",
-    "no_results": "No results"
+    "placeholder": "Search entities, publications, and evidence...",
+    "no_results": "No results found",
+    "filter_label": "Show results for:",
+    "filter_aria": "Filter search results by kind",
+    "filter_entities": "Entities",
+    "filter_sources": "Publications & documents",
+    "filter_relations": "Evidence claims",
+    "results_found": "{{count}} result(s) found",
+    "results_filtered_by": "showing {{kinds}}",
+    "kind_entity": "Entity",
+    "kind_source": "Publication",
+    "kind_relation": "Evidence claim",
+    "match_score": "Match: {{pct}}%",
+    "match_score_title": "Text match strength — not a confidence or quality indicator",
+    "open_relation_detail": "Relation details",
+    "empty_state": "Enter a search term to find entities, publications, and evidence claims."
   },
   "entities": {
     "title": "Entities",
@@ -150,6 +165,14 @@
     "view_entity": "View entity",
     "create": "Create Source"
   },
+  "source_metadata": {
+    "section_bibliographic": "Bibliographic",
+    "section_provenance": "Provenance",
+    "section_assessment": "Quality assessment",
+    "full_text_link": "Full text",
+    "trust_label": "Source quality: {{pct}}%",
+    "trust_hint": "Algorithmic quality score — affects inference weighting"
+  },
   "source": {
     "delete_confirm_title": "Delete Source",
     "delete_confirm_message": "Are you sure you want to delete this source? This will also delete all relations associated with it. This action cannot be undone."
@@ -222,10 +245,16 @@
   },
   "relations": {
     "title": "Relations",
+    "subtitle": "Relations record evidence-backed connections between entities. Each relation is tied to a source document.",
+    "browse_heading": "Browse relations by source",
+    "browse_explanation": "Relations are grounded in sources: every relation must come from a specific document, ensuring traceability. To browse and verify existing relations, navigate to a source and inspect its evidence section.",
+    "browse_sources": "Browse Sources",
+    "search_relations": "Search Relations",
+    "create_heading": "Create new relations",
+    "create_explanation": "Use the form to add a single source-grounded relation, or upload a batch file to create multiple relations at once.",
     "view_by_source": "Relations are currently organized by source. To view relations, please visit the Sources page and select a source.",
     "no_global_list": "No global relations list available",
-    "explanation": "Relations in this system are tied to sources. Each relation must come from a specific source, ensuring traceability and trust.",
-    "browse_sources": "Browse Sources"
+    "explanation": "Relations in this system are tied to sources. Each relation must come from a specific source, ensuring traceability and trust."
   },
   "edit_relation": {
     "title": "Edit Relation",
@@ -249,7 +278,14 @@
     "logout": "Logout",
     "register": "Register"
   },
+  "global_search": {
+    "label": "Search",
+    "placeholder": "Entities, publications, evidence...",
+    "aria_label": "Search the knowledge base",
+    "press_enter": "Press Enter to search all results"
+  },
   "profile": {
+    "open_menu": "Open account menu for {{email}}",
     "signed_in": "Signed in",
     "my_profile": "My Profile",
     "change_password": "Change Password",
@@ -306,29 +342,32 @@
   },
   "home": {
     "title": "HyphaGraph",
-    "subtitle": "Hypergraph-based Evidence Knowledge System",
-    "description": "Build and explore a knowledge graph with computed inferences. Track entities, sources, and relations with confidence scores and evidence aggregation.",
-    "overview": "Knowledge Graph Overview",
+    "subtitle": "Trace claims, assess evidence quality, and surface contradictions",
+    "description": "HyphaGraph aggregates evidence from multiple sources and computes confidence across relations. Inspect which sources support or contradict each claim, follow the evidence trail, and understand where agreement breaks down.",
+    "cta_explore_evidence": "Explore evidence",
+    "cta_search": "Search the knowledge base",
+    "data_heading": "Data",
+    "analysis_heading": "Analyse",
     "entities": "Entities",
     "sources": "Sources",
     "relations": "Relations",
-    "relationsDesc": "Organized by source",
+    "relationsDesc": "Inspect source-grounded claims linking entities. Follow evidence trails from relation to original document.",
     "inferences": "Inferences",
-    "inferencesDesc": "Computed insights",
+    "inferencesDesc": "Review aggregated evidence per entity. See confidence levels, contradictions, and source quality at a glance.",
     "createEntity": "Create",
     "createSource": "Create",
     "viewAll": "View All",
-    "browseSources": "Browse Sources",
-    "exploreInferences": "Explore",
-    "quickStart": "Quick Start Guide",
-    "step1Title": "1. Create Sources",
-    "step1Desc": "Add research papers, articles, or datasets as evidence sources.",
-    "step2Title": "2. Define Entities",
-    "step2Desc": "Create entities representing concepts, drugs, conditions, or any domain objects.",
-    "step3Title": "3. Add Relations",
-    "step3Desc": "Connect entities through relations from your sources, specifying roles and confidence.",
-    "step4Title": "4. Explore Inferences",
-    "step4Desc": "View computed role inferences with aggregated scores, confidence, and disagreement metrics."
+    "browseSources": "Browse by source",
+    "exploreInferences": "Explore inferences",
+    "workflowTitle": "Evidence analysis workflow",
+    "step1Title": "1. Review extracted evidence",
+    "step1Desc": "Check the review queue for newly extracted relations. Approve, reject, or flag each claim before it affects inferences.",
+    "step2Title": "2. Inspect disagreements",
+    "step2Desc": "Navigate to any entity's disagreement view to see where sources conflict. Contradictions are preserved — not resolved — so you can assess them directly.",
+    "step3Title": "3. Trace claims to their source",
+    "step3Desc": "Open any inference explanation to see which publications contributed, their confidence weights, and the exact passage or relation each came from.",
+    "step4Title": "4. Add or import new sources",
+    "step4Desc": "Extend coverage by adding publications via URL, PubMed ID, or bulk import. New sources trigger automatic relation extraction for review."
   },
   "inferences": {
     "title": "Computed Inferences",
@@ -369,8 +408,10 @@
   },
   "evidence_trace": {
     "empty": "No source evidence available.",
+    "no_statement": "—",
     "columns": {
       "source": "Source",
+      "statement": "Supporting statement",
       "kind": "Kind",
       "direction": "Direction",
       "confidence": "Confidence",
@@ -452,13 +493,17 @@
   },
   "review_queue": {
     "refresh": "Refresh",
-    "pending_review": "Pending Review",
+    "pending_review": "Awaiting Review",
+    "pending_review_hint": "Extractions waiting for a human decision",
     "pending_breakdown": "{{entities}} entities, {{relations}} relations",
-    "auto_verified": "Auto-Verified",
-    "average_score": "Average Score",
-    "flagged": "Flagged",
-    "min_score_label": "Min Validation Score",
-    "only_flagged": "Only Flagged",
+    "auto_verified": "Auto-Approved",
+    "auto_verified_hint": "Passed automated quality checks — spot-check for accuracy",
+    "average_score": "Avg. Quality Score",
+    "average_score_hint": "Higher scores suggest more reliably extracted items",
+    "flagged": "Flagged for Review",
+    "flagged_hint": "Items that failed a quality check and need closer attention",
+    "min_score_label": "Minimum quality score",
+    "only_flagged": "Show flagged only",
     "selected_count": "{{count}} selected",
     "approve_selected": "Approve Selected",
     "reject_selected": "Reject Selected",
@@ -475,7 +520,20 @@
     "type_all": "All",
     "type_entity": "Entity",
     "type_relation": "Relation",
-    "type_claim": "Claim"
+    "type_claim": "Claim",
+    "tab_staged": "Staged Extraction Review",
+    "tab_drafts": "LLM Draft Review",
+    "queue_staged_title": "Staged extraction review",
+    "queue_staged_description": "This queue holds staged entity, relation, and claim extractions that need human review before they are materialized into the graph.",
+    "queue_drafts_title": "LLM draft revision review",
+    "queue_drafts_description": "This queue holds draft entity, relation, and source revisions authored with LLM assistance. Each draft must be confirmed or discarded explicitly.",
+    "summary_title": "Summary metrics",
+    "filters_title": "Filters",
+    "filters_description": "Narrow the staged extraction queue by validation score, flagged status, or extraction type.",
+    "batch_tools_title": "Batch tools",
+    "batch_tools_description": "Select staged extractions to approve or reject them in one batch.",
+    "items_title": "Queue items",
+    "items_description": "Review staged extractions item by item, or use the batch tools above after selecting a set."
   },
   "extraction_card": {
     "no_notes": "No notes",

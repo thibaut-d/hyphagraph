@@ -20,7 +20,12 @@ import {
   Alert,
 } from "@mui/material";
 
-import { search, SearchResult, SearchResultType } from "../api/search";
+import {
+  search,
+  SearchResult,
+  SearchResultType,
+  type RelationSearchResult,
+} from "../api/search";
 import { usePageErrorHandler } from "../hooks/usePageErrorHandler";
 
 const RESULTS_PER_PAGE = 20;
@@ -122,13 +127,16 @@ export function SearchView() {
     setPage(1); // Reset to first page when filter changes
   };
 
+  const getRelationSourceLink = (result: RelationSearchResult): string =>
+    `/sources/${result.source_id}?relation=${result.id}#relation-${result.id}`;
+
   const getResultLink = (result: SearchResult): string => {
     if (result.type === "entity") {
       return `/entities/${result.id}`;
     } else if (result.type === "source") {
       return `/sources/${result.id}`;
     } else if (result.type === "relation") {
-      return `/sources/${result.source_id}`;
+      return getRelationSourceLink(result);
     }
     return "#";
   };
@@ -169,12 +177,12 @@ export function SearchView() {
         {query && (
           <Box>
             <Typography variant="subtitle2" gutterBottom>
-              Filter by type:
+              {t("search.filter_label", "Show results for:")}
             </Typography>
             <ToggleButtonGroup
               value={typeFilter}
               onChange={handleTypeFilterChange}
-              aria-label="search result types"
+              aria-label={t("search.filter_aria", "Filter search results by kind")}
               size="small"
               sx={{
                 flexWrap: 'wrap',
@@ -184,14 +192,14 @@ export function SearchView() {
                 }
               }}
             >
-              <ToggleButton value="entity" aria-label="entities">
-                Entities ({entityCount})
+              <ToggleButton value="entity" aria-label={t("search.filter_entities", "Entities")}>
+                {t("search.filter_entities", "Entities")} ({entityCount})
               </ToggleButton>
-              <ToggleButton value="source" aria-label="sources">
-                Sources ({sourceCount})
+              <ToggleButton value="source" aria-label={t("search.filter_sources", "Publications & documents")}>
+                {t("search.filter_sources", "Publications & documents")} ({sourceCount})
               </ToggleButton>
-              <ToggleButton value="relation" aria-label="relations">
-                Relations ({relationCount})
+              <ToggleButton value="relation" aria-label={t("search.filter_relations", "Evidence claims")}>
+                {t("search.filter_relations", "Evidence claims")} ({relationCount})
               </ToggleButton>
             </ToggleButtonGroup>
           </Box>
@@ -215,8 +223,19 @@ export function SearchView() {
             {/* Results Summary */}
             {total > 0 && (
               <Typography variant="body2" color="text.secondary">
-                {total} result{total !== 1 ? "s" : ""} found
-                {typeFilter.length > 0 && ` (filtered by ${typeFilter.join(", ")})`}
+                {t("search.results_found", "{{count}} result(s) found", { count: total })}
+                {typeFilter.length > 0 && (
+                  <>
+                    {" — "}
+                    {t("search.results_filtered_by", "showing {{kinds}}", {
+                      kinds: typeFilter.map(f =>
+                        f === "entity" ? t("search.filter_entities", "Entities")
+                        : f === "source" ? t("search.filter_sources", "Publications & documents")
+                        : t("search.filter_relations", "Evidence claims")
+                      ).join(", ")
+                    })}
+                  </>
+                )}
               </Typography>
             )}
 
@@ -238,9 +257,15 @@ export function SearchView() {
                   >
                     <ListItemText
                       primary={
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
                           <Chip
-                            label={result.type}
+                            label={
+                              result.type === "entity"
+                                ? t("search.kind_entity", "Entity")
+                                : result.type === "source"
+                                ? t("search.kind_source", "Publication")
+                                : t("search.kind_relation", "Evidence claim")
+                            }
                             size="small"
                             color={
                               result.type === "entity"
@@ -257,11 +282,23 @@ export function SearchView() {
                           >
                             {result.title}
                           </Link>
+                          {result.type === "relation" && (
+                            <Link
+                              component={RouterLink}
+                              to={`/relations/${result.id}`}
+                              variant="body2"
+                              color="text.secondary"
+                              underline="hover"
+                            >
+                              {t("search.open_relation_detail", "Relation details")}
+                            </Link>
+                          )}
                           {result.relevance_score !== undefined && (
                             <Chip
-                              label={`${Math.round(result.relevance_score * 100)}%`}
+                              label={t("search.match_score", "Match: {{pct}}%", { pct: Math.round(result.relevance_score * 100) })}
                               size="small"
                               variant="outlined"
+                              title={t("search.match_score_title", "Text match strength — not a confidence or quality indicator")}
                             />
                           )}
                         </Box>
@@ -299,7 +336,7 @@ export function SearchView() {
         {/* Empty State */}
         {!query && (
           <Typography color="text.secondary">
-            Enter a search query to find entities, sources, and relations.
+            {t("search.empty_state", "Enter a search term to find entities, publications, and evidence claims.")}
           </Typography>
         )}
       </Stack>

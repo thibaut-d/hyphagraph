@@ -57,6 +57,9 @@ export const mockSource: SourceRead = {
   trust_level: 0.85,
   url: "https://example.com/study",
   authors: ["Author A", "Author B"],
+  summary: {
+    en: "This study reports that aspirin reduced platelet aggregation in the observed cohort.",
+  },
   created_at: new Date().toISOString(),
   status: "confirmed",
 };
@@ -68,7 +71,7 @@ export const mockRelations: RelationRead[] = [
     kind: "effect",
     direction: "positive",
     confidence: 0.9,
-    roles: [{ id: "role-1", relation_revision_id: "rev-1", role_type: "drug", entity_id: "entity-1" }],
+    roles: [{ id: "role-1", relation_revision_id: "rev-1", role_type: "drug", entity_id: "entity-1", entity_slug: "aspirin" }],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     status: "confirmed",
@@ -79,7 +82,8 @@ export const mockRelations: RelationRead[] = [
     kind: "mechanism",
     direction: "supports",
     confidence: 0.8,
-    roles: [{ id: "role-2", relation_revision_id: "rev-2", role_type: "drug", entity_id: "entity-2" }],
+    notes: "Aspirin inhibits cyclooxygenase in platelets.",
+    roles: [{ id: "role-2", relation_revision_id: "rev-2", role_type: "drug", entity_id: "entity-2", entity_slug: "platelets" }],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     status: "confirmed",
@@ -87,6 +91,10 @@ export const mockRelations: RelationRead[] = [
 ];
 
 export function renderSourceDetailView(sourceId: string): RenderResult {
+  return renderSourceDetailViewAt(`/sources/${sourceId}`);
+}
+
+export function renderSourceDetailViewAt(path: string): RenderResult {
   return render(
     <NotificationProvider>
       <BrowserRouter>
@@ -97,7 +105,7 @@ export function renderSourceDetailView(sourceId: string): RenderResult {
     </NotificationProvider>,
     {
       wrapper: ({ children }) => {
-        window.history.pushState({}, "", `/sources/${sourceId}`);
+        window.history.pushState({}, "", path);
         return <>{children}</>;
       },
     }

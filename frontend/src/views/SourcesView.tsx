@@ -13,7 +13,7 @@ import {
   Box,
   Button,
   Badge,
-  Alert,
+  Chip,
   CircularProgress,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
@@ -21,6 +21,7 @@ import FilterListIcon from "@mui/icons-material/FilterList";
 import DownloadIcon from "@mui/icons-material/Download";
 import SearchIcon from "@mui/icons-material/Search";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
+import ClearAllIcon from "@mui/icons-material/ClearAll";
 
 import { listSources, SourceFilters, getSourceFilterOptions, SourceFilterOptions } from "../api/sources";
 import { SourceRead } from "../types/source";
@@ -167,7 +168,15 @@ export function SourcesView() {
     } finally {
       setIsLoading(false);
     }
-  }, [filters.kind, filters.year, filters.trust_level, debouncedSearch, yearRange]);
+  }, [
+    filters.kind,
+    filters.year,
+    filters.trust_level,
+    filters.domain,
+    filters.role,
+    debouncedSearch,
+    yearRange,
+  ]);
 
   useEffect(() => {
     loadSources(0);

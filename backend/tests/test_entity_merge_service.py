@@ -119,3 +119,64 @@ class TestEntityMergeService:
         assert actions[0].action == "merge"
         assert actions[0].source_slug == "fibromyalgia-a"
         assert actions[0].target_slug == "fibromyalgia"
+
+    async def test_merge_entities_deduplicates_current_relation_participants(self, db_session):
+        entity_service = EntityService(db_session)
+        source_service = SourceService(db_session)
+        merge_service = EntityMergeService(db_session)
+
+        source_entity = await entity_service.create(EntityWrite(slug="drug-source"))
+        target_entity = await entity_service.create(EntityWrite(slug="drug-target"))
+        condition_entity = await entity_service.create(EntityWrite(slug="condition"))
+        source = await source_service.create(
+            SourceWrite(kind="study", title="T", url="https://example.com/t1")
+        )
+
+        relation = Relation(source_id=source.id)
+        db_session.add(relation)
+        await db_session.flush()
+
+        revision = RelationRevision(
+            relation_id=relation.id,
+            kind="treats",
+            confidence=0.8,
+            is_current=True,
+            status="confirmed",
+        )
+        db_session.add(revision)
+        await db_session.flush()
+
+        db_session.add_all(
+            [
+                RelationRoleRevision(
+                    relation_revision_id=revision.id,
+                    entity_id=source_entity.id,
+                    role_type="agent",
+                ),
+                RelationRoleRevision(
+                    relation_revision_id=revision.id,
+                    entity_id=target_entity.id,
+                    role_type="agent",
+                ),
+                RelationRoleRevision(
+                    relation_revision_id=revision.id,
+                    entity_id=condition_entity.id,
+                    role_type="condition",
+                ),
+            ]
+        )
+        await db_session.commit()
+
+        await merge_service.merge_entities(source_entity.id, target_entity.id)
+
+        roles = (
+            await db_session.execute(
+                select(RelationRoleRevision).where(
+                    RelationRoleRevision.relation_revision_id == revision.id
+                )
+            )
+        ).scalars().all()
+
+        agent_roles = [role for role in roles if role.role_type == "agent"]
+        assert len(agent_roles) == 1
+        assert agent_roles[0].entity_id == target_entity.id

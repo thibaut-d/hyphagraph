@@ -9,6 +9,7 @@ import {
   Divider,
   Box,
   Typography,
+  IconButton,
 } from "@mui/material";
 import {
   Person as PersonIcon,
@@ -78,9 +79,16 @@ export function ProfileMenu({ size = 40 }: ProfileMenuProps) {
 
   return (
     <>
-      <Box onClick={handleClick} sx={{ cursor: "pointer" }}>
+      <IconButton
+        onClick={handleClick}
+        aria-label={t("profile.open_menu", "Open account menu for {{email}}", { email: user.email })}
+        aria-expanded={Boolean(anchorEl)}
+        aria-haspopup="true"
+        size="small"
+        sx={{ p: 0 }}
+      >
         <UserAvatar email={user.email} size={size} />
-      </Box>
+      </IconButton>
 
       <Menu
         anchorEl={anchorEl}

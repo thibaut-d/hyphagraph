@@ -154,15 +154,33 @@ export function HomeView() {
           <Typography variant="h6" sx={{ opacity: 0.9 }}>
             {t(
               "home.subtitle",
-              "Hypergraph-based Evidence Knowledge System"
+              "Trace claims, assess evidence quality, and surface contradictions"
             )}
           </Typography>
           <Typography variant="body1" sx={{ opacity: 0.85, maxWidth: 700 }}>
             {t(
               "home.description",
-              "Build and explore a knowledge graph with computed inferences. Track entities, sources, and relations with confidence scores and evidence aggregation."
+              "HyphaGraph aggregates evidence from multiple sources and computes confidence across relations. Inspect which sources support or contradict each claim, follow the evidence trail, and understand where agreement breaks down."
             )}
           </Typography>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} pt={1}>
+            <Button
+              variant="contained"
+              color="inherit"
+              sx={{ color: "primary.main", bgcolor: "white" }}
+              onClick={() => navigate("/inferences")}
+            >
+              {t("home.cta_explore_evidence", "Explore evidence")}
+            </Button>
+            <Button
+              variant="outlined"
+              color="inherit"
+              sx={{ borderColor: "rgba(255,255,255,0.6)", color: "white" }}
+              onClick={() => navigate("/search")}
+            >
+              {t("home.cta_search", "Search the knowledge base")}
+            </Button>
+          </Stack>
         </Stack>
       </Paper>
 
@@ -180,13 +198,12 @@ export function HomeView() {
         </Box>
       ) : (
         <>
-          <Typography variant="h5" fontWeight="bold" mb={3}>
-            {t("home.overview", "Knowledge Graph Overview")}
+          {/* Data metrics */}
+          <Typography variant="h6" color="text.secondary" mb={2}>
+            {t("home.data_heading", "Data")}
           </Typography>
-
           <Grid container spacing={3} mb={4}>
-            {/* Entities */}
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <StatCard
                 title={t("home.entities", "Entities")}
                 count={stats.entities}
@@ -198,9 +215,7 @@ export function HomeView() {
                 onView={() => navigate("/entities")}
               />
             </Grid>
-
-            {/* Sources */}
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <StatCard
                 title={t("home.sources", "Sources")}
                 count={stats.sources}
@@ -212,55 +227,17 @@ export function HomeView() {
                 onView={() => navigate("/sources")}
               />
             </Grid>
+          </Grid>
 
-            {/* Relations */}
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          {/* Analysis shortcuts */}
+          <Typography variant="h6" color="text.secondary" mb={2}>
+            {t("home.analysis_heading", "Analyse")}
+          </Typography>
+          <Grid container spacing={3} mb={4}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <Card variant="outlined" sx={{ height: "100%" }}>
                 <CardContent>
-                  <Stack direction="row" spacing={2} alignItems="center" mb={2}>
-                    <Box
-                      sx={{
-                        bgcolor: "warning.light",
-                        color: "warning.dark",
-                        p: 1.5,
-                        borderRadius: 2,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <AccountTreeIcon fontSize="large" />
-                    </Box>
-                    <Box flex={1}>
-                      <Typography variant="body2" color="text.secondary">
-                        {t("home.relations", "Relations")}
-                      </Typography>
-                      <Typography variant="body1" color="text.secondary" mt={1}>
-                        {t(
-                          "home.relationsDesc",
-                          "Organized by source"
-                        )}
-                      </Typography>
-                    </Box>
-                  </Stack>
-                </CardContent>
-                <CardActions sx={{ justifyContent: "flex-end", px: 2, pb: 2 }}>
-                  <Button
-                    size="small"
-                    endIcon={<ArrowForwardIcon />}
-                    onClick={() => navigate("/sources")}
-                  >
-                    {t("home.browseSources", "Browse Sources")}
-                  </Button>
-                </CardActions>
-              </Card>
-            </Grid>
-
-            {/* Inferences */}
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card variant="outlined" sx={{ height: "100%" }}>
-                <CardContent>
-                  <Stack direction="row" spacing={2} alignItems="center" mb={2}>
+                  <Stack direction="row" spacing={2} alignItems="flex-start">
                     <Box
                       sx={{
                         bgcolor: "secondary.light",
@@ -270,18 +247,19 @@ export function HomeView() {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
+                        flexShrink: 0,
                       }}
                     >
                       <PsychologyIcon fontSize="large" />
                     </Box>
-                    <Box flex={1}>
-                      <Typography variant="body2" color="text.secondary">
+                    <Box>
+                      <Typography variant="subtitle1" fontWeight="bold">
                         {t("home.inferences", "Inferences")}
                       </Typography>
-                      <Typography variant="body1" color="text.secondary" mt={1}>
+                      <Typography variant="body2" color="text.secondary" mt={0.5}>
                         {t(
                           "home.inferencesDesc",
-                          "Computed insights"
+                          "Review aggregated evidence per entity. See confidence levels, contradictions, and source quality at a glance."
                         )}
                       </Typography>
                     </Box>
@@ -293,60 +271,102 @@ export function HomeView() {
                     endIcon={<ArrowForwardIcon />}
                     onClick={() => navigate("/inferences")}
                   >
-                    {t("home.exploreInferences", "Explore")}
+                    {t("home.exploreInferences", "Explore inferences")}
+                  </Button>
+                </CardActions>
+              </Card>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <Card variant="outlined" sx={{ height: "100%" }}>
+                <CardContent>
+                  <Stack direction="row" spacing={2} alignItems="flex-start">
+                    <Box
+                      sx={{
+                        bgcolor: "warning.light",
+                        color: "warning.dark",
+                        p: 1.5,
+                        borderRadius: 2,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <AccountTreeIcon fontSize="large" />
+                    </Box>
+                    <Box>
+                      <Typography variant="subtitle1" fontWeight="bold">
+                        {t("home.relations", "Relations")}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" mt={0.5}>
+                        {t(
+                          "home.relationsDesc",
+                          "Inspect source-grounded claims linking entities. Follow evidence trails from relation to original document."
+                        )}
+                      </Typography>
+                    </Box>
+                  </Stack>
+                </CardContent>
+                <CardActions sx={{ justifyContent: "flex-end", px: 2, pb: 2 }}>
+                  <Button
+                    size="small"
+                    endIcon={<ArrowForwardIcon />}
+                    onClick={() => navigate("/sources")}
+                  >
+                    {t("home.browseSources", "Browse by source")}
                   </Button>
                 </CardActions>
               </Card>
             </Grid>
           </Grid>
 
-          {/* Quick Start Guide */}
+          {/* Evidence workflow guide */}
           <Paper variant="outlined" sx={{ p: 3 }}>
             <Typography variant="h6" fontWeight="bold" mb={2}>
-              {t("home.quickStart", "Quick Start Guide")}
+              {t("home.workflowTitle", "Evidence analysis workflow")}
             </Typography>
             <Stack spacing={2}>
               <Box>
                 <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                  {t("home.step1Title", "1. Create Sources")}
+                  {t("home.step1Title", "1. Review extracted evidence")}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   {t(
                     "home.step1Desc",
-                    "Add research papers, articles, or datasets as evidence sources."
+                    "Check the review queue for newly extracted relations. Approve, reject, or flag each claim before it affects inferences."
                   )}
                 </Typography>
               </Box>
               <Box>
                 <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                  {t("home.step2Title", "2. Define Entities")}
+                  {t("home.step2Title", "2. Inspect disagreements")}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   {t(
                     "home.step2Desc",
-                    "Create entities representing concepts, drugs, conditions, or any domain objects."
+                    "Navigate to any entity's disagreement view to see where sources conflict. Contradictions are preserved — not resolved — so you can assess them directly."
                   )}
                 </Typography>
               </Box>
               <Box>
                 <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                  {t("home.step3Title", "3. Add Relations")}
+                  {t("home.step3Title", "3. Trace claims to their source")}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   {t(
                     "home.step3Desc",
-                    "Connect entities through relations from your sources, specifying roles and confidence."
+                    "Open any inference explanation to see which publications contributed, their confidence weights, and the exact passage or relation each came from."
                   )}
                 </Typography>
               </Box>
               <Box>
                 <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                  {t("home.step4Title", "4. Explore Inferences")}
+                  {t("home.step4Title", "4. Add or import new sources")}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   {t(
                     "home.step4Desc",
-                    "View computed role inferences with aggregated scores, confidence, and disagreement metrics."
+                    "Extend coverage by adding publications via URL, PubMed ID, or bulk import. New sources trigger automatic relation extraction for review."
                   )}
                 </Typography>
               </Box>

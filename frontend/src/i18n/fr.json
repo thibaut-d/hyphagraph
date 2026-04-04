@@ -8,7 +8,8 @@
     "account": "Mon compte",
     "current_language": "Français",
     "navigation": "Navigation",
-    "all_entities": "Toutes les entités"
+    "all_entities": "Toutes les entités",
+    "entities_by_category": "Filtrer par catégorie"
   },
   "common": {
     "loading": "Chargement…",
@@ -60,8 +61,22 @@
   },
   "search": {
     "title": "Recherche",
-    "placeholder": "Rechercher des entités",
-    "no_results": "Aucun résultat"
+    "placeholder": "Rechercher des entités, publications, preuves...",
+    "no_results": "Aucun résultat trouvé",
+    "filter_label": "Afficher les résultats pour :",
+    "filter_aria": "Filtrer les résultats par type",
+    "filter_entities": "Entités",
+    "filter_sources": "Publications et documents",
+    "filter_relations": "Affirmations probantes",
+    "results_found": "{{count}} résultat(s) trouvé(s)",
+    "results_filtered_by": "affichage de {{kinds}}",
+    "kind_entity": "Entité",
+    "kind_source": "Publication",
+    "kind_relation": "Affirmation probante",
+    "match_score": "Correspondance : {{pct}}%",
+    "match_score_title": "Force de correspondance textuelle — ne représente pas la confiance ou la qualité",
+    "open_relation_detail": "Détails de la relation",
+    "empty_state": "Entrez un terme de recherche pour trouver des entités, publications et affirmations probantes."
   },
   "entities": {
     "title": "Entités",
@@ -150,6 +165,14 @@
     "view_entity": "Voir l'entité",
     "create": "Créer une source"
   },
+  "source_metadata": {
+    "section_bibliographic": "Bibliographie",
+    "section_provenance": "Provenance",
+    "section_assessment": "Évaluation qualité",
+    "full_text_link": "Texte intégral",
+    "trust_label": "Qualité source : {{pct}}%",
+    "trust_hint": "Score qualité algorithmique — influence la pondération des inférences"
+  },
   "source": {
     "delete_confirm_title": "Supprimer la source",
     "delete_confirm_message": "Êtes-vous sûr de vouloir supprimer cette source ? Cela supprimera également toutes les relations qui lui sont associées. Cette action ne peut pas être annulée."
@@ -222,10 +245,16 @@
   },
   "relations": {
     "title": "Relations",
+    "subtitle": "Les relations enregistrent des connexions fondées sur des preuves entre entités. Chaque relation est rattachée à un document source.",
+    "browse_heading": "Parcourir les relations par source",
+    "browse_explanation": "Les relations sont ancrées dans des sources : chaque relation doit provenir d'un document spécifique, assurant la traçabilité. Pour parcourir et vérifier les relations existantes, naviguez vers une source et inspectez sa section de preuves.",
+    "browse_sources": "Parcourir les sources",
+    "search_relations": "Rechercher des relations",
+    "create_heading": "Créer de nouvelles relations",
+    "create_explanation": "Utilisez le formulaire pour ajouter une relation unique ancrée dans une source, ou importez un fichier pour créer plusieurs relations en une fois.",
     "view_by_source": "Les relations sont actuellement organisées par source. Pour voir les relations, veuillez visiter la page Sources et sélectionner une source.",
     "no_global_list": "Aucune liste globale de relations disponible",
-    "explanation": "Les relations dans ce système sont liées aux sources. Chaque relation doit provenir d'une source spécifique, garantissant la traçabilité et la confiance.",
-    "browse_sources": "Parcourir les sources"
+    "explanation": "Les relations dans ce système sont liées aux sources. Chaque relation doit provenir d'une source spécifique, garantissant la traçabilité et la confiance."
   },
   "edit_relation": {
     "title": "Modifier la relation",
@@ -249,7 +278,14 @@
     "logout": "Déconnexion",
     "register": "Créer un compte"
   },
+  "global_search": {
+    "label": "Recherche",
+    "placeholder": "Entités, publications, preuves...",
+    "aria_label": "Rechercher dans la base de connaissances",
+    "press_enter": "Appuyez sur Entrée pour rechercher tous les résultats"
+  },
   "profile": {
+    "open_menu": "Ouvrir le menu du compte pour {{email}}",
     "signed_in": "Connecté",
     "my_profile": "Mon Profil",
     "change_password": "Changer le mot de passe",
@@ -306,29 +342,32 @@
   },
   "home": {
     "title": "HyphaGraph",
-    "subtitle": "Système de connaissances basé sur les hypergraphes",
-    "description": "Construisez et explorez un graphe de connaissances avec des inférences calculées. Suivez les entités, les sources et les relations avec des scores de confiance et une agrégation de preuves.",
-    "overview": "Aperçu du graphe de connaissances",
+    "subtitle": "Retracez les affirmations, évaluez la qualité des preuves et identifiez les contradictions",
+    "description": "HyphaGraph agrège les preuves de plusieurs sources et calcule la confiance sur l'ensemble des relations. Inspectez quelles sources soutiennent ou contredisent chaque affirmation, suivez la piste des preuves et comprenez où l'accord se rompt.",
+    "cta_explore_evidence": "Explorer les preuves",
+    "cta_search": "Rechercher dans la base de connaissances",
+    "data_heading": "Données",
+    "analysis_heading": "Analyser",
     "entities": "Entités",
     "sources": "Sources",
     "relations": "Relations",
-    "relationsDesc": "Organisées par source",
+    "relationsDesc": "Inspectez les affirmations fondées sur des sources liant des entités. Suivez les pistes de preuves de la relation au document original.",
     "inferences": "Inférences",
-    "inferencesDesc": "Insights calculés",
+    "inferencesDesc": "Examinez les preuves agrégées par entité. Visualisez les niveaux de confiance, les contradictions et la qualité des sources en un coup d'œil.",
     "createEntity": "Créer",
     "createSource": "Créer",
     "viewAll": "Voir tout",
-    "browseSources": "Parcourir les sources",
-    "exploreInferences": "Explorer",
-    "quickStart": "Guide de démarrage rapide",
-    "step1Title": "1. Créer des sources",
-    "step1Desc": "Ajoutez des articles de recherche, des articles ou des ensembles de données comme sources de preuves.",
-    "step2Title": "2. Définir des entités",
-    "step2Desc": "Créez des entités représentant des concepts, des médicaments, des conditions ou tout objet de domaine.",
-    "step3Title": "3. Ajouter des relations",
-    "step3Desc": "Connectez les entités via des relations à partir de vos sources, en spécifiant les rôles et la confiance.",
-    "step4Title": "4. Explorer les inférences",
-    "step4Desc": "Visualisez les inférences de rôle calculées avec des scores agrégés, la confiance et les métriques de désaccord."
+    "browseSources": "Parcourir par source",
+    "exploreInferences": "Explorer les inférences",
+    "workflowTitle": "Workflow d'analyse des preuves",
+    "step1Title": "1. Examiner les preuves extraites",
+    "step1Desc": "Consultez la file d'attente de révision pour les relations nouvellement extraites. Approuvez, rejetez ou marquez chaque affirmation avant qu'elle n'affecte les inférences.",
+    "step2Title": "2. Inspecter les désaccords",
+    "step2Desc": "Accédez à la vue désaccords de toute entité pour voir où les sources entrent en conflit. Les contradictions sont conservées — pas résolues — afin que vous puissiez les évaluer directement.",
+    "step3Title": "3. Retracer les affirmations jusqu'à leur source",
+    "step3Desc": "Ouvrez toute explication d'inférence pour voir quelles publications ont contribué, leurs poids de confiance et le passage ou la relation exact dont chacune provient.",
+    "step4Title": "4. Ajouter ou importer de nouvelles sources",
+    "step4Desc": "Étendez la couverture en ajoutant des publications via URL, PubMed ID ou import en masse. Les nouvelles sources déclenchent une extraction automatique de relations pour révision."
   },
   "inferences": {
     "title": "Inférences calculées",
@@ -437,12 +476,16 @@
   "review_queue": {
     "refresh": "Actualiser",
     "pending_review": "En attente de révision",
+    "pending_review_hint": "Extractions en attente d'une décision humaine",
     "pending_breakdown": "{{entities}} entités, {{relations}} relations",
-    "auto_verified": "Vérifié automatiquement",
-    "average_score": "Score moyen",
-    "flagged": "Signalé",
-    "min_score_label": "Score de validation minimum",
-    "only_flagged": "Signalés uniquement",
+    "auto_verified": "Auto-approuvé",
+    "auto_verified_hint": "A passé les vérifications automatiques — à contrôler ponctuellement",
+    "average_score": "Score qualité moy.",
+    "average_score_hint": "Un score élevé indique des extractions plus fiables",
+    "flagged": "Signalé pour révision",
+    "flagged_hint": "Éléments ayant échoué un contrôle qualité et nécessitant une attention particulière",
+    "min_score_label": "Score qualité minimum",
+    "only_flagged": "Afficher les signalés uniquement",
     "selected_count": "{{count}} sélectionné(s)",
     "approve_selected": "Approuver la sélection",
     "reject_selected": "Rejeter la sélection",
@@ -459,7 +502,20 @@
     "type_all": "Tous",
     "type_entity": "Entité",
     "type_relation": "Relation",
-    "type_claim": "Affirmation"
+    "type_claim": "Affirmation",
+    "tab_staged": "Révision des extractions étagées",
+    "tab_drafts": "Révision des brouillons IA",
+    "queue_staged_title": "Révision des extractions étagées",
+    "queue_staged_description": "Cette file contient les extractions d'entités, relations et affirmations étagées qui nécessitent une révision humaine avant d'être matérialisées dans le graphe.",
+    "queue_drafts_title": "Révision des brouillons de révision IA",
+    "queue_drafts_description": "Cette file contient les révisions d'entités, relations et sources rédigées avec l'aide d'un LLM. Chaque brouillon doit être confirmé ou rejeté explicitement.",
+    "summary_title": "Métriques récapitulatives",
+    "filters_title": "Filtres",
+    "filters_description": "Réduisez la file d'extractions étagées par score de validation, statut signalé ou type d'extraction.",
+    "batch_tools_title": "Outils par lot",
+    "batch_tools_description": "Sélectionnez des extractions étagées pour les approuver ou les rejeter en un seul lot.",
+    "items_title": "Éléments de la file",
+    "items_description": "Révisez les extractions étagées une par une, ou utilisez les outils par lot ci-dessus après avoir sélectionné un ensemble."
   },
   "extraction_card": {
     "no_notes": "Aucune note",
@@ -634,8 +690,10 @@
   },
   "evidence_trace": {
     "empty": "Aucune preuve de source disponible.",
+    "no_statement": "—",
     "columns": {
       "source": "Source",
+      "statement": "Énoncé justificatif",
       "kind": "Type",
       "direction": "Direction",
       "confidence": "Confiance",

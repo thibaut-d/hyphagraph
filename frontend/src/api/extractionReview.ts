@@ -118,14 +118,15 @@ export async function listPendingExtractions(
 ): Promise<StagedExtractionListResponse> {
   const params = createSearchParams((query) => {
     appendOptionalParam(query, "extraction_type", filters?.extraction_type);
+    appendOptionalParam(query, "source_id", filters?.source_id);
     appendOptionalNumber(query, "min_validation_score", filters?.min_validation_score);
     appendOptionalNumber(query, "max_validation_score", filters?.max_validation_score);
     appendOptionalParam(query, "has_flags", filters?.has_flags);
+    appendOptionalParam(query, "auto_commit_eligible", filters?.auto_commit_eligible);
     appendOptionalNumber(query, "page", filters?.page);
     appendOptionalNumber(query, "page_size", filters?.page_size);
     appendOptionalParam(query, "sort_by", filters?.sort_by);
     appendOptionalParam(query, "sort_order", filters?.sort_order);
-    appendOptionalParam(query, "auto_commit_eligible", filters?.auto_commit_eligible);
   });
 
   return apiFetch<StagedExtractionListResponse>(
@@ -197,8 +198,14 @@ export async function listAllExtractions(
     appendOptionalParam(query, "status", filters?.status);
     appendOptionalParam(query, "extraction_type", filters?.extraction_type);
     appendOptionalParam(query, "source_id", filters?.source_id);
+    appendOptionalNumber(query, "min_validation_score", filters?.min_validation_score);
+    appendOptionalNumber(query, "max_validation_score", filters?.max_validation_score);
+    appendOptionalParam(query, "has_flags", filters?.has_flags);
+    appendOptionalParam(query, "auto_commit_eligible", filters?.auto_commit_eligible);
     appendOptionalNumber(query, "page", filters?.page);
     appendOptionalNumber(query, "page_size", filters?.page_size);
+    appendOptionalParam(query, "sort_by", filters?.sort_by);
+    appendOptionalParam(query, "sort_order", filters?.sort_order);
   });
 
   return apiFetch<StagedExtractionListResponse>(

@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, Float, ForeignKey
+from sqlalchemy import String, Float, ForeignKey, UniqueConstraint
 from uuid import UUID
 from app.models.base import Base, UUIDMixin
 
@@ -12,6 +12,14 @@ class RelationRoleRevision(Base, UUIDMixin):
     When a relation is revised, all roles are duplicated (snapshot approach).
     """
     __tablename__ = "relation_role_revisions"
+    __table_args__ = (
+        UniqueConstraint(
+            "relation_revision_id",
+            "entity_id",
+            "role_type",
+            name="uq_relation_role_revision_participant",
+        ),
+    )
 
     relation_revision_id: Mapped[UUID] = mapped_column(
         ForeignKey("relation_revisions.id", ondelete="CASCADE"),

@@ -19,6 +19,7 @@ import { ChangePasswordView } from "../views/ChangePasswordView";
 import { SettingsView } from "../views/SettingsView";
 import { CreateRelationView } from "../views/CreateRelationView";
 import { EditRelationView } from "../views/EditRelationView";
+import { RelationDetailView } from "../views/RelationDetailView";
 import RelationsView from "../views/RelationsView";
 import RequestPasswordResetView from "../views/RequestPasswordResetView";
 import ResetPasswordView from "../views/ResetPasswordView";
@@ -82,6 +83,7 @@ export const router = createBrowserRouter([
       { path: "relations", element: <RelationsView /> },
       { path: "relations/new", element: <ProtectedRoute><CreateRelationView /></ProtectedRoute> },
       { path: "relations/batch", element: <ProtectedRoute><BatchCreateRelationsView /></ProtectedRoute> },
+      { path: "relations/:id", element: <RelationDetailView /> },
       { path: "relations/:id/edit", element: <ProtectedRoute><EditRelationView /></ProtectedRoute> },
 
       { path: "review-queue", element: <SuperuserRoute><ReviewQueueView /></SuperuserRoute> },

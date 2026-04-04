@@ -7,6 +7,7 @@ from app.schemas.relation import RelationWrite, RelationRead
 from app.repositories.relation_repo import RelationRepository
 from app.repositories.computed_relation_repo import ComputedRelationRepository
 from app.models.entity import Entity
+from app.models.entity_revision import EntityRevision
 from app.models.relation import Relation
 from app.models.relation_revision import RelationRevision
 from app.models.relation_role_revision import RelationRoleRevision
@@ -15,6 +16,7 @@ from app.mappers.relation_mapper import (
     relation_to_read,
 )
 from app.services.validation_service import validate_relation
+from app.services.query_predicates import canonical_entity_predicate
 from app.utils.revision_helpers import get_current_revision, create_new_revision
 from app.utils.errors import RelationNotFoundException, ValidationException
 from app.services.inference.read_models import resolve_entity_slugs
@@ -28,18 +30,24 @@ class RelationService:
         self.repo = RelationRepository(db)
 
     async def _validate_entity_ids(self, roles) -> None:
-        """Raise ValidationException if any role references a non-existent entity."""
+        """Raise ValidationException if any role references a non-canonical entity."""
         entity_ids = [role_data.entity_id for role_data in roles]
         result = await self.db.execute(
-            select(Entity.id).where(Entity.id.in_(entity_ids))
+            select(Entity.id)
+            .join(EntityRevision, EntityRevision.entity_id == Entity.id)
+            .where(Entity.id.in_(entity_ids))
+            .where(canonical_entity_predicate())
         )
         found_ids = {row[0] for row in result.all()}
         for role_data in roles:
             if role_data.entity_id not in found_ids:
                 raise ValidationException(
-                    message="Entity not found",
+                    message="Entity is not available for new relations",
                     field="roles",
-                    details=f"Entity with ID '{role_data.entity_id}' does not exist",
+                    details=(
+                        f"Entity with ID '{role_data.entity_id}' must have a current confirmed "
+                        "revision and cannot be merged or rejected"
+                    ),
                     context={"entity_id": str(role_data.entity_id)},
                 )
 

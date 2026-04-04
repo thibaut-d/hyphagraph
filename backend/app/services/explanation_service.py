@@ -306,6 +306,7 @@ class ExplanationService:
                     relation_direction=evidence.contribution_direction,
                     relation_confidence=relation.confidence or 1.0,
                     relation_scope=relation.scope,
+                    relation_notes=relation.notes,
                     # Contribution analysis
                     role_weight=evidence.role_weight,
                     contribution_percentage=contribution_pct,

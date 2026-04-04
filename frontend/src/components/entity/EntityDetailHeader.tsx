@@ -4,8 +4,10 @@ import {
   Paper,
   Stack,
   Box,
+  Breadcrumbs,
   Button,
   Chip,
+  Link,
   Typography,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
@@ -40,6 +42,13 @@ export function EntityDetailHeader({
   return (
     <Paper sx={{ p: { xs: 2, sm: 3 } }}>
       <Stack spacing={2}>
+        <Breadcrumbs>
+          <Link component={RouterLink} to="/entities" underline="hover" color="inherit">
+            {t("menu.entities", "Entities")}
+          </Link>
+          <Typography color="text.primary">{entity.slug}</Typography>
+        </Breadcrumbs>
+
         <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
           <Button
             component={RouterLink}

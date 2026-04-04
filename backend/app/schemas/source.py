@@ -32,6 +32,15 @@ class SourceWrite(Schema):
             return None
         return value
 
+    @field_validator("trust_level")
+    @classmethod
+    def validate_trust_level_bounds(cls, value: float | None) -> float | None:
+        if value is None:
+            return None
+        if not 0 <= value <= 1:
+            raise ValueError("trust_level must be between 0 and 1")
+        return value
+
 
 class SourceRevisionRead(Schema):
     """Schema for reading a source revision."""
@@ -171,4 +180,3 @@ class SaveExtractionResult(Schema):
     created_relation_ids: List[UUID]
     warnings: List[str] = []
     skipped_relations: List[SkippedRelationDetail] = []
-

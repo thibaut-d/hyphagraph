@@ -63,6 +63,13 @@ export function SourceExtractionSection({
           <Typography variant="h5">{t("sources.extract_knowledge", "Knowledge Extraction")}</Typography>
         </Box>
 
+        <Typography variant="body2" color="text.secondary">
+          {t(
+            "sources.extraction_positioning",
+            "Extraction is a curation step. Review the source-backed summary, statement excerpts, and linked relations above before adding more evidence."
+          )}
+        </Typography>
+
         {!hasRelations && !relationsError && (
           <Alert severity="info" icon={<AutoFixHighIcon />}>
             {hasUrl ? (
@@ -142,15 +149,6 @@ export function SourceExtractionSection({
           </Alert>
         )}
 
-        {saveResult && saveResult.skipped_relations.length > 0 && (
-          <Alert severity="warning">
-            {t(
-              "sources.skipped_relations_warning",
-              "{{count}} relation(s) could not be reconciled due to data errors and were left in the review queue.",
-              { count: saveResult.skipped_relations.length }
-            )}
-          </Alert>
-        )}
 
         {hasUrl && (
           <Box>
@@ -165,17 +163,8 @@ export function SourceExtractionSection({
             >
               {autoExtracting
                 ? t("sources.auto_extracting", "Extracting knowledge...")
-                : t("sources.auto_extract", "🤖 Auto-Extract Knowledge from URL")}
+                : t("sources.auto_extract", "Auto-Extract Knowledge from URL")}
             </Button>
-
-            {isHighQuality && (
-              <Typography variant="caption" color="text.secondary" sx={{ display: "block", textAlign: "center", mt: 1 }}>
-                {t(
-                  "sources.high_quality_hint",
-                  "✓ High-quality source detected - extraction will use strict validation"
-                )}
-              </Typography>
-            )}
           </Box>
         )}
 
@@ -226,12 +215,6 @@ export function SourceExtractionSection({
           />
         )}
 
-        <Typography variant="caption" color="text.secondary" sx={{ display: "block", textAlign: "center" }}>
-          {t(
-            "sources.extraction_info",
-            "AI will analyze the document and suggest entities and relations for your review before adding them to the graph."
-          )}
-        </Typography>
       </Stack>
     </Paper>
   );

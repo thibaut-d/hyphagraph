@@ -30,6 +30,10 @@ class SourceContribution(BaseModel):
     relation_direction: str
     relation_confidence: float
     relation_scope: Optional[ScopeFilter] = None
+    relation_notes: Optional[dict[str, str]] = Field(
+        None,
+        description="Source-grounded statement or passage that made this relation relevant (i18n keyed)",
+    )
 
     # Contribution analysis
     role_weight: Optional[float] = Field(

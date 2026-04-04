@@ -6,9 +6,17 @@ Tests source CRUD operations with metadata validation.
 import pytest
 from uuid import uuid4
 from fastapi import HTTPException
+from pydantic import ValidationError
+from sqlalchemy import update
 
+from app.models.relation_revision import RelationRevision
 from app.services.source_service import SourceService
+from app.services.entity_service import EntityService
 from app.schemas.source import SourceWrite
+from app.schemas.filters import SourceFilters
+from app.schemas.entity import EntityWrite
+from app.schemas.relation import RelationWrite, RoleRevisionWrite as RoleWrite
+from app.services.relation_service import RelationService
 
 
 @pytest.mark.asyncio
@@ -17,7 +25,6 @@ class TestSourceService:
 
     async def test_create_source_full(self, db_session):
         """Test creating source with all metadata."""
-        # Arrange
         service = SourceService(db_session)
         payload = SourceWrite(
             kind="study",
@@ -27,11 +34,10 @@ class TestSourceService:
             authors=["Dr. Smith", "Dr. Jones"],
             year=2023,
             origin="PubMed",
-            trust_level=8,
+            trust_level=0.8,
             summary={"en": "Clinical trial on aspirin"},
         )
 
-        # Act
         result = await service.create(payload)
 
         # Assert
@@ -41,8 +47,21 @@ class TestSourceService:
         assert result.source_metadata == {"doi": "10.1234/test"}
         assert result.authors == ["Dr. Smith", "Dr. Jones"]
         assert result.year == 2023
-        assert result.trust_level == 8
+        assert result.trust_level == 0.8
         assert result.id is not None
+
+    async def test_source_write_rejects_out_of_bounds_trust_level(self, db_session):
+        service = SourceService(db_session)
+
+        with pytest.raises(ValidationError):
+            await service.create(
+                SourceWrite(
+                    kind="study",
+                    title="Invalid trust",
+                    url="https://example.com/study",
+                    trust_level=8,
+                )
+            )
 
     async def test_create_source_minimal(self, db_session):
         """Test creating source with only required fields."""
@@ -179,3 +198,41 @@ class TestSourceService:
         # Assert
         assert len(studies) == 2
         assert all(s.kind == "study" for s in studies)
+
+    async def test_role_filters_ignore_draft_relations(self, db_session):
+        source_service = SourceService(db_session)
+        entity_service = EntityService(db_session)
+        relation_service = RelationService(db_session)
+
+        source = await source_service.create(
+            SourceWrite(kind="study", title="Role Filter", url="https://example.com/filter")
+        )
+        drug = await entity_service.create(EntityWrite(slug="filter-drug"))
+        condition = await entity_service.create(EntityWrite(slug="filter-condition"))
+
+        relation = await relation_service.create(
+            RelationWrite(
+                source_id=str(source.id),
+                kind="association",
+                confidence=0.9,
+                direction="contradicts",
+                roles=[
+                    RoleWrite(role_type="drug", entity_id=str(drug.id)),
+                    RoleWrite(role_type="condition", entity_id=str(condition.id)),
+                ],
+            )
+        )
+
+        await db_session.execute(
+            update(RelationRevision)
+            .where(RelationRevision.relation_id == relation.id)
+            .values(status="draft")
+        )
+        await db_session.commit()
+
+        items, total = await source_service.list_all(
+            filters=SourceFilters(role=["contradictory"])
+        )
+
+        assert total == 0
+        assert items == []

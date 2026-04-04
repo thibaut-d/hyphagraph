@@ -6,8 +6,11 @@ Uses scientifically accurate fibromyalgia/chronic pain test data.
 """
 import pytest
 from uuid import uuid4
+from sqlalchemy import update
 from fastapi import HTTPException
 
+from app.models.entity import Entity
+from app.models.entity_revision import EntityRevision
 from app.services.relation_service import RelationService
 from app.services.source_service import SourceService
 from app.services.entity_service import EntityService
@@ -338,3 +341,88 @@ class TestRelationService:
         with pytest.raises(HTTPException) as exc_info:
             await service.delete(uuid4())
         assert exc_info.value.status_code == 404
+
+    async def test_create_relation_rejects_merged_entity(self, db_session):
+        source_service = SourceService(db_session)
+        entity_service = EntityService(db_session)
+        relation_service = RelationService(db_session)
+
+        source = await source_service.create(
+            SourceWrite(kind="study", title="Test", url="https://example.com/study")
+        )
+        merged_entity = await entity_service.create(EntityWrite(slug="merged-target"))
+        canonical_entity = await entity_service.create(EntityWrite(slug="canonical-target"))
+
+        await db_session.execute(
+            update(Entity).where(Entity.id == merged_entity.id).values(is_merged=True)
+        )
+        await db_session.execute(
+            update(EntityRevision)
+            .where(EntityRevision.entity_id == merged_entity.id)
+            .values(is_current=False)
+        )
+        await db_session.commit()
+
+        with pytest.raises(HTTPException) as exc_info:
+            await relation_service.create(
+                RelationWrite(
+                    source_id=str(source.id),
+                    kind="association",
+                    confidence=0.8,
+                    direction="positive",
+                    roles=[
+                        RoleWrite(role_type="subject", entity_id=str(merged_entity.id)),
+                        RoleWrite(role_type="condition", entity_id=str(canonical_entity.id)),
+                    ],
+                )
+            )
+
+        assert exc_info.value.status_code == 400
+        assert "not available" in exc_info.value.detail.lower()
+
+    async def test_update_relation_rejects_rejected_entity(self, db_session):
+        source_service = SourceService(db_session)
+        entity_service = EntityService(db_session)
+        relation_service = RelationService(db_session)
+
+        source = await source_service.create(
+            SourceWrite(kind="study", title="Test", url="https://example.com/study")
+        )
+        approved_entity = await entity_service.create(EntityWrite(slug="approved"))
+        rejected_entity = await entity_service.create(EntityWrite(slug="rejected"))
+
+        created = await relation_service.create(
+            RelationWrite(
+                source_id=str(source.id),
+                kind="association",
+                confidence=0.9,
+                direction="positive",
+                roles=[
+                    RoleWrite(role_type="subject", entity_id=str(approved_entity.id)),
+                    RoleWrite(role_type="condition", entity_id=str(rejected_entity.id)),
+                ],
+            )
+        )
+
+        await db_session.execute(
+            update(Entity).where(Entity.id == rejected_entity.id).values(is_rejected=True)
+        )
+        await db_session.commit()
+
+        with pytest.raises(HTTPException) as exc_info:
+            await relation_service.update(
+                created.id,
+                RelationWrite(
+                    source_id=str(source.id),
+                    kind="association",
+                    confidence=0.7,
+                    direction="positive",
+                    roles=[
+                        RoleWrite(role_type="subject", entity_id=str(approved_entity.id)),
+                        RoleWrite(role_type="condition", entity_id=str(rejected_entity.id)),
+                    ],
+                ),
+            )
+
+        assert exc_info.value.status_code == 400
+        assert "not available" in exc_info.value.detail.lower()

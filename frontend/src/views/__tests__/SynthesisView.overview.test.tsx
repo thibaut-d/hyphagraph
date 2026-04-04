@@ -20,7 +20,7 @@ describe("SynthesisView overview", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Evidence Synthesis")).toBeInTheDocument();
-      expect(screen.getAllByText("Paracetamol").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("paracetamol").length).toBeGreaterThan(0);
       expect(screen.getByText("Entities")).toBeInTheDocument();
       expect(screen.getByText("Synthesis")).toBeInTheDocument();
       expect(screen.getByText("Back to entity")).toBeInTheDocument();
@@ -90,7 +90,8 @@ describe("SynthesisView overview", () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Low Confidence/)).toBeInTheDocument();
-      expect(screen.getByText(/Contradictions/)).toBeInTheDocument();
+      // "Contradictions" appears in both the summary chip and the quality section chip
+      expect(screen.getAllByText(/Contradictions/).length).toBeGreaterThan(0);
     });
   });
 

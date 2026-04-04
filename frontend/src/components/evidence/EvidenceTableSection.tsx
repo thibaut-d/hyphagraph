@@ -155,6 +155,7 @@ export function EvidenceTableSection({
           {relations.map((relation) => {
             const resolvedNotes = resolveNotes(relation.notes, language);
             const confidence = relation.confidence ?? 0;
+            const sourceTarget = `/sources/${relation.source_id}?relation=${relation.id}#relation-${relation.id}`;
 
             return (
               <TableRow key={relation.id} hover>
@@ -196,7 +197,7 @@ export function EvidenceTableSection({
                     <Box>
                       <Link
                         component={RouterLink}
-                        to={`/sources/${relation.source_id}`}
+                        to={sourceTarget}
                         variant="body2"
                         sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
                       >
@@ -212,7 +213,7 @@ export function EvidenceTableSection({
                       )}
                     </Box>
                   ) : (
-                    <Link component={RouterLink} to={`/sources/${relation.source_id}`} variant="body2">
+                    <Link component={RouterLink} to={sourceTarget} variant="body2">
                       {t("evidence.table.view_source", "View Source")}
                     </Link>
                   )}

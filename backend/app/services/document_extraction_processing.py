@@ -780,7 +780,7 @@ async def save_extraction_to_graph(
         entities_created=len(request.entities_to_create),
         entities_linked=len(request.entity_links),
         relations_created=len(relation_ids),
-        created_entity_ids=list(entity_mapping.values()),
+        created_entity_ids=list(created_slug_to_id.values()),
         created_relation_ids=relation_ids,
         warnings=all_warnings,
         skipped_relations=skipped_relations,

@@ -29,6 +29,9 @@ from app.models.computed_relation import ComputedRelation
 from app.models.inference_cache import InferenceCache
 from app.models.refresh_token import RefreshToken
 from app.models.audit_log import AuditLog
+from app.models.relation_type import RelationType
+from app.models.staged_extraction import StagedExtraction
+from app.models.bug_report import BugReport
 
 
 config = context.config

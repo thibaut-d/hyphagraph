@@ -1,27 +1,29 @@
-/**
- * Tests for ReviewQueueView component.
- *
- * Tests stats display, type/flag filters, selection, batch actions,
- * and the review dialog.
- */
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 import { ReviewQueueView } from "../ReviewQueueView";
-import { NotificationProvider } from "../../notifications/NotificationContext";
 import * as reviewApi from "../../api/extractionReview";
 
 vi.mock("../../api/extractionReview");
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string, opts?: Record<string, unknown>) => {
-      if (opts) {
-        return Object.entries(opts).reduce(
-          (s, [k, v]) => s.replace(`{{${k}}}`, String(v)),
-          key
-        );
+    t: (
+      key: string,
+      defaultValueOrOptions?: string | { defaultValue?: string; [key: string]: unknown },
+    ) => {
+      if (typeof defaultValueOrOptions === "string") {
+        return defaultValueOrOptions;
+      }
+      if (defaultValueOrOptions && typeof defaultValueOrOptions === "object") {
+        let result = defaultValueOrOptions.defaultValue || key;
+        Object.entries(defaultValueOrOptions).forEach(([field, value]) => {
+          if (field !== "defaultValue") {
+            result = result.replace(`{{${field}}}`, String(value));
+          }
+        });
+        return result;
       }
       return key;
     },
@@ -29,10 +31,18 @@ vi.mock("react-i18next", () => ({
   initReactI18next: { type: "3rdParty", init: () => {} },
 }));
 
-vi.mock("react-router-dom", async () => {
-  const actual = await vi.importActual("react-router-dom");
-  return { ...actual, useNavigate: () => vi.fn() };
-});
+vi.mock("../../components/review/LlmDraftsPanel", () => ({
+  LlmDraftsPanel: () => <div>Draft panel content</div>,
+}));
+
+vi.mock("../../notifications/NotificationContext", () => ({
+  useNotification: () => ({
+    showError: vi.fn(),
+    showSuccess: vi.fn(),
+    showWarning: vi.fn(),
+    showInfo: vi.fn(),
+  }),
+}));
 
 const mockStats = {
   total_pending: 5,
@@ -77,11 +87,9 @@ function makeExtraction(overrides: Partial<reviewApi.StagedExtractionRead> = {})
 
 function renderView() {
   return render(
-    <NotificationProvider>
-      <MemoryRouter>
-        <ReviewQueueView />
-      </MemoryRouter>
-    </NotificationProvider>
+    <MemoryRouter>
+      <ReviewQueueView />
+    </MemoryRouter>,
   );
 }
 
@@ -98,37 +106,29 @@ describe("ReviewQueueView", () => {
     });
   });
 
-  it("renders the review queue header", async () => {
+  it("renders the staged extraction queue with identity, summary, filters, batch tools, and items sections", async () => {
     renderView();
-    await waitFor(() => {
-      expect(screen.getByText("menu.review_queue")).toBeInTheDocument();
-    });
+
+    expect(await screen.findByRole("heading", { name: "Staged extraction review" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Staged Extraction Review" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "LLM Draft Review" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Summary metrics" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Filters" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Batch tools" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Queue items" })).toBeInTheDocument();
   });
 
-  it("displays stats cards after loading", async () => {
+  it("shows staged queue stats and extraction items", async () => {
     renderView();
-    await waitFor(() => {
-      expect(screen.getByText("5")).toBeInTheDocument(); // total_pending
-      expect(screen.getByText("2")).toBeInTheDocument(); // total_auto_verified
-      expect(screen.getByText("1")).toBeInTheDocument(); // flagged_count
-    });
-  });
 
-  it("displays average score as percentage", async () => {
-    renderView();
     await waitFor(() => {
+      expect(screen.getByText("5")).toBeInTheDocument();
       expect(screen.getByText("82%")).toBeInTheDocument();
-    });
-  });
-
-  it("renders extraction cards", async () => {
-    renderView();
-    await waitFor(() => {
       expect(screen.getByText("aspirin")).toBeInTheDocument();
     });
   });
 
-  it("shows empty state when no extractions", async () => {
+  it("shows empty state when no staged extractions exist", async () => {
     vi.mocked(reviewApi.listPendingExtractions).mockResolvedValue({
       extractions: [],
       total: 0,
@@ -138,103 +138,78 @@ describe("ReviewQueueView", () => {
     });
 
     renderView();
-    await waitFor(() => {
-      expect(screen.getByText("review_queue.no_pending_title")).toBeInTheDocument();
-    });
+
+    expect(await screen.findByText("review_queue.no_pending_title")).toBeInTheDocument();
   });
 
-  it("shows loading spinner initially", () => {
-    vi.mocked(reviewApi.listPendingExtractions).mockImplementation(() => new Promise(() => {}));
-    vi.mocked(reviewApi.getReviewStats).mockImplementation(() => new Promise(() => {}));
-
+  it("enables batch tools only after selection", async () => {
     renderView();
-    expect(screen.getByRole("progressbar")).toBeInTheDocument();
-  });
+    await screen.findByText("aspirin");
 
-  it("shows batch actions bar when extractions are selected", async () => {
-    renderView();
-    await waitFor(() => {
-      expect(screen.getByText("aspirin")).toBeInTheDocument();
-    });
-
-    // Click the checkbox to select
-    const checkbox = screen.getByRole("checkbox");
-    fireEvent.click(checkbox);
-
-    await waitFor(() => {
-      expect(screen.getByText(/review_queue.selected_count/)).toBeInTheDocument();
-    });
-  });
-
-  it("clears selection when deselect all is clicked", async () => {
-    renderView();
-    await waitFor(() => expect(screen.getByText("aspirin")).toBeInTheDocument());
-
+    expect(screen.getByRole("button", { name: "review_queue.approve_selected" })).toBeDisabled();
     fireEvent.click(screen.getByRole("checkbox"));
-    await waitFor(() => expect(screen.getByText(/review_queue.selected_count/)).toBeInTheDocument());
 
-    fireEvent.click(screen.getByText("review_queue.deselect_all"));
     await waitFor(() => {
-      expect(screen.queryByText(/review_queue.selected_count/)).not.toBeInTheDocument();
+      expect(screen.getByText("review_queue.selected_count")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "review_queue.approve_selected" })).toBeEnabled();
     });
   });
 
-  it("opens batch review dialog when Approve Selected is clicked", async () => {
+  it("re-fetches when the extraction type filter changes", async () => {
     renderView();
-    await waitFor(() => expect(screen.getByText("aspirin")).toBeInTheDocument());
-
-    fireEvent.click(screen.getByRole("checkbox"));
-    await waitFor(() => expect(screen.getByText("review_queue.approve_selected")).toBeInTheDocument());
-
-    fireEvent.click(screen.getByText("review_queue.approve_selected"));
-    await waitFor(() => {
-      expect(screen.getByRole("dialog")).toBeInTheDocument();
-    });
-  });
-
-  it("selects all extractions when Select All is clicked", async () => {
-    renderView();
-    await waitFor(() => expect(screen.getByText("aspirin")).toBeInTheDocument());
-
-    fireEvent.click(screen.getByText("review_queue.select_all"));
-    await waitFor(() => {
-      expect(screen.getByText(/review_queue.selected_count/)).toBeInTheDocument();
-    });
-  });
-
-  it("type filter toggles trigger re-fetch with extraction_type filter", async () => {
-    renderView();
-    await waitFor(() => expect(screen.getByText("aspirin")).toBeInTheDocument());
+    await screen.findByText("aspirin");
 
     const initialCallCount = vi.mocked(reviewApi.listPendingExtractions).mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: "review_queue.type_entity" }));
 
-    const entityButton = screen.getByText("review_queue.type_entity");
-    fireEvent.click(entityButton);
-
-    // After clicking Entity filter, the API should be called again
     await waitFor(() => {
-      const newCallCount = vi.mocked(reviewApi.listPendingExtractions).mock.calls.length;
-      expect(newCallCount).toBeGreaterThan(initialCallCount);
+      expect(vi.mocked(reviewApi.listPendingExtractions).mock.calls.length).toBeGreaterThan(initialCallCount);
     });
 
-    // The latest call should include extraction_type=entity
     const calls = vi.mocked(reviewApi.listPendingExtractions).mock.calls;
     const lastCallFilters = calls[calls.length - 1][0];
     expect(lastCallFilters?.extraction_type).toBe("entity");
   });
 
-  it("shows load more button when has_more is true", async () => {
-    vi.mocked(reviewApi.listPendingExtractions).mockResolvedValue({
-      extractions: [makeExtraction()],
-      total: 5,
-      page: 1,
-      page_size: 20,
-      has_more: true,
-    });
+  it("clears selection when a filter change replaces the visible extraction set", async () => {
+    vi.mocked(reviewApi.listPendingExtractions)
+      .mockResolvedValueOnce({
+        extractions: [makeExtraction({ id: "ext-1", extraction_type: "entity" })],
+        total: 1,
+        page: 1,
+        page_size: 20,
+        has_more: false,
+      })
+      .mockResolvedValueOnce({
+        extractions: [makeExtraction({ id: "ext-2", extraction_type: "relation" })],
+        total: 1,
+        page: 1,
+        page_size: 20,
+        has_more: false,
+      });
 
     renderView();
+    await screen.findByText("aspirin");
+
+    fireEvent.click(screen.getByRole("checkbox"));
     await waitFor(() => {
-      expect(screen.getByText("common.load_more")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "review_queue.approve_selected" })).toBeEnabled();
     });
+
+    fireEvent.click(screen.getByRole("button", { name: "review_queue.type_relation" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "review_queue.approve_selected" })).toBeDisabled();
+    });
+  });
+
+  it("switches to the draft queue with a queue-specific introduction", async () => {
+    renderView();
+    await screen.findByText("aspirin");
+
+    fireEvent.click(screen.getByRole("tab", { name: "LLM Draft Review" }));
+
+    expect(await screen.findByRole("heading", { name: "LLM draft revision review" })).toBeInTheDocument();
+    expect(screen.getByText("Draft panel content")).toBeInTheDocument();
   });
 });

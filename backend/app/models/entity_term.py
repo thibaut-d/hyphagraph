@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, Integer, ForeignKey, UniqueConstraint
+from sqlalchemy import String, Integer, ForeignKey, Index, UniqueConstraint, text
 from uuid import UUID
 from app.models.base import Base, UUIDMixin, TimestampMixin
 
@@ -34,4 +34,14 @@ class EntityTerm(Base, UUIDMixin, TimestampMixin):
     __table_args__ = (
         # Composite unique constraint: same term can't appear twice for same entity/language
         UniqueConstraint('entity_id', 'term', 'language', name='uq_entity_term_language'),
+        # PostgreSQL and SQLite both treat NULLs as distinct in composite unique constraints,
+        # so guard the language=NULL case explicitly.
+        Index(
+            "ix_entity_terms_entity_term_null_language_unique",
+            "entity_id",
+            "term",
+            unique=True,
+            postgresql_where=text("language IS NULL"),
+            sqlite_where=text("language IS NULL"),
+        ),
     )

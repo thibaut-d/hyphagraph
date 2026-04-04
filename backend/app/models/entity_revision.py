@@ -15,6 +15,13 @@ class EntityRevision(Base, UUIDMixin):
     """
     __tablename__ = "entity_revisions"
     __table_args__ = (
+        Index(
+            "ix_entity_revisions_current_unique",
+            "entity_id",
+            unique=True,
+            postgresql_where=text("is_current = true"),
+            sqlite_where=text("is_current = 1"),
+        ),
         # Unique constraint: only one current revision can have a given slug
         Index(
             'ix_entity_revisions_slug_current_unique',

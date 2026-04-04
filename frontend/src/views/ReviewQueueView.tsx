@@ -1,70 +1,85 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { useReviewQueue } from "../hooks/useReviewQueue";
-import { useSelection } from "../hooks/useSelection";
-import { useReviewDialog } from "../hooks/useReviewDialog";
-import { ExtractionCard } from "../components/extraction/ExtractionCard";
-import { LlmDraftsPanel } from "../components/review/LlmDraftsPanel";
-import type { ExtractionType } from "../api/extractionReview";
-
 import {
-  Typography,
-  List,
-  Paper,
+  Alert,
   Box,
   Button,
-  Stack,
-  CircularProgress,
   Card,
   CardContent,
-  Grid,
+  CircularProgress,
   Dialog,
-  DialogTitle,
-  DialogContent,
   DialogActions,
+  DialogContent,
+  DialogTitle,
+  Grid,
+  List,
+  Paper,
+  Stack,
+  Tab,
+  Tabs,
   TextField,
   ToggleButton,
   ToggleButtonGroup,
-  Tabs,
-  Tab,
+  Typography,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
-import WarningIcon from "@mui/icons-material/Warning";
+import DeselectIcon from "@mui/icons-material/Deselect";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import SelectAllIcon from "@mui/icons-material/SelectAll";
-import DeselectIcon from "@mui/icons-material/Deselect";
+import WarningIcon from "@mui/icons-material/Warning";
+
+import type { ExtractionType } from "../api/extractionReview";
+import { ExtractionCard } from "../components/extraction/ExtractionCard";
+import { LlmDraftsPanel } from "../components/review/LlmDraftsPanel";
+import { useReviewDialog } from "../hooks/useReviewDialog";
+import { useReviewQueue } from "../hooks/useReviewQueue";
+import { useSelection } from "../hooks/useSelection";
 
 const PAGE_SIZE = 20;
 
+type QueueType = "staged" | "drafts";
+
+function QueueIdentitySection({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <Paper sx={{ p: 3 }}>
+      <Stack spacing={1.5}>
+        <Typography variant="h5">{title}</Typography>
+        <Typography variant="body2" color="text.secondary">
+          {description}
+        </Typography>
+      </Stack>
+    </Paper>
+  );
+}
+
 export function ReviewQueueView() {
   const { t } = useTranslation();
-
-  // Tab state: 0 = staged extractions, 1 = LLM drafts
-  const [activeTab, setActiveTab] = useState(0);
-
-  // Filters state (kept in component for TextField binding)
+  const [activeTab, setActiveTab] = useState<QueueType>("staged");
   const [minScore, setMinScore] = useState<number | undefined>(undefined);
   const [onlyFlagged, setOnlyFlagged] = useState(false);
   const [extractionType, setExtractionType] = useState<ExtractionType | undefined>(undefined);
 
-  // Custom hooks
-  const {
-    extractions,
-    stats,
-    isLoading,
-    hasMore,
-    loadMore,
-    refresh
-  } = useReviewQueue({ pageSize: PAGE_SIZE, minScore, onlyFlagged, extractionType });
+  const { extractions, stats, isLoading, hasMore, loadMore, refresh } = useReviewQueue({
+    pageSize: PAGE_SIZE,
+    minScore,
+    onlyFlagged,
+    extractionType,
+  });
 
-  const {
-    selectedIds,
-    toggleSelection,
-    selectAll,
-    clearSelection,
-    selectedCount
-  } = useSelection();
+  const { selectedIds, toggleSelection, selectAll, clearSelection, selectedCount } = useSelection();
+  const visibleExtractionIds = extractions.map((extraction) => extraction.id).join("|");
+
+  // Clear selection whenever the visible extraction set changes due to a filter or tab switch (UX31-M1)
+  useEffect(() => {
+    clearSelection();
+  }, [minScore, onlyFlagged, extractionType, activeTab, visibleExtractionIds, clearSelection]);
 
   const {
     isOpen: reviewDialogOpen,
@@ -78,14 +93,13 @@ export function ReviewQueueView() {
     submitBatchReview,
   } = useReviewDialog();
 
-  // Handlers
   const handleRefresh = () => {
     clearSelection();
     refresh();
   };
 
   const handleSelectAll = () => {
-    selectAll(extractions.map(e => e.id));
+    selectAll(extractions.map((extraction) => extraction.id));
   };
 
   const handleSingleReview = async (extractionId: string, decision: "approve" | "reject") => {
@@ -104,214 +118,283 @@ export function ReviewQueueView() {
     openReviewDialog(decision);
   };
 
+  const stagedIdentityTitle = t("review_queue.queue_staged_title", "Staged extraction review");
+  const stagedIdentityDescription = t(
+    "review_queue.queue_staged_description",
+    "This queue holds staged entity, relation, and claim extractions that need human review before they are materialized into the graph."
+  );
+  const draftIdentityTitle = t("review_queue.queue_drafts_title", "LLM draft revision review");
+  const draftIdentityDescription = t(
+    "review_queue.queue_drafts_description",
+    "This queue holds draft entity, relation, and source revisions authored with LLM assistance. Each draft must be confirmed or discarded explicitly."
+  );
+
   return (
     <Box sx={{ p: 3 }}>
       <Stack spacing={3}>
-        {/* Header */}
         <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <Typography variant="h4">{t("menu.review_queue")}</Typography>
-          {activeTab === 0 && (
-            <Button
-              startIcon={<RefreshIcon />}
-              onClick={handleRefresh}
-              disabled={isLoading}
-            >
+          <Typography variant="h4">{t("menu.review_queue", "Review queues")}</Typography>
+          {activeTab === "staged" && (
+            <Button startIcon={<RefreshIcon />} onClick={handleRefresh} disabled={isLoading}>
               {t("review_queue.refresh")}
             </Button>
           )}
         </Stack>
 
-        {/* Tabs */}
-        <Tabs value={activeTab} onChange={(_e, v) => setActiveTab(v as number)}>
-          <Tab label={t("review_queue.type_all")} />
-          <Tab label={t("llm_drafts.tab_label")} />
+        <Tabs value={activeTab} onChange={(_event, value) => setActiveTab(value as QueueType)}>
+          <Tab value="staged" label={t("review_queue.tab_staged", "Staged Extraction Review")} />
+          <Tab value="drafts" label={t("review_queue.tab_drafts", "LLM Draft Review")} />
         </Tabs>
 
-        {/* LLM Drafts tab */}
-        {activeTab === 1 && <LlmDraftsPanel />}
+        {activeTab === "staged" && (
+          <>
+            <QueueIdentitySection
+              title={stagedIdentityTitle}
+              description={stagedIdentityDescription}
+            />
 
-        {/* Staged Extractions tab content */}
-        {activeTab === 0 && <>
+            <Paper sx={{ p: 2 }}>
+              <Stack spacing={2}>
+                <Typography variant="h6">
+                  {t("review_queue.summary_title", "Summary metrics")}
+                </Typography>
+                {stats && (
+                  <Grid container spacing={2}>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                      <Card>
+                        <CardContent>
+                          <Typography color="text.secondary" gutterBottom>
+                            {t("review_queue.pending_review")}
+                          </Typography>
+                          <Typography variant="h4">{stats.total_pending}</Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {t("review_queue.pending_breakdown", {
+                              entities: stats.pending_entities,
+                              relations: stats.pending_relations,
+                            })}
+                          </Typography>
+                          <Typography variant="caption" color="text.disabled">
+                            {t("review_queue.pending_review_hint")}
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                      <Card>
+                        <CardContent>
+                          <Typography color="text.secondary" gutterBottom>
+                            {t("review_queue.auto_verified")}
+                          </Typography>
+                          <Typography variant="h4">{stats.total_auto_verified}</Typography>
+                          <Typography variant="caption" color="text.disabled">
+                            {t("review_queue.auto_verified_hint")}
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                      <Card>
+                        <CardContent>
+                          <Typography color="text.secondary" gutterBottom>
+                            {t("review_queue.average_score")}
+                          </Typography>
+                          <Typography variant="h4">
+                            {(stats.avg_validation_score * 100).toFixed(0)}%
+                          </Typography>
+                          <Typography variant="caption" color="text.disabled">
+                            {t("review_queue.average_score_hint")}
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                      <Card>
+                        <CardContent>
+                          <Typography color="text.secondary" gutterBottom>
+                            {t("review_queue.flagged")}
+                          </Typography>
+                          <Typography variant="h4">{stats.flagged_count}</Typography>
+                          <Typography variant="caption" color="text.disabled">
+                            {t("review_queue.flagged_hint")}
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  </Grid>
+                )}
+              </Stack>
+            </Paper>
 
-        {/* Statistics Cards */}
-        {stats && (
-          <Grid container spacing={2}>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card>
-                <CardContent>
-                  <Typography color="text.secondary" gutterBottom>
-                    {t("review_queue.pending_review")}
-                  </Typography>
-                  <Typography variant="h4">{stats.total_pending}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {t("review_queue.pending_breakdown", { entities: stats.pending_entities, relations: stats.pending_relations })}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card>
-                <CardContent>
-                  <Typography color="text.secondary" gutterBottom>
-                    {t("review_queue.auto_verified")}
-                  </Typography>
-                  <Typography variant="h4">{stats.total_auto_verified}</Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card>
-                <CardContent>
-                  <Typography color="text.secondary" gutterBottom>
-                    {t("review_queue.average_score")}
-                  </Typography>
-                  <Typography variant="h4">
-                    {(stats.avg_validation_score * 100).toFixed(0)}%
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card>
-                <CardContent>
-                  <Typography color="text.secondary" gutterBottom>
-                    {t("review_queue.flagged")}
-                  </Typography>
-                  <Typography variant="h4">{stats.flagged_count}</Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
+            <Paper sx={{ p: 2 }}>
+              <Stack spacing={2}>
+                <Typography variant="h6">
+                  {t("review_queue.filters_title", "Filters")}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {t(
+                    "review_queue.filters_description",
+                    "Narrow the staged extraction queue by validation score, flagged status, or extraction type."
+                  )}
+                </Typography>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ xs: "stretch", sm: "center" }} flexWrap="wrap">
+                  <TextField
+                    label={t("review_queue.min_score_label")}
+                    type="number"
+                    size="small"
+                    value={minScore ?? ""}
+                    onChange={(event) =>
+                      setMinScore(event.target.value ? parseFloat(event.target.value) : undefined)
+                    }
+                    inputProps={{ min: 0, max: 1, step: 0.1 }}
+                    sx={{ width: { xs: "100%", sm: 200 } }}
+                  />
+                  <Button
+                    variant={onlyFlagged ? "contained" : "outlined"}
+                    onClick={() => setOnlyFlagged(!onlyFlagged)}
+                    startIcon={<WarningIcon />}
+                  >
+                    {t("review_queue.only_flagged")}
+                  </Button>
+                </Stack>
+                <ToggleButtonGroup
+                  value={extractionType ?? "all"}
+                  exclusive
+                  onChange={(_event, value) =>
+                    setExtractionType(value === "all" ? undefined : (value as ExtractionType))
+                  }
+                  size="small"
+                  aria-label={t("review_queue.type_filter_label")}
+                >
+                  <ToggleButton value="all">{t("review_queue.type_all")}</ToggleButton>
+                  <ToggleButton value="entity">{t("review_queue.type_entity")}</ToggleButton>
+                  <ToggleButton value="relation">{t("review_queue.type_relation")}</ToggleButton>
+                  <ToggleButton value="claim">{t("review_queue.type_claim")}</ToggleButton>
+                </ToggleButtonGroup>
+              </Stack>
+            </Paper>
+
+            <Paper sx={{ p: 2, bgcolor: selectedCount > 0 ? "action.selected" : "background.paper" }}>
+              <Stack spacing={2}>
+                <Typography variant="h6">
+                  {t("review_queue.batch_tools_title", "Batch tools")}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {selectedCount > 0
+                    ? t("review_queue.selected_count", { count: selectedCount })
+                    : t(
+                        "review_queue.batch_tools_description",
+                        "Select staged extractions to approve or reject them in one batch."
+                      )}
+                </Typography>
+                <Stack direction="row" spacing={2} flexWrap="wrap">
+                  <Button
+                    startIcon={<SelectAllIcon />}
+                    onClick={handleSelectAll}
+                    size="small"
+                    disabled={extractions.length === 0}
+                  >
+                    {t("review_queue.select_all")}
+                  </Button>
+                  <Button
+                    startIcon={<DeselectIcon />}
+                    onClick={clearSelection}
+                    size="small"
+                    disabled={selectedCount === 0}
+                  >
+                    {t("review_queue.deselect_all")}
+                  </Button>
+                  <Button
+                    variant="contained"
+                    color="success"
+                    startIcon={<CheckCircleIcon />}
+                    onClick={() => openBatchReviewDialog("approve")}
+                    disabled={selectedCount === 0}
+                  >
+                    {t("review_queue.approve_selected")}
+                  </Button>
+                  <Button
+                    variant="contained"
+                    color="error"
+                    startIcon={<CancelIcon />}
+                    onClick={() => openBatchReviewDialog("reject")}
+                    disabled={selectedCount === 0}
+                  >
+                    {t("review_queue.reject_selected")}
+                  </Button>
+                </Stack>
+              </Stack>
+            </Paper>
+
+            <Paper sx={{ p: 2 }}>
+              <Stack spacing={2}>
+                <Typography variant="h6">
+                  {t("review_queue.items_title", "Queue items")}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {t(
+                    "review_queue.items_description",
+                    "Review staged extractions item by item, or use the batch tools above after selecting a set."
+                  )}
+                </Typography>
+
+                {isLoading && extractions.length === 0 ? (
+                  <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
+                    <CircularProgress />
+                  </Box>
+                ) : extractions.length === 0 ? (
+                  <Alert severity="info">
+                    <Typography variant="h6" color="text.secondary">
+                      {t("review_queue.no_pending_title")}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {t("review_queue.no_pending_desc")}
+                    </Typography>
+                  </Alert>
+                ) : (
+                  <List>
+                    {extractions.map((extraction) => (
+                      <ExtractionCard
+                        key={extraction.id}
+                        extraction={extraction}
+                        isSelected={selectedIds.has(extraction.id)}
+                        onToggleSelect={() => toggleSelection(extraction.id)}
+                        onApprove={() => handleSingleReview(extraction.id, "approve")}
+                        onReject={() => handleSingleReview(extraction.id, "reject")}
+                      />
+                    ))}
+                  </List>
+                )}
+
+                {hasMore && !isLoading && extractions.length > 0 && (
+                  <Box sx={{ display: "flex", justifyContent: "center" }}>
+                    <Button onClick={loadMore} variant="outlined">
+                      {t("common.load_more")}
+                    </Button>
+                  </Box>
+                )}
+              </Stack>
+            </Paper>
+          </>
         )}
 
-        {/* Filters */}
-        <Paper sx={{ p: 2 }}>
-          <Stack spacing={2}>
-            <Stack direction="row" spacing={2} alignItems="center">
-              <TextField
-                label={t("review_queue.min_score_label")}
-                type="number"
-                size="small"
-                value={minScore ?? ""}
-                onChange={(e) => setMinScore(e.target.value ? parseFloat(e.target.value) : undefined)}
-                inputProps={{ min: 0, max: 1, step: 0.1 }}
-                sx={{ width: 200 }}
-              />
-              <Button
-                variant={onlyFlagged ? "contained" : "outlined"}
-                onClick={() => setOnlyFlagged(!onlyFlagged)}
-                startIcon={<WarningIcon />}
-              >
-                {t("review_queue.only_flagged")}
-              </Button>
-            </Stack>
-            <ToggleButtonGroup
-              value={extractionType ?? "all"}
-              exclusive
-              onChange={(_e, value) => setExtractionType(value === "all" ? undefined : value as ExtractionType)}
-              size="small"
-              aria-label={t("review_queue.type_filter_label")}
-            >
-              <ToggleButton value="all">{t("review_queue.type_all")}</ToggleButton>
-              <ToggleButton value="entity">{t("review_queue.type_entity")}</ToggleButton>
-              <ToggleButton value="relation">{t("review_queue.type_relation")}</ToggleButton>
-              <ToggleButton value="claim">{t("review_queue.type_claim")}</ToggleButton>
-            </ToggleButtonGroup>
-          </Stack>
-        </Paper>
-
-        {/* Batch Actions */}
-        {selectedCount > 0 && (
-          <Paper sx={{ p: 2, bgcolor: "action.selected" }}>
-            <Stack direction="row" spacing={2} alignItems="center">
-              <Typography>
-                {t("review_queue.selected_count", { count: selectedCount })}
-              </Typography>
-              <Button
-                variant="contained"
-                color="success"
-                startIcon={<CheckCircleIcon />}
-                onClick={() => openBatchReviewDialog("approve")}
-              >
-                {t("review_queue.approve_selected")}
-              </Button>
-              <Button
-                variant="contained"
-                color="error"
-                startIcon={<CancelIcon />}
-                onClick={() => openBatchReviewDialog("reject")}
-              >
-                {t("review_queue.reject_selected")}
-              </Button>
-              <Button
-                startIcon={<DeselectIcon />}
-                onClick={clearSelection}
-              >
-                {t("review_queue.deselect_all")}
-              </Button>
-            </Stack>
-          </Paper>
+        {activeTab === "drafts" && (
+          <>
+            <QueueIdentitySection
+              title={draftIdentityTitle}
+              description={draftIdentityDescription}
+            />
+            <LlmDraftsPanel />
+          </>
         )}
-
-        {/* Selection Controls */}
-        {extractions.length > 0 && (
-          <Stack direction="row" spacing={2}>
-            <Button
-              startIcon={<SelectAllIcon />}
-              onClick={handleSelectAll}
-              size="small"
-            >
-              {t("review_queue.select_all")}
-            </Button>
-          </Stack>
-        )}
-
-        {/* Extractions List */}
-        {isLoading && extractions.length === 0 ? (
-          <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
-            <CircularProgress />
-          </Box>
-        ) : extractions.length === 0 ? (
-          <Paper sx={{ p: 4, textAlign: "center" }}>
-            <Typography variant="h6" color="text.secondary">
-              {t("review_queue.no_pending_title")}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {t("review_queue.no_pending_desc")}
-            </Typography>
-          </Paper>
-        ) : (
-          <List>
-            {extractions.map((extraction) => (
-              <ExtractionCard
-                key={extraction.id}
-                extraction={extraction}
-                isSelected={selectedIds.has(extraction.id)}
-                onToggleSelect={() => toggleSelection(extraction.id)}
-                onApprove={() => handleSingleReview(extraction.id, "approve")}
-                onReject={() => handleSingleReview(extraction.id, "reject")}
-              />
-            ))}
-          </List>
-        )}
-
-        {/* Load More */}
-        {hasMore && !isLoading && extractions.length > 0 && (
-          <Box sx={{ display: "flex", justifyContent: "center" }}>
-            <Button onClick={loadMore} variant="outlined">
-              {t("common.load_more")}
-            </Button>
-          </Box>
-        )}
-
-        </>}
       </Stack>
 
-      {/* Batch Review Dialog */}
       <Dialog open={reviewDialogOpen} onClose={closeReviewDialog}>
         <DialogTitle>
           {t("review_queue.dialog_title", {
-            action: reviewDecision === "approve" ? t("review_queue.dialog_action_approve") : t("review_queue.dialog_action_reject"),
+            action:
+              reviewDecision === "approve"
+                ? t("review_queue.dialog_action_approve")
+                : t("review_queue.dialog_action_reject"),
             count: selectedCount,
           })}
         </DialogTitle>
@@ -322,7 +405,7 @@ export function ReviewQueueView() {
             rows={4}
             fullWidth
             value={reviewNotes}
-            onChange={(e) => setReviewNotes(e.target.value)}
+            onChange={(event) => setReviewNotes(event.target.value)}
             sx={{ mt: 2 }}
           />
         </DialogContent>
@@ -334,7 +417,10 @@ export function ReviewQueueView() {
             color={reviewDecision === "approve" ? "success" : "error"}
           >
             {t("review_queue.action_all", {
-              action: reviewDecision === "approve" ? t("review_queue.dialog_action_approve") : t("review_queue.dialog_action_reject"),
+              action:
+                reviewDecision === "approve"
+                  ? t("review_queue.dialog_action_approve")
+                  : t("review_queue.dialog_action_reject"),
             })}
           </Button>
         </DialogActions>

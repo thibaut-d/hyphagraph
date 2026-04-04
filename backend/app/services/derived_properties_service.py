@@ -20,6 +20,7 @@ from app.models.relation import Relation
 from app.models.relation_revision import RelationRevision
 from app.models.relation_role_revision import RelationRoleRevision
 from app.models.source_revision import SourceRevision
+from app.services.query_predicates import canonical_relation_predicate
 
 # Disagreement thresholds — fraction of "contradicts" relations out of total.
 # See docs/architecture/COMPUTED_RELATIONS.md for the evidence-weighting rationale.
@@ -58,7 +59,7 @@ class DerivedPropertiesService:
             .join(RelationRoleRevision, RelationRevision.id == RelationRoleRevision.relation_revision_id)
             .where(
                 and_(
-                    RelationRevision.is_current == True,
+                    canonical_relation_predicate(),
                     RelationRoleRevision.entity_id == entity_id,
                     RelationRevision.kind.is_not(None),
                 )
@@ -96,7 +97,7 @@ class DerivedPropertiesService:
             .join(RelationRoleRevision, RelationRevision.id == RelationRoleRevision.relation_revision_id)
             .where(
                 and_(
-                    RelationRevision.is_current == True,
+                    canonical_relation_predicate(),
                     RelationRoleRevision.entity_id == entity_id,
                 )
             )
@@ -147,7 +148,7 @@ class DerivedPropertiesService:
             .where(
                 and_(
                     SourceRevision.is_current == True,
-                    RelationRevision.is_current == True,
+                    canonical_relation_predicate(),
                     RelationRoleRevision.entity_id == entity_id,
                 )
             )
@@ -225,7 +226,7 @@ class DerivedPropertiesService:
             .where(
                 and_(
                     Relation.source_id == source_id,
-                    RelationRevision.is_current == True,
+                    canonical_relation_predicate(),
                 )
             )
         )

@@ -1,5 +1,5 @@
-import { useCallback, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useNotification } from "../notifications/NotificationContext";
 
@@ -19,6 +19,7 @@ import { invalidateSourceFilterCache } from "../utils/cacheUtils";
 import { DocumentExtractionPreview, SaveExtractionResult } from "../types/extraction";
 import { ExtractionPreview } from "../components/ExtractionPreview";
 import { SourceDetailDialogs } from "../components/source-detail/SourceDetailDialogs";
+import { SourceEvidenceSection } from "../components/source-detail/SourceEvidenceSection";
 import { SourceExtractionSection } from "../components/source-detail/SourceExtractionSection";
 import { SourceMetadataSection } from "../components/source-detail/SourceMetadataSection";
 import { SourceRelationsSection } from "../components/source-detail/SourceRelationsSection";
@@ -28,6 +29,7 @@ import { useSourceRelations } from "../hooks/useSourceRelations";
 
 export function SourceDetailView() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const { t } = useTranslation();
   const { showError } = useNotification();
   const navigate = useNavigate();
@@ -50,6 +52,7 @@ export function SourceDetailView() {
   const [extractionPreview, setExtractionPreview] = useState<DocumentExtractionPreview | null>(null);
   const [saveResult, setSaveResult] = useState<SaveExtractionResult | null>(null);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const lastScrolledRelationIdRef = useRef<string | null>(null);
 
   // URL extraction state
   const [urlDialogOpen, setUrlDialogOpen] = useState(false);
@@ -75,6 +78,31 @@ export function SourceDetailView() {
     load: loadSource,
     onError: (err) => handlePageError(err, "Failed to load source").userMessage,
   });
+
+  const highlightedRelationId = searchParams.get("relation");
+
+  useEffect(() => {
+    if (!highlightedRelationId || relations.length === 0) {
+      return;
+    }
+
+    if (lastScrolledRelationIdRef.current === highlightedRelationId) {
+      return;
+    }
+
+    const relationExists = relations.some((relation) => relation.id === highlightedRelationId);
+    if (!relationExists) {
+      return;
+    }
+
+    const row = document.getElementById(`relation-${highlightedRelationId}`);
+    if (!row) {
+      return;
+    }
+
+    row.scrollIntoView({ behavior: "smooth", block: "center" });
+    lastScrolledRelationIdRef.current = highlightedRelationId;
+  }, [highlightedRelationId, relations]);
 
   const handleDelete = async () => {
     if (!id) return;
@@ -208,12 +236,45 @@ export function SourceDetailView() {
   const hasUrl = !!source.url;
   const hasRelations = relations.length > 0;
   const isHighQuality = source.trust_level != null && source.trust_level >= 0.75;
+  const statementCount = relations.filter((relation) => {
+    if (!relation.notes) {
+      return false;
+    }
+
+    if (typeof relation.notes === "string") {
+      return relation.notes.trim().length > 0;
+    }
+
+    return Object.values(relation.notes).some((value) => value.trim().length > 0);
+  }).length;
 
   return (
     <Stack spacing={3}>
       <SourceMetadataSection
         source={source}
+        relationsCount={relations.length}
+        statementsCount={statementCount}
         onDelete={() => setDeleteDialogOpen(true)}
+      />
+
+      <SourceEvidenceSection
+        source={source}
+        relations={relations}
+      />
+
+      {extractionPreview && (
+        <ExtractionPreview
+          preview={extractionPreview}
+          onSaveComplete={handleSaveComplete}
+          onCancel={handleCancelExtraction}
+        />
+      )}
+
+      <SourceRelationsSection
+        relations={relations}
+        relationsError={relationsError}
+        highlightedRelationId={highlightedRelationId}
+        onDeleteRelation={openDeleteRelationDialog}
       />
 
       <SourceExtractionSection
@@ -232,20 +293,6 @@ export function SourceDetailView() {
         onFileUpload={handleFileUpload}
         onOpenUrlDialog={() => setUrlDialogOpen(true)}
         onClearUploadedFile={() => setUploadedFileName(null)}
-      />
-
-      {extractionPreview && (
-        <ExtractionPreview
-          preview={extractionPreview}
-          onSaveComplete={handleSaveComplete}
-          onCancel={handleCancelExtraction}
-        />
-      )}
-
-      <SourceRelationsSection
-        relations={relations}
-        relationsError={relationsError}
-        onDeleteRelation={openDeleteRelationDialog}
       />
 
       <SourceDetailDialogs

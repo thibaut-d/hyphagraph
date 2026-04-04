@@ -7,6 +7,8 @@ import {
   Button,
   Menu,
   MenuItem,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
 import type { SvgIconProps } from "@mui/material";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
@@ -72,21 +74,36 @@ export function DesktopNavigation({
               location.pathname === item.path ||
               (item.path !== "/" && location.pathname.startsWith(item.path));
 
-            // Special case for Entities menu with dropdown
+            // Special case for Entities: direct link + adjacent chevron for category filter
             if (item.path === "/entities" && categories.length > 0) {
               return (
-                <Button
-                  key={item.path}
-                  color="inherit"
-                  endIcon={<ArrowDropDownIcon />}
-                  onClick={(e) => setEntitiesMenuAnchor(e.currentTarget)}
-                  sx={{
-                    fontWeight: isActive ? "bold" : "normal",
-                    textDecoration: isActive ? "underline" : "none",
-                  }}
-                >
-                  {t(item.key)}
-                </Button>
+                <Box key={item.path} sx={{ display: "flex", alignItems: "center" }}>
+                  <Button
+                    component={RouterLink}
+                    to={item.path}
+                    color="inherit"
+                    sx={{
+                      fontWeight: isActive ? "bold" : "normal",
+                      textDecoration: isActive ? "underline" : "none",
+                      pr: 0.5,
+                    }}
+                  >
+                    {t(item.key)}
+                  </Button>
+                  <Tooltip title={t("menu.entities_by_category", "Filter by category")}>
+                    <IconButton
+                      color="inherit"
+                      size="small"
+                      onClick={(e) => setEntitiesMenuAnchor(e.currentTarget)}
+                      aria-label={t("menu.entities_by_category", "Filter by category")}
+                      aria-haspopup="true"
+                      aria-expanded={Boolean(entitiesMenuAnchor)}
+                      sx={{ p: 0.25 }}
+                    >
+                      <ArrowDropDownIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
               );
             }
 

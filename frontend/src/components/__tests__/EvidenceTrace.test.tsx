@@ -124,8 +124,8 @@ describe('EvidenceTrace', () => {
     const link1 = screen.getByRole('link', { name: /Aspirin Efficacy Study/i });
     const link2 = screen.getByRole('link', { name: /Meta-analysis of Pain Relief/i });
 
-    expect(link1).toHaveAttribute('href', '/sources/source-1');
-    expect(link2).toHaveAttribute('href', '/sources/source-2');
+    expect(link1).toHaveAttribute('href', '/sources/source-1?relation=rel-1#relation-rel-1');
+    expect(link2).toHaveAttribute('href', '/sources/source-2?relation=rel-2#relation-rel-2');
   });
 
   it('truncates author list with "et al." when more than 3 authors', () => {

@@ -18,6 +18,7 @@ from app.models.relation_role_revision import RelationRoleRevision
 from app.models.source import Source
 from app.models.source_revision import SourceRevision
 from app.schemas.filters import EntityFilters
+from app.services.query_predicates import canonical_relation_predicate
 
 
 class EntityQueryBuilder:
@@ -98,7 +99,7 @@ class EntityQueryBuilder:
             .join(RelationRevision, RelationRoleRevision.relation_revision_id == RelationRevision.id)
             .where(
                 and_(
-                    RelationRevision.is_current == True,
+                    canonical_relation_predicate(),
                     RelationRevision.kind.in_(filters.clinical_effects)
                 )
             )
@@ -135,7 +136,7 @@ class EntityQueryBuilder:
                 SourceRevision.source_id == Source.id,
                 SourceRevision.is_current == True
             ))
-            .where(RelationRevision.is_current == True)
+            .where(canonical_relation_predicate())
             .group_by(RelationRoleRevision.entity_id)
             .subquery()
         )
@@ -194,7 +195,7 @@ class EntityQueryBuilder:
                 SourceRevision.source_id == Source.id,
                 SourceRevision.is_current == True
             ))
-            .where(RelationRevision.is_current == True)
+            .where(canonical_relation_predicate())
             .group_by(RelationRoleRevision.entity_id)
             .subquery()
         )

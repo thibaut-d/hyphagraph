@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   TextField,
   Autocomplete,
@@ -23,6 +24,7 @@ import { useDebounce } from "../hooks/useDebounce";
  */
 export function GlobalSearch() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [inputValue, setInputValue] = useState("");
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
@@ -132,9 +134,14 @@ export function GlobalSearch() {
       renderInput={(params) => (
         <TextField
           {...params}
-          placeholder="Search entities, sources..."
+          label={t("global_search.label", "Search")}
+          placeholder={t("global_search.placeholder", "Entities, publications, evidence...")}
           size="small"
           onKeyDown={handleKeyDown}
+          inputProps={{
+            ...params.inputProps,
+            "aria-label": t("global_search.aria_label", "Search the knowledge base"),
+          }}
           InputProps={{
             ...params.InputProps,
             startAdornment: (
@@ -151,6 +158,7 @@ export function GlobalSearch() {
               </>
             ),
           }}
+          helperText={inputValue.length >= 3 ? t("global_search.press_enter", "Press Enter to search all results") : undefined}
           sx={{
             minWidth: { xs: 200, sm: 300, md: 400 },
             backgroundColor: "background.paper",
@@ -170,10 +178,14 @@ export function GlobalSearch() {
         <Box component="li" {...props} key={option.id}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, flex: 1 }}>
             <Chip
-              label={option.type}
+              label={
+                option.type === "entity"
+                  ? t("search.kind_entity", "Entity")
+                  : t("search.kind_source", "Publication")
+              }
               size="small"
               color={option.type === "entity" ? "primary" : "secondary"}
-              sx={{ minWidth: 60 }}
+              sx={{ minWidth: 72 }}
             />
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography variant="body2" noWrap>

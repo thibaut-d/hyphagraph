@@ -90,6 +90,9 @@ export function EvidenceTrace({ sourceChain }: EvidenceTraceProps) {
     );
   }
 
+  const buildEvidenceTarget = (sourceId: string, relationId: string) =>
+    `/sources/${sourceId}?relation=${encodeURIComponent(relationId)}#relation-${relationId}`;
+
   return (
     <TableContainer component={Paper} variant="outlined">
       <Table size="small">
@@ -97,6 +100,9 @@ export function EvidenceTrace({ sourceChain }: EvidenceTraceProps) {
           <TableRow>
             <TableCell>
               <strong>{t("evidence_trace.columns.source", "Source")}</strong>
+            </TableCell>
+            <TableCell sx={{ maxWidth: 280 }}>
+              <strong>{t("evidence_trace.columns.statement", "Supporting statement")}</strong>
             </TableCell>
             <TableCell>
               <strong>{t("evidence_trace.columns.kind", "Kind")}</strong>
@@ -148,7 +154,7 @@ export function EvidenceTrace({ sourceChain }: EvidenceTraceProps) {
               <TableCell>
                 <Link
                   component={RouterLink}
-                  to={`/sources/${source.source_id}`}
+                  to={buildEvidenceTarget(source.source_id, source.relation_id)}
                   underline="hover"
                   sx={{ fontWeight: 500 }}
                 >
@@ -158,6 +164,18 @@ export function EvidenceTrace({ sourceChain }: EvidenceTraceProps) {
                   <Typography variant="caption" display="block" color="text.secondary">
                     {source.source_authors.slice(0, 3).join(", ")}
                     {source.source_authors.length > 3 && " et al."}
+                  </Typography>
+                )}
+              </TableCell>
+
+              <TableCell sx={{ maxWidth: 280 }}>
+                {source.relation_notes && (source.relation_notes["en"] || Object.values(source.relation_notes)[0]) ? (
+                  <Typography variant="body2" sx={{ fontStyle: "italic", color: "text.secondary" }}>
+                    "{source.relation_notes["en"] || Object.values(source.relation_notes)[0]}"
+                  </Typography>
+                ) : (
+                  <Typography variant="body2" color="text.disabled">
+                    {t("evidence_trace.no_statement", "—")}
                   </Typography>
                 )}
               </TableCell>

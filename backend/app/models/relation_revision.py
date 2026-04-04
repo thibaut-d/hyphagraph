@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, Float, JSON, Boolean, ForeignKey, DateTime
+from sqlalchemy import String, Float, JSON, Boolean, ForeignKey, DateTime, Index, text
 from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from uuid import UUID as PyUUID
@@ -15,6 +15,15 @@ class RelationRevision(Base, UUIDMixin):
     Only one revision per relation should have is_current=True.
     """
     __tablename__ = "relation_revisions"
+    __table_args__ = (
+        Index(
+            "ix_relation_revisions_current_unique",
+            "relation_id",
+            unique=True,
+            postgresql_where=text("is_current = true"),
+            sqlite_where=text("is_current = 1"),
+        ),
+    )
 
     # Link to base relation
     relation_id: Mapped[PyUUID] = mapped_column(

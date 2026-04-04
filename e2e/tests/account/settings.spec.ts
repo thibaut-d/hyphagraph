@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { loginAsAdminViaAPI, clearAuthState, registerViaAPI } from '../../fixtures/auth-helpers';
-import { generateTestEmail } from '../../fixtures/test-data';
+import { generateTestEmail, ADMIN_USER } from '../../fixtures/test-data';
 
 test.describe('Account Settings', () => {
   test.beforeEach(async ({ page }) => {
@@ -61,7 +61,7 @@ test.describe('Account Settings', () => {
     // New password field must be present on /change-password
     await expect(newPasswordField).toBeVisible({ timeout: 5000 });
     if (await currentPasswordField.isVisible({ timeout: 1000 })) {
-      await currentPasswordField.fill('changeme123');
+      await currentPasswordField.fill(ADMIN_USER.password);
     }
     await newPasswordField.fill('NewPassword123!');
     if (await confirmPasswordField.isVisible({ timeout: 1000 })) {

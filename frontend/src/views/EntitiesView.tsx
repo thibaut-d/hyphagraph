@@ -23,6 +23,7 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import UploadIcon from "@mui/icons-material/Upload";
+import ClearAllIcon from "@mui/icons-material/ClearAll";
 
 import { FilterDrawer, FilterSection, CheckboxFilter, SearchFilter, RangeFilter } from "../components/filters";
 import { ScrollToTop } from "../components/ScrollToTop";
@@ -213,6 +214,44 @@ export function EntitiesView() {
     hasMore,
   });
 
+  // Build active-filter chip list for inline display (AUD30E-M2)
+  const activeFilterChips = useMemo(() => {
+    const chips: Array<{ label: string; onDelete: () => void }> = [];
+    if (filters.search && typeof filters.search === 'string') {
+      chips.push({ label: `"${filters.search}"`, onDelete: () => setFilter('search', '') });
+    }
+    if (filters.ui_category_id && Array.isArray(filters.ui_category_id)) {
+      (filters.ui_category_id as string[]).forEach(id => {
+        const label = getCategoryLabel(id) || id;
+        chips.push({ label: t('filters.chip_category', 'Category: {{label}}', { label }), onDelete: () => setFilter('ui_category_id', (filters.ui_category_id as string[]).filter(v => v !== id)) });
+      });
+    }
+    if (filters.consensus_level && Array.isArray(filters.consensus_level)) {
+      (filters.consensus_level as string[]).forEach(val => {
+        const opt = consensusOptions.find(o => o.value === val);
+        chips.push({ label: t('filters.chip_consensus', 'Consensus: {{label}}', { label: opt?.label || val }), onDelete: () => setFilter('consensus_level', (filters.consensus_level as string[]).filter(v => v !== val)) });
+      });
+    }
+    if (filters.evidence_quality_min !== undefined && filters.evidence_quality_min !== null) {
+      chips.push({ label: t('filters.chip_quality_min', 'Quality ≥ {{val}}%', { val: Math.round((filters.evidence_quality_min as number) * 100) }), onDelete: () => setFilter('evidence_quality_min', null) });
+    }
+    if (filters.evidence_quality_max !== undefined && filters.evidence_quality_max !== null) {
+      chips.push({ label: t('filters.chip_quality_max', 'Quality ≤ {{val}}%', { val: Math.round((filters.evidence_quality_max as number) * 100) }), onDelete: () => setFilter('evidence_quality_max', null) });
+    }
+    if (filters.recency && Array.isArray(filters.recency)) {
+      (filters.recency as string[]).forEach(val => {
+        const opt = recencyOptions.find(o => o.value === val);
+        chips.push({ label: t('filters.chip_recency', 'Recency: {{label}}', { label: opt?.label || val }), onDelete: () => setFilter('recency', (filters.recency as string[]).filter(v => v !== val)) });
+      });
+    }
+    if (filters.status && Array.isArray(filters.status)) {
+      (filters.status as string[]).forEach(val => {
+        chips.push({ label: t('filters.chip_status', 'Status: {{val}}', { val }), onDelete: () => setFilter('status', (filters.status as string[]).filter(v => v !== val)) });
+      });
+    }
+    return chips;
+  }, [filters, getCategoryLabel, consensusOptions, recencyOptions, setFilter, t]);
+
   return (
     <Stack spacing={2}>
       <Box sx={{
@@ -265,21 +304,35 @@ export function EntitiesView() {
         </Stack>
       </Box>
 
-      {/* Info when filters are active */}
-      {activeFilterCount > 0 && (
-        <Alert severity="info" onClose={clearAllFilters}>
-          {t(
-            "filters.active_count",
-            "{{count}} filter(s) active",
-            { count: activeFilterCount }
-          )}
-          {" - "}
-          {t(
-            "filters.showing_filtered_results",
-            "Showing {{current}} of {{total}} result(s)",
-            { current: entities.length, total }
-          )}
-        </Alert>
+      {/* Active filter chips (AUD30E-M2) */}
+      {activeFilterChips.length > 0 && (
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, alignItems: "center" }}>
+          <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>
+            {t("filters.active_label", "Active filters:")}
+          </Typography>
+          {activeFilterChips.map((chip) => (
+            <Chip
+              key={chip.label}
+              label={chip.label}
+              onDelete={chip.onDelete}
+              size="small"
+              variant="outlined"
+              color="primary"
+            />
+          ))}
+          <Chip
+            label={t("filters.clear_all", "Clear all")}
+            onClick={clearAllFilters}
+            onDelete={clearAllFilters}
+            deleteIcon={<ClearAllIcon />}
+            size="small"
+            variant="filled"
+            color="default"
+          />
+          <Typography variant="caption" color="text.secondary">
+            {t("filters.showing_filtered_results", "Showing {{current}} of {{total}} result(s)", { current: entities.length, total })}
+          </Typography>
+        </Box>
       )}
 
       <Paper sx={{ p: { xs: 1, sm: 2 } }}>

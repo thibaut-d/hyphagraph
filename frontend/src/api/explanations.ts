@@ -24,6 +24,7 @@ export interface SourceContribution {
   relation_direction: string;
   relation_confidence: number;
   relation_scope?: ScopeFilter | null;
+  relation_notes?: Record<string, string> | null;
 
   role_weight?: number | null;
   contribution_percentage: number;

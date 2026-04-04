@@ -84,6 +84,15 @@ describe("InferenceBlock", () => {
   it("renders source evidence as readable claims with context and source links", () => {
     const mockInference = {
       entity_id: "entity-123",
+      role_inferences: [
+        {
+          role_type: "therapeutic_use",
+          score: 0.55,
+          coverage: 1,
+          confidence: 0.8,
+          disagreement: 0.05,
+        },
+      ],
       relations_by_kind: {
         effect: [
           {
@@ -122,6 +131,10 @@ describe("InferenceBlock", () => {
     expect(screen.getByRole("link", { name: /open source evidence/i })).toHaveAttribute(
       "href",
       "/sources/source-1",
+    );
+    expect(screen.getByRole("link", { name: /view detail/i })).toHaveAttribute(
+      "href",
+      "/entities/entity-123/properties/therapeutic_use",
     );
   });
 

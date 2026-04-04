@@ -50,7 +50,11 @@ export function SourceDetailDialogs({
 
   return (
     <>
-      <Dialog open={deleteDialogOpen} onClose={() => !deleting && onCloseDeleteDialog()}>
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => !deleting && onCloseDeleteDialog()}
+        transitionDuration={0}
+      >
         <DialogTitle>{t("source.delete_confirm_title", "Delete Source")}</DialogTitle>
         <DialogContent>
           <DialogContentText>
@@ -73,7 +77,11 @@ export function SourceDetailDialogs({
         </DialogActions>
       </Dialog>
 
-      <Dialog open={deleteRelationDialogOpen} onClose={() => !deletingRelation && onCloseDeleteRelationDialog()}>
+      <Dialog
+        open={deleteRelationDialogOpen}
+        onClose={() => !deletingRelation && onCloseDeleteRelationDialog()}
+        transitionDuration={0}
+      >
         <DialogTitle>{t("relation.delete_confirm_title", "Delete Relation")}</DialogTitle>
         <DialogContent>
           <DialogContentText>

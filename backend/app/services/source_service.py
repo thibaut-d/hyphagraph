@@ -18,6 +18,7 @@ from app.repositories.source_repo import SourceRepository
 from app.schemas.filters import SourceFilterOptions, SourceFilters
 from app.schemas.source import SourceWrite, SourceRead
 from app.services.derived_properties_service import DerivedPropertiesService
+from app.services.query_predicates import canonical_relation_predicate
 from app.utils.errors import SourceNotFoundException
 from app.utils.revision_helpers import create_new_revision, get_current_revision
 
@@ -257,7 +258,7 @@ class SourceService:
                 ).label("contradictory_count"),
             )
             .join(RelationRevision, Relation.id == RelationRevision.relation_id)
-            .where(RelationRevision.is_current == True)
+            .where(canonical_relation_predicate())
             .group_by(Relation.source_id)
             .subquery()
         )
@@ -314,7 +315,7 @@ class SourceService:
                 .join(Relation, RelationRevision.relation_id == Relation.id)
                 .where(
                     Relation.source_id == source.id,
-                    RelationRevision.is_current == True,
+                    canonical_relation_predicate(),
                 )
                 .distinct()
             )

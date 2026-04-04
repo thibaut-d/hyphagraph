@@ -21,10 +21,16 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
   CircularProgress,
+  Divider,
+  Paper,
   Stack,
   Typography,
 } from "@mui/material";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+import ErrorIcon from "@mui/icons-material/Error";
 import InfoIcon from "@mui/icons-material/Info";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
@@ -148,6 +154,53 @@ export function SynthesisView() {
 
       {hasData ? (
         <>
+          {/* SYN31-H1: top-level synthesis summary before metrics */}
+          <Paper sx={{ p: 3 }}>
+            <Stack spacing={2}>
+              <Typography variant="h6">
+                {t("synthesis.summary.heading", "Current evidence reading")}
+              </Typography>
+              <Stack direction="row" spacing={1} flexWrap="wrap">
+                {averageConfidence >= 0.7 ? (
+                  <Chip icon={<CheckCircleIcon />} label={t("synthesis.summary.high_confidence", "High confidence")} color="success" size="small" />
+                ) : averageConfidence >= 0.4 ? (
+                  <Chip icon={<WarningAmberIcon />} label={t("synthesis.summary.moderate_confidence", "Moderate confidence")} color="warning" size="small" />
+                ) : (
+                  <Chip icon={<ErrorIcon />} label={t("synthesis.summary.low_confidence", "Low confidence")} color="error" size="small" />
+                )}
+                {contradictionTotal > 0 && (
+                  <Chip icon={<WarningAmberIcon />} label={t("synthesis.summary.contradictions", "Contradictions present")} color="warning" variant="outlined" size="small" />
+                )}
+              </Stack>
+              <Typography variant="body2" color="text.secondary">
+                {t(
+                  "synthesis.summary.statement",
+                  "Evidence from {{sources}} source(s) across {{relations}} relation(s) yields an average confidence of {{confidence}}%." +
+                  (contradictionTotal > 0
+                    ? " {{contradictions}} contradictory relation(s) introduce meaningful disagreement — see the Disagreements view for details."
+                    : " No contradictions detected in current evidence."),
+                  {
+                    sources: uniqueSourcesCount,
+                    relations: totalRelations,
+                    confidence: Math.round(averageConfidence * 100),
+                    contradictions: contradictionTotal,
+                  }
+                )}
+              </Typography>
+              {contradictionTotal > 0 && (
+                <>
+                  <Divider />
+                  <Typography variant="caption" color="text.secondary">
+                    {t(
+                      "synthesis.summary.uncertainty_note",
+                      "Contradictions are preserved, not resolved. Inspect individual disagreements to understand competing evidence before drawing conclusions."
+                    )}
+                  </Typography>
+                </>
+              )}
+            </Stack>
+          </Paper>
+
           <SynthesisStatsSection
             totalRelations={totalRelations}
             uniqueSourcesCount={uniqueSourcesCount}

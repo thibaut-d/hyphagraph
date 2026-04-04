@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor, fireEvent, act } from "@testing-library/react";
+import { render, screen, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { BrowserRouter } from "react-router-dom";
 import { GlobalSearch } from "../GlobalSearch";
@@ -35,9 +35,11 @@ describe("GlobalSearch", () => {
     );
   };
 
+  const getInput = () => screen.getByRole("combobox", { name: /search/i });
+
   it("renders search input field", () => {
     renderComponent();
-    const input = screen.getByPlaceholderText(/search entities, sources/i);
+    const input = getInput();
     expect(input).toBeInTheDocument();
   });
 
@@ -47,13 +49,13 @@ describe("GlobalSearch", () => {
     expect(searchIcon).toBeInTheDocument();
   });
 
-  it("does not fetch suggestions for queries shorter than 2 characters", async () => {
+  it("does not fetch suggestions for queries shorter than 3 characters", async () => {
     const getSuggestionsSpy = vi
       .spyOn(searchApi, "getSuggestions")
       .mockResolvedValue({ query: "a", suggestions: [] });
 
     renderComponent();
-    const input = screen.getByPlaceholderText(/search entities, sources/i);
+    const input = getInput();
 
     await userEvent.type(input, "a");
 
@@ -63,7 +65,7 @@ describe("GlobalSearch", () => {
     });
   });
 
-  it("fetches suggestions for queries with 2+ characters", async () => {
+  it("fetches suggestions for queries with 3+ characters", async () => {
     const mockSuggestions = [
       {
         id: "1",
@@ -84,13 +86,18 @@ describe("GlobalSearch", () => {
       .mockResolvedValue({ query: "par", suggestions: mockSuggestions });
 
     renderComponent();
-    const input = screen.getByPlaceholderText(/search entities, sources/i);
+    const input = getInput();
 
     await userEvent.type(input, "par");
 
     // Wait for debounce and API call
     await waitFor(() => {
-      expect(getSuggestionsSpy).toHaveBeenCalledWith("par", undefined, 10);
+      expect(getSuggestionsSpy).toHaveBeenCalledWith(
+        "par",
+        undefined,
+        10,
+        expect.any(AbortSignal),
+      );
     });
   });
 
@@ -116,7 +123,7 @@ describe("GlobalSearch", () => {
     });
 
     renderComponent();
-    const input = screen.getByPlaceholderText(/search entities, sources/i);
+    const input = getInput();
 
     await userEvent.type(input, "para");
 
@@ -144,7 +151,7 @@ describe("GlobalSearch", () => {
     });
 
     renderComponent();
-    const input = screen.getByPlaceholderText(/search entities, sources/i);
+    const input = getInput();
 
     await userEvent.type(input, "para");
 
@@ -176,7 +183,7 @@ describe("GlobalSearch", () => {
     });
 
     renderComponent();
-    const input = screen.getByPlaceholderText(/search entities, sources/i);
+    const input = getInput();
 
     await userEvent.type(input, "research");
 
@@ -199,7 +206,7 @@ describe("GlobalSearch", () => {
     });
 
     renderComponent();
-    const input = screen.getByPlaceholderText(/search entities, sources/i);
+    const input = getInput();
 
     await userEvent.type(input, "test query{Enter}");
 
@@ -223,9 +230,7 @@ describe("GlobalSearch", () => {
     });
 
     renderComponent();
-    const input = screen.getByPlaceholderText(
-      /search entities, sources/i
-    ) as HTMLInputElement;
+    const input = getInput() as HTMLInputElement;
 
     await userEvent.type(input, "test");
 
@@ -250,7 +255,7 @@ describe("GlobalSearch", () => {
     vi.spyOn(searchApi, "getSuggestions").mockReturnValue(promise as any);
 
     renderComponent();
-    const input = screen.getByPlaceholderText(/search entities, sources/i);
+    const input = getInput();
 
     await userEvent.type(input, "test");
 
@@ -276,7 +281,7 @@ describe("GlobalSearch", () => {
     );
 
     renderComponent();
-    const input = screen.getByPlaceholderText(/search entities, sources/i);
+    const input = getInput();
 
     await userEvent.type(input, "test");
 
@@ -310,12 +315,12 @@ describe("GlobalSearch", () => {
     });
 
     renderComponent();
-    const input = screen.getByPlaceholderText(/search entities, sources/i);
+    const input = getInput();
 
     await userEvent.type(input, "test");
 
     await waitFor(() => {
-      expect(screen.getByText("entity")).toBeInTheDocument();
+      expect(screen.getByText("Entity")).toBeInTheDocument();
     });
   });
 
@@ -335,12 +340,12 @@ describe("GlobalSearch", () => {
     });
 
     renderComponent();
-    const input = screen.getByPlaceholderText(/search entities, sources/i);
+    const input = getInput();
 
     await userEvent.type(input, "test");
 
     await waitFor(() => {
-      expect(screen.getByText("source")).toBeInTheDocument();
+      expect(screen.getByText("Publication")).toBeInTheDocument();
     });
   });
 
@@ -360,7 +365,7 @@ describe("GlobalSearch", () => {
     });
 
     renderComponent();
-    const input = screen.getByPlaceholderText(/search entities, sources/i);
+    const input = getInput();
 
     await userEvent.type(input, "tyl");
 

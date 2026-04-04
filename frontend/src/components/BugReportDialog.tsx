@@ -38,10 +38,14 @@ export function BugReportDialog({ open, onClose }: BugReportDialogProps) {
     setCaptchaAnswer("");
     setError(null);
     setSuccess(false);
+    setCaptcha(null);
     if (!user) {
       getCaptcha()
         .then(setCaptcha)
-        .catch(() => setError(t("bug_report.captcha_load_error", "Could not load CAPTCHA. Please try again.")));
+        .catch(() => {
+          setCaptcha(null);
+          setError(t("bug_report.captcha_load_error", "Could not load CAPTCHA. Please try again."));
+        });
     }
   }, [open, user]);
 

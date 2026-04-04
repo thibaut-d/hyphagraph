@@ -9,7 +9,7 @@ Provides:
 import logging
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, func
+from sqlalchemy import delete, select, update, func
 from difflib import SequenceMatcher
 
 from app.models.entity import Entity
@@ -167,6 +167,44 @@ class EntityMergeService:
             ).where(RelationRevision.is_current == True)  # noqa: E712
             result = await self.db.execute(stmt)
             relations_count = result.scalar()
+
+            # Deduplicate participant collisions before rewriting remaining rows.
+            # If the target entity already occupies the same role in a current revision,
+            # keep the canonical target row and delete the source duplicate.
+            duplicate_rows_stmt = (
+                select(
+                    RelationRoleRevision.id,
+                    RelationRoleRevision.relation_revision_id,
+                    RelationRoleRevision.role_type,
+                )
+                .join(
+                    RelationRevision,
+                    RelationRoleRevision.relation_revision_id == RelationRevision.id,
+                )
+                .where(
+                    RelationRevision.is_current == True,  # noqa: E712
+                    RelationRoleRevision.entity_id == source_entity_id,
+                )
+            )
+            duplicate_rows = (await self.db.execute(duplicate_rows_stmt)).all()
+
+            duplicate_source_role_ids: list[UUID] = []
+            for role_row_id, relation_revision_id, role_type in duplicate_rows:
+                target_role_stmt = select(RelationRoleRevision.id).where(
+                    RelationRoleRevision.relation_revision_id == relation_revision_id,
+                    RelationRoleRevision.entity_id == target_entity_id,
+                    RelationRoleRevision.role_type == role_type,
+                )
+                target_role_id = (await self.db.execute(target_role_stmt)).scalar_one_or_none()
+                if target_role_id is not None:
+                    duplicate_source_role_ids.append(role_row_id)
+
+            if duplicate_source_role_ids:
+                await self.db.execute(
+                    delete(RelationRoleRevision).where(
+                        RelationRoleRevision.id.in_(duplicate_source_role_ids)
+                    )
+                )
 
             # Move roles from source to target — only in current revisions.
             # Historical revisions are immutable snapshots and must not be changed.

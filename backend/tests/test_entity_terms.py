@@ -262,6 +262,29 @@ async def test_create_entity_term_duplicate(override_get_db, override_auth, test
 
 
 @pytest.mark.asyncio
+async def test_create_entity_term_duplicate_null_language(override_get_db, override_auth, test_entity):
+    """Test creating a duplicate null-language term fails with 409."""
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides.update(override_auth)
+
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            first = await client.post(
+                f"/api/entities/{test_entity.id}/terms",
+                json={"term": "Acetaminophen"},
+            )
+            assert first.status_code == 201
+
+            duplicate = await client.post(
+                f"/api/entities/{test_entity.id}/terms",
+                json={"term": "Acetaminophen"},
+            )
+            assert duplicate.status_code == 409
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
 async def test_create_entity_term_requires_auth(override_get_db, test_entity):
     """Test creating term requires authentication."""
     payload = {"term": "Test"}
@@ -437,5 +460,32 @@ async def test_bulk_update_entity_terms_duplicate_in_payload(override_get_db, ov
 
                 assert response.status_code == 409
                 assert "duplicate" in response.json()["error"]["message"].lower()
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_bulk_update_entity_terms_duplicate_null_language(
+    override_get_db, override_auth, test_entity
+):
+    """Test bulk update rejects duplicate terms when both languages are null."""
+    payload = {
+        "terms": [
+            {"term": "Duplicate"},
+            {"term": "Duplicate"},
+        ]
+    }
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides.update(override_auth)
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.put(
+                f"/api/entities/{test_entity.id}/terms-bulk",
+                json=payload,
+            )
+
+            assert response.status_code == 409
+            assert "duplicate" in response.json()["error"]["message"].lower()
     finally:
         app.dependency_overrides.clear()

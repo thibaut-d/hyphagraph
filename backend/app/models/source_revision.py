@@ -1,5 +1,17 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, Integer, Float, JSON, Boolean, ForeignKey, DateTime, Text
+from sqlalchemy import (
+    String,
+    Integer,
+    Float,
+    JSON,
+    Boolean,
+    ForeignKey,
+    DateTime,
+    Text,
+    CheckConstraint,
+    Index,
+    text,
+)
 from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from uuid import UUID as PyUUID
@@ -15,6 +27,19 @@ class SourceRevision(Base, UUIDMixin):
     Only one revision per source should have is_current=True.
     """
     __tablename__ = "source_revisions"
+    __table_args__ = (
+        CheckConstraint(
+            "trust_level IS NULL OR (trust_level >= 0 AND trust_level <= 1)",
+            name="ck_source_revisions_trust_level",
+        ),
+        Index(
+            "ix_source_revisions_current_unique",
+            "source_id",
+            unique=True,
+            postgresql_where=text("is_current = true"),
+            sqlite_where=text("is_current = 1"),
+        ),
+    )
 
     # Link to base source
     source_id: Mapped[PyUUID] = mapped_column(

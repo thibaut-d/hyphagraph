@@ -56,6 +56,15 @@ describe("EvidenceView table", () => {
     await waitFor(() => {
       expect(screen.getAllByRole("row")).toHaveLength(4);
     });
+
+    expect(screen.getByRole("link", { name: /Clinical Trial A/i })).toHaveAttribute(
+      "href",
+      "/sources/source-1?relation=rel-1#relation-rel-1",
+    );
+    expect(screen.getByRole("link", { name: /Observational Study B/i })).toHaveAttribute(
+      "href",
+      "/sources/source-2?relation=rel-2#relation-rel-2",
+    );
   });
 
   it("allows sorting by confidence, kind, and direction", async () => {

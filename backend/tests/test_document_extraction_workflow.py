@@ -274,7 +274,7 @@ class TestSaveExtractionToGraph:
         assert result.entities_linked == 1
         assert result.relations_created == 1
         assert result.created_relation_ids == [created_relation_id]
-        assert set(result.created_entity_ids) == {created_entity_id, linked_entity_id}
+        assert result.created_entity_ids == [created_entity_id]
         assert result.skipped_relations == []
 
 

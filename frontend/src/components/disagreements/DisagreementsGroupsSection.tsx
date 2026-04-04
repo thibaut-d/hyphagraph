@@ -228,7 +228,7 @@ export function DisagreementsGroupsSection({
 
               <Box sx={{ mt: 2, display: "flex", justifyContent: "center" }}>
                 <Button variant="outlined" onClick={() => onViewExplanation(group.kind)}>
-                  {t("disagreements.view_explanation", "View Detailed Explanation")}
+                  {t("disagreements.view_explanation", "View Property Detail")}
                 </Button>
               </Box>
             </AccordionDetails>

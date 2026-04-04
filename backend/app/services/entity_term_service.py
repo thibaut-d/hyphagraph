@@ -28,6 +28,19 @@ class EntityTermService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
+    @staticmethod
+    def _is_duplicate_term_error(error: IntegrityError) -> bool:
+        error_str = str(error).lower()
+        return any(
+            token in error_str
+            for token in (
+                "uq_entity_term_language",
+                "ix_entity_terms_entity_term_null_language_unique",
+                "entity_terms.entity_id, entity_terms.term, entity_terms.language",
+                "entity_terms.entity_id, entity_terms.term",
+            )
+        )
+
     async def list_by_entity(self, entity_id: UUID) -> List[EntityTermRead]:
         """
         Get all terms for a specific entity.
@@ -115,18 +128,15 @@ class EntityTermService:
             await self.db.refresh(term)
         except IntegrityError as e:
             await self.db.rollback()
-            # Unique constraint violation (entity_id, term, language)
-            # PostgreSQL: "uq_entity_term_language", SQLite: "UNIQUE constraint failed: entity_terms"
-            error_str = str(e).lower()
-            if "uq_entity_term_language" in error_str or "entity_terms.entity_id, entity_terms.term, entity_terms.language" in error_str:
-                    raise AppException(
-                        status_code=409,
-                        error_code=ErrorCode.DATABASE_CONSTRAINT_VIOLATION,
-                        message="Term already exists for this entity and language",
-                        field="term",
-                        details=f"Term '{payload.term}' already exists for this entity in language '{payload.language}'",
-                        context={"entity_id": str(entity_id), "term": payload.term, "language": payload.language}
-                    )
+            if self._is_duplicate_term_error(e):
+                raise AppException(
+                    status_code=409,
+                    error_code=ErrorCode.DATABASE_CONSTRAINT_VIOLATION,
+                    message="Term already exists for this entity and language",
+                    field="term",
+                    details=f"Term '{payload.term}' already exists for this entity in language '{payload.language}'",
+                    context={"entity_id": str(entity_id), "term": payload.term, "language": payload.language}
+                )
             raise
 
         return EntityTermRead(
@@ -183,9 +193,7 @@ class EntityTermService:
             await self.db.refresh(term)
         except IntegrityError as e:
             await self.db.rollback()
-            # PostgreSQL: "uq_entity_term_language", SQLite: "UNIQUE constraint failed: entity_terms"
-            error_str = str(e).lower()
-            if "uq_entity_term_language" in error_str or "entity_terms.entity_id, entity_terms.term, entity_terms.language" in error_str:
+            if self._is_duplicate_term_error(e):
                 raise AppException(
                     status_code=409,
                     error_code=ErrorCode.DATABASE_CONSTRAINT_VIOLATION,
@@ -290,9 +298,7 @@ class EntityTermService:
 
         except IntegrityError as e:
             await self.db.rollback()
-            # PostgreSQL: "uq_entity_term_language", SQLite: "UNIQUE constraint failed: entity_terms"
-            error_str = str(e).lower()
-            if "uq_entity_term_language" in error_str or "entity_terms.entity_id, entity_terms.term, entity_terms.language" in error_str:
+            if self._is_duplicate_term_error(e):
                 raise AppException(
                     status_code=409,
                     error_code=ErrorCode.DATABASE_CONSTRAINT_VIOLATION,

@@ -6,7 +6,20 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 
-const stableTranslate = (key: string, defaultValue?: string) => defaultValue || key;
+const stableTranslate = (
+  key: string,
+  defaultValueOrOptions?: string | { defaultValue?: string },
+) => {
+  if (typeof defaultValueOrOptions === "string") {
+    return defaultValueOrOptions || key;
+  }
+
+  if (defaultValueOrOptions && typeof defaultValueOrOptions.defaultValue === "string") {
+    return defaultValueOrOptions.defaultValue;
+  }
+
+  return key;
+};
 
 // Mock localStorage for tests
 const localStorageMock = (() => {

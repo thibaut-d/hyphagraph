@@ -27,6 +27,15 @@ def validate_relation(payload: RelationWrite) -> None:
     for role in payload.roles:
         validate_role(role)
 
+    seen_role_participants: set[tuple[str, str]] = set()
+    for role in payload.roles:
+        participant_key = (str(role.entity_id), role.role_type.strip().lower())
+        if participant_key in seen_role_participants:
+            _fail(
+                "relation cannot contain the same entity twice for the same role_type"
+            )
+        seen_role_participants.add(participant_key)
+
 
 def validate_role(role: RoleRevisionWrite) -> None:
     if not role.entity_id:

@@ -88,6 +88,9 @@ from app.models.relation import Relation  # noqa: F401
 from app.models.relation_revision import RelationRevision  # noqa: F401
 from app.models.relation_role_revision import RelationRoleRevision  # noqa: F401
 from app.models.computed_relation import ComputedRelation  # noqa: F401
+from app.models.relation_type import RelationType  # noqa: F401
+from app.models.staged_extraction import StagedExtraction  # noqa: F401
+from app.models.bug_report import BugReport  # noqa: F401
 
 # Use SQLite for testing (in-memory)
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"

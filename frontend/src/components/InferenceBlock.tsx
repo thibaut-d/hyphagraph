@@ -205,12 +205,12 @@ function RoleInferenceCard({
           </Box>
           <Button
             component={RouterLink}
-            to={`/explain/${entityId}/${role_type}`}
+            to={`/entities/${entityId}/properties/${role_type}`}
             size="small"
             startIcon={<HelpOutlineIcon />}
             variant="outlined"
           >
-            {t("inference.explain", "Explain")}
+            {t("inference.explain", "View detail")}
           </Button>
         </Stack>
 
