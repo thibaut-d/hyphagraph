@@ -136,6 +136,7 @@ class TestRelationServiceMocked:
         # Build mock relations with a current revision (list_by_source now filters in Python)
         mock_revision = MagicMock()
         mock_revision.is_current = True
+        mock_revision.status = "confirmed"
         mock_revision.roles = []
 
         mock_rel1, mock_rel2 = MagicMock(), MagicMock()

@@ -110,6 +110,7 @@ async def log_audit_event(
             "event_status": event_status,
             "audit_user_id": str(user_id) if user_id else None,
             "audit_user_email": user_email,
+            "consecutive_failures": _consecutive_audit_log_failures,
         }
         if _consecutive_audit_log_failures >= _AUDIT_LOG_FAILURE_THRESHOLD:
             logger.critical(

@@ -35,7 +35,7 @@ class TestCaptcha:
     def test_expired_token_rejected(self):
         # Build a token with expiry in the past
         past_expiry = int(time.time()) - 1
-        token = BugReportService._sign_captcha("5", past_expiry)
+        token = BugReportService._sign_captcha("5", past_expiry, "testnonce")
         assert not BugReportService.verify_captcha(token, "5")
 
     def test_tampered_token_rejected(self):
@@ -53,7 +53,9 @@ class TestCaptcha:
         with patch("app.services.bug_report_service.logger.warning") as warning_mock:
             assert not BugReportService.verify_captcha("not-base64!!!", "5")
 
-        warning_mock.assert_called_once_with("Rejected malformed CAPTCHA token")
+        warning_mock.assert_called_once_with(
+            "CAPTCHA decode failed — malformed token (possible tampering attempt)"
+        )
 
     def test_whitespace_in_answer_stripped(self):
         challenge = BugReportService.generate_captcha()

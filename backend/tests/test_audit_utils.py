@@ -48,7 +48,8 @@ async def test_log_audit_event_emits_critical_after_repeated_failures():
                 user_email="user@example.com",
             )
 
-    assert mock_exception.call_count == audit._AUDIT_LOG_FAILURE_THRESHOLD
+    # The Nth call triggers critical(), not exception(), so exception() fires N-1 times.
+    assert mock_exception.call_count == audit._AUDIT_LOG_FAILURE_THRESHOLD - 1
     mock_critical.assert_called_once()
     assert mock_critical.call_args.kwargs["extra"]["consecutive_failures"] == audit._AUDIT_LOG_FAILURE_THRESHOLD
 

@@ -13,6 +13,7 @@ import hashlib
 import hmac
 import logging
 import random
+import secrets
 import time
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from uuid import UUID
@@ -49,7 +50,8 @@ class BugReportService:
             answer = a + b
 
         expiry = int(time.time()) + _CAPTCHA_TTL
-        token = BugReportService._sign_captcha(str(answer), expiry)
+        nonce = secrets.token_hex(8)
+        token = BugReportService._sign_captcha(str(answer), expiry, nonce)
         return CaptchaChallenge(token=token, question=question)
 
     @staticmethod
@@ -57,7 +59,7 @@ class BugReportService:
         """Return True if the token is valid, unexpired, and the answer matches."""
         try:
             raw = urlsafe_b64decode(token.encode()).decode()
-            expected_answer, expiry_str, stored_sig = raw.split(":", 2)
+            expected_answer, expiry_str, nonce, stored_sig = raw.split(":", 3)
         except Exception:
             logger.warning(
                 "CAPTCHA decode failed — malformed token (possible tampering attempt)"
@@ -69,7 +71,7 @@ class BugReportService:
             return False
 
         # Verify HMAC
-        expected_sig = BugReportService._hmac(expected_answer, int(expiry_str))
+        expected_sig = BugReportService._hmac(expected_answer, int(expiry_str), nonce)
         if not hmac.compare_digest(expected_sig, stored_sig):
             return False
 
@@ -77,14 +79,14 @@ class BugReportService:
         return answer.strip() == expected_answer
 
     @staticmethod
-    def _sign_captcha(answer: str, expiry: int) -> str:
-        sig = BugReportService._hmac(answer, expiry)
-        raw = f"{answer}:{expiry}:{sig}"
+    def _sign_captcha(answer: str, expiry: int, nonce: str) -> str:
+        sig = BugReportService._hmac(answer, expiry, nonce)
+        raw = f"{answer}:{expiry}:{nonce}:{sig}"
         return urlsafe_b64encode(raw.encode()).decode()
 
     @staticmethod
-    def _hmac(answer: str, expiry: int) -> str:
-        msg = f"{answer}:{expiry}".encode()
+    def _hmac(answer: str, expiry: int, nonce: str) -> str:
+        msg = f"{answer}:{expiry}:{nonce}".encode()
         return hmac.new(settings.SECRET_KEY.encode(), msg, hashlib.sha256).hexdigest()
 
     # ------------------------------------------------------------------

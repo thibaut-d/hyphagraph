@@ -355,7 +355,7 @@ class TestExplainEndpoint:
             app.dependency_overrides.clear()
 
         assert response.status_code == 403
-        assert response.json()["detail"] == "Forbidden explanation access"
+        assert response.json()["error"]["message"] == "Forbidden explanation access"
 
     async def test_explain_inference_multiple_sources(self, db_session, override_get_db):
         """Test explanation with multiple sources returns all contributions."""

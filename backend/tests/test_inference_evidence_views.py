@@ -97,7 +97,8 @@ class TestRoleEvidenceHelpers:
         object_view = role_views["object"][0]
 
         assert subject_view.relation.id == relation_read.id
-        assert subject_view.relation.roles[0].entity_slug == "aspirin"
-        assert object_view.relation.roles[1].entity_slug == "fibromyalgia"
+        roles_by_type = {r.role_type: r for r in subject_view.relation.roles}
+        assert roles_by_type["subject"].entity_slug == "aspirin"
+        assert roles_by_type["object"].entity_slug == "fibromyalgia"
         assert subject_view.contribution_direction == "supports"
         assert object_view.contribution_direction == "supports"

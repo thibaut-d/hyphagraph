@@ -104,7 +104,7 @@ class TestExtractionReviewEndpointAuthorization:
             response = await client.get("/api/extraction-review/pending")
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
-        assert response.json()["detail"] == "Superuser privileges required"
+        assert response.json()["error"]["message"] == "Superuser privileges required"
         review_service.list_extractions.assert_not_awaited()
 
     @pytest.mark.asyncio
