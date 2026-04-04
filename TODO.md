@@ -1,6 +1,6 @@
 # Current Work
 
-**Last updated**: 2026-03-31 (aligned with UX audit protocol)
+**Last updated**: 2026-04-04 (repository coherence audit added)
 
 ## Execution Plan — 2026-04-04
 
@@ -71,6 +71,23 @@ Source: `.temp/database_audit_2026-04-04.md`
 
 - [ ] **DBA0404-m1** `backend/tests/conftest.py:104-123` + `backend/app/models/entity_revision.py:17-26` + `backend/app/models/source_revision.py:17-79` + `backend/app/models/relation_revision.py:17-67` + `backend/alembic/versions/010_add_revision_confirmation_fields.py:26-94` + `backend/app/schemas/source.py:16-33` + `backend/tests/test_source_service.py:22-45` — The test database is built from ORM metadata instead of Alembic migrations, but several critical invariants only exist in migrations. The drift is already visible in tests that accept impossible data like `trust_level=8`. Mirror critical constraints in ORM metadata where feasible, add schema validation for bounded fields, and add migration-backed coverage for invariants SQLite cannot model.
 - [ ] **DBA0404-m2** `backend/alembic/env.py:11-31` + `backend/app/main.py:69-88` — Alembic autogenerate does not import the full live model set (`RelationType`, `StagedExtraction`, `BugReport` are missing), so future schema drift on those tables can be invisible during migration generation. Align Alembic model registration with runtime model registration.
+
+### Repository Coherence Audit — 2026-04-04
+
+Source: `.temp/repository_coherence_audit_2026-04-04.md`
+
+#### Major
+
+- [ ] **RCA0404-M1** `README.md:57-60` + `docs/DEPLOY.md:106-110` + `docs/DEPLOY.md:150-152` + `docs/development/DEV_WORKFLOW.md:16-18` + `backend/app/main.py:118-123` + `Caddyfile:3-5` — The published API docs URL is documented as `/api/docs`, but FastAPI still exposes docs on its default route while Caddy preserves the `/api` prefix. Align the runtime and docs: either remount docs under `/api/docs` or change every published entrypoint and smoke check to the actual docs URL.
+- [ ] **RCA0404-M2** `.env.sample:66-67` + `backend/app/config.py:43` + `README.md:57-60` + `backend/app/utils/email.py:121` + `backend/app/utils/email.py:197` — The default local `FRONTEND_URL` points to `http://localhost:3000` even though the documented default Docker access path is `http://localhost` through Caddy, so verification and reset links are generated for the wrong origin. Make the sample/config defaults match the documented Docker entrypoint or explicitly split proxied-Docker vs direct-Vite defaults.
+- [ ] **RCA0404-M3** `.env.prod.template:56-64` + `scripts/setup-self-host.sh:96-108` — The self-host setup script rewrites secrets and `FRONTEND_URL` but leaves `EMAIL_FROM` and SMTP example domains on `mydomain.com`, which can produce stale sender domains in the default production email flow. Update the setup flow to rewrite or prompt for mail sender settings and document any required manual follow-up.
+- [ ] **RCA0404-M4** `e2e/tests/auth/token-refresh.spec.ts:44-46` + `e2e/utils/db-setup.ts:80-85` + `e2e/fixtures/test-data.ts:9-10` + `docker-compose.e2e.yml:38-39` — E2E admin credentials have drifted across the suite (`changeme123`, `admin123`, and `admin`), so local runs can fail depending on which fallback path a test takes. Centralize the E2E admin credentials in one shared source and remove stale comments and incorrect hardcoded fallbacks.
+- [ ] **RCA0404-M5** `docs/product/ROADMAP.md:3-15` + `docs/product/ROADMAP.md:115-120` + `TODO.md:58-74` — `ROADMAP.md` still claims there is no technical debt and duplicates stale open audit items even though `TODO.md` carries newer open findings, which contradicts the rule that `TODO.md` is the single source of truth for actionable work. Collapse roadmap debt tracking into a summary that points to `TODO.md` and remove stale item copies and unmaintained status counts.
+
+#### Minor
+
+- [ ] **RCA0404-m1** `docs/DEPLOY.md:145-147` + `docs/development/DEV_WORKFLOW.md:11-13` + `README.md:53` + `backend/docker-entrypoint.sh:4-5` — Startup documentation still mixes manual `alembic upgrade head` instructions with the newer automatic-migration container behavior. Remove manual migration from normal startup docs and keep it only as an explicit debugging/recovery command.
+- [ ] **RCA0404-m2** `docs/audit.md:3` — The audit guide hardcodes absolute filesystem links to `/home/thibaut/code/hyphagraph/...`, which no longer matches this repository path and is not portable. Replace those links with repo-relative references.
 
 ### Page Information Architecture Audit — 2026-03-31
 
