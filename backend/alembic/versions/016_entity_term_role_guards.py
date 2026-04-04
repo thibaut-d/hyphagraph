@@ -1,6 +1,6 @@
 """Add uniqueness guards for null-language entity terms and relation participants
 
-Revision ID: 016_add_entity_term_and_role_uniqueness_guards
+Revision ID: 016_entity_term_role_guards
 Revises: 015_add_bug_reports
 Create Date: 2026-04-04
 """
@@ -9,7 +9,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = "016_add_entity_term_and_role_uniqueness_guards"
+revision = "016_entity_term_role_guards"
 down_revision = "015_add_bug_reports"
 branch_labels = None
 depends_on = None

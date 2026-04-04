@@ -29,7 +29,10 @@ async def app_exception_handler(request: Request, exc: AppException) -> JSONResp
     """
     return JSONResponse(
         status_code=exc.status_code,
-        content={"error": exc.error_detail.model_dump(exclude_none=True)},
+        content={
+            "detail": exc.detail,
+            "error": exc.error_detail.model_dump(exclude_none=True),
+        },
     )
 
 

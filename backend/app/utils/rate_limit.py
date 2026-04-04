@@ -9,6 +9,24 @@ from slowapi.util import get_remote_address
 from app.config import settings
 
 
+class ToggleableLimiter(Limiter):
+    """
+    Small slowapi wrapper that keeps the enabled flag overrideable in tests.
+
+    Existing unit tests toggle `limiter._enabled`; surfacing `enabled` through the
+    same backing attribute keeps those direct endpoint tests working while runtime
+    behavior remains unchanged.
+    """
+
+    @property
+    def enabled(self):
+        return getattr(self, "_enabled", True)
+
+    @enabled.setter
+    def enabled(self, value):
+        self._enabled = value
+
+
 def rate_limit_key(request):
     """
     Generate rate limit key based on client IP address.
@@ -26,7 +44,7 @@ def rate_limit_key(request):
 
 
 # Global limiter instance
-limiter = Limiter(
+limiter = ToggleableLimiter(
     key_func=rate_limit_key,
     enabled=settings.RATE_LIMIT_ENABLED,
     storage_uri="memory://",  # In-memory storage (use Redis in production for multi-process)

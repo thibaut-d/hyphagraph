@@ -69,11 +69,6 @@ class PubMedBulkImportRequest(BaseModel):
     @field_validator("pmids")
     @classmethod
     def validate_pmids(cls, value: list[str]) -> list[str]:
-        if not value:
-            raise ValueError("At least one PMID must be provided")
-        if len(value) > 100:
-            raise ValueError("Maximum 100 PMIDs can be imported at once")
-
         cleaned = []
         for pmid in value:
             normalized = pmid.strip()
@@ -114,11 +109,6 @@ class SmartDiscoveryRequest(BaseModel):
     @field_validator("entity_slugs")
     @classmethod
     def validate_entity_slugs(cls, value: list[str]) -> list[str]:
-        if not value:
-            raise ValueError("At least one entity slug must be provided")
-        if len(value) > 10:
-            raise ValueError("Maximum 10 entities can be searched at once")
-
         cleaned = []
         for slug in value:
             normalized = slug.strip()

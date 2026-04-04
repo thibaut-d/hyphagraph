@@ -1,7 +1,11 @@
 from fastapi import APIRouter, Depends
 from uuid import UUID
 
-from app.api.inference_dependencies import InferenceScopeQuery, get_inference_service
+from app.api.inference_dependencies import (
+    InferenceScopeQuery,
+    get_inference_scope_query,
+    get_inference_service,
+)
 from app.schemas.inference import InferenceDetailRead, InferenceRead
 from app.services.inference_service import InferenceService
 
@@ -11,7 +15,7 @@ router = APIRouter()
 @router.get("/entity/{entity_id}", response_model=InferenceRead)
 async def infer_entity(
     entity_id: UUID,
-    query: InferenceScopeQuery = Depends(),
+    query: InferenceScopeQuery = Depends(get_inference_scope_query),
     service: InferenceService = Depends(get_inference_service),
 ):
     """
@@ -42,7 +46,7 @@ async def infer_entity(
 @router.get("/entity/{entity_id}/detail", response_model=InferenceDetailRead)
 async def infer_entity_detail(
     entity_id: UUID,
-    query: InferenceScopeQuery = Depends(),
+    query: InferenceScopeQuery = Depends(get_inference_scope_query),
     service: InferenceService = Depends(get_inference_service),
 ):
     """Get a screen-oriented inference detail payload for evidence and synthesis views."""

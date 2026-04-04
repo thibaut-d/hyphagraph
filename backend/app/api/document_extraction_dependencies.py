@@ -1,9 +1,17 @@
+import importlib.util
+from pathlib import Path
+
 from fastapi import HTTPException, status
 
-from app.api.document_extraction_schemas import PubMedBulkSearchRequest, PubMedSearchResult
+from app.api.document_extraction_schemas import (
+    PubMedBulkImportRequest,
+    PubMedBulkSearchRequest,
+    PubMedSearchResult,
+    SmartDiscoveryRequest,
+)
 from app.llm.client import is_llm_available
 from app.services.pubmed_fetcher import PubMedArticle, PubMedFetcher
-from app.utils.errors import LLMServiceUnavailableException
+from app.utils.errors import LLMServiceUnavailableException, ValidationException
 
 
 def _get_test_support_module():
@@ -14,9 +22,14 @@ def _get_test_support_module():
     API code does not own test scaffolding directly. The lazy import keeps the
     dependency explicit while only activating it in testing-oriented paths.
     """
-    from backend.tests.support import document_extraction_support
+    support_path = Path(__file__).resolve().parents[2] / "tests" / "support" / "document_extraction_support.py"
+    spec = importlib.util.spec_from_file_location("document_extraction_support", support_path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Could not load test support module at {support_path}")
 
-    return document_extraction_support
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def calculate_relevance(text: str, entity_names: list[str]) -> float:
@@ -66,6 +79,36 @@ def resolve_pubmed_bulk_query(request: PubMedBulkSearchRequest) -> str:
         request,
         query_from_url=query_from_url,
     )
+
+
+def validate_smart_discovery_request(request: SmartDiscoveryRequest) -> None:
+    if not request.entity_slugs:
+        raise ValidationException(
+            message="At least one entity slug must be provided",
+            field="entity_slugs",
+            details="Provide at least one entity slug for discovery",
+        )
+    if len(request.entity_slugs) > 10:
+        raise ValidationException(
+            message="Maximum 10 entities can be searched at once",
+            field="entity_slugs",
+            details="Reduce the request to 10 entity slugs or fewer",
+        )
+
+
+def validate_pubmed_bulk_import_request(request: PubMedBulkImportRequest) -> None:
+    if not request.pmids:
+        raise ValidationException(
+            message="No PMIDs provided",
+            field="pmids",
+            details="Provide at least one PMID to import",
+        )
+    if len(request.pmids) > 100:
+        raise ValidationException(
+            message="Maximum 100 PMIDs can be imported at once",
+            field="pmids",
+            details="Reduce the import request to 100 PMIDs or fewer",
+        )
 
 
 def build_test_pubmed_articles_for_query(query: str, max_results: int) -> list[PubMedArticle]:

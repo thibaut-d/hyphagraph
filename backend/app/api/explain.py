@@ -12,7 +12,11 @@ from uuid import UUID
 
 logger = logging.getLogger(__name__)
 
-from app.api.inference_dependencies import InferenceScopeQuery, get_explanation_service
+from app.api.inference_dependencies import (
+    InferenceScopeQuery,
+    get_explanation_service,
+    get_inference_scope_query,
+)
 from app.schemas.explanation import ExplanationRead
 from app.services.explanation_service import ExplanationService
 from app.utils.errors import AppException, ErrorCode
@@ -25,7 +29,7 @@ router = APIRouter()
 async def explain_inference(
     entity_id: UUID,
     role_type: str,
-    query: InferenceScopeQuery = Depends(),
+    query: InferenceScopeQuery = Depends(get_inference_scope_query),
     service: ExplanationService = Depends(get_explanation_service),
 ):
     """

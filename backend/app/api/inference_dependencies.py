@@ -1,7 +1,7 @@
-from typing import Annotated
+import json
 
 from fastapi import Depends, Query
-from pydantic import BaseModel, Json, field_validator
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -15,35 +15,52 @@ from app.utils.errors import ValidationException
 class InferenceScopeQuery(BaseModel):
     """Typed query contract for optional inference/explanation scope filtering."""
 
-    scope: Annotated[
-        Json[dict[str, JsonScalar]] | None,
-        Query(
-            default=None,
-            description=(
-                'Scope filter as JSON object. Example: {"population":"adults",'
-                ' "condition":"chronic_pain"}'
-            ),
+    scope_filter: ScopeFilter | None = None
+
+
+def get_inference_scope_query(
+    scope: str | None = Query(
+        default=None,
+        description=(
+            'Scope filter as JSON object. Example: {"population":"adults",'
+            ' "condition":"chronic_pain"}'
         ),
-    ] = None
+    ),
+) -> InferenceScopeQuery:
+    if scope is None:
+        return InferenceScopeQuery()
 
-    @field_validator("scope")
-    @classmethod
-    def validate_scope(cls, value: dict[str, JsonScalar] | None) -> dict[str, JsonScalar] | None:
-        if value is None:
-            return None
+    try:
+        parsed = json.loads(scope)
+    except json.JSONDecodeError as exc:
+        raise ValidationException(
+            message="Invalid JSON in scope parameter",
+            field="scope",
+            details=str(exc),
+        ) from exc
 
-        if not all(isinstance(key, str) for key in value):
-            raise ValidationException(
-                message="Scope keys must be strings",
-                field="scope",
-                details="Scope keys must be strings",
-            )
+    if not isinstance(parsed, dict):
+        raise ValidationException(
+            message="Scope parameter must be a JSON object",
+            field="scope",
+            details="Provide a JSON object of scope attributes",
+        )
 
-        return value
+    if not all(isinstance(key, str) for key in parsed):
+        raise ValidationException(
+            message="Scope keys must be strings",
+            field="scope",
+            details="Scope keys must be strings",
+        )
 
-    @property
-    def scope_filter(self) -> ScopeFilter | None:
-        return self.scope
+    if not all(isinstance(value, (str, int, float, bool)) or value is None for value in parsed.values()):
+        raise ValidationException(
+            message="Scope values must be JSON scalars",
+            field="scope",
+            details="Scope values must be strings, numbers, booleans, or null",
+        )
+
+    return InferenceScopeQuery(scope_filter={key: value for key, value in parsed.items()})
 
 
 def get_inference_service(db: AsyncSession = Depends(get_db)) -> InferenceService:
