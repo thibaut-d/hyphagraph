@@ -144,8 +144,10 @@ docker compose -p hyphagraph-dev -f docker-compose.yml -f docker-compose.server-
 ```bash
 cp .env.sample .env
 docker compose up -d --build
-docker compose exec api alembic upgrade head
 ```
+
+> Migrations run automatically on container startup — no manual `alembic upgrade head` needed.
+> To run migrations manually (e.g. for debugging): `docker compose exec api alembic upgrade head`
 
 Access:
 - `http://localhost`

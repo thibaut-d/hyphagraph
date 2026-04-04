@@ -40,7 +40,8 @@ class Settings(BaseSettings):
     SMTP_TLS: bool = True  # Use TLS (STARTTLS)
 
     # Frontend URL (for email links)
-    FRONTEND_URL: str = "http://localhost:3000"  # Frontend base URL for verification links
+    # Docker Compose (via Caddy): http://localhost; direct Vite dev: http://localhost:3000
+    FRONTEND_URL: str = "http://localhost"  # Frontend base URL for verification links
 
     # Email Verification
     EMAIL_VERIFICATION_REQUIRED: bool = False  # Require email verification for new users

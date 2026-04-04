@@ -10,8 +10,10 @@ Applicable to both human developers and AI agents.
 
 ```bash
 docker compose up --build -d
-docker compose exec api alembic upgrade head
 ```
+
+Migrations run automatically on container startup.
+To run manually (debugging/recovery): `docker compose exec api alembic upgrade head`
 
 - Backend: http://localhost/api (auto-reload enabled)
 - Frontend: http://localhost (Vite HMR)

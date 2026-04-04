@@ -32,6 +32,7 @@ from app.models.audit_log import AuditLog
 from app.models.relation_type import RelationType
 from app.models.staged_extraction import StagedExtraction
 from app.models.bug_report import BugReport
+from app.models.entity_merge_record import EntityMergeRecord
 
 
 config = context.config

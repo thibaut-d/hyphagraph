@@ -106,8 +106,11 @@ sed -i "s|HYPHAGRAPH_VERSION=latest|HYPHAGRAPH_VERSION=${VERSION}|g" "$ENV_FILE"
 sed -i "s|change-me-prod-password@db|${POSTGRES_PASSWORD}@db|g" "$ENV_FILE"
 # Update FRONTEND_URL
 sed -i "s|https://mydomain.com|https://${DOMAIN}|g"         "$ENV_FILE"
+# Update EMAIL_FROM sender domain
+sed -i "s|noreply@mydomain.com|noreply@${DOMAIN}|g"         "$ENV_FILE"
 
 info ".env written"
+warn "SMTP settings (SMTP_HOST, SMTP_USER, SMTP_PASSWORD) must be configured manually in $ENV_FILE"
 
 # ── Write Caddyfile ────────────────────────────────────────────────────────────
 

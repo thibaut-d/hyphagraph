@@ -1,6 +1,6 @@
 # Code Audits
 
-Targeted audits to enforce the principles from [AGENTS.md](/home/thibaut/code/hyphagraph/AGENTS.md), [docs/development/CODE_GUIDE.md](/home/thibaut/code/hyphagraph/docs/development/CODE_GUIDE.md), and the core architecture documents. Run them regularly, especially before releases, after large refactors, and before AI-assisted edits to backend inference, extraction, or frontend synthesis surfaces.
+Targeted audits to enforce the principles from [AGENTS.md](../AGENTS.md), [docs/development/CODE_GUIDE.md](development/CODE_GUIDE.md), and the core architecture documents. Run them regularly, especially before releases, after large refactors, and before AI-assisted edits to backend inference, extraction, or frontend synthesis surfaces.
 
 **Output**: each audit saves findings to `.temp/<audit_name>_report.md` with a score, violation list (severity + file + fix), metrics, and previous score for regression tracking.
 

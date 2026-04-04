@@ -11,7 +11,7 @@
 | **Backend tests** | ✅ 651/651 | All passing |
 | **Frontend tests** | ✅ 613/613 | All passing (+16 BatchCreateRelationsView tests) |
 | **E2E tests** | ✅ **166/167** | 1 skipped (mobile drawer `.skip`), 0 failed |
-| **Technical debt** | ✅ None | All audit findings resolved, all test debt cleared |
+| **Technical debt** | 📋 See TODO.md | Open findings tracked in [TODO.md](../../TODO.md) |
 
 ### Completed Phases
 
@@ -115,9 +115,7 @@ See `E2E_TEST_FIXES_SUMMARY.md` and `E2E_TEST_ANALYSIS.md` for detailed technica
 ### Audit Follow-up (2026-03-23) — Score 95/100
 
 Full report: `.temp/full_audit_report_2026-03-23.md`
-Open actionable items tracked in `TODO.md` → **Full System Audit — 2026-03-23**:
-- ⬜ **AUD-M2** (major) — LLM revision status field on revision tables
-- ⬜ **AUD-m1** (minor) — CSV export legacy `subject_slug`/`object_slug` column headers
+Open actionable items tracked in [`TODO.md`](../../TODO.md) — see the Open Findings section for the current list.
 
 ---
 

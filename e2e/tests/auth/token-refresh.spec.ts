@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { loginAsAdminViaAPI, clearAuthState } from '../../fixtures/auth-helpers';
+import { ADMIN_USER } from '../../fixtures/test-data';
 
 test.describe('Token Refresh Flow', () => {
   test.afterEach(async ({ page }) => {
@@ -42,8 +43,8 @@ test.describe('Token Refresh Flow', () => {
   // G1b — refresh token rotation: old token rejected after rotation
   test('should reject the original refresh token after it has been rotated', async ({ page }) => {
     const API_URL = process.env.API_URL || 'http://localhost:8001';
-    const adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com';
-    const adminPassword = process.env.ADMIN_PASSWORD || 'admin';
+    const adminEmail = process.env.ADMIN_EMAIL || ADMIN_USER.email;
+    const adminPassword = process.env.ADMIN_PASSWORD || ADMIN_USER.password;
 
     // Login to obtain a refresh token via the httpOnly cookie path
     const loginResp = await page.request.post(`${API_URL}/api/auth/login`, {
