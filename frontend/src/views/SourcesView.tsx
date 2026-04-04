@@ -15,6 +15,7 @@ import {
   Badge,
   Chip,
   CircularProgress,
+  Alert,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import FilterListIcon from "@mui/icons-material/FilterList";
@@ -86,6 +87,19 @@ export function SourcesView() {
     value: domain,
     label: t(`filters.domain_${domain}`, domain.charAt(0).toUpperCase() + domain.slice(1))
   })), [domainOptions, t]);
+
+  const kindLabelByValue = useMemo(
+    () => Object.fromEntries(kindOptionsWithLabels.map((option) => [option.value, option.label])),
+    [kindOptionsWithLabels],
+  );
+  const domainLabelByValue = useMemo(
+    () => Object.fromEntries(domainOptionsWithLabels.map((option) => [option.value, option.label])),
+    [domainOptionsWithLabels],
+  );
+  const roleLabelByValue = useMemo(
+    () => Object.fromEntries(roleOptionsWithLabels.map((option) => [option.value, option.label])),
+    [roleOptionsWithLabels],
+  );
 
   // Debounce search to reduce server load during typing
   const debouncedSearch = useDebounce(filters.search, 300);
@@ -194,6 +208,92 @@ export function SourcesView() {
     hasMore,
   });
 
+  const activeFilterChips = useMemo(() => {
+    const chips: Array<{ key: string; label: string; onDelete: () => void }> = [];
+
+    if (debouncedSearch && typeof debouncedSearch === "string") {
+      chips.push({
+        key: `search-${debouncedSearch}`,
+        label: t("filters.chip_search", 'Search: "{{value}}"', { value: debouncedSearch }),
+        onDelete: () => setFilter("search", ""),
+      });
+    }
+
+    if (filters.kind && Array.isArray(filters.kind)) {
+      (filters.kind as string[]).forEach((value) => {
+        chips.push({
+          key: `kind-${value}`,
+          label: t("filters.chip_kind", "Type: {{label}}", {
+            label: kindLabelByValue[value] || value,
+          }),
+          onDelete: () => setFilter("kind", (filters.kind as string[]).filter((item) => item !== value)),
+        });
+      });
+    }
+
+    if (filters.year && Array.isArray(filters.year) && filters.year.length === 2) {
+      const [min, max] = filters.year as number[];
+      chips.push({
+        key: "year-range",
+        label: t("filters.chip_year_range", "Year: {{min}}-{{max}}", { min, max }),
+        onDelete: () => setFilter("year", yearRange),
+      });
+    }
+
+    if (filters.trust_level && Array.isArray(filters.trust_level) && filters.trust_level.length === 2) {
+      const [min, max] = filters.trust_level as number[];
+      if (min !== 0 || max !== 1) {
+        chips.push({
+          key: "trust-range",
+          label: t("filters.chip_trust_range", "Authority: {{min}}-{{max}}", {
+            min: min.toFixed(1),
+            max: max.toFixed(1),
+          }),
+          onDelete: () => setFilter("trust_level", [0, 1]),
+        });
+      }
+    }
+
+    if (filters.domain && Array.isArray(filters.domain)) {
+      (filters.domain as string[]).forEach((value) => {
+        chips.push({
+          key: `domain-${value}`,
+          label: t("filters.chip_domain", "Domain: {{label}}", {
+            label: domainLabelByValue[value] || value,
+          }),
+          onDelete: () => setFilter("domain", (filters.domain as string[]).filter((item) => item !== value)),
+        });
+      });
+    }
+
+    if (filters.role && Array.isArray(filters.role)) {
+      (filters.role as string[]).forEach((value) => {
+        chips.push({
+          key: `role-${value}`,
+          label: t("filters.chip_role", "Role: {{label}}", {
+            label: roleLabelByValue[value] || value,
+          }),
+          onDelete: () => setFilter("role", (filters.role as string[]).filter((item) => item !== value)),
+        });
+      });
+    }
+
+    return chips;
+  }, [
+    debouncedSearch,
+    filters.kind,
+    filters.year,
+    filters.trust_level,
+    filters.domain,
+    filters.role,
+    kindLabelByValue,
+    domainLabelByValue,
+    roleLabelByValue,
+    setFilter,
+    t,
+    yearRange,
+  ]);
+
   return (
     <Stack spacing={2}>
       <Box sx={{
@@ -206,85 +306,107 @@ export function SourcesView() {
         <Typography variant="h4" sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
           {t("sources.title", "Sources")}
         </Typography>
-        <Stack direction="row" spacing={1}>
-          <Badge badgeContent={activeFilterCount} color="primary">
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          spacing={1.25}
+          sx={{ width: { xs: "100%", sm: "auto" } }}
+        >
+          <Stack direction="row" spacing={1} flexWrap="wrap">
+            <Badge badgeContent={activeFilterCount} color="primary">
+              <Button
+                variant="outlined"
+                startIcon={<FilterListIcon />}
+                onClick={openDrawer}
+                size="small"
+                sx={{ minWidth: { xs: 'auto', sm: 'auto' } }}
+              >
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                  {t("filters.title", "Filters")}
+                </Box>
+              </Button>
+            </Badge>
+            <ExportMenu exportType="sources" buttonText={t("export.sources", "Export Sources")} size="small" filterParams={sourceFilterParams} />
+            <ExportMenu exportType="relations" buttonText={t("export.relations", "Export Relations")} size="small" filterParams={sourceFilterParams} />
+          </Stack>
+          <Stack direction="row" spacing={1} flexWrap="wrap">
             <Button
-              variant="outlined"
-              startIcon={<FilterListIcon />}
-              onClick={openDrawer}
+              component={RouterLink}
+              to="/sources/smart-discovery"
+              variant="contained"
+              color="secondary"
+              startIcon={<SearchIcon />}
               size="small"
-              sx={{ minWidth: { xs: 'auto', sm: 'auto' } }}
             >
               <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-                {t("filters.title", "Filters")}
+                Smart Discovery
               </Box>
             </Button>
-          </Badge>
-          <Button
-            component={RouterLink}
-            to="/sources/smart-discovery"
-            variant="contained"
-            color="secondary"
-            startIcon={<SearchIcon />}
-            size="small"
-          >
-            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-              Smart Discovery
-            </Box>
-          </Button>
-          <ExportMenu exportType="sources" buttonText={t("export.sources", "Export Sources")} size="small" filterParams={sourceFilterParams} />
-          <ExportMenu exportType="relations" buttonText={t("export.relations", "Export Relations")} size="small" filterParams={sourceFilterParams} />
-          <Button
-            component={RouterLink}
-            to="/sources/import"
-            variant="outlined"
-            startIcon={<UploadFileIcon />}
-            size="small"
-          >
-            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-              {t("source_import.toolbar_button")}
-            </Box>
-          </Button>
-          <Button
-            component={RouterLink}
-            to="/sources/import-pubmed"
-            variant="outlined"
-            startIcon={<DownloadIcon />}
-            size="small"
-          >
-            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-              Import from PubMed
-            </Box>
-          </Button>
-          <Button
-            component={RouterLink}
-            to="/sources/new"
-            variant="outlined"
-            startIcon={<AddIcon />}
-            size="small"
-          >
-            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-              {t("sources.create", "Create Source")}
-            </Box>
-          </Button>
+            <Button
+              component={RouterLink}
+              to="/sources/import"
+              variant="outlined"
+              startIcon={<UploadFileIcon />}
+              size="small"
+            >
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                {t("source_import.toolbar_button")}
+              </Box>
+            </Button>
+            <Button
+              component={RouterLink}
+              to="/sources/import-pubmed"
+              variant="outlined"
+              startIcon={<DownloadIcon />}
+              size="small"
+            >
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                Import from PubMed
+              </Box>
+            </Button>
+            <Button
+              component={RouterLink}
+              to="/sources/new"
+              variant="outlined"
+              startIcon={<AddIcon />}
+              size="small"
+            >
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                {t("sources.create", "Create Source")}
+              </Box>
+            </Button>
+          </Stack>
         </Stack>
       </Box>
 
-      {/* Info when filters are active */}
-      {activeFilterCount > 0 && (
-        <Alert severity="info" onClose={clearAllFilters}>
-          {t(
-            "filters.active_count",
-            "{{count}} filter(s) active",
-            { count: activeFilterCount }
-          )}
-          {" - "}
-          {t(
-            "filters.showing_filtered_results",
-            "Showing {{current}} of {{total}} result(s)",
-            { current: sources.length, total }
-          )}
-        </Alert>
+      {activeFilterChips.length > 0 && (
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, alignItems: "center" }}>
+          <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>
+            {t("filters.active_label", "Active filters:")}
+          </Typography>
+          {activeFilterChips.map((chip) => (
+            <Chip
+              key={chip.key}
+              label={chip.label}
+              onDelete={chip.onDelete}
+              size="small"
+              variant="outlined"
+              color="primary"
+            />
+          ))}
+          <Chip
+            label={t("filters.clear_all", "Clear all")}
+            onClick={clearAllFilters}
+            onDelete={clearAllFilters}
+            deleteIcon={<ClearAllIcon />}
+            size="small"
+          />
+          <Alert severity="info" sx={{ py: 0 }}>
+            {t("filters.showing_filtered_results", "Showing {{current}} of {{total}} result(s)", {
+              current: sources.length,
+              total,
+            })}
+          </Alert>
+        </Box>
       )}
 
       <Paper sx={{ p: { xs: 1, sm: 2 } }}>

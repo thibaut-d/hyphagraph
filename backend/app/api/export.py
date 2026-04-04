@@ -63,6 +63,14 @@ async def export_entities(
 async def export_relations(
     format: Literal["json", "csv", "rdf"] = Query("json", description="Export format"),
     include_metadata: bool = Query(True, description="Include creation dates and provenance"),
+    kind: Optional[List[str]] = Query(None, description="Filter by source kind"),
+    year_min: Optional[int] = Query(None, description="Filter by minimum year"),
+    year_max: Optional[int] = Query(None, description="Filter by maximum year"),
+    trust_level_min: Optional[float] = Query(None, description="Filter by minimum trust level", ge=0.0, le=1.0),
+    trust_level_max: Optional[float] = Query(None, description="Filter by maximum trust level", ge=0.0, le=1.0),
+    search: Optional[str] = Query(None, description="Search in source title/authors/origin"),
+    domain: Optional[List[str]] = Query(None, description="Filter by source domain"),
+    role: Optional[List[str]] = Query(None, description="Filter by source graph role"),
     service: ExportService = Depends(get_export_service),
     current_user: User = Depends(get_current_user),
 ):
@@ -76,7 +84,18 @@ async def export_relations(
 
     Returns a downloadable file.
     """
-    content = await service.export_relations(format, include_metadata)
+    content = await service.export_relations(
+        format,
+        include_metadata,
+        kind=kind,
+        year_min=year_min,
+        year_max=year_max,
+        trust_level_min=trust_level_min,
+        trust_level_max=trust_level_max,
+        search=search,
+        domain=domain,
+        role=role,
+    )
 
     content_types = {
         "json": "application/json",

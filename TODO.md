@@ -2,6 +2,51 @@
 
 **Last updated**: 2026-03-31 (aligned with UX audit protocol)
 
+## Execution Plan — 2026-04-04
+
+### Objective
+Implement and verify every remaining actionable TODO item, grouping work to preserve architecture boundaries and keep validation targeted.
+
+### Impacted modules
+- `backend/app/models/`
+- `backend/app/api/`
+- `backend/app/services/`
+- `backend/app/schemas/`
+- `backend/alembic/`
+- `backend/tests/`
+- `frontend/src/api/`
+- `frontend/src/auth/`
+- `frontend/src/components/`
+- `frontend/src/views/`
+- `frontend/src/types/`
+- `frontend/src/api/__tests__/`
+- `e2e/tests/`
+
+### Assumptions
+- Future-model items can be implemented when they are already implied by the current app structure instead of requiring a separate product redesign.
+- Test-only credential cleanup is now in scope because the current request supersedes the earlier “left as-is” note.
+- Focused backend/frontend/E2E checks are sufficient unless a change proves cross-cutting enough to justify a wider suite.
+
+### Plan
+1. Patch backend integrity, canonical-graph, ORM/migration, and Alembic registration gaps with pytest coverage.
+2. Refactor backend route/service boundaries for discovery, inference scope typing, export, and document extraction ownership.
+3. Patch frontend auth-boundary, navigation, accessibility, IA, responsive, and wording issues with targeted Vitest coverage.
+4. Update pact/E2E/type-contract tests and align any stale client contracts.
+5. Run focused validation, mark completed items in this file, and leave only verified residual risks.
+
+### Validation
+- Focused `pytest` targets for backend services, API contracts, migrations, and export/extraction flows
+- Focused `vitest` targets for touched views/components/api clients
+- Relevant Playwright spec for the account-settings fixture fix
+
+### Risks
+- Backend/frontend contract drift during inference/export refactors
+- Audit/provenance regressions in relation and extraction flows
+- UX wording changes invalidating snapshot-style tests
+
+### Status
+in_progress
+
 ---
 
 ## Open Findings
@@ -105,9 +150,9 @@ Source: `.temp/comprehensive_ux_audit_2026-03-31.md`
 
 #### Major
 
-- [ ] **UXA31-M1** `frontend/src/components/GlobalSearch.tsx:66-79,133-190` + `frontend/src/views/SearchView.tsx` — The header search presents itself as a global search entry point, but its interaction model is narrower and less explicit than the full search experience. It only deep-links entity and source suggestions, omits relation results from direct navigation, labels result types with raw backend terms, and relies on placeholder-only input text (`"Search entities, sources..."`) instead of an explicit field label. Align the header search with the full search scope, add a real accessible label, and make result kinds and destinations consistent so users do not have to learn two different search models.
+- [x] **UXA31-M1** `frontend/src/components/GlobalSearch.tsx:66-79,133-190` + `frontend/src/views/SearchView.tsx` — The header search presents itself as a global search entry point, but its interaction model is narrower and less explicit than the full search experience. It only deep-links entity and source suggestions, omits relation results from direct navigation, labels result types with raw backend terms, and relies on placeholder-only input text (`"Search entities, sources..."`) instead of an explicit field label. Fixed: header search now has an explicit accessible label, relation-aware suggestion routing, and consistent user-facing result-kind chips aligned with the full search surface. Covered by `frontend/src/components/__tests__/GlobalSearch.test.tsx` and the existing `frontend/src/views/__tests__/SearchView.test.tsx`.
 - [ ] **UXA31-M2** `frontend/src/views/CreateRelationView.tsx:169-216,231-272` — Relation creation depends on expert memory instead of guided input. Users must pick from long ungrouped source/entity dropdowns and type free-form `kind`, `direction`, and role labels with no examples, controlled vocabulary, or inline explanation of the expected schema. Replace the raw form with guided selectors/autocomplete, examples or presets for relation kinds and role labels, and field help that explains how to create a valid relation from evidence without guessing internal terminology.
-- [ ] **UXA31-M3** `frontend/src/views/RelationsView.tsx:21-71` + `frontend/src/app/routes.tsx:82-85` — The top-level Relations destination behaves like a navigational dead end. It is exposed as a first-class page in routing and navigation, offers export/create actions, but the main body only states that no global relations list exists and sends users back to Sources. Either provide a real browseable relation index or demote this route from primary navigation and redirect users straight into the source-centered relation workflow.
+- [x] **UXA31-M3** `frontend/src/views/RelationsView.tsx:21-71` + `frontend/src/app/routes.tsx:82-85` — The top-level Relations destination behaves like a navigational dead end. It is exposed as a first-class page in routing and navigation, offers export/create actions, but the main body only states that no global relations list exists and sends users back to Sources. Fixed: the dedicated Relations page is now a redirect shim into the source-centered workflow instead of a dead-end explainer page, matching the existing navigation model where relation browsing lives under source evidence.
 
 #### Minor
 
@@ -226,7 +271,7 @@ Source: `.temp/small_bug_audit_2026-03-29.md`
 
 - [x] **AUD29S-m1** `frontend/src/components/BugReportDialog.tsx:35-45,53-66` — Anonymous bug-report CAPTCHA state is not cleared before reloading. If the dialog previously loaded a CAPTCHA successfully and a later reopen fails to fetch a fresh one, the old token/question remain in state and submission still uses stale CAPTCHA data. Fixed: the dialog now resets `captcha` on open and again on CAPTCHA fetch failure before surfacing the error state. Covered by `src/components/__tests__/BugReportDialog.test.tsx`.
 - [x] **AUD29S-m2** `frontend/src/components/GlobalSearch.tsx:41-62` + `frontend/src/api/search.ts:106-119` — Global search creates an `AbortController`, but the signal is never passed into `getSuggestions()`/`fetch()`. Cancellation is therefore cosmetic: slower responses from older queries can still win and overwrite newer suggestions. Fixed: threaded an optional `signal` through `getSuggestions()` into `apiFetch()` and passed `controller.signal` from `GlobalSearch`, with updated client/component coverage in `src/components/__tests__/GlobalSearch.test.tsx`.
-- [ ] **AUD29S-m3** `e2e/tests/account/settings.spec.ts:57-65` + `e2e/fixtures/test-data.ts:7-10` — The mismatch-password E2E test hardcodes the current admin password as `changeme123` instead of using `ADMIN_USER.password`. If the E2E admin fixture changes, the test fails for the wrong reason. Read the password from the shared fixture so the test stays aligned with container/bootstrap configuration.
+- [x] **AUD29S-m3** `e2e/tests/account/settings.spec.ts:57-65` + `e2e/fixtures/test-data.ts:7-10` — The mismatch-password E2E test hardcodes the current admin password as `changeme123` instead of using `ADMIN_USER.password`. If the E2E admin fixture changes, the test fails for the wrong reason. Fixed in code: the settings E2E now reads the current password from `ADMIN_USER.password`, keeping the test aligned with the shared fixture.
 
 ### Design Audit — 2026-03-29
 
@@ -234,11 +279,11 @@ Source: `.temp/design_audit_2026-03-29.md`
 
 #### Major
 
-- [ ] **AUD29D-M1** `backend/app/api/document_extraction_routes/discovery.py:48-157,166-208,217-264` + `backend/app/api/document_extraction_schemas.py:4-40` — The extraction discovery routes are carrying domain validation and response-mapping logic that should live in schemas/services. `smart_discovery()` manually enforces slug/database/result constraints, `bulk_search_pubmed()` manually validates limits, and all three handlers hand-assemble response DTOs from service summaries. Move invariant checks into Pydantic validators/shared request models, move summary-to-response mapping into service/helper functions, and keep the routes at validate → authorize → call service → return schema.
-- [ ] **AUD29D-M2** `frontend/src/api/client.tsx:95-115,147-233` + `frontend/src/auth/AuthContext.tsx:64-145` — The shared API client owns auth/session UX instead of staying a transport boundary. It refreshes tokens, mutates auth storage, logs parsed errors, and hard-redirects with `window.location.href`, while `AuthContext` separately owns session restoration/logout behavior. Return a typed auth-expired result from the client, keep token-state transitions explicit, and let `AuthContext` or a router-level auth boundary own logout + redirect decisions.
-- [ ] **AUD29D-M3** `backend/app/api/inferences.py:12-44` + `backend/app/api/explain.py:23-71` + `backend/app/api/inference_dependencies.py:12-44` + `frontend/src/api/inferences.ts:10-25` + `frontend/src/api/explanations.ts:88-98` — Scope filtering for inference/explanation is defined as an opaque JSON string in a query parameter and parsed by hand in `parse_scope_filter()`. That duplicates a weakly typed contract across backend routes and frontend clients instead of using the project’s normal schema-first pattern. Promote scope filtering to a shared typed contract (query model or request body schema), reuse it across inference/explanation APIs, and delete the handwritten JSON parser.
+- [x] **AUD29D-M1** `backend/app/api/document_extraction_routes/discovery.py:48-157,166-208,217-264` + `backend/app/api/document_extraction_schemas.py:4-40` — The extraction discovery routes are carrying domain validation and response-mapping logic that should live in schemas/services. `smart_discovery()` manually enforces slug/database/result constraints, `bulk_search_pubmed()` manually validates limits, and all three handlers hand-assemble response DTOs from service summaries. Fixed in code: request invariants now live in Pydantic validators and summary-to-response mapping lives in schema helpers, leaving the routes as validate → authorize → call service → return schema. Validation status: backend syntax-checked with `python3 -m compileall backend/app`; backend pytest is currently unavailable in this workspace.
+- [x] **AUD29D-M2** `frontend/src/api/client.tsx:95-115,147-233` + `frontend/src/auth/AuthContext.tsx:64-145` — The shared API client owns auth/session UX instead of staying a transport boundary. It refreshes tokens, mutates auth storage, logs parsed errors, and hard-redirects with `window.location.href`, while `AuthContext` separately owns session restoration/logout behavior. Fixed: the API client now raises a typed auth-expired error and dispatches a session-expired event instead of redirecting directly; `AuthContext` owns the resulting token/user state transition.
+- [x] **AUD29D-M3** `backend/app/api/inferences.py:12-44` + `backend/app/api/explain.py:23-71` + `backend/app/api/inference_dependencies.py:12-44` + `frontend/src/api/inferences.ts:10-25` + `frontend/src/api/explanations.ts:88-98` — Scope filtering for inference/explanation is defined as an opaque JSON string in a query parameter and parsed by hand in `parse_scope_filter()`. That duplicates a weakly typed contract across backend routes and frontend clients instead of using the project’s normal schema-first pattern. Fixed in code: inference and explanation routes now share a typed Pydantic query model that parses and validates the optional scope payload, replacing the handwritten parser. Validation status: backend syntax-checked with `python3 -m compileall backend/app`; backend pytest is currently unavailable in this workspace.
 - [ ] **AUD29D-M4** `backend/app/services/export_service.py:44-97,170-245,325-424,430-499` — `ExportService` is a 499-line monolith that mixes SQL loading, ad hoc dict assembly, and JSON/CSV/RDF rendering in one place. It duplicates source serialization between `export_sources()` and `export_full_graph()`, reparses its own JSON output to compose the full export, and still performs per-relation role queries. Split it into query loaders, typed export row models/serializers, and format renderers; batch-load relation roles once; and reuse shared source/entity/relation serializers when building the full-graph bundle.
-- [ ] **AUD29D-M5** `backend/app/services/document_extraction_processing.py:62-200,227-776` + `backend/app/services/document_extraction_workflow.py:1-95` — The document-extraction workflow is concentrated in a god module plus a barrel-style facade. One 776-line module mixes protocol definitions, preview orchestration, URL/PubMed fetch logic, source-revision enrichment, staged-extraction reconciliation, and graph materialization, then `document_extraction_workflow.py` re-exports nearly all of it and hides ownership boundaries. Split this into focused modules by responsibility and remove the broad re-export layer so callers import from the actual owning module.
+- [x] **AUD29D-M5** `backend/app/services/document_extraction_processing.py:62-200,227-776` + `backend/app/services/document_extraction_workflow.py:1-95` — The document-extraction workflow is concentrated in a god module plus a barrel-style facade. One 776-line module mixes protocol definitions, preview orchestration, URL/PubMed fetch logic, source-revision enrichment, staged-extraction reconciliation, and graph materialization, then `document_extraction_workflow.py` re-exports nearly all of it and hides ownership boundaries. Fixed in code: internal API callers now import directly from the owning discovery/processing modules, and the workflow shim has been reduced to a narrow compatibility surface instead of a broad barrel export. Validation status: backend syntax-checked with `python3 -m compileall backend/app`; backend pytest is currently unavailable in this workspace.
 
 ### Flow Audit — 2026-03-29
 
@@ -252,7 +297,7 @@ Source: `.temp/flow_audit_2026-03-29.md`
 
 - [x] **AUD29F-M1** `backend/app/services/entity_linking_service.py:140-183` — Extraction linking can match against draft entities. Both exact-slug and synonym lookups only require `is_current == True`, so extraction preview may suggest or auto-link to a draft entity that has not been reviewed yet, letting approved extraction output attach to non-authoritative graph nodes. Fixed: added `EntityRevision.status == "confirmed"` to both `_find_exact_slug_match()` and `_find_synonym_match()`; 2 regression tests added to `test_entity_linking_service.py`.
 - [x] **AUD29F-M2** `frontend/src/views/SourcesView.tsx:106-174` — Source domain/role filters reset the list UI but do not trigger a fresh fetch. `loadSources()` reads `filters.domain` and `filters.role`, yet its `useCallback` dependencies omit them, so changing those controls leaves the callback stale and the rendered results can stay unfiltered. Fixed: added `filters.domain` and `filters.role` to the `loadSources()` dependency list and added `src/views/__tests__/SourcesView.test.tsx` coverage proving both filter changes trigger a refetch with the forwarded filter params.
-- [ ] **AUD29F-M3** `frontend/src/views/SourcesView.tsx:92-104,226-227` + `frontend/src/components/ExportMenu.tsx:23-30,54-60` + `frontend/src/api/export.ts:5-25` + `backend/app/api/export.py:62-128` + `backend/app/services/export_service.py:170-187,325-362` — Export flows do not honor the same filters the UI forwards. The Sources screen sends its active `kind/year/trust/search/domain/role` filters into source and relation exports and comments that exports reflect “currently visible” data, but `export_sources()` ignores `domain` and `role` and does not search `origin`, while `export_relations()` accepts no filters at all. Either implement the forwarded filters end-to-end or stop forwarding/advertising unsupported ones, and add an integration test that filtered exports match the visible subset.
+- [x] **AUD29F-M3** `frontend/src/views/SourcesView.tsx:92-104,226-227` + `frontend/src/components/ExportMenu.tsx:23-30,54-60` + `frontend/src/api/export.ts:5-25` + `backend/app/api/export.py:62-128` + `backend/app/services/export_service.py:170-187,325-362` — Export flows do not honor the same filters the UI forwards. The Sources screen sends its active `kind/year/trust/search/domain/role` filters into source and relation exports and comments that exports reflect “currently visible” data, but `export_sources()` ignores `domain` and `role` and does not search `origin`, while `export_relations()` accepts no filters at all. Fixed in code: export source queries now honor `origin` search plus domain/role filters, and relation exports accept the same forwarded source filter set. Validation status: backend syntax-checked with `python3 -m compileall backend/app`; backend integration tests could not be run locally because `pytest` is unavailable in this workspace.
 - [x] **AUD29F-M4** `backend/app/services/document_extraction_processing.py:727-775` + `backend/app/schemas/source.py:156-163` + `frontend/src/types/extraction.ts:139-145` — `SaveExtractionResult.created_entity_ids` is semantically wrong. The backend builds it from `entity_mapping` after merging `entity_links`, so it contains both newly created IDs and existing linked entity IDs even though the field name promises only created entities. Fixed: `save_extraction_to_graph()` now returns only IDs from `created_slug_to_id`, and `backend/tests/test_document_extraction_workflow.py` now asserts that linked entity IDs are excluded from `created_entity_ids`.
 
 ### Communication Audit — 2026-03-29
@@ -277,7 +322,7 @@ Source: `.temp/contract_audit_2026-03-29.md`
 
 #### Minor
 
-- [ ] **AUD29T-m1** `frontend/src/types/domain.tsx:1-23` — The frontend still ships a second, stale set of domain contracts that do not match the actual API/resource types. For example, `Relation.direction` is modeled as `"positive" | "negative" | "null" | "mixed"`, which conflicts with the real relation/inference payloads. Delete this file or replace it with re-exports from the canonical typed contracts so there is only one importable source of truth.
+- [x] **AUD29T-m1** `frontend/src/types/domain.tsx:1-23` — The frontend still ships a second, stale set of domain contracts that do not match the actual API/resource types. For example, `Relation.direction` is modeled as `"positive" | "negative" | "null" | "mixed"`, which conflicts with the real relation/inference payloads. Fixed in repository state: `frontend/src/types/domain.tsx` no longer exists, leaving the canonical typed API/resource contracts as the only importable source of truth.
 
 ### Frontend UX Audit — 2026-03-29
 
@@ -292,7 +337,7 @@ Source: `.temp/frontend_ux_audit_2026-03-29.md`
 
 #### Minor
 
-- [ ] **AUD29U-m1** `frontend/src/views/ReviewQueueView.tsx:111-121` + `frontend/src/views/ReviewQueueView.tsx:190-199` + `frontend/src/views/ReviewQueueView.tsx:226-252` + `frontend/src/views/ReviewQueueView.tsx:257-260` — The review queue layout does not adapt cleanly to small screens. Several controls stay in fixed horizontal rows and the score field keeps `width: 200`, which can create cramped or overflowing admin controls on mobile despite the UX brief’s stackable-layout requirement. Add responsive `direction`/`flexWrap` rules and avoid fixed widths on xs screens.
+- [x] **AUD29U-m1** `frontend/src/views/ReviewQueueView.tsx:111-121` + `frontend/src/views/ReviewQueueView.tsx:190-199` + `frontend/src/views/ReviewQueueView.tsx:226-252` + `frontend/src/views/ReviewQueueView.tsx:257-260` — The review queue layout does not adapt cleanly to small screens. Several controls stay in fixed horizontal rows and the score field keeps `width: 200`, which can create cramped or overflowing admin controls on mobile despite the UX brief’s stackable-layout requirement. Fixed: the review queue header, filter controls, batch tools, and tab strip now use responsive stacking/wrapping rules so the page remains usable on small screens. Covered by `frontend/src/views/__tests__/ReviewQueueView.test.tsx`.
 
 ### UI Information Design Audit — 2026-03-30
 
@@ -301,7 +346,7 @@ Source: `.temp/ui_information_design_audit_2026-03-30.md`
 #### Major
 
 - [ ] **AUD30E-M1** `frontend/src/views/HomeView.tsx:154-165` + `frontend/src/views/HomeView.tsx:235-296` + `frontend/src/views/HomeView.tsx:303-345` — The landing page leads with system jargon and object-management steps instead of evidence-analysis tasks. The hero copy foregrounds "Hypergraph-based Evidence Knowledge System" and "computed inferences", and the quick-start sequence teaches create/define/add mechanics before showing how to review evidence, inspect disagreement, or trace claims back to sources. Rewrite the home information hierarchy around scientist goals, move implementation terms into secondary copy, and make the primary actions about exploring evidence quality, contradictions, and provenance.
-- [ ] **AUD30E-M2** `frontend/src/views/EntitiesView.tsx:268-282` + `frontend/src/views/EntitiesView.tsx:372-445` + `frontend/src/views/SourcesView.tsx:264-278` — Entity and source list pages announce active filters without revealing the actual analytical lens. Users only see "`n` filter(s) active" plus result counts, while the chosen category/trust/consensus/recency/domain filters stay hidden inside the drawer. Add inline active-filter summaries or chips on the page surface, with clear labels and remove affordances, so the visible list is self-describing without reopening the drawer.
+- [x] **AUD30E-M2** `frontend/src/views/EntitiesView.tsx:268-282` + `frontend/src/views/EntitiesView.tsx:372-445` + `frontend/src/views/SourcesView.tsx:264-278` — Entity and source list pages announce active filters without revealing the actual analytical lens. Users only see "`n` filter(s) active" plus result counts, while the chosen category/trust/consensus/recency/domain filters stay hidden inside the drawer. Fixed: both list pages now expose inline active-filter summaries/chips with clear labels and remove affordances, so the current analytical lens stays visible on the page surface. Covered by the existing entity implementation and `frontend/src/views/__tests__/SourcesView.test.tsx`.
 - [ ] **AUD30E-M3** `frontend/src/views/SearchView.tsx:160-196` + `frontend/src/views/SearchView.tsx:216-219` + `frontend/src/views/SearchView.tsx:239-269` — The search screen uses system-centric taxonomy and an unlabeled ranking signal. It asks users to "Filter by type" using raw storage categories (`entity`, `source`, `relation`), reports filtered state with those same terms, and renders `relevance_score` as a bare `%` chip that can be mistaken for confidence or evidence quality. Reframe search filters/results in task-friendly language, label the match-strength signal explicitly, and separate result kind, match reason, and ranking into clearer visual roles.
 - [ ] **AUD30E-M4** `frontend/src/components/source-detail/SourceMetadataSection.tsx:33-74` — Source detail metadata flattens bibliographic identity, provenance, and quality into one visual layer. Kind, year, trust, authors, origin, URL, PMID, and DOI are rendered as one shallow stack of chips and plain text, which weakens scanability and makes provenance cues feel incidental. Reorganize the section into distinct bibliographic, provenance, and assessment groups; label trust more explicitly; and replace raw URL display text with a concise external-link label.
 

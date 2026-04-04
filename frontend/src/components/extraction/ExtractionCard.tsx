@@ -84,6 +84,7 @@ export function ExtractionCard({
       <ListItem>
         <Checkbox checked={isSelected} onChange={onToggleSelect} />
         <ListItemText
+          secondaryTypographyProps={{ component: "div" }}
           primary={
             <Stack direction="row" spacing={1} alignItems="center">
               <Typography variant="h6">{getExtractionTitle(extraction)}</Typography>

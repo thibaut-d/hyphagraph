@@ -10,6 +10,7 @@ import {
 
 import { getMe, logout as logoutApi, refreshAccessToken } from "../api/auth";
 import {
+  AUTH_SESSION_EXPIRED_EVENT,
   AUTH_STATE_CHANGED_EVENT,
   clearStoredAuthTokens,
   getStoredAuthTokens,
@@ -62,6 +63,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.addEventListener(AUTH_STATE_CHANGED_EVENT, syncAuthState);
     return () => {
       window.removeEventListener(AUTH_STATE_CHANGED_EVENT, syncAuthState);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      requestVersionRef.current += 1;
+      clearStoredAuthTokens();
+      setToken(null);
+      setUser(null);
+      setLoading(false);
+    };
+
+    window.addEventListener(AUTH_SESSION_EXPIRED_EVENT, handleSessionExpired);
+    return () => {
+      window.removeEventListener(AUTH_SESSION_EXPIRED_EVENT, handleSessionExpired);
     };
   }, []);
 

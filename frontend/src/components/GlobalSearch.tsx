@@ -19,7 +19,7 @@ import { useDebounce } from "../hooks/useDebounce";
 /**
  * GlobalSearch component for the main navigation header.
  *
- * Provides autocomplete search with suggestions from entities and sources.
+ * Provides autocomplete search with suggestions from entities, sources, and relations.
  * Uses debounced input to avoid excessive API calls.
  */
 export function GlobalSearch() {
@@ -73,6 +73,8 @@ export function GlobalSearch() {
           navigate(`/entities/${value.id}`);
         } else if (value.type === "source") {
           navigate(`/sources/${value.id}`);
+        } else if (value.type === "relation") {
+          navigate(`/relations/${value.id}`);
         }
         // Clear input after selection
         setInputValue("");
@@ -181,10 +183,12 @@ export function GlobalSearch() {
               label={
                 option.type === "entity"
                   ? t("search.kind_entity", "Entity")
-                  : t("search.kind_source", "Publication")
+                  : option.type === "source"
+                    ? t("search.kind_source", "Publication")
+                    : t("search.kind_relation", "Evidence claim")
               }
               size="small"
-              color={option.type === "entity" ? "primary" : "secondary"}
+              color={option.type === "entity" ? "primary" : option.type === "source" ? "secondary" : "warning"}
               sx={{ minWidth: 72 }}
             />
             <Box sx={{ flex: 1, minWidth: 0 }}>

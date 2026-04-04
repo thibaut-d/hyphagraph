@@ -80,7 +80,7 @@ class SearchSuggestionRequest(BaseModel):
         json_schema_extra={"example": "para"}
     )
 
-    types: Optional[List[Literal["entity", "source"]]] = Field(
+    types: Optional[List[Literal["entity", "source", "relation"]]] = Field(
         None,
         description="Filter suggestions by type. If not provided, suggests all types.",
         json_schema_extra={"example": ["entity"]}
@@ -163,7 +163,7 @@ class SearchSuggestion(BaseModel):
     Autocomplete suggestion.
     """
     id: UUID = Field(..., description="Item ID")
-    type: Literal["entity", "source"] = Field(..., description="Item type")
+    type: Literal["entity", "source", "relation"] = Field(..., description="Item type")
     label: str = Field(..., description="Display label")
     secondary: Optional[str] = Field(None, description="Secondary text (kind, year, etc.)")
 

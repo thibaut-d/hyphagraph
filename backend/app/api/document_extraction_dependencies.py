@@ -20,7 +20,7 @@ def _get_test_support_module():
 
 
 def calculate_relevance(text: str, entity_names: list[str]) -> float:
-    from app.services.document_extraction_workflow import calculate_relevance as _calculate_relevance
+    from app.services.document_extraction_discovery import calculate_relevance as _calculate_relevance
 
     return _calculate_relevance(text, entity_names)
 

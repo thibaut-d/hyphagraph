@@ -1,13 +1,13 @@
 """Thin coordinator for unified search across entities, sources, and relations."""
 
-
-
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity import Entity
 from app.models.entity_revision import EntityRevision
 from app.models.entity_term import EntityTerm
+from app.models.relation import Relation
+from app.models.relation_revision import RelationRevision
 from app.models.source import Source
 from app.models.source_revision import SourceRevision
 from app.schemas.search import (
@@ -108,7 +108,7 @@ class SearchService:
         """
         suggestions: list[SearchSuggestion] = []
         query_lower = request.query.lower()
-        search_types = request.types or ["entity", "source"]
+        search_types = request.types or ["entity", "source", "relation"]
 
         # Get entity suggestions (from slugs and terms)
         if "entity" in search_types:
@@ -179,6 +179,41 @@ class SearchService:
                 suggestions.append(
                     SearchSuggestion(
                         id=source_id, type="source", label=title, secondary=secondary
+                    )
+                )
+
+        if "relation" in search_types and len(suggestions) < request.limit:
+            remaining = request.limit - len(suggestions)
+            relation_stmt = (
+                select(
+                    Relation.id,
+                    RelationRevision.kind,
+                    RelationRevision.direction,
+                    SourceRevision.title,
+                )
+                .join(RelationRevision, Relation.id == RelationRevision.relation_id)
+                .join(Source, Relation.source_id == Source.id)
+                .join(SourceRevision, Source.id == SourceRevision.source_id)
+                .where(
+                    RelationRevision.is_current == True,
+                    RelationRevision.status == "confirmed",
+                    SourceRevision.is_current == True,
+                    SourceRevision.status == "confirmed",
+                    func.lower(func.coalesce(RelationRevision.kind, "")).startswith(query_lower),
+                )
+                .order_by(RelationRevision.kind, SourceRevision.title)
+                .limit(remaining)
+            )
+
+            result = await self.db.execute(relation_stmt)
+            for relation_id, kind, direction, source_title in result.all():
+                secondary_parts = [direction, source_title]
+                suggestions.append(
+                    SearchSuggestion(
+                        id=relation_id,
+                        type="relation",
+                        label=kind or "relation",
+                        secondary=" • ".join(part for part in secondary_parts if part),
                     )
                 )
 

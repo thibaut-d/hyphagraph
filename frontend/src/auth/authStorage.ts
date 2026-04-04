@@ -1,4 +1,5 @@
 export const AUTH_STATE_CHANGED_EVENT = "auth-state-changed";
+export const AUTH_SESSION_EXPIRED_EVENT = "auth-session-expired";
 
 export type AuthTokens = {
   token: string | null;
@@ -33,4 +34,8 @@ export function updateStoredAccessToken(token: string): void {
 export function clearStoredAuthTokens(): void {
   _token = null;
   dispatchAuthStateChanged();
+}
+
+export function dispatchAuthSessionExpired(): void {
+  window.dispatchEvent(new Event(AUTH_SESSION_EXPIRED_EVENT));
 }

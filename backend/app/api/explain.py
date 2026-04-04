@@ -7,13 +7,12 @@ allowing users to trace inference scores back to source documents.
 
 import logging
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from uuid import UUID
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-from app.api.inference_dependencies import get_explanation_service, parse_scope_filter
+from app.api.inference_dependencies import InferenceScopeQuery, get_explanation_service
 from app.schemas.explanation import ExplanationRead
 from app.services.explanation_service import ExplanationService
 from app.utils.errors import AppException, ErrorCode
@@ -26,11 +25,7 @@ router = APIRouter()
 async def explain_inference(
     entity_id: UUID,
     role_type: str,
-    scope: Optional[str] = Query(
-        None,
-        description='Scope filter as JSON string (same format as inference API). '
-                    'Example: {"population": "adults", "condition": "chronic_pain"}',
-    ),
+    query: InferenceScopeQuery = Depends(),
     service: ExplanationService = Depends(get_explanation_service),
 ):
     """
@@ -61,10 +56,8 @@ async def explain_inference(
         404: Role type not found in computed inference
         500: Internal server error during inference computation
     """
-    scope_filter = parse_scope_filter(scope)
-
     try:
-        return await service.explain_inference(entity_id, role_type, scope_filter)
+        return await service.explain_inference(entity_id, role_type, query.scope_filter)
     except ValueError:
         # Role type not found
         raise AppException(

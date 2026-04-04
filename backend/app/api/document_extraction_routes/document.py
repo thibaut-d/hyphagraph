@@ -16,7 +16,7 @@ from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.models.user import User
 from app.schemas.source import DocumentExtractionPreview, SaveExtractionRequest, SaveExtractionResult
-from app.services.document_extraction_workflow import (
+from app.services.document_extraction_processing import (
     build_extraction_preview,
     fetch_document_from_url,
     load_source_document_text,

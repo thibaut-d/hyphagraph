@@ -12,7 +12,9 @@ from io import StringIO
 from datetime import datetime
 from typing import List, Literal
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from collections import defaultdict
+
+from sqlalchemy import String, and_, case, cast, distinct, func, or_, select
 
 from app.models.entity import Entity
 from app.models.entity_revision import EntityRevision
@@ -21,7 +23,10 @@ from app.models.source_revision import SourceRevision
 from app.models.relation import Relation
 from app.models.relation_revision import RelationRevision
 from app.models.relation_role_revision import RelationRoleRevision
+from app.schemas.filters import SourceFilters
 from app.schemas.export import EntityExportItem, RelationExportItem, RelationRoleExportItem, SourceExportItem
+from app.services.query_predicates import canonical_relation_predicate
+from app.services.source_service import DOMAIN_KEYWORDS
 
 
 ExportFormat = Literal["json", "csv", "rdf"]
@@ -37,6 +42,119 @@ class ExportService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    def _build_filtered_source_query(self, filters: SourceFilters | None = None):
+        query = (
+            select(Source, SourceRevision)
+            .join(SourceRevision, Source.id == SourceRevision.source_id)
+            .where(SourceRevision.is_current == True)
+            .where(SourceRevision.status == "confirmed")
+        )
+
+        if not filters:
+            return query
+
+        if filters.kind:
+            query = query.where(SourceRevision.kind.in_(filters.kind))
+        if filters.year_min is not None:
+            query = query.where(SourceRevision.year >= filters.year_min)
+        if filters.year_max is not None:
+            query = query.where(SourceRevision.year <= filters.year_max)
+        if filters.trust_level_min is not None:
+            query = query.where(SourceRevision.trust_level >= filters.trust_level_min)
+        if filters.trust_level_max is not None:
+            query = query.where(SourceRevision.trust_level <= filters.trust_level_max)
+        if filters.search:
+            search_pattern = f"%{filters.search.lower()}%"
+            query = query.where(
+                or_(
+                    SourceRevision.title.ilike(search_pattern),
+                    SourceRevision.origin.ilike(search_pattern),
+                    cast(SourceRevision.authors, String).ilike(search_pattern),
+                )
+            )
+
+        if filters.domain:
+            domain_conditions = []
+            for domain in filters.domain:
+                keyword_conditions = []
+                for keyword in DOMAIN_KEYWORDS.get(domain, []):
+                    keyword_pattern = f"%{keyword}%"
+                    keyword_conditions.append(
+                        or_(
+                            SourceRevision.origin.ilike(keyword_pattern),
+                            SourceRevision.title.ilike(keyword_pattern),
+                        )
+                    )
+                if keyword_conditions:
+                    domain_conditions.append(or_(*keyword_conditions))
+            if domain_conditions:
+                query = query.where(or_(*domain_conditions))
+
+        if filters.role:
+            relation_stats = (
+                select(
+                    Relation.source_id.label("source_id"),
+                    func.count(distinct(Relation.id)).label("relation_count"),
+                    func.sum(
+                        case((RelationRevision.direction == "contradicts", 1), else_=0)
+                    ).label("contradictory_count"),
+                )
+                .join(RelationRevision, Relation.id == RelationRevision.relation_id)
+                .where(canonical_relation_predicate())
+                .group_by(Relation.source_id)
+                .subquery()
+            )
+            query = query.join(relation_stats, Source.id == relation_stats.c.source_id, isouter=True)
+
+            role_conditions = []
+            if "pillar" in filters.role:
+                role_conditions.append(relation_stats.c.relation_count > 5)
+            if "supporting" in filters.role:
+                role_conditions.append(
+                    and_(
+                        relation_stats.c.relation_count >= 2,
+                        relation_stats.c.relation_count <= 5,
+                    )
+                )
+            if "contradictory" in filters.role:
+                role_conditions.append(relation_stats.c.contradictory_count > 0)
+            if "single" in filters.role:
+                role_conditions.append(relation_stats.c.relation_count == 1)
+            if role_conditions:
+                query = query.where(or_(*role_conditions))
+
+        return query
+
+    def _serialize_source_row(
+        self,
+        source: Source,
+        revision: SourceRevision,
+        *,
+        include_metadata: bool,
+        include_source_metadata: bool = False,
+    ) -> SourceExportItem:
+        item = SourceExportItem(
+            id=str(source.id),
+            kind=revision.kind,
+            title=revision.title,
+            authors=revision.authors,
+            year=revision.year,
+            origin=revision.origin,
+            url=revision.url,
+            trust_level=revision.trust_level,
+            status=revision.status,
+            summary_en=(revision.summary or {}).get("en"),
+            summary_fr=(revision.summary or {}).get("fr"),
+            source_metadata=revision.source_metadata if include_source_metadata else None,
+        )
+        if include_metadata:
+            item.created_at = source.created_at.isoformat() if source.created_at else None
+            item.revision_created_at = revision.created_at.isoformat() if revision.created_at else None
+            item.created_by_user_id = str(revision.created_by_user_id) if revision.created_by_user_id else None
+            item.created_with_llm = revision.created_with_llm
+            item.llm_review_status = revision.llm_review_status
+        return item
 
     # =========================================================================
     # ENTITIES EXPORT
@@ -164,45 +282,68 @@ class ExportService:
     async def export_relations(
         self,
         format: ExportFormat = "json",
-        include_metadata: bool = True
+        include_metadata: bool = True,
+        kind: list[str] | None = None,
+        year_min: int | None = None,
+        year_max: int | None = None,
+        trust_level_min: float | None = None,
+        trust_level_max: float | None = None,
+        search: str | None = None,
+        domain: list[str] | None = None,
+        role: list[str] | None = None,
     ) -> str:
         """Export all relations with their roles."""
-        # Fetch all current relations with roles
-        stmt = select(Relation, RelationRevision, Source, SourceRevision).join(
-            RelationRevision, Relation.id == RelationRevision.relation_id
-        ).join(
-            Source, Relation.source_id == Source.id
-        ).join(
-            SourceRevision, Source.id == SourceRevision.source_id
-        ).where(
-            RelationRevision.is_current == True,
-            SourceRevision.is_current == True,
-            Relation.is_rejected == False
+        filters = SourceFilters(
+            kind=kind,
+            year_min=year_min,
+            year_max=year_max,
+            trust_level_min=trust_level_min,
+            trust_level_max=trust_level_max,
+            search=search,
+            domain=domain,
+            role=role,
+        )
+        filtered_sources = self._build_filtered_source_query(filters).subquery()
+        stmt = (
+            select(Relation, RelationRevision, SourceRevision)
+            .join(RelationRevision, Relation.id == RelationRevision.relation_id)
+            .join(
+                filtered_sources,
+                Relation.source_id == filtered_sources.c.id,
+            )
+            .join(SourceRevision, SourceRevision.source_id == Relation.source_id)
+            .where(canonical_relation_predicate())
+            .where(SourceRevision.is_current == True)
+            .where(SourceRevision.status == "confirmed")
         )
 
         result = await self.db.execute(stmt)
-        relations_data = []
+        relation_rows = result.all()
+        relation_revision_ids = [row[1].id for row in relation_rows]
 
-        for relation, rel_revision, source, source_revision in result:
-            # Get roles
-            roles_stmt = select(RelationRoleRevision, EntityRevision).join(
-                EntityRevision, RelationRoleRevision.entity_id == EntityRevision.entity_id
-            ).where(
-                RelationRoleRevision.relation_revision_id == rel_revision.id,
-                EntityRevision.is_current == True
+        roles_by_revision_id: dict[object, list[RelationRoleExportItem]] = defaultdict(list)
+        if relation_revision_ids:
+            roles_stmt = (
+                select(RelationRoleRevision, EntityRevision)
+                .join(EntityRevision, RelationRoleRevision.entity_id == EntityRevision.entity_id)
+                .where(RelationRoleRevision.relation_revision_id.in_(relation_revision_ids))
+                .where(EntityRevision.is_current == True)
+                .where(EntityRevision.status == "confirmed")
             )
-
             roles_result = await self.db.execute(roles_stmt)
-            roles = []
             for role_rev, entity_rev in roles_result:
-                roles.append(RelationRoleExportItem(
-                    entity_slug=entity_rev.slug,
-                    entity_id=str(role_rev.entity_id),
-                    role_type=role_rev.role_type,
-                    weight=role_rev.weight,
-                    coverage=role_rev.coverage,
-                ))
+                roles_by_revision_id[role_rev.relation_revision_id].append(
+                    RelationRoleExportItem(
+                        entity_slug=entity_rev.slug,
+                        entity_id=str(role_rev.entity_id),
+                        role_type=role_rev.role_type,
+                        weight=role_rev.weight,
+                        coverage=role_rev.coverage,
+                    )
+                )
 
+        relations_data = []
+        for relation, rel_revision, source_revision in relation_rows:
             item = RelationExportItem(
                 id=str(relation.id),
                 kind=rel_revision.kind,
@@ -211,7 +352,7 @@ class ExportService:
                 status=rel_revision.status,
                 source_id=str(relation.source_id),
                 source_title=source_revision.title,
-                roles=roles,
+                roles=roles_by_revision_id.get(rel_revision.id, []),
             )
             if include_metadata:
                 item.created_at = relation.created_at.isoformat() if relation.created_at else None
@@ -317,54 +458,27 @@ class ExportService:
         role: list[str] | None = None,
     ) -> str:
         """Export sources in JSON or CSV format, respecting the same filters as the list endpoint."""
-        from sqlalchemy import or_, cast, String
-        stmt = select(Source, SourceRevision).join(
-            SourceRevision, Source.id == SourceRevision.source_id
-        ).where(SourceRevision.is_current == True)
-
-        if kind:
-            stmt = stmt.where(SourceRevision.kind.in_(kind))
-        if year_min is not None:
-            stmt = stmt.where(SourceRevision.year >= year_min)
-        if year_max is not None:
-            stmt = stmt.where(SourceRevision.year <= year_max)
-        if trust_level_min is not None:
-            stmt = stmt.where(SourceRevision.trust_level >= trust_level_min)
-        if trust_level_max is not None:
-            stmt = stmt.where(SourceRevision.trust_level <= trust_level_max)
-        if search:
-            search_pattern = f"%{search.lower()}%"
-            stmt = stmt.where(
-                or_(
-                    SourceRevision.title.ilike(search_pattern),
-                    cast(SourceRevision.authors, String).ilike(search_pattern),
-                )
-            )
-
-        result = await self.db.execute(stmt)
+        filters = SourceFilters(
+            kind=kind,
+            year_min=year_min,
+            year_max=year_max,
+            trust_level_min=trust_level_min,
+            trust_level_max=trust_level_max,
+            search=search,
+            domain=domain,
+            role=role,
+        )
+        result = await self.db.execute(self._build_filtered_source_query(filters))
         sources_data = []
 
         for source, revision in result:
-            item = SourceExportItem(
-                id=str(source.id),
-                kind=revision.kind,
-                title=revision.title,
-                authors=revision.authors,
-                year=revision.year,
-                origin=revision.origin,
-                url=revision.url,
-                trust_level=revision.trust_level,
-                status=revision.status,
-                summary_en=(revision.summary or {}).get("en"),
-                summary_fr=(revision.summary or {}).get("fr"),
+            sources_data.append(
+                self._serialize_source_row(
+                    source,
+                    revision,
+                    include_metadata=include_metadata,
+                )
             )
-            if include_metadata:
-                item.created_at = source.created_at.isoformat() if source.created_at else None
-                item.revision_created_at = revision.created_at.isoformat() if revision.created_at else None
-                item.created_by_user_id = str(revision.created_by_user_id) if revision.created_by_user_id else None
-                item.created_with_llm = revision.created_with_llm
-                item.llm_review_status = revision.llm_review_status
-            sources_data.append(item)
 
         if format == "json":
             return json.dumps(
@@ -418,42 +532,18 @@ class ExportService:
             raise ValueError("Full graph export only supports JSON format")
 
         # Get entities
-        entities_json = await self.export_entities("json", include_metadata)
-        entities_dict = json.loads(entities_json)
-
-        # Get relations
-        relations_json = await self.export_relations("json", include_metadata)
-        relations_dict = json.loads(relations_json)
-
-        # Get sources
-        stmt = select(Source, SourceRevision).join(
-            SourceRevision, Source.id == SourceRevision.source_id
-        ).where(SourceRevision.is_current == True)
-
-        result = await self.db.execute(stmt)
-        sources_data = []
-
-        for source, revision in result:
-            item = SourceExportItem(
-                id=str(source.id),
-                kind=revision.kind,
-                title=revision.title,
-                authors=revision.authors,
-                year=revision.year,
-                origin=revision.origin,
-                url=revision.url,
-                trust_level=revision.trust_level,
-                status=revision.status,
-                summary_en=(revision.summary or {}).get('en'),
-                summary_fr=(revision.summary or {}).get('fr'),
-                source_metadata=revision.source_metadata,
+        entities_dict = json.loads(await self.export_entities("json", include_metadata))
+        relations_dict = json.loads(await self.export_relations("json", include_metadata))
+        result = await self.db.execute(self._build_filtered_source_query())
+        sources_data = [
+            self._serialize_source_row(
+                source,
+                revision,
+                include_metadata=include_metadata,
+                include_source_metadata=True,
             )
-            if include_metadata:
-                item.created_at = source.created_at.isoformat() if source.created_at else None
-                item.revision_created_at = revision.created_at.isoformat() if revision.created_at else None
-                item.created_with_llm = revision.created_with_llm
-                item.created_by_user_id = str(revision.created_by_user_id) if revision.created_by_user_id else None
-            sources_data.append(item)
+            for source, revision in result
+        ]
 
         # Combine all
         return json.dumps({

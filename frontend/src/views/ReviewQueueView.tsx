@@ -132,16 +132,26 @@ export function ReviewQueueView() {
   return (
     <Box sx={{ p: 3 }}>
       <Stack spacing={3}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          justifyContent="space-between"
+          alignItems={{ xs: "stretch", sm: "center" }}
+          spacing={2}
+        >
           <Typography variant="h4">{t("menu.review_queue", "Review queues")}</Typography>
           {activeTab === "staged" && (
             <Button startIcon={<RefreshIcon />} onClick={handleRefresh} disabled={isLoading}>
-              {t("review_queue.refresh")}
+              {t("review_queue.refresh", "Refresh queue")}
             </Button>
           )}
         </Stack>
 
-        <Tabs value={activeTab} onChange={(_event, value) => setActiveTab(value as QueueType)}>
+        <Tabs
+          value={activeTab}
+          onChange={(_event, value) => setActiveTab(value as QueueType)}
+          variant="scrollable"
+          allowScrollButtonsMobile
+        >
           <Tab value="staged" label={t("review_queue.tab_staged", "Staged Extraction Review")} />
           <Tab value="drafts" label={t("review_queue.tab_drafts", "LLM Draft Review")} />
         </Tabs>
@@ -233,12 +243,12 @@ export function ReviewQueueView() {
                 <Typography variant="body2" color="text.secondary">
                   {t(
                     "review_queue.filters_description",
-                    "Narrow the staged extraction queue by validation score, flagged status, or extraction type."
+                    "Narrow the staged extraction queue by review priority, flagged risk, or extraction type."
                   )}
                 </Typography>
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ xs: "stretch", sm: "center" }} flexWrap="wrap">
                   <TextField
-                    label={t("review_queue.min_score_label")}
+                    label={t("review_queue.min_score_label", "Minimum validation score")}
                     type="number"
                     size="small"
                     value={minScore ?? ""}
@@ -253,7 +263,7 @@ export function ReviewQueueView() {
                     onClick={() => setOnlyFlagged(!onlyFlagged)}
                     startIcon={<WarningIcon />}
                   >
-                    {t("review_queue.only_flagged")}
+                    {t("review_queue.only_flagged", "Only flagged items")}
                   </Button>
                 </Stack>
                 <ToggleButtonGroup
@@ -263,7 +273,8 @@ export function ReviewQueueView() {
                     setExtractionType(value === "all" ? undefined : (value as ExtractionType))
                   }
                   size="small"
-                  aria-label={t("review_queue.type_filter_label")}
+                  aria-label={t("review_queue.type_filter_label", "Filter by extraction type")}
+                  sx={{ flexWrap: "wrap" }}
                 >
                   <ToggleButton value="all">{t("review_queue.type_all")}</ToggleButton>
                   <ToggleButton value="entity">{t("review_queue.type_entity")}</ToggleButton>
@@ -286,7 +297,7 @@ export function ReviewQueueView() {
                         "Select staged extractions to approve or reject them in one batch."
                       )}
                 </Typography>
-                <Stack direction="row" spacing={2} flexWrap="wrap">
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={2} flexWrap="wrap">
                   <Button
                     startIcon={<SelectAllIcon />}
                     onClick={handleSelectAll}

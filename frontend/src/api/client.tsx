@@ -6,6 +6,7 @@ import {
 } from "../utils/errorHandler";
 import {
   clearStoredAuthTokens,
+  dispatchAuthSessionExpired,
   getStoredAuthTokens,
   updateStoredAccessToken,
 } from "../auth/authStorage";
@@ -14,6 +15,15 @@ const API_BASE_URL = import.meta.env.VITE_API_URL ?? "/api";
 
 // In-memory coalescing lock: all concurrent 401s within this tab share one refresh request.
 let _refreshPromise: Promise<string | null> | null = null;
+
+export class AuthExpiredError extends Error {
+  readonly kind = "auth-expired";
+
+  constructor(message = "Session expired. Please log in again.") {
+    super(message);
+    this.name = "AuthExpiredError";
+  }
+}
 
 function toHeaderRecord(headers?: HeadersInit): Record<string, string> {
   if (!headers) {
@@ -139,7 +149,7 @@ export async function apiFetchBlob(
   path: string,
   options: RequestInit = {},
 ): Promise<Response> {
-  const response = await apiRequest<Response>(path, options, true, true);
+  const response = await apiRequest<Response>(path, options, false, true);
   return response;
 }
 
@@ -191,11 +201,9 @@ async function apiRequest<T>(
     const newToken = await _refreshPromise;
 
     if (!newToken) {
-      // Refresh failed — redirect to login unless already there.
-      if (!window.location.pathname.startsWith("/account")) {
-        window.location.href = "/account";
-      }
-      throw new Error("Session expired. Please login again.");
+      clearStoredAuthTokens();
+      dispatchAuthSessionExpired();
+      throw new AuthExpiredError();
     }
 
     // Retry the original request with the refreshed token.

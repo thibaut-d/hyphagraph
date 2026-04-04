@@ -72,7 +72,7 @@ export interface SearchResponse {
 
 export interface SearchSuggestion {
   id: string;
-  type: "entity" | "source";
+  type: "entity" | "source" | "relation";
   label: string;
   secondary?: string;
 }
@@ -105,7 +105,7 @@ export function search(filters: SearchFilters): Promise<SearchResponse> {
  */
 export function getSuggestions(
   query: string,
-  types?: ("entity" | "source")[],
+  types?: ("entity" | "source" | "relation")[],
   limit?: number,
   signal?: AbortSignal,
 ): Promise<SearchSuggestionsResponse> {
