@@ -22,6 +22,14 @@ vi.mock('react-i18next', () => ({
   initReactI18next: { type: '3rdParty', init: () => {} },
   useTranslation: () => ({
     t: (key: string, defaultValueOrOptions?: string | { defaultValue?: string }) => {
+      if (
+        key === 'create_source.url_placeholder' ||
+        key === 'create_source.year_placeholder' ||
+        key === 'create_source.authors_placeholder' ||
+        key === 'create_source.origin_placeholder'
+      ) {
+        return key;
+      }
       if (typeof defaultValueOrOptions === 'string') {
         return defaultValueOrOptions;
       }
@@ -52,6 +60,12 @@ const renderWithProviders = () =>
 describe('CreateSourceView', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(sourceApi.getSourceFilterOptions).mockResolvedValue({
+      domains: [],
+      kinds: ['article', 'book', 'website', 'report', 'video', 'podcast', 'dataset', 'other'],
+      years: [],
+      ui_categories: [],
+    } as any);
   });
 
   describe('Form rendering', () => {
@@ -73,6 +87,15 @@ describe('CreateSourceView', () => {
       expect(screen.getByLabelText(/quality score/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/summary \(english\)/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/summary \(french\)/i)).toBeInTheDocument();
+    });
+
+    it('routes placeholders through translation keys', () => {
+      renderWithProviders();
+
+      expect(screen.getByPlaceholderText('create_source.url_placeholder')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('create_source.year_placeholder')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('create_source.authors_placeholder')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('create_source.origin_placeholder')).toBeInTheDocument();
     });
 
     it('shows cancel button', () => {

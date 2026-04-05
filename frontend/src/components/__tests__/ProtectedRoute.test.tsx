@@ -9,6 +9,13 @@ import { MemoryRouter, Routes, Route, useLocation } from "react-router-dom";
 import { ProtectedRoute } from "../ProtectedRoute";
 import { SuperuserRoute } from "../SuperuserRoute";
 
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (_key: string, defaultValue?: string) => defaultValue ?? _key,
+  }),
+  initReactI18next: { type: "3rdParty", init: () => {} },
+}));
+
 // Mock useAuth hook
 const mockUseAuth = vi.fn();
 vi.mock("../../auth/useAuth", () => ({
@@ -161,7 +168,7 @@ describe("SuperuserRoute", () => {
     vi.clearAllMocks();
   });
 
-  it("redirects authenticated non-superusers to home", () => {
+  it("shows a forbidden state for authenticated non-superusers", () => {
     mockUseAuth.mockReturnValue({
       user: { id: "user-123", email: "test@example.com", is_superuser: false },
       loading: false,
@@ -178,12 +185,12 @@ describe("SuperuserRoute", () => {
               </SuperuserRoute>
             }
           />
-          <Route path="/" element={<div>Home Page</div>} />
         </Routes>
       </MemoryRouter>
     );
 
-    expect(screen.getByText("Home Page")).toBeInTheDocument();
+    expect(screen.getByText("403 Forbidden")).toBeInTheDocument();
+    expect(screen.getByText("You do not have permission to access this page.")).toBeInTheDocument();
     expect(screen.queryByText("Review Queue")).not.toBeInTheDocument();
   });
 

@@ -120,7 +120,10 @@ export function CreateSourceView() {
                   required
                   disabled={loading}
                   type="url"
-                  placeholder="https://pubmed.ncbi.nlm.nih.gov/12345678/"
+                  placeholder={t(
+                    "create_source.url_placeholder",
+                    "https://pubmed.ncbi.nlm.nih.gov/12345678/"
+                  )}
                   error={hasFieldError("url")}
                   helperText={
                     getFieldError("url") ??
@@ -242,7 +245,7 @@ export function CreateSourceView() {
                       disabled={loading}
                       fullWidth
                       type="number"
-                      placeholder="2024"
+                      placeholder={t("create_source.year_placeholder", "2024")}
                       sx={{
                         "& .MuiInputBase-root": autofilled && year ? { bgcolor: "success.50" } : {},
                       }}
@@ -265,7 +268,10 @@ export function CreateSourceView() {
                   onChange={(e) => setAuthors(e.target.value)}
                   disabled={loading}
                   fullWidth
-                  placeholder="Smith J, Johnson A, Williams B"
+                  placeholder={t(
+                    "create_source.authors_placeholder",
+                    "Smith J, Johnson A, Williams B"
+                  )}
                   helperText={t("create_source.authors_help", "Comma-separated list")}
                   sx={{
                     "& .MuiInputBase-root": autofilled && authors ? { bgcolor: "success.50" } : {},
@@ -278,7 +284,10 @@ export function CreateSourceView() {
                   onChange={(e) => setOrigin(e.target.value)}
                   disabled={loading}
                   fullWidth
-                  placeholder="Nature Medicine, Oxford University Press, etc."
+                  placeholder={t(
+                    "create_source.origin_placeholder",
+                    "Nature Medicine, Oxford University Press, etc."
+                  )}
                   sx={{
                     "& .MuiInputBase-root": autofilled && origin ? { bgcolor: "success.50" } : {},
                   }}

@@ -11,6 +11,9 @@ import { NotificationProvider } from '../../notifications/NotificationContext';
 import type { EntityRead } from '../../types/entity';
 import type { SourceRead } from '../../types/source';
 
+const mockNavigate = vi.fn();
+let mockSearchParams = new URLSearchParams();
+
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, defaultValueOrOptions?: string | { defaultValue?: string }) => {
@@ -22,6 +25,15 @@ vi.mock('react-i18next', () => ({
   }),
   initReactI18next: { type: '3rdParty', init: () => {} },
 }));
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+    useSearchParams: () => [mockSearchParams, vi.fn()],
+  };
+});
 
 // Mock the API modules
 vi.mock('../../api/entities', () => ({
@@ -90,6 +102,8 @@ describe('CreateRelationView', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockNavigate.mockReset();
+    mockSearchParams = new URLSearchParams();
     (listEntities as any).mockResolvedValue(mockEntities);
     (listSources as any).mockResolvedValue({
       items: mockSources,
@@ -407,7 +421,7 @@ describe('CreateRelationView', () => {
       });
     });
 
-    it('resets form after successful submission', async () => {
+    it('navigates to the created relation after successful submission', async () => {
       (createRelation as any).mockResolvedValue({
         id: 'rel-1',
         source_id: 'source-1',
@@ -463,8 +477,7 @@ describe('CreateRelationView', () => {
       fireEvent.click(submitButton);
 
       await waitFor(() => {
-        const kindInput = screen.getByLabelText(/relation kind/i) as HTMLInputElement;
-        expect(kindInput.value).toBe('');
+        expect(mockNavigate).toHaveBeenCalledWith('/relations/rel-1');
       });
     });
 
@@ -577,19 +590,7 @@ describe('CreateRelationView', () => {
 
   describe('Query parameter pre-fill', () => {
     it('pre-fills role from entity_id query parameter', async () => {
-      const { container } = render(
-        <NotificationProvider>
-          <BrowserRouter>
-            <CreateRelationView />
-          </BrowserRouter>
-        </NotificationProvider>
-      );
-
-      // Simulate URL with query parameter
-      window.history.pushState({}, '', '?entity_id=entity-1');
-
-      // Re-render to trigger useEffect
-      container.remove();
+      mockSearchParams = new URLSearchParams('entity_id=entity-1');
       renderWithProviders();
 
       await waitFor(() => {

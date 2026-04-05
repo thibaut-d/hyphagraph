@@ -1,18 +1,14 @@
 # Current Work
 
-**Last updated**: 2026-04-05 (story implementation pass)
+**Last updated**: 2026-04-05 (story remediation pass)
 
 ## Open Findings
 
-- [x] **STORY-NAV-M1** `frontend/src/components/layout/MobileDrawer.tsx:208` — `US-NAV-02` footer now shows signed-in user identity and profile access while preserving the language switcher. Verified by `frontend/src/components/__tests__/MobileDrawer.test.tsx`.
-- [x] **STORY-NAV-m1** `frontend/src/components/Layout.tsx:35` — persistent navigation now includes an explicit Account entry matching `US-NAV-01`. Verified by `frontend/src/components/__tests__/Layout.test.tsx`.
-- [x] **STORY-SRC-M1** `frontend/src/views/SourcesView.tsx:418` — sources list now exposes authority score and graph usage count from the API contract and renders them in list rows. Verified by `backend/tests/test_source_service.py` and `frontend/src/views/__tests__/SourcesView.test.tsx`.
-- [x] **STORY-REL-M1** `frontend/src/views/RelationsView.tsx:5` — `/relations` is now a real relations index with export and batch-create entry points backed by a paginated relations API. Verified by `backend/tests/test_relation_endpoints.py` and `frontend/src/views/__tests__/RelationsView.test.tsx`.
-- [x] **STORY-EXP-M1** `frontend/src/views/EvidenceView.tsx:89` — property evidence now exposes and sorts by source authority as required by `US-EXP-02`. Verified by `frontend/src/views/__tests__/EvidenceView.table.test.tsx`.
-
-Completed `[x]` items from the previous tracker were reviewed against the current
-codebase and removed once they appeared fully implemented and covered well
-enough to stop acting as live TODOs.
+- [x] **STORY-REL-M2** `frontend/src/views/CreateRelationView.tsx:146` — successful relation creation now navigates to the created relation detail page. Verified by `frontend/src/views/__tests__/CreateRelationView.test.tsx`.
+- [x] **STORY-REL-M3** `frontend/src/views/RelationDetailView.tsx:189` — relation detail now exposes delete with confirmation, satisfying the direct-detail delete flow. Verified by `frontend/src/views/__tests__/RelationDetailView.test.tsx`.
+- [x] **STORY-REL-m4** `frontend/src/views/RelationDetailView.tsx:302` — relation detail now surfaces `created_with_llm` / `llm_review_status` in the audit section when present. Verified by `frontend/src/views/__tests__/RelationDetailView.test.tsx`.
+- [x] **STORY-ADM-m1** `frontend/src/components/SuperuserRoute.tsx:17` — authenticated non-superusers now receive an explicit forbidden state instead of a silent redirect. Verified by `frontend/src/components/__tests__/ProtectedRoute.test.tsx`.
+- [x] **STORY-I18N-m1** `frontend/src/views/CreateSourceView.tsx:123` — create-source placeholders now route through translation keys instead of hardcoded English literals. Verified by `frontend/src/views/__tests__/CreateSourceView.test.tsx`.
 
 If new defects are found, add them here as unchecked items with:
 - ID
@@ -26,7 +22,7 @@ If new defects are found, add them here as unchecked items with:
 
 | ID | Severity | File | Description |
 |----|----------|------|-------------|
-| None | — | — | No open defects currently listed in this section after the 2026-04-05 story implementation pass. Add new verified issues above before repopulating this table. |
+| None | — | — | No open defects currently listed in this section after the 2026-04-05 story remediation pass. Add new verified issues above before repopulating this table. |
 
 ---
 

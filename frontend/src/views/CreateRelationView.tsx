@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -50,6 +50,7 @@ const DIRECTION_PRESETS = ["supports", "contradicts", "uncertain"];
 
 export function CreateRelationView() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   const [entities, setEntities] = useState<EntityOption[]>([]);
@@ -144,7 +145,7 @@ export function CreateRelationView() {
     }
 
     const result = await run(async () => {
-      await createRelation({
+      const createdRelation = await createRelation({
         source_id: sourceId,
         kind,
         direction,
@@ -152,12 +153,7 @@ export function CreateRelationView() {
         roles,
       });
 
-      // reset form
-      setSourceId("");
-      setKind("");
-      setDirection("");
-      setConfidence(0.5);
-      setRoles([]);
+      navigate(`/relations/${createdRelation.id}`);
     }, t("common.error", "Something went wrong"));
 
     if (!result.ok) {

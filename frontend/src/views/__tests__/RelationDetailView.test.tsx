@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import type { ReactNode } from "react";
 
@@ -11,7 +11,22 @@ vi.mock("../../api/relations");
 vi.mock("../../api/sources");
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (_key: string, defaultValue?: string) => defaultValue ?? _key,
+    t: (
+      key: string,
+      defaultValueOrOptions?: string | Record<string, unknown>,
+      interpolationOptions?: Record<string, unknown>,
+    ) => {
+      if (key === "relation.llm_model" && interpolationOptions) {
+        return `Model: ${interpolationOptions.value as string}`;
+      }
+      if (key === "relation.llm_review_status" && interpolationOptions) {
+        return `Review: ${interpolationOptions.value as string}`;
+      }
+      if (typeof defaultValueOrOptions === "string") {
+        return defaultValueOrOptions;
+      }
+      return key;
+    },
   }),
   initReactI18next: { type: "3rdParty", init: () => {} },
 }));
@@ -110,5 +125,75 @@ describe("RelationDetailView", () => {
     expect(screen.getByRole("link", { name: "Edit" })).toHaveAttribute("href", "/relations/rel-1/edit");
     expect(screen.getByRole("link", { name: "aspirin" })).toHaveAttribute("href", "/entities/entity-1");
     expect(screen.getByText(/Relation ID:/)).toBeInTheDocument();
+  });
+
+  it("shows llm provenance and deletes from the detail page", async () => {
+    vi.spyOn(relationsApi, "getRelation").mockResolvedValue({
+      id: "rel-2",
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-02T00:00:00Z",
+      source_id: "src-2",
+      kind: "causes",
+      direction: "contradicts",
+      confidence: 0.4,
+      scope: null,
+      notes: null,
+      created_with_llm: "gpt-5.4",
+      status: "confirmed",
+      llm_review_status: "pending_review",
+      roles: [],
+    });
+    vi.spyOn(relationsApi, "deleteRelation").mockResolvedValue();
+    vi.spyOn(sourcesApi, "getSource").mockResolvedValue({
+      id: "src-2",
+      created_at: "2026-01-01T00:00:00Z",
+      kind: "study",
+      title: "Conflicting study",
+      authors: [],
+      year: 2025,
+      origin: null,
+      url: null,
+      trust_level: 0.4,
+      summary: null,
+      source_metadata: null,
+      created_with_llm: null,
+      created_by_user_id: null,
+      status: "confirmed",
+      llm_review_status: null,
+      document_format: null,
+      document_file_name: null,
+      document_extracted_at: null,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/relations/rel-2"]}>
+        <Routes>
+          <Route path="/relations" element={<div>Relations list</div>} />
+          <Route path="/relations/:id" element={<RelationDetailView />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/gpt-5\.4/)).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(/pending_review/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Delete Relation")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Delete" }).at(-1)!);
+
+    await waitFor(() => {
+      expect(relationsApi.deleteRelation).toHaveBeenCalledWith("rel-2");
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Relations list")).toBeInTheDocument();
+    });
   });
 });

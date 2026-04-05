@@ -1,14 +1,19 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Alert,
   Box,
-  Breadcrumbs,
   Button,
+  Breadcrumbs,
   Chip,
   CircularProgress,
   Divider,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Link,
   Paper,
   Stack,
@@ -19,11 +24,13 @@ import EditIcon from "@mui/icons-material/Edit";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 
 import { getRelation } from "../api/relations";
+import { deleteRelation } from "../api/relations";
 import { getSource } from "../api/sources";
 import type { RelationRead } from "../types/relation";
 import type { SourceRead } from "../types/source";
 import { useAsyncResource } from "../hooks/useAsyncResource";
 import { usePageErrorHandler } from "../hooks/usePageErrorHandler";
+import { useNotification } from "../notifications/NotificationContext";
 
 interface RelationDetailData {
   relation: RelationRead;
@@ -68,6 +75,9 @@ export function RelationDetailView() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const handlePageError = usePageErrorHandler();
+  const { showError } = useNotification();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const loadRelationDetail = useCallback(async (): Promise<RelationDetailData> => {
     if (!id) {
@@ -107,6 +117,20 @@ export function RelationDetailView() {
   const participantSummary = relation.roles
     .map((role) => role.entity_slug || role.entity_id)
     .join(" • ");
+  const llmProvenanceVisible = Boolean(relation.created_with_llm || relation.llm_review_status);
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await deleteRelation(relation.id);
+      navigate("/relations");
+    } catch (err) {
+      showError(err);
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+    }
+  };
 
   return (
     <Stack spacing={3}>
@@ -202,6 +226,13 @@ export function RelationDetailView() {
               variant="outlined"
             >
               {t("relation.view_source", "View source")}
+            </Button>
+            <Button
+              color="error"
+              variant="outlined"
+              onClick={() => setDeleteDialogOpen(true)}
+            >
+              {t("common.delete", "Delete")}
             </Button>
           </Stack>
         </Stack>
@@ -299,13 +330,40 @@ export function RelationDetailView() {
         </Stack>
       </Paper>
 
-      {(notesText || relation.scope || relation.created_at || relation.updated_at) && (
+      {(notesText || relation.scope || relation.created_at || relation.updated_at || llmProvenanceVisible) && (
         <Paper sx={{ p: 3 }}>
           <Stack spacing={2}>
             <Typography variant="h5">
               {t("relation.audit_details", "Audit details")}
             </Typography>
             <Divider />
+            {llmProvenanceVisible && (
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  {t("relation.llm_provenance", "LLM provenance")}
+                </Typography>
+                <Stack direction="row" spacing={1} flexWrap="wrap">
+                  {relation.created_with_llm && (
+                    <Chip
+                      label={t("relation.llm_model", "Model: {{value}}", {
+                        value: relation.created_with_llm,
+                      })}
+                      size="small"
+                      variant="outlined"
+                    />
+                  )}
+                  {relation.llm_review_status && (
+                    <Chip
+                      label={t("relation.llm_review_status", "Review: {{value}}", {
+                        value: relation.llm_review_status,
+                      })}
+                      size="small"
+                      variant="outlined"
+                    />
+                  )}
+                </Stack>
+              </Box>
+            )}
             {notesText && (
               <Box>
                 <Typography variant="subtitle2" color="text.secondary" gutterBottom>
@@ -341,6 +399,29 @@ export function RelationDetailView() {
           </Stack>
         </Paper>
       )}
+
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => !isDeleting && setDeleteDialogOpen(false)}
+      >
+        <DialogTitle>{t("relation.delete_confirm_title", "Delete Relation")}</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {t(
+              "relation.delete_confirm_message",
+              "Are you sure you want to delete this relation? This action cannot be undone."
+            )}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)} disabled={isDeleting}>
+            {t("common.cancel", "Cancel")}
+          </Button>
+          <Button color="error" onClick={() => void handleDelete()} disabled={isDeleting}>
+            {isDeleting ? t("common.deleting", "Deleting...") : t("common.delete", "Delete")}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 }
