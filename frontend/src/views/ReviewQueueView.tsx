@@ -168,6 +168,12 @@ export function ReviewQueueView() {
                 <Typography variant="h6">
                   {t("review_queue.summary_title", "Summary metrics")}
                 </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {t(
+                    "review_queue.summary_description",
+                    "Use these signals to decide where to start: pending volume shows queue pressure, average score shows automated confidence, and flags highlight likely review risk."
+                  )}
+                </Typography>
                 {stats && (
                   <Grid container spacing={2}>
                     <Grid size={{ xs: 12, sm: 6, md: 3 }}>
@@ -276,7 +282,7 @@ export function ReviewQueueView() {
                   aria-label={t("review_queue.type_filter_label", "Filter by extraction type")}
                   sx={{ flexWrap: "wrap" }}
                 >
-                  <ToggleButton value="all">{t("review_queue.type_all")}</ToggleButton>
+                  <ToggleButton value="all">{t("review_queue.type_all", "All staged items")}</ToggleButton>
                   <ToggleButton value="entity">{t("review_queue.type_entity")}</ToggleButton>
                   <ToggleButton value="relation">{t("review_queue.type_relation")}</ToggleButton>
                   <ToggleButton value="claim">{t("review_queue.type_claim")}</ToggleButton>

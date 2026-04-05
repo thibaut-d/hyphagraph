@@ -84,7 +84,7 @@ export function SourceEvidenceSection({
   const hasEvidence = Boolean(sourceSummary) || statements.length > 0;
 
   return (
-    <Paper sx={{ p: 3 }}>
+    <Paper id="source-evidence" sx={{ p: 3 }}>
       <Stack spacing={2.5}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <FormatQuoteIcon color="primary" />

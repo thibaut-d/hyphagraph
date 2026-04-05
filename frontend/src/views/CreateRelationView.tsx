@@ -3,6 +3,9 @@ import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import {
+  Alert,
+  Box,
+  Chip,
   Typography,
   Paper,
   Stack,
@@ -33,6 +36,17 @@ type SourceOption = {
 };
 
 type ValidationField = "source" | "kind" | "roles";
+
+const RELATION_KIND_PRESETS = [
+  "treats",
+  "causes",
+  "associated_with",
+  "improves",
+  "inhibits",
+];
+
+const ROLE_TYPE_PRESETS = ["subject", "object", "drug", "condition", "population", "outcome"];
+const DIRECTION_PRESETS = ["supports", "contradicts", "uncertain"];
 
 export function CreateRelationView() {
   const { t } = useTranslation();
@@ -166,6 +180,13 @@ export function CreateRelationView() {
           {t("relation.create", "Create relation")}
         </Typography>
 
+        <Alert severity="info">
+          {t(
+            "relation.guidance",
+            "Describe one source-backed statement. Pick the source, choose the relation pattern that best matches the evidence, then assign each participating entity a clear role."
+          )}
+        </Alert>
+
         {/* Source */}
         <TextField
           select
@@ -177,7 +198,13 @@ export function CreateRelationView() {
           }}
           fullWidth
           error={hasFieldError("source")}
-          helperText={getFieldError("source") ?? " "}
+          helperText={
+            getFieldError("source") ??
+            t(
+              "relation.source_help",
+              "Select the publication or document that directly states this relation."
+            )
+          }
         >
           {sources.map((s) => (
             <MenuItem key={s.id} value={s.id}>
@@ -196,15 +223,50 @@ export function CreateRelationView() {
           }}
           fullWidth
           error={hasFieldError("kind")}
-          helperText={getFieldError("kind") ?? " "}
+          helperText={
+            getFieldError("kind") ??
+            t(
+              "relation.kind_help",
+              "Use a short verb phrase that reflects the source wording. You can start from a preset and refine it."
+            )
+          }
         />
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+          {RELATION_KIND_PRESETS.map((preset) => (
+            <Chip
+              key={preset}
+              label={preset}
+              variant={kind === preset ? "filled" : "outlined"}
+              color={kind === preset ? "primary" : "default"}
+              onClick={() => {
+                setKind(preset);
+                clearError("kind");
+              }}
+            />
+          ))}
+        </Box>
 
         <TextField
           label={t("relation.direction", "Direction")}
           value={direction}
           onChange={(e) => setDirection(e.target.value)}
           fullWidth
+          helperText={t(
+            "relation.direction_help",
+            "Mark whether the source supports, contradicts, or leaves the relation uncertain."
+          )}
         />
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+          {DIRECTION_PRESETS.map((preset) => (
+            <Chip
+              key={preset}
+              label={preset}
+              variant={direction === preset ? "filled" : "outlined"}
+              color={direction === preset ? "primary" : "default"}
+              onClick={() => setDirection(preset)}
+            />
+          ))}
+        </Box>
 
         <TextField
           label={t("relation.confidence", "Confidence")}
@@ -213,6 +275,10 @@ export function CreateRelationView() {
           value={confidence}
           onChange={(e) => setConfidence(Number(e.target.value))}
           fullWidth
+          helperText={t(
+            "relation.confidence_help",
+            "Capture how strongly the source presents this statement, from 0 to 1."
+          )}
         />
 
         <Divider />
@@ -220,6 +286,13 @@ export function CreateRelationView() {
         {/* Roles */}
         <Typography variant="h6">
           {t("relation.roles", "Roles")}
+        </Typography>
+
+        <Typography variant="body2" color="text.secondary">
+          {t(
+            "relation.roles_help",
+            "Add at least two participants. Use role labels like subject/object or domain-specific roles such as drug and condition so the evidence remains readable."
+          )}
         </Typography>
 
         {hasFieldError("roles") && (
@@ -239,6 +312,7 @@ export function CreateRelationView() {
                 clearError("roles");
               }}
               sx={{ flex: 2 }}
+              helperText={t("relation.role_entity_help", "Choose the entity mentioned in the source")}
             >
               {entities.map((e) => (
                 <MenuItem key={e.id} value={e.id}>
@@ -255,13 +329,32 @@ export function CreateRelationView() {
                 clearError("roles");
               }}
               sx={{ flex: 2 }}
+              helperText={t("relation.role_type_help", "Describe what this entity does in the statement")}
             />
 
-            <IconButton onClick={() => removeRole(index)} aria-label="Remove role">
+            <IconButton onClick={() => removeRole(index)} aria-label="Remove participant">
               <DeleteIcon />
             </IconButton>
           </Stack>
         ))}
+
+        {roles.length > 0 && (
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+            {ROLE_TYPE_PRESETS.map((preset) => (
+              <Chip
+                key={preset}
+                label={preset}
+                variant="outlined"
+                onClick={() => {
+                  const nextIndex = roles.findIndex((role) => !role.role_type.trim());
+                  if (nextIndex >= 0) {
+                    updateRole(nextIndex, { role_type: preset });
+                  }
+                }}
+              />
+            ))}
+          </Box>
+        )}
 
         <Button
           startIcon={<AddIcon />}

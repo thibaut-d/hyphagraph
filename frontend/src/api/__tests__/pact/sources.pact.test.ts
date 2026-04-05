@@ -10,6 +10,7 @@ const { like, eachLike } = MatchersV3
 
 const PACT_DIR = path.resolve(__dirname, '../../../../../pacts')
 const SOURCE_ID = '223e4567-e89b-42d3-a456-426614174000'
+const USER_ID = '223e4567-e89b-42d3-a456-426614174099'
 
 const provider = new PactV4({
   consumer: 'hyphagraph-frontend',
@@ -33,11 +34,24 @@ describe('Sources API — consumer contract', () => {
               kind: like('study'),
               title: like('Test Study'),
               created_at: like('2024-01-01T00:00:00'),
+              authors: eachLike('Author One'),
+              year: like(2024),
+              origin: like('PubMed'),
               url: like('https://example.com'),
               trust_level: like(0.8),
+              summary: like({ en: 'Trial summary' }),
+              source_metadata: like({ doi: '10.1000/test' }),
+              created_with_llm: like(null),
+              created_by_user_id: like(USER_ID),
+              status: like('confirmed'),
+              llm_review_status: like(null),
+              document_format: like(null),
+              document_file_name: like(null),
+              document_extracted_at: like(null),
             }),
             total: like(1),
             limit: like(50),
+            offset: like(0),
           })
         )
       })
@@ -62,9 +76,14 @@ describe('Sources API — consumer contract', () => {
             id: like(SOURCE_ID),
             kind: like('study'),
             title: like('Test Study'),
+            authors: eachLike('Author One'),
+            year: like(2024),
+            origin: like('PubMed'),
             url: like('https://example.com'),
             trust_level: like(0.8),
             created_at: like('2024-01-01T00:00:00'),
+            summary: like({ en: 'Trial summary' }),
+            source_metadata: like({ doi: '10.1000/test' }),
             created_with_llm: like(null),
             created_by_user_id: like(null),
             status: like('confirmed'),
@@ -104,7 +123,21 @@ describe('Sources API — consumer contract', () => {
             id: like(SOURCE_ID),
             kind: like('study'),
             title: like('New Study'),
+            authors: like(null),
+            year: like(null),
+            origin: like(null),
             url: like('https://example.com/new'),
+            trust_level: like(0.8),
+            created_at: like('2024-01-01T00:00:00'),
+            summary: like(null),
+            source_metadata: like(null),
+            created_with_llm: like(null),
+            created_by_user_id: like(null),
+            status: like('confirmed'),
+            llm_review_status: like(null),
+            document_format: like(null),
+            document_file_name: like(null),
+            document_extracted_at: like(null),
           })
         )
       })
@@ -131,7 +164,9 @@ describe('Sources API — consumer contract', () => {
         builder.jsonBody(
           like({
             kinds: eachLike(like('study')),
-            year_range: like(null),
+            year_range: like([2000, 2024]),
+            domains: eachLike(like('clinical')),
+            roles: eachLike(like('pillar')),
           })
         )
       })

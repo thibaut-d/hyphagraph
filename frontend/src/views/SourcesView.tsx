@@ -311,70 +311,69 @@ export function SourcesView() {
           spacing={1.25}
           sx={{ width: { xs: "100%", sm: "auto" } }}
         >
-          <Stack direction="row" spacing={1} flexWrap="wrap">
-            <Badge badgeContent={activeFilterCount} color="primary">
-              <Button
-                variant="outlined"
-                startIcon={<FilterListIcon />}
-                onClick={openDrawer}
-                size="small"
-                sx={{ minWidth: { xs: 'auto', sm: 'auto' } }}
-              >
-                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+          <Box>
+            <Typography variant="caption" color="text.secondary">
+              {t("sources.toolbar_refine", "Refine and export")}
+            </Typography>
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              <Badge badgeContent={activeFilterCount} color="primary">
+                <Button
+                  variant="outlined"
+                  startIcon={<FilterListIcon />}
+                  onClick={openDrawer}
+                  size="small"
+                >
                   {t("filters.title", "Filters")}
-                </Box>
+                </Button>
+              </Badge>
+              <ExportMenu exportType="sources" buttonText={t("export.sources", "Export Sources")} size="small" filterParams={sourceFilterParams} />
+              <ExportMenu exportType="relations" buttonText={t("export.relations", "Export Relations")} size="small" filterParams={sourceFilterParams} />
+            </Stack>
+          </Box>
+          <Box>
+            <Typography variant="caption" color="text.secondary">
+              {t("sources.toolbar_add", "Discover or add")}
+            </Typography>
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              <Button
+                component={RouterLink}
+                to="/sources/smart-discovery"
+                variant="contained"
+                color="secondary"
+                startIcon={<SearchIcon />}
+                size="small"
+              >
+                {t("sources.smart_discovery", "Smart Discovery")}
               </Button>
-            </Badge>
-            <ExportMenu exportType="sources" buttonText={t("export.sources", "Export Sources")} size="small" filterParams={sourceFilterParams} />
-            <ExportMenu exportType="relations" buttonText={t("export.relations", "Export Relations")} size="small" filterParams={sourceFilterParams} />
-          </Stack>
-          <Stack direction="row" spacing={1} flexWrap="wrap">
-            <Button
-              component={RouterLink}
-              to="/sources/smart-discovery"
-              variant="contained"
-              color="secondary"
-              startIcon={<SearchIcon />}
-              size="small"
-            >
-              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-                Smart Discovery
-              </Box>
-            </Button>
-            <Button
-              component={RouterLink}
-              to="/sources/import"
-              variant="outlined"
-              startIcon={<UploadFileIcon />}
-              size="small"
-            >
-              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-                {t("source_import.toolbar_button")}
-              </Box>
-            </Button>
-            <Button
-              component={RouterLink}
-              to="/sources/import-pubmed"
-              variant="outlined"
-              startIcon={<DownloadIcon />}
-              size="small"
-            >
-              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-                Import from PubMed
-              </Box>
-            </Button>
-            <Button
-              component={RouterLink}
-              to="/sources/new"
-              variant="outlined"
-              startIcon={<AddIcon />}
-              size="small"
-            >
-              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+              <Button
+                component={RouterLink}
+                to="/sources/import"
+                variant="outlined"
+                startIcon={<UploadFileIcon />}
+                size="small"
+              >
+                {t("source_import.toolbar_button", "Import")}
+              </Button>
+              <Button
+                component={RouterLink}
+                to="/sources/import-pubmed"
+                variant="outlined"
+                startIcon={<DownloadIcon />}
+                size="small"
+              >
+                {t("sources.import_pubmed", "Import from PubMed")}
+              </Button>
+              <Button
+                component={RouterLink}
+                to="/sources/new"
+                variant="outlined"
+                startIcon={<AddIcon />}
+                size="small"
+              >
                 {t("sources.create", "Create Source")}
-              </Box>
-            </Button>
-          </Stack>
+              </Button>
+            </Stack>
+          </Box>
         </Stack>
       </Box>
 

@@ -19,6 +19,7 @@ const PACT_DIR = path.resolve(__dirname, '../../../../../pacts')
 
 const ENTITY_ID = '123e4567-e89b-42d3-a456-426614174000'
 const CATEGORY_ID = '123e4567-e89b-42d3-a456-426614174001'
+const USER_ID = '123e4567-e89b-42d3-a456-426614174099'
 
 const provider = new PactV4({
   consumer: 'hyphagraph-frontend',
@@ -41,8 +42,14 @@ describe('Entities API — consumer contract', () => {
               id: like(ENTITY_ID),
               slug: like('aspirin'),
               created_at: like('2024-01-01T00:00:00'),
-              summary: like(null),
-              ui_category_id: like(null),
+              updated_at: like('2024-01-02T00:00:00'),
+              summary: like({ en: 'Pain reliever' }),
+              ui_category_id: like(CATEGORY_ID),
+              created_with_llm: like(null),
+              created_by_user_id: like(USER_ID),
+              status: like('confirmed'),
+              llm_review_status: like(null),
+              consensus_level: like('moderate'),
             }),
             total: like(1),
             limit: like(50),
@@ -137,8 +144,13 @@ describe('Entities API — consumer contract', () => {
             id: like(ENTITY_ID),
             slug: like('new-entity'),
             created_at: like('2024-01-01T00:00:00'),
+            updated_at: like('2024-01-01T00:00:00'),
             summary: like(null),
             ui_category_id: like(null),
+            created_with_llm: like(null),
+            created_by_user_id: like(null),
+            status: like('confirmed'),
+            llm_review_status: like(null),
           })
         )
       })

@@ -56,7 +56,7 @@ export function SourceExtractionSection({
   const { t } = useTranslation();
 
   return (
-    <Paper sx={{ p: 3 }}>
+    <Paper id="knowledge-extraction" sx={{ p: 3 }}>
       <Stack spacing={2}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <SmartToyIcon color="primary" />
@@ -66,7 +66,7 @@ export function SourceExtractionSection({
         <Typography variant="body2" color="text.secondary">
           {t(
             "sources.extraction_positioning",
-            "Extraction is a curation step. Review the source-backed summary, statement excerpts, and linked relations above before adding more evidence."
+            "Choose one next step for this source: reuse the existing URL, upload a document, or provide another URL for extraction. Review the evidence section above before materializing anything new."
           )}
         </Typography>
 
@@ -77,13 +77,13 @@ export function SourceExtractionSection({
                 <strong>{t("sources.ready_to_extract", "Ready to extract knowledge!")}</strong>{" "}
                 {t(
                   "sources.auto_extract_hint",
-                  "Click the button below to automatically extract entities and relations from this source using AI."
+                  "Use the source URL below to draft entities and relations for review."
                 )}
               </>
             ) : (
               <>
                 <strong>{t("sources.no_url", "No URL available")}</strong>{" "}
-                {t("sources.upload_hint", "Please upload a PDF or TXT document to extract knowledge.")}
+                {t("sources.upload_hint", "Upload a PDF or TXT file, or add a URL manually, to start extraction.")}
               </>
             )}
           </Alert>
@@ -152,6 +152,9 @@ export function SourceExtractionSection({
 
         {hasUrl && (
           <Box>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              {t("sources.primary_extraction_action", "Primary action")}
+            </Typography>
             <Button
               variant="contained"
               size="large"
@@ -170,11 +173,18 @@ export function SourceExtractionSection({
 
         <Divider sx={{ my: 1 }}>
           <Typography variant="caption" color="text.secondary">
-            {t("sources.or_manual", "Or choose manual option")}
+            {t("sources.or_manual", "Alternative input methods")}
           </Typography>
         </Divider>
 
-        <Box sx={{ display: "flex", gap: 2 }}>
+        <Typography variant="body2" color="text.secondary">
+          {t(
+            "sources.alternative_extraction_help",
+            "Use these when the stored source URL is missing, incorrect, or not the best text source for extraction."
+          )}
+        </Typography>
+
+        <Box sx={{ display: "flex", gap: 2, flexDirection: { xs: "column", sm: "row" } }}>
           <input
             accept=".pdf,.txt"
             style={{ display: "none" }}
@@ -208,7 +218,7 @@ export function SourceExtractionSection({
 
         {uploadedFileName && (
           <Chip
-            label={`Uploaded: ${uploadedFileName}`}
+            label={t("sources.uploaded_file", "Uploaded: {{name}}", { name: uploadedFileName })}
             onDelete={onClearUploadedFile}
             color="primary"
             variant="outlined"

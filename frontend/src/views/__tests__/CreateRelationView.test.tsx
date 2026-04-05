@@ -246,14 +246,14 @@ describe('CreateRelationView', () => {
       });
 
       await waitFor(() => {
-        const deleteButtons = screen.getAllByRole('button', { name: '' });
+        const deleteButtons = screen.getAllByRole('button');
         const roleDeleteButtons = deleteButtons.filter(
           (btn) => btn.querySelector('[data-testid="DeleteIcon"]')
         );
         expect(roleDeleteButtons.length).toBe(2);
       });
 
-      const deleteButtons = screen.getAllByRole('button', { name: '' });
+      const deleteButtons = screen.getAllByRole('button');
       const roleDeleteButtons = deleteButtons.filter(
         (btn) => btn.querySelector('[data-testid="DeleteIcon"]')
       );
@@ -333,7 +333,10 @@ describe('CreateRelationView', () => {
         kind: 'effect',
         direction: 'positive',
         confidence: 0.9,
-        roles: [{ entity_id: 'entity-1', role_type: 'drug' }],
+        roles: [
+          { entity_id: 'entity-1', role_type: 'drug' },
+          { entity_id: 'entity-2', role_type: 'condition' },
+        ],
         created_at: new Date().toISOString(),
       });
 
@@ -360,12 +363,13 @@ describe('CreateRelationView', () => {
       fireEvent.change(directionInput, { target: { value: 'positive' } });
       fireEvent.change(confidenceInput, { target: { value: '0.9' } });
 
-      // Add a role
+      // Add roles
       const addRoleButton = screen.getByRole('button', { name: /add role/i });
+      fireEvent.click(addRoleButton);
       fireEvent.click(addRoleButton);
 
       await waitFor(() => {
-        const entitySelect = screen.getByLabelText(/entity/i);
+        const entitySelect = screen.getAllByLabelText(/entity/i)[0];
         fireEvent.mouseDown(entitySelect);
       });
 
@@ -373,8 +377,17 @@ describe('CreateRelationView', () => {
         fireEvent.click(screen.getByText('aspirin'));
       });
 
-      const roleTypeInput = screen.getByLabelText(/role/i);
-      fireEvent.change(roleTypeInput, { target: { value: 'drug' } });
+      const firstRoleTypeInput = screen.getAllByLabelText(/role/i)[0];
+      fireEvent.change(firstRoleTypeInput, { target: { value: 'drug' } });
+
+      const secondEntitySelect = screen.getAllByLabelText(/entity/i)[1];
+      fireEvent.mouseDown(secondEntitySelect);
+      await waitFor(() => {
+        fireEvent.click(screen.getByText('headache'));
+      });
+
+      const secondRoleTypeInput = screen.getAllByLabelText(/role/i)[1];
+      fireEvent.change(secondRoleTypeInput, { target: { value: 'condition' } });
 
       // Submit
       const submitButton = screen.getByRole('button', { name: /create/i });
@@ -386,7 +399,10 @@ describe('CreateRelationView', () => {
           kind: 'effect',
           direction: 'positive',
           confidence: 0.9,
-          roles: [{ entity_id: 'entity-1', role_type: 'drug' }],
+          roles: [
+            { entity_id: 'entity-1', role_type: 'drug' },
+            { entity_id: 'entity-2', role_type: 'condition' },
+          ],
         });
       });
     });
@@ -420,9 +436,10 @@ describe('CreateRelationView', () => {
 
       const addRoleButton = screen.getByRole('button', { name: /add role/i });
       fireEvent.click(addRoleButton);
+      fireEvent.click(addRoleButton);
 
       await waitFor(() => {
-        const entitySelect = screen.getByLabelText(/entity/i);
+        const entitySelect = screen.getAllByLabelText(/entity/i)[0];
         fireEvent.mouseDown(entitySelect);
       });
 
@@ -430,8 +447,17 @@ describe('CreateRelationView', () => {
         fireEvent.click(screen.getByText('aspirin'));
       });
 
-      const roleTypeInput = screen.getByLabelText(/role/i);
-      fireEvent.change(roleTypeInput, { target: { value: 'drug' } });
+      const firstRoleTypeInput = screen.getAllByLabelText(/role/i)[0];
+      fireEvent.change(firstRoleTypeInput, { target: { value: 'drug' } });
+
+      const secondEntitySelect = screen.getAllByLabelText(/entity/i)[1];
+      fireEvent.mouseDown(secondEntitySelect);
+      await waitFor(() => {
+        fireEvent.click(screen.getByText('headache'));
+      });
+
+      const secondRoleTypeInput = screen.getAllByLabelText(/role/i)[1];
+      fireEvent.change(secondRoleTypeInput, { target: { value: 'condition' } });
 
       const submitButton = screen.getByRole('button', { name: /create/i });
       fireEvent.click(submitButton);
@@ -463,9 +489,10 @@ describe('CreateRelationView', () => {
 
       const addRoleButton = screen.getByRole('button', { name: /add role/i });
       fireEvent.click(addRoleButton);
+      fireEvent.click(addRoleButton);
 
       await waitFor(() => {
-        const entitySelect = screen.getByLabelText(/entity/i);
+        const entitySelect = screen.getAllByLabelText(/entity/i)[0];
         fireEvent.mouseDown(entitySelect);
       });
 
@@ -473,8 +500,17 @@ describe('CreateRelationView', () => {
         fireEvent.click(screen.getByText('aspirin'));
       });
 
-      const roleTypeInput = screen.getByLabelText(/role/i);
-      fireEvent.change(roleTypeInput, { target: { value: 'drug' } });
+      const firstRoleTypeInput = screen.getAllByLabelText(/role/i)[0];
+      fireEvent.change(firstRoleTypeInput, { target: { value: 'drug' } });
+
+      const secondEntitySelect = screen.getAllByLabelText(/entity/i)[1];
+      fireEvent.mouseDown(secondEntitySelect);
+      await waitFor(() => {
+        fireEvent.click(screen.getByText('headache'));
+      });
+
+      const secondRoleTypeInput = screen.getAllByLabelText(/role/i)[1];
+      fireEvent.change(secondRoleTypeInput, { target: { value: 'condition' } });
 
       const submitButton = screen.getByRole('button', { name: /create/i });
       fireEvent.click(submitButton);
@@ -507,9 +543,10 @@ describe('CreateRelationView', () => {
 
       const addRoleButton = screen.getByRole('button', { name: /add role/i });
       fireEvent.click(addRoleButton);
+      fireEvent.click(addRoleButton);
 
       await waitFor(() => {
-        const entitySelect = screen.getByLabelText(/entity/i);
+        const entitySelect = screen.getAllByLabelText(/entity/i)[0];
         fireEvent.mouseDown(entitySelect);
       });
 
@@ -517,8 +554,17 @@ describe('CreateRelationView', () => {
         fireEvent.click(screen.getByText('aspirin'));
       });
 
-      const roleTypeInput = screen.getByLabelText(/role/i);
-      fireEvent.change(roleTypeInput, { target: { value: 'drug' } });
+      const firstRoleTypeInput = screen.getAllByLabelText(/role/i)[0];
+      fireEvent.change(firstRoleTypeInput, { target: { value: 'drug' } });
+
+      const secondEntitySelect = screen.getAllByLabelText(/entity/i)[1];
+      fireEvent.mouseDown(secondEntitySelect);
+      await waitFor(() => {
+        fireEvent.click(screen.getByText('headache'));
+      });
+
+      const secondRoleTypeInput = screen.getAllByLabelText(/role/i)[1];
+      fireEvent.change(secondRoleTypeInput, { target: { value: 'condition' } });
 
       const submitButton = screen.getByRole('button', { name: /create/i });
       fireEvent.click(submitButton);

@@ -264,43 +264,54 @@ export function EntitiesView() {
         <Typography variant="h4" sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
           {t("entities.title", "Entities")}
         </Typography>
-        <Stack direction="row" spacing={1}>
-          <Badge badgeContent={activeFilterCount} color="primary">
-            <Button
-              variant="outlined"
-              startIcon={<FilterListIcon />}
-              onClick={openDrawer}
-              size="small"
-              sx={{ minWidth: { xs: 'auto', sm: 'auto' } }}
-            >
-              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-                {t("filters.title", "Filters")}
-              </Box>
-            </Button>
-          </Badge>
-          <ExportMenu exportType="entities" buttonText={t("entities.export", "Export")} size="small" />
-          <Button
-            component={RouterLink}
-            to="/entities/import"
-            variant="outlined"
-            startIcon={<UploadIcon />}
-            size="small"
-          >
-            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-              {t("entities.import", "Import")}
-            </Box>
-          </Button>
-          <Button
-            component={RouterLink}
-            to="/entities/new"
-            variant="contained"
-            startIcon={<AddIcon />}
-            size="small"
-          >
-            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-              {t("entities.create", "Create Entity")}
-            </Box>
-          </Button>
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          spacing={1.25}
+          sx={{ width: { xs: "100%", sm: "auto" } }}
+        >
+          <Box>
+            <Typography variant="caption" color="text.secondary">
+              {t("entities.toolbar_refine", "Refine list")}
+            </Typography>
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              <Badge badgeContent={activeFilterCount} color="primary">
+                <Button
+                  variant="outlined"
+                  startIcon={<FilterListIcon />}
+                  onClick={openDrawer}
+                  size="small"
+                >
+                  {t("filters.title", "Filters")}
+                </Button>
+              </Badge>
+              <ExportMenu exportType="entities" buttonText={t("entities.export", "Export")} size="small" />
+            </Stack>
+          </Box>
+          <Box>
+            <Typography variant="caption" color="text.secondary">
+              {t("entities.toolbar_manage", "Add data")}
+            </Typography>
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              <Button
+                component={RouterLink}
+                to="/entities/import"
+                variant="outlined"
+                startIcon={<UploadIcon />}
+                size="small"
+              >
+                {t("entities.import", "Import")}
+              </Button>
+              <Button
+                component={RouterLink}
+                to="/entities/new"
+                variant="contained"
+                startIcon={<AddIcon />}
+                size="small"
+              >
+                {t("entities.create", "Create Entity")}
+              </Button>
+            </Stack>
+          </Box>
         </Stack>
       </Box>
 

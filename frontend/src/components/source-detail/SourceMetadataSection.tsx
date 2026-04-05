@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import {
   Box,
   Breadcrumbs,
+  Button,
   Chip,
   Divider,
   IconButton,
@@ -15,6 +16,9 @@ import {
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import FormatListBulletedIcon from "@mui/icons-material/FormatListBulleted";
+import LinkIcon from "@mui/icons-material/Link";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
 
 import type { SourceRead } from "../../types/source";
 import { SourceVerificationSummary } from "./SourceVerificationSummary";
@@ -45,6 +49,36 @@ export function SourceMetadataSection({
             {source.title ?? t("sources.untitled", "Untitled source")}
           </Typography>
         </Breadcrumbs>
+
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+          <Button
+            component={RouterLink}
+            to="/sources"
+            variant="outlined"
+            size="small"
+            startIcon={<FormatListBulletedIcon />}
+          >
+            {t("source_metadata.back_to_sources", "Back to sources")}
+          </Button>
+          <Button
+            component="a"
+            href="#source-evidence"
+            variant="text"
+            size="small"
+            startIcon={<LinkIcon />}
+          >
+            {t("source_metadata.jump_to_evidence", "Jump to evidence")}
+          </Button>
+          <Button
+            component="a"
+            href="#knowledge-extraction"
+            variant="text"
+            size="small"
+            startIcon={<UploadFileIcon />}
+          >
+            {t("source_metadata.jump_to_extraction", "Jump to extraction")}
+          </Button>
+        </Box>
 
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <Stack spacing={2} sx={{ flex: 1 }}>
@@ -91,7 +125,7 @@ export function SourceMetadataSection({
                           rel="noopener noreferrer"
                           sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: "0.875rem" }}
                         >
-                          {t("source_metadata.full_text_link", "Full text")}
+                          {t("source_metadata.full_text_link", "Open source link")}
                           <OpenInNewIcon sx={{ fontSize: "0.875rem" }} />
                         </Link>
                       </Tooltip>
@@ -128,7 +162,7 @@ export function SourceMetadataSection({
                 </Typography>
                 <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
                   <Chip
-                    label={t("source_metadata.trust_label", "Source quality: {{pct}}%", { pct: Math.round(source.trust_level * 100) })}
+                    label={t("source_metadata.trust_label", "Evidence weight: {{pct}}%", { pct: Math.round(source.trust_level * 100) })}
                     size="small"
                     color={source.trust_level >= 0.9 ? "success" : source.trust_level >= 0.75 ? "info" : "default"}
                   />

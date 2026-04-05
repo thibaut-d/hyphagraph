@@ -8,7 +8,6 @@ import {
   Typography,
   List,
   ListItem,
-  ListItemText,
   Link,
   Stack,
   Box,
@@ -141,7 +140,7 @@ export function SearchView() {
     return "#";
   };
 
-  const getResultSecondaryText = (result: SearchResult): string => {
+  const getResultMetadata = (result: SearchResult): string => {
     if (result.type === "source") {
       const parts = [result.kind];
       if (result.year) parts.push(result.year.toString());
@@ -150,9 +149,9 @@ export function SearchView() {
       }
       return parts.join(" • ");
     } else if (result.type === "entity") {
-      return result.snippet || result.slug;
+      return result.slug;
     }
-    return result.snippet || "";
+    return "";
   };
 
   const totalPages = Math.ceil(total / RESULTS_PER_PAGE);
@@ -171,6 +170,10 @@ export function SearchView() {
           onChange={handleQueryChange}
           fullWidth
           autoFocus
+          helperText={t(
+            "search.helper_text",
+            "Search across entities, publications, and evidence claims. Match strength reflects text similarity, not confidence or study quality."
+          )}
         />
 
         {/* Type Filter */}
@@ -255,56 +258,63 @@ export function SearchView() {
                       },
                     }}
                   >
-                    <ListItemText
-                      primary={
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-                          <Chip
-                            label={
-                              result.type === "entity"
-                                ? t("search.kind_entity", "Entity")
-                                : result.type === "source"
-                                ? t("search.kind_source", "Publication")
-                                : t("search.kind_relation", "Evidence claim")
-                            }
-                            size="small"
-                            color={
-                              result.type === "entity"
-                                ? "primary"
-                                : result.type === "source"
-                                ? "secondary"
-                                : "default"
-                            }
-                          />
+                    <Stack spacing={1} sx={{ width: "100%" }}>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+                        <Chip
+                          label={
+                            result.type === "entity"
+                              ? t("search.kind_entity", "Entity")
+                              : result.type === "source"
+                              ? t("search.kind_source", "Publication")
+                              : t("search.kind_relation", "Evidence claim")
+                          }
+                          size="small"
+                          color={
+                            result.type === "entity"
+                              ? "primary"
+                              : result.type === "source"
+                              ? "secondary"
+                              : "default"
+                          }
+                        />
+                        <Link
+                          component={RouterLink}
+                          to={getResultLink(result)}
+                          sx={{ fontWeight: "medium" }}
+                        >
+                          {result.title}
+                        </Link>
+                        {result.type === "relation" && (
                           <Link
                             component={RouterLink}
-                            to={getResultLink(result)}
-                            sx={{ fontWeight: "medium" }}
+                            to={`/relations/${result.id}`}
+                            variant="body2"
+                            color="text.secondary"
+                            underline="hover"
                           >
-                            {result.title}
+                            {t("search.open_relation_detail", "Relation details")}
                           </Link>
-                          {result.type === "relation" && (
-                            <Link
-                              component={RouterLink}
-                              to={`/relations/${result.id}`}
-                              variant="body2"
-                              color="text.secondary"
-                              underline="hover"
-                            >
-                              {t("search.open_relation_detail", "Relation details")}
-                            </Link>
-                          )}
-                          {result.relevance_score !== undefined && (
-                            <Chip
-                              label={t("search.match_score", "Match: {{pct}}%", { pct: Math.round(result.relevance_score * 100) })}
-                              size="small"
-                              variant="outlined"
-                              title={t("search.match_score_title", "Text match strength — not a confidence or quality indicator")}
-                            />
-                          )}
-                        </Box>
-                      }
-                      secondary={getResultSecondaryText(result)}
-                    />
+                        )}
+                        {result.relevance_score !== undefined && (
+                          <Chip
+                            label={t("search.match_score", "Match strength: {{pct}}%", { pct: Math.round(result.relevance_score * 100) })}
+                            size="small"
+                            variant="outlined"
+                            title={t("search.match_score_title", "Text match strength — not a confidence or quality indicator")}
+                          />
+                        )}
+                      </Box>
+                      {getResultMetadata(result) && (
+                        <Typography variant="body2" color="text.secondary">
+                          {t("search.result_metadata", "Result details")}: {getResultMetadata(result)}
+                        </Typography>
+                      )}
+                      {result.snippet && (
+                        <Typography variant="body2" color="text.secondary">
+                          {t("search.match_reason", "Why it matched")}: {result.snippet}
+                        </Typography>
+                      )}
+                    </Stack>
                   </ListItem>
                 );
               })}

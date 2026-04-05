@@ -10,7 +10,7 @@ import json
 import csv
 from io import StringIO
 from datetime import datetime
-from typing import List, Literal
+from typing import Any, List, Literal
 from sqlalchemy.ext.asyncio import AsyncSession
 from collections import defaultdict
 
@@ -156,6 +156,149 @@ class ExportService:
             item.llm_review_status = revision.llm_review_status
         return item
 
+    def _build_export_payload(self, export_type: str, key: str, items: list[dict[str, Any]]) -> str:
+        return json.dumps(
+            {
+                "export_type": export_type,
+                "export_date": datetime.utcnow().isoformat(),
+                "count": len(items),
+                key: items,
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+
+    async def _load_entity_export_items(
+        self,
+        *,
+        include_metadata: bool,
+    ) -> list[EntityExportItem]:
+        stmt = (
+            select(Entity, EntityRevision)
+            .join(EntityRevision, Entity.id == EntityRevision.entity_id)
+            .where(EntityRevision.is_current == True)
+            .where(Entity.is_rejected == False)
+        )
+
+        result = await self.db.execute(stmt)
+        items: list[EntityExportItem] = []
+        for entity, revision in result:
+            summary = revision.summary or {}
+            item = EntityExportItem(
+                id=str(entity.id),
+                slug=revision.slug,
+                summary_en=summary.get("en"),
+                summary_fr=summary.get("fr"),
+                status=revision.status,
+                ui_category_id=str(revision.ui_category_id) if revision.ui_category_id else None,
+            )
+            if include_metadata:
+                item.created_at = entity.created_at.isoformat() if entity.created_at else None
+                item.revision_created_at = revision.created_at.isoformat() if revision.created_at else None
+                item.created_with_llm = revision.created_with_llm
+                item.created_by_user_id = (
+                    str(revision.created_by_user_id) if revision.created_by_user_id else None
+                )
+                item.llm_review_status = revision.llm_review_status
+            items.append(item)
+        return items
+
+    async def _load_source_export_items(
+        self,
+        *,
+        include_metadata: bool,
+        include_source_metadata: bool = False,
+        filters: SourceFilters | None = None,
+    ) -> list[SourceExportItem]:
+        result = await self.db.execute(self._build_filtered_source_query(filters))
+        return [
+            self._serialize_source_row(
+                source,
+                revision,
+                include_metadata=include_metadata,
+                include_source_metadata=include_source_metadata,
+            )
+            for source, revision in result
+        ]
+
+    async def _load_relation_export_items(
+        self,
+        *,
+        include_metadata: bool,
+        filters: SourceFilters,
+    ) -> list[RelationExportItem]:
+        filtered_sources = self._build_filtered_source_query(filters).subquery()
+        stmt = (
+            select(Relation, RelationRevision, SourceRevision)
+            .join(RelationRevision, Relation.id == RelationRevision.relation_id)
+            .join(filtered_sources, Relation.source_id == filtered_sources.c.id)
+            .join(SourceRevision, SourceRevision.source_id == Relation.source_id)
+            .where(canonical_relation_predicate())
+            .where(SourceRevision.is_current == True)
+            .where(SourceRevision.status == "confirmed")
+        )
+
+        result = await self.db.execute(stmt)
+        relation_rows = result.all()
+        relation_revision_ids = [row[1].id for row in relation_rows]
+        roles_by_revision_id = await self._load_relation_roles_by_revision_id(relation_revision_ids)
+
+        items: list[RelationExportItem] = []
+        for relation, rel_revision, source_revision in relation_rows:
+            item = RelationExportItem(
+                id=str(relation.id),
+                kind=rel_revision.kind,
+                direction=rel_revision.direction,
+                confidence=rel_revision.confidence,
+                status=rel_revision.status,
+                source_id=str(relation.source_id),
+                source_title=source_revision.title,
+                roles=roles_by_revision_id.get(rel_revision.id, []),
+            )
+            if include_metadata:
+                item.created_at = relation.created_at.isoformat() if relation.created_at else None
+                item.revision_created_at = (
+                    rel_revision.created_at.isoformat() if rel_revision.created_at else None
+                )
+                item.scope = rel_revision.scope
+                item.notes = rel_revision.notes
+                item.created_with_llm = rel_revision.created_with_llm
+                item.created_by_user_id = (
+                    str(rel_revision.created_by_user_id) if rel_revision.created_by_user_id else None
+                )
+                item.llm_review_status = rel_revision.llm_review_status
+            items.append(item)
+        return items
+
+    async def _load_relation_roles_by_revision_id(
+        self,
+        relation_revision_ids: list[object],
+    ) -> dict[object, list[RelationRoleExportItem]]:
+        roles_by_revision_id: dict[object, list[RelationRoleExportItem]] = defaultdict(list)
+        if not relation_revision_ids:
+            return roles_by_revision_id
+
+        roles_stmt = (
+            select(RelationRoleRevision, EntityRevision)
+            .join(EntityRevision, RelationRoleRevision.entity_id == EntityRevision.entity_id)
+            .where(RelationRoleRevision.relation_revision_id.in_(relation_revision_ids))
+            .where(EntityRevision.is_current == True)
+            .where(EntityRevision.status == "confirmed")
+        )
+        roles_result = await self.db.execute(roles_stmt)
+        for role_rev, entity_rev in roles_result:
+            roles_by_revision_id[role_rev.relation_revision_id].append(
+                RelationRoleExportItem(
+                    entity_slug=entity_rev.slug,
+                    entity_id=str(role_rev.entity_id),
+                    role_type=role_rev.role_type,
+                    weight=role_rev.weight,
+                    coverage=role_rev.coverage,
+                )
+            )
+
+        return roles_by_revision_id
+
     # =========================================================================
     # ENTITIES EXPORT
     # =========================================================================
@@ -175,31 +318,7 @@ class ExportService:
         Returns:
             Formatted string ready for download
         """
-        # Fetch all current entities
-        stmt = select(Entity, EntityRevision).join(
-            EntityRevision, Entity.id == EntityRevision.entity_id
-        ).where(EntityRevision.is_current == True).where(Entity.is_rejected == False)
-
-        result = await self.db.execute(stmt)
-        entities_data = []
-
-        for entity, revision in result:
-            _summary = revision.summary or {}
-            item = EntityExportItem(
-                id=str(entity.id),
-                slug=revision.slug,
-                summary_en=_summary.get('en'),
-                summary_fr=_summary.get('fr'),
-                status=revision.status,
-                ui_category_id=str(revision.ui_category_id) if revision.ui_category_id else None,
-            )
-            if include_metadata:
-                item.created_at = entity.created_at.isoformat() if entity.created_at else None
-                item.revision_created_at = revision.created_at.isoformat() if revision.created_at else None
-                item.created_with_llm = revision.created_with_llm
-                item.created_by_user_id = str(revision.created_by_user_id) if revision.created_by_user_id else None
-                item.llm_review_status = revision.llm_review_status
-            entities_data.append(item)
+        entities_data = await self._load_entity_export_items(include_metadata=include_metadata)
 
         # Format output
         if format == "json":
@@ -213,12 +332,11 @@ class ExportService:
 
     def _export_entities_json(self, entities: List[EntityExportItem]) -> str:
         """Export entities as JSON."""
-        return json.dumps({
-            'export_type': 'entities',
-            'export_date': datetime.utcnow().isoformat(),
-            'count': len(entities),
-            'entities': [e.model_dump(exclude_none=True) for e in entities]
-        }, indent=2, ensure_ascii=False)
+        return self._build_export_payload(
+            "entities",
+            "entities",
+            [entity.model_dump(exclude_none=True) for entity in entities],
+        )
 
     def _export_entities_csv(self, entities: List[EntityExportItem]) -> str:
         """Export entities as CSV."""
@@ -303,66 +421,10 @@ class ExportService:
             domain=domain,
             role=role,
         )
-        filtered_sources = self._build_filtered_source_query(filters).subquery()
-        stmt = (
-            select(Relation, RelationRevision, SourceRevision)
-            .join(RelationRevision, Relation.id == RelationRevision.relation_id)
-            .join(
-                filtered_sources,
-                Relation.source_id == filtered_sources.c.id,
-            )
-            .join(SourceRevision, SourceRevision.source_id == Relation.source_id)
-            .where(canonical_relation_predicate())
-            .where(SourceRevision.is_current == True)
-            .where(SourceRevision.status == "confirmed")
+        relations_data = await self._load_relation_export_items(
+            include_metadata=include_metadata,
+            filters=filters,
         )
-
-        result = await self.db.execute(stmt)
-        relation_rows = result.all()
-        relation_revision_ids = [row[1].id for row in relation_rows]
-
-        roles_by_revision_id: dict[object, list[RelationRoleExportItem]] = defaultdict(list)
-        if relation_revision_ids:
-            roles_stmt = (
-                select(RelationRoleRevision, EntityRevision)
-                .join(EntityRevision, RelationRoleRevision.entity_id == EntityRevision.entity_id)
-                .where(RelationRoleRevision.relation_revision_id.in_(relation_revision_ids))
-                .where(EntityRevision.is_current == True)
-                .where(EntityRevision.status == "confirmed")
-            )
-            roles_result = await self.db.execute(roles_stmt)
-            for role_rev, entity_rev in roles_result:
-                roles_by_revision_id[role_rev.relation_revision_id].append(
-                    RelationRoleExportItem(
-                        entity_slug=entity_rev.slug,
-                        entity_id=str(role_rev.entity_id),
-                        role_type=role_rev.role_type,
-                        weight=role_rev.weight,
-                        coverage=role_rev.coverage,
-                    )
-                )
-
-        relations_data = []
-        for relation, rel_revision, source_revision in relation_rows:
-            item = RelationExportItem(
-                id=str(relation.id),
-                kind=rel_revision.kind,
-                direction=rel_revision.direction,
-                confidence=rel_revision.confidence,
-                status=rel_revision.status,
-                source_id=str(relation.source_id),
-                source_title=source_revision.title,
-                roles=roles_by_revision_id.get(rel_revision.id, []),
-            )
-            if include_metadata:
-                item.created_at = relation.created_at.isoformat() if relation.created_at else None
-                item.revision_created_at = rel_revision.created_at.isoformat() if rel_revision.created_at else None
-                item.scope = rel_revision.scope
-                item.notes = rel_revision.notes
-                item.created_with_llm = rel_revision.created_with_llm
-                item.created_by_user_id = str(rel_revision.created_by_user_id) if rel_revision.created_by_user_id else None
-                item.llm_review_status = rel_revision.llm_review_status
-            relations_data.append(item)
 
         # Format output
         if format == "json":
@@ -376,12 +438,11 @@ class ExportService:
 
     def _export_relations_json(self, relations: List[RelationExportItem]) -> str:
         """Export relations as JSON."""
-        return json.dumps({
-            'export_type': 'relations',
-            'export_date': datetime.utcnow().isoformat(),
-            'count': len(relations),
-            'relations': [r.model_dump(exclude_none=True) for r in relations]
-        }, indent=2, ensure_ascii=False)
+        return self._build_export_payload(
+            "relations",
+            "relations",
+            [relation.model_dump(exclude_none=True) for relation in relations],
+        )
 
     def _export_relations_csv(self, relations: List[RelationExportItem]) -> str:
         """Export relations as CSV (flattened)."""
@@ -468,28 +529,16 @@ class ExportService:
             domain=domain,
             role=role,
         )
-        result = await self.db.execute(self._build_filtered_source_query(filters))
-        sources_data = []
-
-        for source, revision in result:
-            sources_data.append(
-                self._serialize_source_row(
-                    source,
-                    revision,
-                    include_metadata=include_metadata,
-                )
-            )
+        sources_data = await self._load_source_export_items(
+            include_metadata=include_metadata,
+            filters=filters,
+        )
 
         if format == "json":
-            return json.dumps(
-                {
-                    "export_type": "sources",
-                    "export_date": datetime.utcnow().isoformat(),
-                    "count": len(sources_data),
-                    "sources": [s.model_dump(exclude_none=True) for s in sources_data],
-                },
-                indent=2,
-                ensure_ascii=False,
+            return self._build_export_payload(
+                "sources",
+                "sources",
+                [source.model_dump(exclude_none=True) for source in sources_data],
             )
         elif format == "csv":
             output = StringIO()
@@ -531,30 +580,27 @@ class ExportService:
             # CSV and RDF don't support full graph in single file
             raise ValueError("Full graph export only supports JSON format")
 
-        # Get entities
-        entities_dict = json.loads(await self.export_entities("json", include_metadata))
-        relations_dict = json.loads(await self.export_relations("json", include_metadata))
-        result = await self.db.execute(self._build_filtered_source_query())
-        sources_data = [
-            self._serialize_source_row(
-                source,
-                revision,
-                include_metadata=include_metadata,
-                include_source_metadata=True,
-            )
-            for source, revision in result
-        ]
+        entities_data = await self._load_entity_export_items(include_metadata=include_metadata)
+        relations_data = await self._load_relation_export_items(
+            include_metadata=include_metadata,
+            filters=SourceFilters(),
+        )
+        sources_data = await self._load_source_export_items(
+            include_metadata=include_metadata,
+            include_source_metadata=True,
+            filters=None,
+        )
 
         # Combine all
         return json.dumps({
             'export_type': 'full_graph',
             'export_date': datetime.utcnow().isoformat(),
             'metadata': {
-                'entity_count': entities_dict['count'],
-                'relation_count': relations_dict['count'],
+                'entity_count': len(entities_data),
+                'relation_count': len(relations_data),
                 'source_count': len(sources_data),
             },
-            'entities': entities_dict['entities'],
-            'relations': relations_dict['relations'],
+            'entities': [entity.model_dump(exclude_none=True) for entity in entities_data],
+            'relations': [relation.model_dump(exclude_none=True) for relation in relations_data],
             'sources': [s.model_dump(exclude_none=True) for s in sources_data],
         }, indent=2, ensure_ascii=False)
