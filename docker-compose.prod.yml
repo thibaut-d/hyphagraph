@@ -1,15 +1,15 @@
-# Self-hosting HyphaGraph
+# Production self-hosting
 #
 # Prerequisites:
 #   1. Copy .env.prod.template to .env and fill in all values
-#   2. Set HYPHAGRAPH_VERSION in .env (e.g. HYPHAGRAPH_VERSION=1.2.0)
+#   2. Set HYPHAGRAPH_VERSION in .env (e.g. 1.2.0)
 #      or leave as "latest" to always pull the newest release
 #   3. Edit deploy/caddy/Caddyfile.self-host — replace your-domain.com
 #   4. Ensure ports 80 and 443 are open
 #
-# Start:  docker compose -f docker-compose.self-host.yml up -d
-# Update: docker compose -f docker-compose.self-host.yml pull && docker compose -f docker-compose.self-host.yml up -d
-# Logs:   docker compose -f docker-compose.self-host.yml logs -f
+# Start:  docker compose -f docker-compose.prod.yml up -d
+# Update: docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d
+# Logs:   docker compose -f docker-compose.prod.yml logs -f
 
 services:
   caddy:
@@ -42,8 +42,6 @@ services:
 
   api:
     image: ghcr.io/thibaut-d/hyphagraph-backend:${HYPHAGRAPH_VERSION:-latest}
-    # Runs migrations then starts the server on every container start.
-    # Alembic is idempotent — already-applied migrations are skipped.
     command: >
       sh -c "uv run alembic upgrade head &&
              uv run uvicorn app.main:app --host 0.0.0.0 --port 8000"

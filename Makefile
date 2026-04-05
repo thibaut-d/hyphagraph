@@ -2,9 +2,10 @@
 # HyphaGraph Makefile
 # =========================
 
-COMPOSE = docker compose -f docker-compose.yml -f docker-compose.dev-mounts.yml
+COMPOSE_LOCAL = docker compose -f docker-compose.local.yml
 PROJECT = hyphagraph
-COMPOSE_DEV = docker compose -p hyphagraph-dev -f docker-compose.yml -f docker-compose.server-dev.yml
+COMPOSE_REMOTE_DEV = docker compose -p hyphagraph-dev -f docker-compose.remote-dev.yml
+COMPOSE_PROD = docker compose -f docker-compose.prod.yml
 
 .DEFAULT_GOAL := help
 
@@ -14,7 +15,7 @@ COMPOSE_DEV = docker compose -p hyphagraph-dev -f docker-compose.yml -f docker-c
 
 .PHONY: up
 up: ## Start the full dev stack (Caddy, API, DB, Frontend)
-	$(COMPOSE) up -d
+	$(COMPOSE_LOCAL) up -d
 
 .PHONY: dev-check
 dev-check: ## Verify the local dev stack through Caddy using a real proxied API route
@@ -22,31 +23,31 @@ dev-check: ## Verify the local dev stack through Caddy using a real proxied API 
 		&& echo "Caddy proxied API check passed" \
 		|| (echo "Caddy proxied API check FAILED" && exit 1)
 
-.PHONY: up-dev-server
-up-dev-server: ## Start remote dev stack (requires .env.dev)
-	@test -f .env.dev || (echo "Missing .env.dev (copy from .env.dev.template)" && exit 1)
-	$(COMPOSE_DEV) up -d --build
+.PHONY: remote-dev-up
+remote-dev-up: ## Start the remote development stack (requires .env)
+	@test -f .env || (echo "Missing .env (copy from .env.example)" && exit 1)
+	$(COMPOSE_REMOTE_DEV) up -d --build
 
 .PHONY: down
 down: ## Stop the stack
-	$(COMPOSE) down
+	$(COMPOSE_LOCAL) down
 
-.PHONY: down-dev-server
-down-dev-server: ## Stop remote dev stack
-	$(COMPOSE_DEV) down
+.PHONY: remote-dev-down
+remote-dev-down: ## Stop the remote development stack
+	$(COMPOSE_REMOTE_DEV) down
 
 .PHONY: restart
 restart: ## Restart the stack
-	$(COMPOSE) down
-	$(COMPOSE) up -d
+	$(COMPOSE_LOCAL) down
+	$(COMPOSE_LOCAL) up -d
 
 .PHONY: build
 build: ## Build all images
-	$(COMPOSE) build
+	$(COMPOSE_LOCAL) build
 
 .PHONY: rebuild
 rebuild: ## Rebuild images without cache
-	$(COMPOSE) build --no-cache
+	$(COMPOSE_LOCAL) build --no-cache
 
 ## -------------------------
 ## Logs & status
@@ -54,31 +55,31 @@ rebuild: ## Rebuild images without cache
 
 .PHONY: ps
 ps: ## Show running containers
-	$(COMPOSE) ps
+	$(COMPOSE_LOCAL) ps
 
 .PHONY: logs
 logs: ## Follow logs (all services)
-	$(COMPOSE) logs -f
+	$(COMPOSE_LOCAL) logs -f
 
-.PHONY: logs-dev-server
-logs-dev-server: ## Follow logs for remote dev stack
-	$(COMPOSE_DEV) logs -f
+.PHONY: remote-dev-logs
+remote-dev-logs: ## Follow logs for the remote development stack
+	$(COMPOSE_REMOTE_DEV) logs -f
 
 .PHONY: logs-api
 logs-api: ## Follow API logs
-	$(COMPOSE) logs -f api
+	$(COMPOSE_LOCAL) logs -f api
 
 .PHONY: logs-web
 logs-web: ## Follow frontend logs
-	$(COMPOSE) logs -f web
+	$(COMPOSE_LOCAL) logs -f web
 
 .PHONY: logs-db
 logs-db: ## Follow database logs
-	$(COMPOSE) logs -f db
+	$(COMPOSE_LOCAL) logs -f db
 
 .PHONY: logs-caddy
 logs-caddy: ## Follow Caddy logs
-	$(COMPOSE) logs -f caddy
+	$(COMPOSE_LOCAL) logs -f caddy
 
 ## -------------------------
 ## Database utilities
@@ -86,23 +87,23 @@ logs-caddy: ## Follow Caddy logs
 
 .PHONY: db-shell
 db-shell: ## Open a psql shell inside the database container
-	$(COMPOSE) exec db sh -c 'psql -U $$POSTGRES_USER $$POSTGRES_DB'
+	$(COMPOSE_LOCAL) exec db sh -c 'psql -U $$POSTGRES_USER $$POSTGRES_DB'
 
 .PHONY: db-dump
 db-dump: ## Dump the database to ./backups/hyphagraph.sql
 	mkdir -p backups
-	$(COMPOSE) exec -T db sh -c 'pg_dump -U $$POSTGRES_USER $$POSTGRES_DB' > backups/$(PROJECT).sql
+	$(COMPOSE_LOCAL) exec -T db sh -c 'pg_dump -U $$POSTGRES_USER $$POSTGRES_DB' > backups/$(PROJECT).sql
 	@echo "Database dumped to backups/$(PROJECT).sql"
 
 .PHONY: db-restore
 db-restore: ## Restore the database from ./backups/hyphagraph.sql
-	cat backups/$(PROJECT).sql | $(COMPOSE) exec -T db sh -c 'psql -U $$POSTGRES_USER $$POSTGRES_DB'
+	cat backups/$(PROJECT).sql | $(COMPOSE_LOCAL) exec -T db sh -c 'psql -U $$POSTGRES_USER $$POSTGRES_DB'
 	@echo "Database restored from backups/$(PROJECT).sql"
 
 .PHONY: db-reset
 db-reset: ## Drop and recreate the database (DANGEROUS)
-	$(COMPOSE) exec db sh -c 'dropdb -U $$POSTGRES_USER $$POSTGRES_DB' || true
-	$(COMPOSE) exec db sh -c 'createdb -U $$POSTGRES_USER $$POSTGRES_DB'
+	$(COMPOSE_LOCAL) exec db sh -c 'dropdb -U $$POSTGRES_USER $$POSTGRES_DB' || true
+	$(COMPOSE_LOCAL) exec db sh -c 'createdb -U $$POSTGRES_USER $$POSTGRES_DB'
 	@echo "Database reset"
 
 ## -------------------------
@@ -111,15 +112,15 @@ db-reset: ## Drop and recreate the database (DANGEROUS)
 
 .PHONY: api-shell
 api-shell: ## Open a shell inside the API container
-	$(COMPOSE) exec api bash
+	$(COMPOSE_LOCAL) exec api bash
 
 .PHONY: api-tests
 api-tests: ## Run backend tests
-	$(COMPOSE) exec api pytest
+	$(COMPOSE_LOCAL) exec api pytest
 
-.PHONY: migrate-dev-server
-migrate-dev-server: ## Apply Alembic migrations on remote dev stack
-	$(COMPOSE_DEV) exec api alembic upgrade head
+.PHONY: remote-dev-migrate
+remote-dev-migrate: ## Apply Alembic migrations on the remote development stack
+	$(COMPOSE_REMOTE_DEV) exec api alembic upgrade head
 
 ## -------------------------
 ## Domain-level scripts
@@ -127,55 +128,53 @@ migrate-dev-server: ## Apply Alembic migrations on remote dev stack
 
 .PHONY: extract
 extract: ## Run LLM-assisted relation extraction
-	$(COMPOSE) exec api python scripts/extract_relations.py
+	$(COMPOSE_LOCAL) exec api python scripts/extract_relations.py
 
 .PHONY: recompute
 recompute: ## Recompute all inferences deterministically
-	$(COMPOSE) exec api python scripts/recompute_inferences.py
+	$(COMPOSE_LOCAL) exec api python scripts/recompute_inferences.py
 
 ## -------------------------
 ## Self-hosting
 ## -------------------------
 
-COMPOSE_SELF_HOST = docker compose -f docker-compose.self-host.yml
-
-.PHONY: self-host-setup
-self-host-setup: ## Interactive setup wizard (run once on a fresh server)
+.PHONY: prod-setup
+prod-setup: ## Interactive setup wizard (run once on a fresh server)
 	bash scripts/setup-self-host.sh
 
-.PHONY: self-host-up
-self-host-up: ## Start the self-hosted stack
-	$(COMPOSE_SELF_HOST) up -d
+.PHONY: prod-up
+prod-up: ## Start the production stack
+	$(COMPOSE_PROD) up -d
 
-.PHONY: self-host-down
-self-host-down: ## Stop the self-hosted stack
-	$(COMPOSE_SELF_HOST) down
+.PHONY: prod-down
+prod-down: ## Stop the production stack
+	$(COMPOSE_PROD) down
 
-.PHONY: self-host-logs
-self-host-logs: ## Follow logs for the self-hosted stack
-	$(COMPOSE_SELF_HOST) logs -f
+.PHONY: prod-logs
+prod-logs: ## Follow logs for the production stack
+	$(COMPOSE_PROD) logs -f
 
-.PHONY: self-host-update
-self-host-update: ## Back up DB, pull new images, and restart
+.PHONY: prod-update
+prod-update: ## Back up DB, pull new images, and restart production
 	@echo "Backing up database before update..."
 	@mkdir -p backups
-	$(COMPOSE_SELF_HOST) exec -T db sh -c 'pg_dump -U $$POSTGRES_USER $$POSTGRES_DB' > backups/pre-update-$$(date +%Y%m%d%H%M%S).sql
-	$(COMPOSE_SELF_HOST) pull
-	$(COMPOSE_SELF_HOST) up -d
+	$(COMPOSE_PROD) exec -T db sh -c 'pg_dump -U $$POSTGRES_USER $$POSTGRES_DB' > backups/pre-update-$$(date +%Y%m%d%H%M%S).sql
+	$(COMPOSE_PROD) pull
+	$(COMPOSE_PROD) up -d
 	@echo "Update complete."
 
-.PHONY: self-host-backup
-self-host-backup: ## Dump the self-hosted database to ./backups/
+.PHONY: prod-backup
+prod-backup: ## Dump the production database to ./backups/
 	mkdir -p backups
-	$(COMPOSE_SELF_HOST) exec -T db sh -c 'pg_dump -U $$POSTGRES_USER $$POSTGRES_DB' > backups/hyphagraph-$$(date +%Y%m%d%H%M%S).sql
+	$(COMPOSE_PROD) exec -T db sh -c 'pg_dump -U $$POSTGRES_USER $$POSTGRES_DB' > backups/hyphagraph-$$(date +%Y%m%d%H%M%S).sql
 	@echo "Backup saved to backups/"
 
-.PHONY: self-host-check
-self-host-check: ## Verify the self-hosted deployment is healthy
-	@$(COMPOSE_SELF_HOST) exec api curl -sf http://localhost:8000/health \
+.PHONY: prod-check
+prod-check: ## Verify the production deployment is healthy
+	@$(COMPOSE_PROD) exec api curl -sf http://localhost:8000/health \
 		&& echo "API is healthy" \
 		|| (echo "API health check FAILED" && exit 1)
-	@$(COMPOSE_SELF_HOST) exec web wget -qO- http://localhost:80/ > /dev/null \
+	@$(COMPOSE_PROD) exec web wget -qO- http://localhost:80/ > /dev/null \
 		&& echo "Web is healthy" \
 		|| (echo "Web health check FAILED" && exit 1)
 
@@ -185,7 +184,7 @@ self-host-check: ## Verify the self-hosted deployment is healthy
 
 .PHONY: clean
 clean: ## Stop containers and remove volumes (DATA LOSS)
-	$(COMPOSE) down -v
+	$(COMPOSE_LOCAL) down -v
 
 ## -------------------------
 ## Help

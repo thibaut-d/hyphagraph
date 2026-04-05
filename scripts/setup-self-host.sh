@@ -148,11 +148,11 @@ ${BOLD}Next steps:${RESET}
   1. Ensure ports 80 and 443 are open on this server.
   2. Start HyphaGraph:
 
-       make self-host-up
+       make prod-up
 
   3. Verify deployment:
 
-       make self-host-check
+       make prod-check
 
 ${YELLOW}Keep your .env file safe — it contains your database password and secrets.${RESET}
 EOF

@@ -43,10 +43,10 @@ No prior knowledge of graphs, databases, or formal logic is required.
 ```bash
 git clone https://github.com/thibaut-d/hyphagraph.git
 cd hyphagraph
-cp .env.sample .env
+cp .env.example .env
 
-# Start the full stack (API, DB, frontend, Caddy)
-docker compose up -d
+# Start the full local development stack
+docker compose -f docker-compose.local.yml up -d
 # or: make up
 ```
 
@@ -152,7 +152,7 @@ Caddy obtains and renews TLS certificates from Let's Encrypt automatically. Port
 ### Step 3 — Start
 
 ```bash
-docker compose -f docker-compose.self-host.yml up -d
+docker compose -f docker-compose.prod.yml up -d
 ```
 
 The API container runs `alembic upgrade head` before starting — migrations are applied automatically on every start (idempotent).
@@ -161,8 +161,8 @@ The API container runs `alembic upgrade head` before starting — migrations are
 
 ```bash
 # Pull new images and restart
-docker compose -f docker-compose.self-host.yml pull
-docker compose -f docker-compose.self-host.yml up -d
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
 ```
 
 To pin a specific version, set `HYPHAGRAPH_VERSION=1.2.0` in `.env`.
@@ -170,7 +170,7 @@ To pin a specific version, set `HYPHAGRAPH_VERSION=1.2.0` in `.env`.
 ### Logs
 
 ```bash
-docker compose -f docker-compose.self-host.yml logs -f
+docker compose -f docker-compose.prod.yml logs -f
 ```
 
 ---

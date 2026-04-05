@@ -17,10 +17,10 @@
 # Clone and configure
 git clone https://github.com/thibaut-d/hyphagraph.git
 cd hyphagraph
-cp .env.sample .env
+cp .env.example .env
 
 # Start services (migrations run automatically on startup)
-docker compose up --build -d
+docker compose -f docker-compose.local.yml up --build -d
 ```
 
 ### Local development (without Docker)

@@ -3,13 +3,18 @@ services:
     image: caddy:2
     ports:
       - "80:80"
+      - "443:443"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./deploy/caddy/Caddyfile.dev:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
     depends_on:
       api:
         condition: service_healthy
       web:
         condition: service_started
+    restart: unless-stopped
+
   db:
     image: postgres:16
     env_file:
@@ -21,6 +26,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   api:
     build:
@@ -38,6 +44,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    restart: unless-stopped
 
   web:
     build:
@@ -47,6 +54,9 @@ services:
       - .env
     depends_on:
       - api
+    restart: unless-stopped
 
 volumes:
   postgres_data:
+  caddy_data:
+  caddy_config:

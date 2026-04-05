@@ -143,11 +143,11 @@ _Items verified correct are marked `[x]`. Items with confirmed defects remain `[
 
 ### Deployment
 
-- [x] Production compose — bind mounts live only in `docker-compose.dev-mounts.yml`; deployed stacks avoid app source mounts.
+- [x] Production compose — bind mounts live only in `docker-compose.local.yml`; remote dev and production stacks avoid app source mounts.
 - [x] API migrations on start — deployed API startup runs `alembic upgrade head` before serving traffic.
 - [x] Production web — deployed frontend is served as a static build, not via `vite preview`.
 - [x] API health check — present in base compose; `caddy` depends on `service_healthy`.
-- [x] Compose surface area — removed the redundant production-from-source stack; production docs now point to `docker-compose.self-host.yml` as the single supported prod path.
+- [x] Compose surface area — user-facing compose files now map directly to local dev, remote dev, production, and E2E workflows.
 
 ---
 

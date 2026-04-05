@@ -9,11 +9,11 @@ Applicable to both human developers and AI agents.
 ### Docker (recommended)
 
 ```bash
-docker compose up --build -d
+docker compose -f docker-compose.local.yml up --build -d
 ```
 
 Migrations run automatically on container startup.
-To run manually (debugging/recovery): `docker compose exec api alembic upgrade head`
+To run manually (debugging/recovery): `docker compose -f docker-compose.local.yml exec api alembic upgrade head`
 
 - Backend: http://localhost/api (auto-reload enabled)
 - Frontend: http://localhost (Vite HMR)
@@ -131,12 +131,12 @@ See [E2E Testing Guide](E2E_TESTING_GUIDE.md) for details.
 ## Creating Migrations
 
 ```bash
-docker compose exec api alembic revision --autogenerate -m "Add new field"
-docker compose exec api alembic upgrade head
+docker compose -f docker-compose.local.yml exec api alembic revision --autogenerate -m "Add new field"
+docker compose -f docker-compose.local.yml exec api alembic upgrade head
 
 # Reset database
-docker compose exec api alembic downgrade base
-docker compose exec api alembic upgrade head
+docker compose -f docker-compose.local.yml exec api alembic downgrade base
+docker compose -f docker-compose.local.yml exec api alembic upgrade head
 ```
 
 ---
@@ -145,9 +145,9 @@ docker compose exec api alembic upgrade head
 
 ```bash
 # Backend
-docker compose exec api pytest --cov=app
-docker compose exec api ruff check .
-docker compose exec api ruff format .
+docker compose -f docker-compose.local.yml exec api pytest --cov=app
+docker compose -f docker-compose.local.yml exec api ruff check .
+docker compose -f docker-compose.local.yml exec api ruff format .
 
 # Frontend
 cd frontend && npm test && npm run lint

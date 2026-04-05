@@ -1,4 +1,4 @@
-# Multi-Environment Deployment (local, dev server, self-host)
+# Multi-Environment Deployment (local, remote dev, production)
 
 Goal: keep **one repository** that can run:
 - locally (developer machine)
@@ -12,22 +12,23 @@ This document prioritizes your current need: **deploying the dev version on your
 ## 1. Files added to simplify deployments
 
 ### Compose
-- `docker-compose.yml`: local/dev base stack
-- `docker-compose.server-dev.yml`: override for remote dev server
-- `docker-compose.self-host.yml`: self-hosted production stack from published images
+- `docker-compose.local.yml`: local development
+- `docker-compose.remote-dev.yml`: remote development server
+- `docker-compose.prod.yml`: production stack from published images
+- `docker-compose.e2e.yml`: isolated E2E test stack
 
 ### Caddy (versioned templates)
 - `deploy/caddy/Caddyfile.dev`
 - `deploy/caddy/Caddyfile.self-host`
 
 ### Environment templates
-- `.env.sample` (local)
-- `.env.dev.template` (dev server)
+- `.env.example` (development: local or remote dev server)
 - `.env.prod.template` (self-host production)
 
 ### Makefile commands
-- `make up-dev-server`, `make down-dev-server`, `make logs-dev-server`, `make migrate-dev-server`
-- `make self-host-setup`, `make self-host-up`, `make self-host-logs`, `make self-host-update`
+- `make up`, `make down`, `make logs`
+- `make remote-dev-up`, `make remote-dev-down`, `make remote-dev-logs`, `make remote-dev-migrate`
+- `make prod-setup`, `make prod-up`, `make prod-logs`, `make prod-update`
 
 ---
 
@@ -71,13 +72,13 @@ git clone <REPO_URL> hyphagraph
 cd hyphagraph
 ```
 
-### 3.2 Create `.env.dev`
+### 3.2 Create `.env`
 
 ```bash
-cp .env.dev.template .env.dev
+cp .env.example .env
 ```
 
-Edit `.env.dev` and at minimum update:
+Edit `.env` and at minimum update:
 - `POSTGRES_PASSWORD`
 - `DATABASE_URL` (matching DB password)
 - `SECRET_KEY`
@@ -96,7 +97,7 @@ sed -i "s|dev.mydomain.com|dev.yourdomain.com|g" deploy/caddy/Caddyfile.dev
 ### 3.4 Start the dev server stack
 
 ```bash
-make up-dev-server
+make remote-dev-up
 ```
 
 Migrations run automatically on container start (via `docker-entrypoint.sh`). No separate migration step is needed.
@@ -104,8 +105,8 @@ Migrations run automatically on container start (via `docker-entrypoint.sh`). No
 Verify:
 
 ```bash
-make logs-dev-server
-docker compose -p hyphagraph-dev -f docker-compose.yml -f docker-compose.server-dev.yml ps
+make remote-dev-logs
+docker compose -p hyphagraph-dev -f docker-compose.remote-dev.yml ps
 curl -I https://dev.mydomain.com
 curl -I https://dev.mydomain.com/api/docs
 ```
@@ -131,10 +132,10 @@ Then:
 3. Use these commands:
 
 ```bash
-make logs-dev-server
+make remote-dev-logs
 docker stats
-docker compose -p hyphagraph-dev -f docker-compose.yml -f docker-compose.server-dev.yml exec api pytest -q
-docker compose -p hyphagraph-dev -f docker-compose.yml -f docker-compose.server-dev.yml exec web npx tsc --noEmit
+docker compose -p hyphagraph-dev -f docker-compose.remote-dev.yml exec api pytest -q
+docker compose -p hyphagraph-dev -f docker-compose.remote-dev.yml exec web npx tsc --noEmit
 ```
 
 ---
@@ -142,12 +143,12 @@ docker compose -p hyphagraph-dev -f docker-compose.yml -f docker-compose.server-
 ## 5. Local deployment (unchanged)
 
 ```bash
-cp .env.sample .env
-docker compose up -d --build
+cp .env.example .env
+docker compose -f docker-compose.local.yml up -d --build
 ```
 
 > Migrations run automatically on container startup — no manual `alembic upgrade head` needed.
-> To run migrations manually (e.g. for debugging): `docker compose exec api alembic upgrade head`
+> To run migrations manually (e.g. for debugging): `docker compose -f docker-compose.local.yml exec api alembic upgrade head`
 
 Access:
 - `http://localhost`
@@ -161,7 +162,7 @@ make dev-check
 
 ---
 
-## 6. Production deployment (self-hosted)
+## 6. Production deployment
 
 ### 6.1 Prepare production secrets
 
@@ -188,10 +189,10 @@ cat deploy/caddy/Caddyfile.self-host
 ### 6.3 Start the production stack
 
 ```bash
-make self-host-up
+make prod-up
 ```
 
-Self-hosting applies:
+Production applies:
 - backend and frontend pull published GHCR images pinned by `HYPHAGRAPH_VERSION`
 - backend runs `alembic upgrade head` then uvicorn on start
 - HTTPS Caddy with persisted certificates
@@ -199,9 +200,9 @@ Self-hosting applies:
 Helpful follow-up commands:
 
 ```bash
-make self-host-logs
-make self-host-check
-make self-host-update
+make prod-logs
+make prod-check
+make prod-update
 ```
 
 ---
@@ -223,19 +224,19 @@ Update code:
 ```bash
 cd /srv/hyphagraph
 git pull
-make up-dev-server
+make remote-dev-up
 ```
 
 Stop dev:
 
 ```bash
-make down-dev-server
+make remote-dev-down
 ```
 
-Stop self-hosted prod:
+Stop production:
 
 ```bash
-make self-host-down
+make prod-down
 ```
 
 Docker cleanup:
