@@ -177,6 +177,8 @@ _Items verified correct are marked `[x]`. Items with confirmed defects remain `[
 
 ## Post-v1.0 Backlog
 
+Do not implement unless specifically asked.
+
 - **Graph visualization** — Explicitly not MVP.
 - **TypeDB integration** — Optional reasoning engine.
 - **Advanced auth** — 2FA (TOTP), OAuth providers (Google, GitHub).
