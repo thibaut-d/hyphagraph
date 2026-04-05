@@ -597,3 +597,28 @@ class TestEntitySlugCoherence:
         flag = rel_results[0].flags[0]
         assert "ghost-1" in flag
         assert "ghost-2" in flag
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_validation_flags_missing_relation_text_span():
+    orch = _make_orchestrator(strict=False)
+    entities = _make_entities("duloxetine", "fibromyalgia")
+    relation = ExtractedRelation(
+        relation_type="treats",
+        roles=[
+            {"entity_slug": "duloxetine", "role_type": "agent"},
+            {"entity_slug": "fibromyalgia", "role_type": "target"},
+        ],
+        confidence="high",
+        text_span="This relation text does not appear in the source",
+    )
+
+    _, relations, _, _, relation_results, _ = await orch._validate_extractions_with_results(
+        entities,
+        [relation],
+        [],
+        SAMPLE_SOURCE,
+    )
+
+    assert len(relations) == 1
+    assert any("text_span_not_found" in flag for flag in relation_results[0].flags)

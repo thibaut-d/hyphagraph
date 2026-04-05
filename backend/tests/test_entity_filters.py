@@ -4,7 +4,10 @@ Tests for EntityService filtering functionality.
 Tests advanced filtering like consensus level, evidence quality, recency, etc.
 """
 import pytest
+from sqlalchemy import select
 
+from app.models.relation import Relation
+from app.models.relation_revision import RelationRevision
 from app.services.entity_service import EntityService
 from app.services.source_service import SourceService
 from app.services.relation_service import RelationService
@@ -290,6 +293,77 @@ class TestEntityConsensusFiltering:
         assert total == 2
         slugs = {item.slug for item in items}
         assert slugs == {"strong-drug", "disputed-drug"}
+
+    async def test_consensus_filter_ignores_draft_and_rejected_relations(self, db_session):
+        entity_service = EntityService(db_session)
+        source_service = SourceService(db_session)
+        relation_service = RelationService(db_session)
+
+        entity = await entity_service.create(EntityWrite(slug="filtered-drug"))
+        partner = await entity_service.create(EntityWrite(slug="filtered-condition"))
+
+        source = await source_service.create(SourceWrite(
+            kind="study",
+            title="Study E",
+            authors=["Taylor, M."],
+            year=2023,
+            origin="PubMed",
+            url="https://example.com/study-e",
+            trust_level=0.8,
+        ))
+
+        confirmed_relation = await relation_service.create(RelationWrite(
+            source_id=source.id,
+            kind="effect",
+            direction="supports",
+            confidence=0.8,
+            roles=[
+                RoleRevisionWrite(entity_id=entity.id, role_type="agent"),
+                RoleRevisionWrite(entity_id=partner.id, role_type="patient"),
+            ],
+        ))
+
+        draft_relation = await relation_service.create(RelationWrite(
+            source_id=source.id,
+            kind="effect",
+            direction="contradicts",
+            confidence=0.8,
+            roles=[
+                RoleRevisionWrite(entity_id=entity.id, role_type="agent"),
+                RoleRevisionWrite(entity_id=partner.id, role_type="patient"),
+            ],
+        ))
+
+        rejected_relation = await relation_service.create(RelationWrite(
+            source_id=source.id,
+            kind="effect",
+            direction="contradicts",
+            confidence=0.8,
+            roles=[
+                RoleRevisionWrite(entity_id=entity.id, role_type="agent"),
+                RoleRevisionWrite(entity_id=partner.id, role_type="patient"),
+            ],
+        ))
+
+        draft_revision = await db_session.execute(
+            select(RelationRevision).where(
+                RelationRevision.relation_id == draft_relation.id,
+                RelationRevision.is_current == True,
+            )
+        )
+        draft_revision.scalar_one().status = "draft"
+
+        rejected = await db_session.get(Relation, rejected_relation.id)
+        assert rejected is not None
+        rejected.is_rejected = True
+        await db_session.commit()
+
+        filters = EntityFilters(consensus_level=["strong"])
+        items, total = await entity_service.list_all(filters=filters)
+
+        assert total >= 1
+        slugs = {item.slug for item in items}
+        assert "filtered-drug" in slugs
 
     async def test_no_consensus_filter_returns_all(self, db_session):
         """Test that not specifying consensus filter returns all entities."""

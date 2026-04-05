@@ -9,6 +9,7 @@ import pytest
 from uuid import uuid4
 from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi import HTTPException
+from sqlalchemy import select
 
 
 @pytest.fixture(autouse=True)
@@ -33,6 +34,8 @@ from app.api.document_extraction_schemas import (
     UrlExtractionRequest,
 )
 from app.services.pubmed_fetcher import PubMedArticle
+from app.models.source_revision import SourceRevision
+from app.models.staged_extraction import ExtractionStatus, ExtractionType, StagedExtraction
 from app.services.source_service import SourceService
 from app.schemas.source import SourceWrite
 from fixtures.scientific_data import ScientificEntities
@@ -540,6 +543,68 @@ class TestUrlExtraction:
         assert response.entity_count == 1
         assert response.relation_count == 1
         assert response.entities[0].slug == "pregabalin"
+
+    async def test_extract_from_url_rolls_back_document_and_staged_changes_on_preview_failure(
+        self, db_session, mock_source, test_user
+    ):
+        fetched_document = MagicMock(
+            text="Fetched source text",
+            document_format="txt",
+            file_name="fetched.txt",
+        )
+
+        async def failing_build_preview(db, *, source_id, text, commit=True):
+            db.add(
+                StagedExtraction(
+                    extraction_type=ExtractionType.ENTITY,
+                    status=ExtractionStatus.PENDING,
+                    source_id=source_id,
+                    extraction_data={
+                        "slug": "rolled-back-entity",
+                        "summary": "temporary",
+                        "category": "drug",
+                        "confidence": "high",
+                        "text_span": "Fetched source text",
+                    },
+                    validation_score=0.8,
+                    confidence_adjustment=1.0,
+                    validation_flags=[],
+                    auto_commit_eligible=False,
+                )
+            )
+            await db.flush()
+            raise RuntimeError("preview failed")
+
+        with patch(
+            "app.api.document_extraction_routes.document.fetch_document_from_url",
+            new=AsyncMock(return_value=fetched_document),
+        ), patch(
+            "app.api.document_extraction_routes.document.build_extraction_preview",
+            new=failing_build_preview,
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                await extract_from_url(
+                    source_id=mock_source.id,
+                    request=UrlExtractionRequest(url="https://example.com/article"),
+                    db=db_session,
+                    current_user=test_user,
+                )
+
+        assert exc_info.value.status_code == 500
+
+        current_revision = await db_session.execute(
+            select(SourceRevision).where(
+                SourceRevision.source_id == mock_source.id,
+                SourceRevision.is_current == True,
+            )
+        )
+        revision = current_revision.scalar_one()
+        assert revision.document_text is None
+
+        staged_rows = await db_session.execute(
+            select(StagedExtraction).where(StagedExtraction.source_id == mock_source.id)
+        )
+        assert staged_rows.scalars().all() == []
 
 
 # =============================================================================

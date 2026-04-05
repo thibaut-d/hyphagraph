@@ -387,6 +387,41 @@ class TestReconcileStagedExtractions:
         assert staged.materialized_entity_id is None
         assert staged.reviewed_by == test_user.id
 
+    async def test_rejects_previously_materialized_entity_when_linking_existing_slug(
+        self, db_session, test_user
+    ):
+        source = await self._make_source(db_session)
+        materialized_entity_id = await self._make_entity_id(db_session, "ibuprofen")
+
+        staged = await self._make_staged(
+            db_session,
+            source_id=source.id,
+            extraction_type=ExtractionType.ENTITY,
+            extraction_data={"slug": "ibuprofen", "summary": "another drug", "category": "drug",
+                             "confidence": "high", "text_span": "ibuprofen"},
+            status=ExtractionStatus.AUTO_VERIFIED,
+        )
+        staged.materialized_entity_id = materialized_entity_id
+        await db_session.flush()
+
+        await reconcile_staged_extractions(
+            db_session,
+            source_id=source.id,
+            approved_entity_slugs_to_id={},
+            rejected_entity_slugs={"ibuprofen"},
+            approved_relations=[],
+            approved_relation_ids=[],
+            user_id=test_user.id,
+        )
+        await db_session.commit()
+        await db_session.refresh(staged)
+
+        assert staged.status == ExtractionStatus.REJECTED
+
+        entity = await db_session.get(Entity, materialized_entity_id)
+        assert entity is not None
+        assert entity.is_rejected is True
+
     async def test_approves_relation_and_links_materialized_id(self, db_session, test_user):
         source = await self._make_source(db_session)
         relation_id = await self._make_relation_id(db_session, source.id)

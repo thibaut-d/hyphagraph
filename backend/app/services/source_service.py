@@ -403,7 +403,9 @@ class SourceService:
         document_text: str,
         document_format: str,
         document_file_name: str,
-        user_id: UUID | None = None
+        user_id: UUID | None = None,
+        *,
+        commit: bool = True,
     ) -> None:
         """
         Add document content to a source by creating a new current revision.
@@ -469,7 +471,8 @@ class SourceService:
                 set_as_current=True,
             )
 
-            await self.db.commit()
+            if commit:
+                await self.db.commit()
 
         except SourceNotFoundException:
             raise

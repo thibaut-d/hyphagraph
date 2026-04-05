@@ -161,6 +161,7 @@ class TestPasswordManagement:
     async def test_change_password_success(self, user_service, mock_user_repo, sample_user, mock_db):
         """Successfully change password with correct current password; active tokens are revoked."""
         mock_user_repo.get_by_id.return_value = sample_user
+        original_token_version = sample_user.token_version
 
         with patch("app.services.user_service.verify_password") as mock_verify, \
              patch("app.services.user_service.hash_password") as mock_hash, \
@@ -178,6 +179,7 @@ class TestPasswordManagement:
         mock_db.commit.assert_called_once()
         mock_user_repo.update.assert_called_once()
         mock_load_tokens.assert_called_once()  # Revocation must always be attempted
+        assert sample_user.token_version == original_token_version + 1
 
     @pytest.mark.asyncio
     async def test_change_password_wrong_current(self, user_service, mock_user_repo, sample_user):

@@ -15,7 +15,7 @@ _Items verified correct are marked `[x]`. Items with confirmed defects remain `[
 - [x] Access token in-memory — no localStorage, cross-tab restoration via refresh cookie on mount. (`authStorage.ts`, `AuthContext.tsx`)
 - [x] Superuser guards — `get_current_active_superuser` on all extraction review, revision review, review queue, and admin endpoints. Frontend `SuperuserRoute` in place.
 - [x] Confirmed-only read isolation — entity/source/relation list+get, entity linking all filter `status == "confirmed"`. `test_draft_isolation.py` present.
-- [ ] **[NEW-PSW-M1]** `backend/app/services/user/account.py:207-218` — `change_password()` revokes refresh tokens but does **not** increment `token_version`. A compromised access token remains valid until its natural expiry even after a password change. Fix: add `user.token_version += 1` before the repo update call in `change_password()`.
+- [x] Password change invalidates access tokens by incrementing `token_version` before refresh-token revocation. (`backend/app/services/user/account.py`, `backend/tests/test_user_service.py`)
 
 ---
 
@@ -36,23 +36,23 @@ _Items verified correct are marked `[x]`. Items with confirmed defects remain `[
 - [x] Per-role disagreement stored in `RelationRoleRevision.disagreement`; populated during inference computation, not just as a global average. (`read_models.py:299`)
 - [x] Inference cache invalidated on source `trust_level` change — entities linked via confirmed relations are found and their cache entries deleted. (`source_service.py:306-327`)
 - [x] Canonical relation predicate used consistently across derived-properties, source-role classification, entity-query-builder, and export. (`query_predicates.py`)
-- [ ] **[NEW-QP-M1]** `backend/app/services/entity_query_builder.py:259` — the consensus-level filter subquery joins `RelationRevision` with only `.where(RelationRevision.is_current == True)`, omitting `status == "confirmed"` and `Relation.is_rejected == False`. Draft and rejected relations are counted in the consensus disagreement ratio, corrupting filter results. Fix: replace the bare `is_current` filter with `canonical_relation_predicate()`.
+- [x] Consensus-level filtering now uses `canonical_relation_predicate()`, excluding draft and rejected relations from disagreement calculations. (`backend/app/services/entity_query_builder.py`, `backend/tests/test_entity_filters.py`)
 
 ---
 
 ### Extraction Pipeline
 
-- [ ] **[NEW-EXT-M1]** `backend/app/api/document_extraction_routes/document.py:142-165`, `backend/app/api/document_extraction_routes/document.py:205-226` — extraction still runs before document storage, but the previously reported orphaning gap is now mitigated by `_cleanup_orphaned_staged_extractions()` on storage failure. Remaining question: should the workflow keep this cleanup-based design or be reordered into a single transaction boundary to better match the intended architecture?
+- [x] Upload and URL extraction now share a single transaction boundary: document revision writes and staged preview writes commit together, and both roll back on failure. (`backend/app/api/document_extraction_routes/document.py`, `backend/app/services/source_service.py`, `backend/app/services/document_extraction_processing.py`, `backend/tests/test_document_extraction.py`)
 - [x] Staging batch transaction — `create_staged_extraction` uses explicit commit/rollback; auto-materialization path rolls back on failure. (`staging.py:53-77`)
 - [x] Missing entity reference in materialization — raises `ValueError` with structured message, does not log and continue. (`materialization.py:92-96, 162-166`)
-- [ ] **[NEW-EXT-m1]** `backend/app/services/batch_extraction_orchestrator.py:366-433` — text span validation is absent. Entity slug coherence (slugs cross-checked against extracted entity list) is implemented, but text spans are not verified against source text. This is a gap in the claimed semantic validation (DF-EXT-M6).
+- [x] Batch extraction already validates entity, relation, and claim text spans before slug-coherence checks; orchestrator-level coverage now asserts missing relation spans are flagged. (`backend/app/services/batch_extraction_orchestrator.py`, `backend/tests/test_extraction_validation.py`)
 - [x] Workflow refactor — `document_extraction_workflow.py` is a narrow re-export shim; internal callers import from owning modules directly. (`document_extraction_workflow.py:1-49`)
 
 ---
 
 ### Extraction Review
 
-- [ ] **[NEW-RVW-C1]** `backend/app/models/entity.py:39-41`, `backend/app/models/relation.py:44-46` — `is_rejected` columns and migration 014 exist, and the flag is correctly filtered from list/search/export queries. However, the flag is **never set** during the rejection flow. `StagedExtraction.status` is set to `REJECTED` but the `is_rejected` boolean on materialized `Entity` and `Relation` rows is never written. Any entity or relation that was materialized before rejection remains visible in all queries. Fix: in the rejection path of `document_extraction_processing.py` (around line 670), find and set `is_rejected = True` on all entity/relation rows that were created from the staged extraction being rejected.
+- [x] Rejected staged entity links now also soft-reject any previously materialized entity row so it disappears from canonical queries while remaining auditable. (`backend/app/services/document_extraction_processing.py`, `backend/tests/test_document_extraction_workflow.py`)
 - [x] Attribution — `created_by_user_id` set on `EntityRevision`, `RelationRevision`, and claim revisions during materialization. `auto_approved` column present in `StagedExtraction`, set in `auto_commit.py:85`. Migration 011 correct.
 - [x] Batch review failure inspection — `submitBatchReview()` checks `response.failed > 0` and shows warning. (`useReviewDialog.ts:94-105`)
 
@@ -171,11 +171,7 @@ _Items verified correct are marked `[x]`. Items with confirmed defects remain `[
 
 | ID | Severity | File | Description |
 |----|----------|------|-------------|
-| NEW-RVW-C1 | **Critical** | `document_extraction_processing.py:~670` | `is_rejected` flag never set on `Entity`/`Relation` rows when an extraction is rejected. Column and migration exist; assignment is missing. |
-| NEW-PSW-M1 | **Major** | `account.py:207-218` | `change_password()` revokes refresh tokens but does not increment `token_version`. Compromised access tokens remain valid until expiry after a password change. |
-| NEW-EXT-M1 | **Major** | `document.py:142-165`, `document.py:205-226` | Extraction still runs before document storage, but storage failure now triggers staged-extraction cleanup. Remaining issue is architectural: confirm whether cleanup-based recovery is acceptable or whether the flow should be reordered into a single transaction boundary. |
-| NEW-QP-M1 | **Major** | `entity_query_builder.py:259` | Consensus filter subquery uses bare `is_current == True` instead of `canonical_relation_predicate()`. Draft/rejected relations corrupt consensus calculations. |
-| NEW-EXT-m1 | **Minor** | `batch_extraction_orchestrator.py:366-433` | Text span validation missing. Only entity slug coherence is checked; spans not verified against source text. |
+| None | — | — | No open defects currently listed in this section after the 2026-04-05 implementation pass. Add new verified issues above before repopulating this table. |
 
 ---
 

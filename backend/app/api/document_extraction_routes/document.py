@@ -2,7 +2,6 @@ import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, UploadFile
-from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.service_dependencies import get_document_service
@@ -15,7 +14,6 @@ from app.services.url_fetcher import UrlFetcher
 from app.api.document_extraction_schemas import UrlExtractionRequest
 from app.database import get_db
 from app.dependencies.auth import get_current_user
-from app.models.staged_extraction import ExtractionStatus, StagedExtraction
 from app.models.user import User
 from app.schemas.source import DocumentExtractionPreview, SaveExtractionRequest, SaveExtractionResult
 from app.services.document_extraction_processing import (
@@ -32,20 +30,6 @@ from app.utils.errors import AppException, SourceNotFoundException, ValidationEx
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["document-extraction"])
-
-_ORPHANABLE_STATUSES = [ExtractionStatus.PENDING, ExtractionStatus.AUTO_VERIFIED]
-
-
-async def _cleanup_orphaned_staged_extractions(db: AsyncSession, source_id: UUID) -> None:
-    """Delete PENDING/AUTO_VERIFIED staged extractions for a source whose document was never stored."""
-    await db.execute(
-        delete(StagedExtraction).where(
-            StagedExtraction.source_id == source_id,
-            StagedExtraction.status.in_(_ORPHANABLE_STATUSES),
-        )
-    )
-    await db.commit()
-
 
 @router.post(
     "/sources/{source_id}/extract-from-document",
@@ -141,35 +125,31 @@ async def upload_and_extract(
 
     try:
         extraction_result = await document_service.extract_text_from_file(file)
-        # Run extraction first; store the document only if it succeeds.
-        # This prevents a stored revision with no corresponding preview when
-        # the LLM pipeline fails.
+        await store_document_in_source(
+            db,
+            source_id=source_id,
+            text=extraction_result.text,
+            document_format=extraction_result.format,
+            file_name=extraction_result.filename,
+            user_id=current_user.id if current_user else None,
+            commit=False,
+        )
         preview = await build_extraction_preview(
             db,
             source_id=source_id,
             text=extraction_result.text,
+            commit=False,
         )
-        try:
-            await store_document_in_source(
-                db,
-                source_id=source_id,
-                text=extraction_result.text,
-                document_format=extraction_result.format,
-                file_name=extraction_result.filename,
-                user_id=current_user.id if current_user else None,
-            )
-        except Exception:
-            # build_extraction_preview already committed staged records; remove
-            # them so they don't reference a document that was never stored.
-            await _cleanup_orphaned_staged_extractions(db, source_id)
-            raise
+        await db.commit()
         logger.info(
             f"Extracted {preview.entity_count} entities and {preview.relation_count} relations"
         )
         return preview
     except (AppException, SourceNotFoundException, ValidationException):
+        await db.rollback()
         raise
     except Exception:
+        await db.rollback()
         logger.exception("Upload and extract failed for source %s", source_id)
         raise_internal_api_exception(
             message="Failed to upload and extract",
@@ -202,35 +182,31 @@ async def extract_from_url(
             pubmed_fetcher_factory=PubMedFetcher,
             url_fetcher_factory=UrlFetcher,
         )
-        # Run extraction first; store the document only if it succeeds.
-        # This prevents a stored revision with no corresponding preview when
-        # the LLM pipeline fails.
+        await store_document_in_source(
+            db,
+            source_id=source_id,
+            text=fetched_document.text,
+            document_format=fetched_document.document_format,
+            file_name=fetched_document.file_name,
+            user_id=current_user.id if current_user else None,
+            commit=False,
+        )
         preview = await build_extraction_preview(
             db,
             source_id=source_id,
             text=fetched_document.text,
+            commit=False,
         )
-        try:
-            await store_document_in_source(
-                db,
-                source_id=source_id,
-                text=fetched_document.text,
-                document_format=fetched_document.document_format,
-                file_name=fetched_document.file_name,
-                user_id=current_user.id if current_user else None,
-            )
-        except Exception:
-            # build_extraction_preview already committed staged records; remove
-            # them so they don't reference a document that was never stored.
-            await _cleanup_orphaned_staged_extractions(db, source_id)
-            raise
+        await db.commit()
         logger.info(
             f"Extracted {preview.entity_count} entities and {preview.relation_count} relations"
         )
         return preview
     except (AppException, SourceNotFoundException, ValidationException):
+        await db.rollback()
         raise
     except Exception:
+        await db.rollback()
         logger.exception("URL extraction failed for source %s", source_id)
         raise_internal_api_exception(
             message="Failed to extract from URL",

@@ -205,6 +205,7 @@ async def change_password(
         )
 
     try:
+        user.token_version += 1
         user.hashed_password = await hash_password_fn(new_password)
         await service.repo.update(user)
 

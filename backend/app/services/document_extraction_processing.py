@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.llm.schemas import ExtractedClaim, ExtractedEntity, ExtractedRelation
+from app.models.entity import Entity
 from app.models.source import Source
 from app.models.source_revision import SourceRevision
 from app.models.staged_extraction import ExtractionStatus, ExtractionType, StagedExtraction
@@ -69,6 +70,7 @@ class SourceServiceProtocol(Protocol):
         document_format: str,
         document_file_name: str,
         user_id: UUID | None,
+        commit: bool = True,
     ) -> None: ...
 
     async def create(self, payload: SourceWrite, user_id: UUID | None = None) -> Source: ...
@@ -274,6 +276,7 @@ async def store_document_in_source(
     document_format: str,
     file_name: str,
     user_id: UUID | None,
+    commit: bool = True,
     source_service_factory: SourceServiceFactory = SourceService,
 ) -> None:
     """
@@ -289,6 +292,7 @@ async def store_document_in_source(
         document_format=document_format,
         document_file_name=file_name,
         user_id=user_id,
+        commit=commit,
     )
 
 
@@ -408,6 +412,7 @@ async def build_extraction_preview(
     *,
     source_id: UUID,
     text: str,
+    commit: bool = True,
     orchestrator_factory: BatchExtractionOrchestratorFactory = BatchExtractionOrchestrator,
     review_service_factory: ExtractionReviewServiceFactory = ExtractionReviewService,
     linking_service_factory: EntityLinkingServiceFactory = EntityLinkingService,
@@ -434,9 +439,11 @@ async def build_extraction_preview(
         entities=extracted_batch.entities,
         linking_service_factory=linking_service_factory,
     )
-    # Single commit after all pipeline steps succeed.  If any step above raises,
-    # the staged items are never committed and no orphaned records accumulate.
-    await db.commit()
+    if commit:
+        # Single commit after all pipeline steps succeed. If any step above
+        # raises, the staged items are never committed and no orphaned records
+        # accumulate.
+        await db.commit()
 
     return DocumentExtractionPreview(
         source_id=source_id,
@@ -456,6 +463,7 @@ async def build_extraction_preview_with_service(
     *,
     source_id: UUID,
     text: str,
+    commit: bool = True,
     extraction_service_factory: ExtractionServiceFactory = ExtractionService,
     review_service_factory: ExtractionReviewServiceFactory = ExtractionReviewService,
     linking_service_factory: EntityLinkingServiceFactory = EntityLinkingService,
@@ -496,6 +504,9 @@ async def build_extraction_preview_with_service(
         entities=entities,
         linking_service_factory=linking_service_factory,
     )
+
+    if commit:
+        await db.commit()
 
     return DocumentExtractionPreview(
         source_id=source_id,
@@ -670,6 +681,10 @@ async def reconcile_staged_extractions(
                 staged.status = ExtractionStatus.REJECTED
                 staged.reviewed_by = user_id
                 staged.reviewed_at = now
+                if staged.materialized_entity_id:
+                    entity = await db.get(Entity, staged.materialized_entity_id)
+                    if entity:
+                        entity.is_rejected = True
 
         elif staged.extraction_type == ExtractionType.RELATION:
             try:
