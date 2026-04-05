@@ -1,6 +1,6 @@
 # Current Work
 
-**Last updated**: 2026-04-05
+**Last updated**: 2026-04-05 (updated by audit pass)
 
 ## Open Findings
 
@@ -15,6 +15,7 @@ _Items verified correct are marked `[x]`. Items with confirmed defects remain `[
 - [x] Access token in-memory — no localStorage, cross-tab restoration via refresh cookie on mount. (`authStorage.ts`, `AuthContext.tsx`)
 - [x] Superuser guards — `get_current_active_superuser` on all extraction review, revision review, review queue, and admin endpoints. Frontend `SuperuserRoute` in place.
 - [x] Confirmed-only read isolation — entity/source/relation list+get, entity linking all filter `status == "confirmed"`. `test_draft_isolation.py` present.
+- [ ] **[NEW-PSW-M1]** `backend/app/services/user/account.py:207-218` — `change_password()` revokes refresh tokens but does **not** increment `token_version`. A compromised access token remains valid until its natural expiry even after a password change. Fix: add `user.token_version += 1` before the repo update call in `change_password()`.
 
 ---
 
@@ -24,23 +25,24 @@ _Items verified correct are marked `[x]`. Items with confirmed defects remain `[
 - [x] Confirmed-only sub-searchers — entity, source, relation all filter `status == "confirmed"`.
 - [x] Cross-type pagination — single slice after merge, not per-type. (`common.py`)
 - [x] Relation search N+1 — role revisions batch-loaded in one query after collecting revision IDs. (`relation_search.py:56-63`)
-- [ ] **[NEW-SEARCH-M1]** `backend/alembic/versions/` — `pg_trgm` GIN indexes were claimed (DF-SCH-m1) but are absent from all migrations. Search uses `.contains()` which requires sequential scans. Add a migration creating GIN trigram indexes on all searched text columns (slug, title, summary, authors, origin, term).
+- [x] `pg_trgm` GIN indexes — migration `019_add_trgm_indexes.py` creates PostgreSQL trigram indexes for searched text columns. (`backend/alembic/versions/019_add_trgm_indexes.py`)
 
 ---
 
 ### Inference & Computed Relations
 
-- [ ] **[NEW-INF-C1]** `backend/app/services/explanation_read_models.py:23-26` — `build_contradiction_detail()` accumulates `supporting_sources` and `contradicting_sources` correctly in lines 14–21, then discards them by hardcoding empty lists at lines 23–26. The returned `ContradictionDetail` always has `supporting_sources=[]` and `contradicting_sources=[]`. Fix: pass the accumulated lists into the constructor.
-- [ ] **[NEW-INF-M1]** `backend/app/models/relation_role_revision.py` — per-role `confidence` column is absent. The claim (DF-INF-M1) stated both `disagreement` and `confidence` would be stored per-role; only `disagreement` is present. Confidence is computed at `RoleInference` level but never persisted to the revision row. Clarify whether the column is intentionally deferred or needs to be added.
+- [x] Contradiction detail sources — `build_contradiction_detail()` now returns the accumulated supporting and contradicting sources. (`backend/app/services/explanation_read_models.py`)
+- [x] Per-role confidence stored in `RelationRoleRevision.confidence`; migration `018_add_role_confidence.py` present. (`backend/app/models/relation_role_revision.py`, `backend/alembic/versions/018_add_role_confidence.py`)
 - [x] Per-role disagreement stored in `RelationRoleRevision.disagreement`; populated during inference computation, not just as a global average. (`read_models.py:299`)
 - [x] Inference cache invalidated on source `trust_level` change — entities linked via confirmed relations are found and their cache entries deleted. (`source_service.py:306-327`)
 - [x] Canonical relation predicate used consistently across derived-properties, source-role classification, entity-query-builder, and export. (`query_predicates.py`)
+- [ ] **[NEW-QP-M1]** `backend/app/services/entity_query_builder.py:259` — the consensus-level filter subquery joins `RelationRevision` with only `.where(RelationRevision.is_current == True)`, omitting `status == "confirmed"` and `Relation.is_rejected == False`. Draft and rejected relations are counted in the consensus disagreement ratio, corrupting filter results. Fix: replace the bare `is_current` filter with `canonical_relation_predicate()`.
 
 ---
 
 ### Extraction Pipeline
 
-- [ ] **[NEW-EXT-M1]** `backend/app/api/document_extraction_routes/document.py:114-211` — the document storage/extraction order is reversed from the claim. Both `upload_and_extract()` and `extract_from_url()` run extraction first (commits staged records), then attempt to store the document. If document storage fails, the committed extraction preview is orphaned with no cleanup path. The fix requires either: (a) storing the document first and only running extraction on success, or (b) rolling back the extraction commit when document storage fails.
+- [ ] **[NEW-EXT-M1]** `backend/app/api/document_extraction_routes/document.py:142-165`, `backend/app/api/document_extraction_routes/document.py:205-226` — extraction still runs before document storage, but the previously reported orphaning gap is now mitigated by `_cleanup_orphaned_staged_extractions()` on storage failure. Remaining question: should the workflow keep this cleanup-based design or be reordered into a single transaction boundary to better match the intended architecture?
 - [x] Staging batch transaction — `create_staged_extraction` uses explicit commit/rollback; auto-materialization path rolls back on failure. (`staging.py:53-77`)
 - [x] Missing entity reference in materialization — raises `ValueError` with structured message, does not log and continue. (`materialization.py:92-96, 162-166`)
 - [ ] **[NEW-EXT-m1]** `backend/app/services/batch_extraction_orchestrator.py:366-433` — text span validation is absent. Entity slug coherence (slugs cross-checked against extracted entity list) is implemented, but text spans are not verified against source text. This is a gap in the claimed semantic validation (DF-EXT-M6).
@@ -59,8 +61,8 @@ _Items verified correct are marked `[x]`. Items with confirmed defects remain `[
 ### Revision Review
 
 - [x] `confirm()` sets `is_current=True` on confirmed revision, populates `confirmed_by_user_id` and `confirmed_at`. (`revision_review_service.py:152-154`)
-- [ ] **[NEW-REV-M1]** `backend/app/services/revision_review_service.py:132, 142-149` — `SELECT FOR UPDATE` is applied only to the confirmed revision row. The sibling update (clearing `is_current=False` on all other revisions) runs outside the lock. A concurrent second confirm of a different revision for the same entity can race and leave two `is_current=True` rows. Fix: apply `with_for_update()` to the sibling query as well, or use a single `UPDATE ... WHERE entity_id = ? AND id != ? AND is_current = True` atomic statement.
-- [ ] **[NEW-REV-m1]** `backend/tests/test_revision_review_service.py` — no test asserts that all sibling revisions have `is_current=False` after `confirm()`. This is a critical invariant with no coverage.
+- [x] **[NEW-REV-M1]** `backend/app/services/revision_review_service.py:132, 142-149` — sibling `is_current=False` update confirmed to have `.with_for_update()` at line 151. Race condition is not present; both the confirmed revision and the sibling clearing query hold the lock.
+- [x] **[NEW-REV-m1]** `backend/tests/test_revision_review_service.py` — `test_confirm_sets_previous_revision_is_current_false` (lines 245-287) asserts all sibling revisions have `is_current=False`. Invariant is covered.
 - [x] Partial unique index for `is_current=True` per revision parent present on entity/relation/source revision models.
 - [x] `SELECT FOR UPDATE` on confirmed revision prevents double-confirm of the same row. (`revision_review_service.py:132`)
 - [x] Optimistic item removal in `LlmDraftsPanel` — item removed on API success, background refresh failure surfaced separately. (`LlmDraftsPanel.tsx:87-113`)
@@ -70,8 +72,8 @@ _Items verified correct are marked `[x]`. Items with confirmed defects remain `[
 ### Entity Merge
 
 - [x] Circular merge guard — rejects if either entity appears as `source_entity_id` in existing merge records. (`entity_merge_service.py:121-129`)
-- [ ] **[NEW-MRG-M1]** `backend/app/services/entity_query_builder.py`, `backend/app/services/search/entity_search.py`, `backend/app/services/export_service.py` — `is_merged` is filtered in `canonical_entity_predicate()` (used for relation role lookups and inference) but is **not** filtered in entity list queries, entity search, or entity export. Merged entities remain fully visible in the public entity list, search results, and exports. Fix: add `is_merged == False` to `entity_query_builder.py` base query, `entity_search.py` search query, and the entity export query.
-- [ ] **[NEW-MRG-m1]** `backend/tests/test_entity_merge_service.py` — no test verifies that the circular merge guard rejects the attempt. The guard is implemented but untested.
+- [x] Merged entities filtered from entity list, search, and export queries. (`backend/app/services/entity_query_builder.py`, `backend/app/services/search/entity_search.py`, `backend/app/services/export_service.py`)
+- [x] **[NEW-MRG-m1]** `backend/tests/test_entity_merge_service.py` — `test_circular_merge_is_rejected` (lines 123-136) exists and asserts `ValueError` with "Circular" message. Guard is tested.
 - [x] Inference cache invalidated for both source and target entity on merge. (`entity_merge_service.py:155-159`, covered by `test_merge_entities_invalidates_inference_cache`)
 
 ---
@@ -90,8 +92,8 @@ _Items verified correct are marked `[x]`. Items with confirmed defects remain `[
 
 - [x] PMID deduplication — `_find_existing_pmids()` called before import loop; already-imported PMIDs skipped. (`document_extraction_discovery.py:188, 370-386`)
 - [x] Rate limiting — `@limiter.limit("5/minute")` on all three discovery endpoints. (`discovery.py:47, 90, 129`)
-- [ ] **[NEW-DSC-M1]** `backend/app/services/document_extraction_discovery.py:109-117` — `discovery_query` is not stored in import provenance. `imported_at` and `import_method` are present, but the search query that led to the discovery is not recorded. Fix: pass the query string into the metadata dict as `"discovery_query"` when called from `run_smart_discovery()`.
-- [ ] **[NEW-DSC-M2]** `backend/app/services/document_extraction_discovery.py:116`, `backend/app/models/source_revision.py` — `calculated_trust_level` is stored as a JSON value inside `source_metadata`, not as a dedicated typed column. This loses type safety, prevents indexed queries on trust level, and is inconsistent with how trust level is handled elsewhere. Fix: add a `calculated_trust_level: Mapped[float | None]` column to `SourceRevision`, write it directly, and remove it from the metadata blob.
+- [x] Import provenance stores `discovery_query` for smart discovery imports. (`backend/app/services/document_extraction_discovery.py`)
+- [x] `calculated_trust_level` stored in typed `SourceRevision.calculated_trust_level`; migration `017_add_calculated_trust_level.py` present. (`backend/app/models/source_revision.py`, `backend/alembic/versions/017_add_calculated_trust_level.py`)
 
 ---
 
@@ -169,18 +171,11 @@ _Items verified correct are marked `[x]`. Items with confirmed defects remain `[
 
 | ID | Severity | File | Description |
 |----|----------|------|-------------|
-| NEW-INF-C1 | **Critical** | `explanation_read_models.py:23-26` | `build_contradiction_detail()` hardcodes `supporting_sources=[]`, discarding accumulated evidence. Contradictions shown with no source attribution. |
 | NEW-RVW-C1 | **Critical** | `document_extraction_processing.py:~670` | `is_rejected` flag never set on `Entity`/`Relation` rows when an extraction is rejected. Column and migration exist; assignment is missing. |
-| NEW-EXT-M1 | **Major** | `document.py:114-211` | Extraction commits before document is stored. If document storage fails, extraction preview is orphaned with no cleanup. |
-| NEW-REV-M1 | **Major** | `revision_review_service.py:142-149` | Sibling `is_current=False` update runs outside the `SELECT FOR UPDATE` lock. Race condition can leave two `is_current=True` revisions for the same entity. |
-| NEW-MRG-M1 | **Major** | `entity_query_builder.py`, `entity_search.py`, `export_service.py` | `is_merged` not filtered in entity list, search, or export. Merged entities remain fully visible. |
-| NEW-DSC-M2 | **Major** | `document_extraction_discovery.py:116`, `source_revision.py` | `calculated_trust_level` stored as JSON blob value, not a typed column. Prevents indexed queries and type safety. |
-| NEW-SEARCH-M1 | **Major** | `backend/alembic/versions/` | `pg_trgm` GIN indexes not present in any migration. All text searches are sequential scans. |
-| NEW-INF-M1 | **Major** | `relation_role_revision.py` | Per-role `confidence` column absent. Only `disagreement` is stored per-role; confidence is computed but not persisted. |
-| NEW-DSC-M1 | **Major** | `document_extraction_discovery.py:109-117` | `discovery_query` not stored in import provenance metadata. |
+| NEW-PSW-M1 | **Major** | `account.py:207-218` | `change_password()` revokes refresh tokens but does not increment `token_version`. Compromised access tokens remain valid until expiry after a password change. |
+| NEW-EXT-M1 | **Major** | `document.py:142-165`, `document.py:205-226` | Extraction still runs before document storage, but storage failure now triggers staged-extraction cleanup. Remaining issue is architectural: confirm whether cleanup-based recovery is acceptable or whether the flow should be reordered into a single transaction boundary. |
+| NEW-QP-M1 | **Major** | `entity_query_builder.py:259` | Consensus filter subquery uses bare `is_current == True` instead of `canonical_relation_predicate()`. Draft/rejected relations corrupt consensus calculations. |
 | NEW-EXT-m1 | **Minor** | `batch_extraction_orchestrator.py:366-433` | Text span validation missing. Only entity slug coherence is checked; spans not verified against source text. |
-| NEW-REV-m1 | **Minor** | `test_revision_review_service.py` | No test asserts siblings have `is_current=False` after `confirm()`. |
-| NEW-MRG-m1 | **Minor** | `test_entity_merge_service.py` | No test verifies circular merge guard rejects the attempt. |
 
 ---
 
