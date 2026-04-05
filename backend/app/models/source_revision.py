@@ -56,6 +56,7 @@ class SourceRevision(Base, UUIDMixin):
     origin: Mapped[str | None] = mapped_column(String)  # journal, organization, publisher
     url: Mapped[str] = mapped_column(String, nullable=False)
     trust_level: Mapped[float | None] = mapped_column(Float)
+    calculated_trust_level: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     # i18n and metadata
     summary: Mapped[dict[str, str] | None] = mapped_column(JSON)  # i18n: {"en": "...", "fr": "..."}

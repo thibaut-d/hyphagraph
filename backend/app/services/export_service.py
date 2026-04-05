@@ -143,6 +143,7 @@ class ExportService:
             origin=revision.origin,
             url=revision.url,
             trust_level=revision.trust_level,
+            calculated_trust_level=revision.calculated_trust_level,
             status=revision.status,
             summary_en=(revision.summary or {}).get("en"),
             summary_fr=(revision.summary or {}).get("fr"),
@@ -178,6 +179,7 @@ class ExportService:
             .join(EntityRevision, Entity.id == EntityRevision.entity_id)
             .where(EntityRevision.is_current == True)
             .where(Entity.is_rejected == False)
+            .where(Entity.is_merged == False)  # NEW-MRG-M1
         )
 
         result = await self.db.execute(stmt)

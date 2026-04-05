@@ -220,12 +220,19 @@ async def convert_cached_to_inference_read(
                     if role_rev.disagreement is not None
                     else cached_computed.uncertainty
                 )
+                # Use persisted confidence if stored; fall back to recomputing
+                # from coverage for records written before migration 018.
+                confidence = (
+                    role_rev.confidence
+                    if role_rev.confidence is not None
+                    else compute_confidence(coverage)
+                )
                 role_inferences.append(
                     RoleInference(
                         role_type=role_rev.role_type,
                         score=role_rev.weight,
                         coverage=coverage,
-                        confidence=compute_confidence(coverage),
+                        confidence=confidence,
                         disagreement=disagreement,
                     )
                 )
@@ -297,6 +304,7 @@ async def cache_computed_inference(
                 weight=role_inference.score,
                 coverage=role_inference.coverage,
                 disagreement=role_inference.disagreement,
+                confidence=role_inference.confidence,
             )
         )
 

@@ -21,8 +21,8 @@ def build_contradiction_detail(
             contradicting_sources.append(evidence)
 
     return ContradictionDetail(
-        supporting_sources=[],
-        contradicting_sources=[],
+        supporting_sources=supporting_sources,
+        contradicting_sources=contradicting_sources,
         disagreement_score=disagreement,
     )
 

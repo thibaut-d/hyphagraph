@@ -20,6 +20,7 @@ class SourceWrite(Schema):
     origin: Optional[str] = None
     url: str
     trust_level: Optional[float] = None
+    calculated_trust_level: Optional[float] = None
     summary: Optional[I18nText] = None  # i18n: {"en": "...", "fr": "..."}
     source_metadata: Optional[JsonObject] = None  # doi, pubmed_id, etc.
     created_with_llm: Optional[str] = None

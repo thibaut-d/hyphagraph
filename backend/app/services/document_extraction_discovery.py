@@ -93,10 +93,21 @@ async def create_source_from_pubmed_article(
     article: PubMedArticle,
     user_id: UUID | None,
     trust_level: float,
+    discovery_query: str | None = None,
     source_service_factory: Callable[[AsyncSession], SourceService] = SourceService,
 ) -> UUID:
     from datetime import datetime, timezone
     source_service = source_service_factory(db)
+    metadata: dict = {
+        "pmid": article.pmid,
+        "doi": article.doi,
+        "source": "pubmed",
+        "imported_via": "bulk_import",
+        "import_method": "pubmed_api",
+        "imported_at": datetime.now(timezone.utc).isoformat(),
+    }
+    if discovery_query:
+        metadata["discovery_query"] = discovery_query
     source_data = SourceWrite(
         kind="study",
         title=article.title,
@@ -104,17 +115,10 @@ async def create_source_from_pubmed_article(
         year=article.year,
         origin=article.journal,
         url=article.url,
-        trust_level=None,  # not canonical; stored as calculated_trust_level in metadata
+        trust_level=None,  # not canonical; stored in calculated_trust_level column
+        calculated_trust_level=trust_level,
         summary={"en": article.abstract} if article.abstract else None,
-        source_metadata={
-            "pmid": article.pmid,
-            "doi": article.doi,
-            "source": "pubmed",
-            "imported_via": "bulk_import",
-            "import_method": "pubmed_api",
-            "imported_at": datetime.now(timezone.utc).isoformat(),
-            "calculated_trust_level": trust_level,
-        },
+        source_metadata=metadata,
         created_with_llm=None,
     )
     source = await source_service.create(source_data, user_id=user_id)
@@ -178,6 +182,7 @@ async def bulk_import_pubmed_articles(
     build_test_articles_for_pmids: Callable[[list[str]], list[PubMedArticle]] | None = None,
     trust_level_resolver: TrustLevelResolver,
     source_service_factory: Callable[[AsyncSession], SourceService] = SourceService,
+    discovery_query: str | None = None,
 ) -> PubMedImportSummary:
     if testing_mode and build_test_articles_for_pmids is not None:
         articles = build_test_articles_for_pmids(pmids)
@@ -208,6 +213,7 @@ async def bulk_import_pubmed_articles(
                     article=article,
                     user_id=user_id,
                     trust_level=trust_level,
+                    discovery_query=discovery_query,
                     source_service_factory=source_service_factory,
                 )
             )

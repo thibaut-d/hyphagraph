@@ -13,6 +13,7 @@ class SourceRevisionPayload(TypedDict, total=False):
     origin: str | None
     url: str
     trust_level: float | None
+    calculated_trust_level: float | None
     summary: dict[str, str] | None
     source_metadata: dict[str, object] | None
     created_with_llm: str | None
@@ -33,6 +34,7 @@ def source_revision_from_write(payload: SourceWrite) -> SourceRevisionPayload:
         "origin": payload.origin,
         "url": payload.url,
         "trust_level": payload.trust_level,
+        "calculated_trust_level": payload.calculated_trust_level,
         "summary": payload.summary,
         "source_metadata": payload.source_metadata,
         "created_with_llm": payload.created_with_llm,

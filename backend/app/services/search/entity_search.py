@@ -23,6 +23,7 @@ async def search_entities(
         .where(EntityRevision.is_current == True)
         .where(EntityRevision.status == "confirmed")
         .where(Entity.is_rejected == False)
+        .where(Entity.is_merged == False)  # NEW-MRG-M1
     )
 
     if filters.ui_category_id:

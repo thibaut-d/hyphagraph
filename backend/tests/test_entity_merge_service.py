@@ -120,6 +120,21 @@ class TestEntityMergeService:
         assert actions[0].source_slug == "fibromyalgia-a"
         assert actions[0].target_slug == "fibromyalgia"
 
+    async def test_circular_merge_is_rejected(self, db_session):
+        """merge_entities raises ValueError when a reverse merge already exists (A→B then B→A)."""
+        entity_service = EntityService(db_session)
+        merge_service = EntityMergeService(db_session)
+
+        entity_a = await entity_service.create(EntityWrite(slug="entity-circ-a"))
+        entity_b = await entity_service.create(EntityWrite(slug="entity-circ-b"))
+
+        # First merge: A → B (succeeds)
+        await merge_service.merge_entities(entity_a.id, entity_b.id)
+
+        # Second merge: B → A (must raise — circular)
+        with pytest.raises(ValueError, match="[Cc]ircular"):
+            await merge_service.merge_entities(entity_b.id, entity_a.id)
+
     async def test_merge_entities_deduplicates_current_relation_participants(self, db_session):
         entity_service = EntityService(db_session)
         source_service = SourceService(db_session)

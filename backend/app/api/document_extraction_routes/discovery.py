@@ -151,6 +151,7 @@ async def bulk_import_pubmed(
             testing_mode=settings.TESTING,
             build_test_articles_for_pmids=get_test_pubmed_articles_by_pmids,
             trust_level_resolver=infer_trust_level_from_pubmed_metadata,
+            discovery_query=payload.discovery_query,
         )
         return PubMedBulkImportResponse.from_summary(summary)
     except (AppException, ValidationException):

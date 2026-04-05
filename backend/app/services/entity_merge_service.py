@@ -250,8 +250,15 @@ class EntityMergeService:
             )
             self.db.add(merge_record)
 
-            # Mark source entity as merged (by setting is_current = False on revision).
-            # The explicit merge record preserves the provenance of this state change.
+            # Mark source entity as merged.
+            # Set is_merged=True on the Entity row so list/search/export queries
+            # can filter it out efficiently. Also deactivate all revisions so
+            # canonical-predicate joins find no current revision. (NEW-MRG-M1)
+            await self.db.execute(
+                update(Entity)
+                .where(Entity.id == source_entity_id)
+                .values(is_merged=True)
+            )
             await self.db.execute(
                 update(EntityRevision)
                 .where(EntityRevision.entity_id == source_entity_id)

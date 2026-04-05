@@ -242,6 +242,50 @@ class TestConfirm:
         with pytest.raises(ValueError, match="Unknown revision_kind"):
             await svc.confirm("bogus", uuid4(), reviewed_by_user_id=uuid4())
 
+    async def test_confirm_sets_previous_revision_is_current_false(self, db_session: AsyncSession):
+        """Confirming a draft revision must set all sibling revisions to is_current=False."""
+        entity = Entity(id=uuid4())
+        db_session.add(entity)
+        await db_session.flush()
+
+        # First revision: previously confirmed and currently active
+        old_rev = EntityRevision(
+            entity_id=entity.id,
+            slug=f"entity-v1-{uuid4().hex[:6]}",
+            is_current=True,
+            status="confirmed",
+        )
+        db_session.add(old_rev)
+        await db_session.flush()
+
+        # New draft revision for the same entity (a new version pending review)
+        new_rev = EntityRevision(
+            entity_id=entity.id,
+            slug=f"entity-v2-{uuid4().hex[:6]}",
+            created_with_llm="gpt-4",
+            is_current=False,
+            status="draft",
+        )
+        db_session.add(new_rev)
+        await db_session.flush()
+
+        svc = RevisionReviewService(db_session)
+        reviewer = await _make_reviewer(db_session)
+        ok = await svc.confirm("entity", new_rev.id, reviewed_by_user_id=reviewer.id)
+        assert ok is True
+
+        result = await db_session.execute(
+            select(EntityRevision).where(EntityRevision.entity_id == entity.id)
+        )
+        all_revisions = result.scalars().all()
+
+        current_revisions = [r for r in all_revisions if r.is_current]
+        assert len(current_revisions) == 1, "exactly one revision must be current after confirm"
+        assert current_revisions[0].id == new_rev.id
+
+        old_after = next(r for r in all_revisions if r.id == old_rev.id)
+        assert old_after.is_current is False
+
 
 # ---------------------------------------------------------------------------
 # discard

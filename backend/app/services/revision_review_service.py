@@ -138,12 +138,17 @@ class RevisionReviewService:
         parent_id_field, _ = self._parent_for(revision_kind)
         parent_id = getattr(revision, parent_id_field)
 
-        # Clear is_current on all other revisions for this parent (DF-DRV-C1)
+        # Clear is_current on all other revisions for this parent (DF-DRV-C1).
+        # with_for_update() extends the transaction lock to sibling rows so a
+        # concurrent confirm of another revision for the same parent cannot race
+        # and leave two is_current=True rows. (NEW-REV-M1)
         siblings_result = await self.db.execute(
-            select(model).where(
+            select(model)
+            .where(
                 getattr(model, parent_id_field) == parent_id,
                 model.id != revision_id,
             )
+            .with_for_update()
         )
         for sibling in siblings_result.scalars().all():
             sibling.is_current = False

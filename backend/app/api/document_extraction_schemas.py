@@ -65,6 +65,7 @@ class PubMedBulkSearchResponse(DiscoveryResponseModel):
 
 class PubMedBulkImportRequest(BaseModel):
     pmids: list[str]
+    discovery_query: str | None = None
 
     @field_validator("pmids")
     @classmethod

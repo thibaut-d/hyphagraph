@@ -59,6 +59,7 @@ class SourceExportItem(BaseModel):
     origin: Optional[str] = None
     url: Optional[str] = None
     trust_level: Optional[float] = None
+    calculated_trust_level: Optional[float] = None
     status: Optional[str] = None
     summary_en: Optional[str] = None
     summary_fr: Optional[str] = None
