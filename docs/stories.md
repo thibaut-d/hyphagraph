@@ -21,11 +21,11 @@
 As a **User**, I want to log in with my email and password so that I can access the knowledge graph.
 
 **Acceptance criteria:**
-- A login form is accessible at `/login`
+- A login form is accessible at `/account`
 - Submitting valid credentials redirects the user to the home page
 - Submitting invalid credentials shows an error message without revealing which field is wrong
 - After login, the user's name or email is visible in the navigation
-- The session persists across page refreshes (JWT stored client-side)
+- The session persists across page refreshes via refresh-cookie restoration while the access token remains in memory
 
 ---
 
@@ -35,8 +35,8 @@ As a **User**, I want to log out so that my session is terminated and the next p
 
 **Acceptance criteria:**
 - A logout action is accessible from the navigation
-- After logout, the user is redirected to the login page
-- Accessing a protected route after logout redirects to login
+- After logout, the user is redirected to the account page
+- Accessing a protected route after logout redirects to `/account`
 
 ---
 
@@ -45,11 +45,12 @@ As a **User**, I want to log out so that my session is terminated and the next p
 As a **Guest**, I want to create an account so that I can contribute to and explore the knowledge graph.
 
 **Acceptance criteria:**
-- A registration form is accessible from the login page
+- A registration form is accessible from the account page
 - The form requires email and password (and password confirmation)
 - A weak or mismatched password shows an inline error
 - A duplicate email shows an appropriate error
-- On success, the user is logged in and redirected to the home page
+- On success, the user sees a confirmation state instead of being auto-logged-in
+- If email verification is enabled, the account must be verified before normal authenticated use
 
 ---
 
@@ -58,12 +59,24 @@ As a **Guest**, I want to create an account so that I can contribute to and expl
 As a **User**, I want to reset my password via email so that I can regain access if I forget it.
 
 **Acceptance criteria:**
-- A "Forgot password" link is accessible from the login page
+- A "Forgot password" link is accessible from the account page
 - Submitting the form with a known email sends a reset link
 - Submitting with an unknown email does not reveal whether the account exists
 - Clicking a valid reset link shows a form to set a new password
 - An expired or already-used token shows an error
 - After a successful reset the user can log in with the new password
+
+---
+
+### US-AUTH-05 — Email Verification
+
+As a **Guest**, I want to verify my email address after registration so that account activation remains explicit and auditable.
+
+**Acceptance criteria:**
+- A verification flow exists for newly registered accounts
+- A resend-verification action is available when needed
+- An invalid or expired verification token shows an error
+- A successful verification marks the account as verified without silently skipping the step
 
 ---
 
@@ -150,13 +163,13 @@ As a **User**, I want to search for entities by name or term so that I can find 
 As a **User**, I want to open an entity's detail page so that I can understand what is known about it.
 
 **Acceptance criteria:**
-- `/entities/:entityId` displays the entity's name and category
-- A summary (human-authored or LLM-generated) is shown, clearly labeled as such
-- External reference links (e.g. Wikipedia) are displayed if available
-- Derived properties with their consensus status are listed
-- Each property links to its supporting evidence
-- Key contributing sources are ranked and listed
-- The page clearly distinguishes narrative summaries from computed conclusions
+- `/entities/:entityId` displays the entity identity and its current revision state
+- The page exposes direct actions to open the synthesis and disagreements views
+- Any stored entity summary is presented as supporting context rather than as authoritative output
+- Computed role-level readings are shown in a dedicated "Related assertions" section
+- Evidence filters and scope filters are available from the detail page
+- Applying evidence filters can hide displayed relations, but a visible warning indicates that computed scores are unchanged
+- The page favors computed, auditable conclusions over narrative synthesis
 
 ---
 
@@ -257,11 +270,11 @@ As a **User**, I want to filter the source list so that I can narrow down to sou
 As a **User**, I want to open a source's detail page so that I can critically evaluate it.
 
 **Acceptance criteria:**
-- `/sources/:sourceId` displays full metadata: title, authors, year, study type, authority score
-- An abstract or summary is shown if available
-- External links (DOI, URL) are displayed and functional
-- Related hyperedges (relations derived from this source) are listed
-- Linked entities are listed
+- `/sources/:sourceId` displays bibliographic metadata including title, authors, year, kind, and evidence-weight assessment when available
+- Provenance links such as the source URL, PMID, or DOI are displayed when present
+- A document summary and recorded statement excerpts are shown before the extraction controls when available
+- Related relations are listed and remain navigable from the source page
+- The page provides jump links to evidence and extraction sections
 
 ---
 
@@ -307,11 +320,11 @@ As a **User**, I want to delete a source so that I can remove erroneous or dupli
 As a **User**, I want to import a source by pasting a URL so that metadata can be extracted automatically.
 
 **Acceptance criteria:**
-- A "Import from URL" dialog is accessible from the sources list
+- A URL extraction dialog is accessible from an existing source detail page
 - The dialog distinguishes PubMed URLs from general web URLs
-- For PubMed URLs, metadata is fetched via the PubMed API
-- For general URLs, available metadata is extracted from the page
-- The user can review and edit the pre-filled metadata before saving
+- For PubMed URLs, extraction uses PubMed-specific fetching and source metadata enrichment
+- For general URLs, content fetch is attempted with limited support
+- The workflow enriches and extracts against the current source record rather than creating a new source implicitly
 - Submitting an invalid or unreachable URL shows an appropriate error
 
 ---
@@ -332,15 +345,15 @@ As a **User**, I want to search PubMed and import results so that I can add lite
 
 ### US-SRC-09 — Upload Document for Extraction
 
-As a **User**, I want to upload a document (PDF) so that claims can be extracted automatically via LLM.
+As a **User**, I want to upload a document so that claims can be extracted automatically via LLM.
 
 **Acceptance criteria:**
-- A document upload action is accessible from the sources area
-- Accepted format: PDF
+- A document upload action is accessible from the source detail extraction area
+- Accepted formats: PDF and TXT
 - Upload progress is indicated
 - On success, the extraction pipeline is triggered and the user is informed
 - Extraction errors are surfaced clearly
-- The source record is created with the document as its origin
+- The uploaded document is attached to the current source revision
 - LLM-generated metadata is labeled as such
 
 ---
@@ -380,7 +393,8 @@ As a **User**, I want to view the detail of a relation so that I can understand 
 - A relation detail view shows: kind, direction, confidence, scope, notes
 - The source that asserts the claim is linked and accessible
 - All participating entities with their roles are listed
-- The LLM-generated flag is shown if applicable
+- Audit metadata is visible, including timestamps and relation/source identifiers
+- LLM provenance is shown if applicable
 
 ---
 
@@ -472,9 +486,11 @@ As a **User**, I want to filter inferences so that I can focus on a specific typ
 As a **User**, I want to see the breakdown of an inference score so that I can evaluate its reliability.
 
 **Acceptance criteria:**
-- An inference detail view shows: score, uncertainty, model version, computed date
-- Contributing relations and their weights are listed
-- The scope hash is shown for reproducibility
+- A property detail view is accessible for each computed role-level reading
+- The detail view shows the computed score, confidence, disagreement, and consensus state
+- A generated summary is clearly labeled as a summary rather than authoritative truth
+- Known limitations and contradictions are surfaced explicitly when present
+- The supporting evidence chain is visible and navigable from the detail view
 
 ---
 
@@ -530,10 +546,10 @@ As a **User**, I want to see where sources disagree so that I can identify areas
 
 ### US-LLM-01 — Review Extraction Queue
 
-As a **User**, I want to review LLM-extracted claims before they become authoritative so that hallucinations do not enter the knowledge graph unchecked.
+As an **Admin**, I want to review LLM-extracted claims before they become authoritative so that hallucinations do not enter the knowledge graph unchecked.
 
 **Acceptance criteria:**
-- A review queue is accessible from the application
+- A superuser-only review queue is accessible from the application
 - The queue lists pending extractions with: claim text, entity links, confidence score, flags
 - Extractions with score ≥ 0.9 and no flags are auto-verified and do not appear in the queue
 - Uncertain extractions appear with status `pending`
@@ -542,19 +558,20 @@ As a **User**, I want to review LLM-extracted claims before they become authorit
 
 ### US-LLM-02 — Approve or Reject Extractions
 
-As a **User**, I want to approve or reject individual extractions so that I can control what enters the graph.
+As an **Admin**, I want to approve or reject individual extractions so that I can control what enters the graph.
 
 **Acceptance criteria:**
 - Each extraction in the queue has approve and reject actions
 - Approving an extraction materializes it as a relation in the graph
-- Rejecting removes it from the queue without creating a relation
+- Rejecting removes it from the active queue and records the rejection in the audit trail
+- If an extraction had already materialized a graph object, rejection soft-hides that object from canonical views rather than deleting audit history
 - The action is recorded in the audit trail with the acting user and timestamp
 
 ---
 
 ### US-LLM-03 — Batch Approve / Reject Extractions
 
-As a **User**, I want to batch-approve or batch-reject extractions so that I can process the queue efficiently.
+As an **Admin**, I want to batch-approve or batch-reject extractions so that I can process the queue efficiently.
 
 **Acceptance criteria:**
 - The review queue supports multi-select
@@ -566,7 +583,7 @@ As a **User**, I want to batch-approve or batch-reject extractions so that I can
 
 ### US-LLM-04 — Filter Extraction Queue
 
-As a **User**, I want to filter the extraction queue so that I can prioritize my review work.
+As an **Admin**, I want to filter the extraction queue so that I can prioritize my review work.
 
 **Acceptance criteria:**
 - Filters for extraction type, confidence score range, and flag status are available
@@ -576,7 +593,7 @@ As a **User**, I want to filter the extraction queue so that I can prioritize my
 
 ### US-LLM-05 — Navigate from Extraction to Entity/Relation
 
-As a **User**, I want to open the entity or relation linked to an extraction so that I can verify context before approving.
+As an **Admin**, I want to open the entity or relation linked to an extraction so that I can verify context before approving.
 
 **Acceptance criteria:**
 - Each extraction in the review queue shows links to its associated entity and relation
@@ -592,7 +609,7 @@ As a **User**, I want to search across entities, sources, and relations from a s
 
 **Acceptance criteria:**
 - The global search bar is accessible from the main navigation on all pages
-- Results are grouped by type (entities, sources, relations)
+- Results are presented in a unified list and can be filtered by type (entities, sources, relations)
 - Selecting a result navigates directly to the corresponding detail page
 - The search responds within an acceptable time for a non-empty query
 
@@ -605,8 +622,11 @@ As a **User**, I want to search across entities, sources, and relations from a s
 As a **User**, I want to view and update my account settings so that I can manage my profile.
 
 **Acceptance criteria:**
-- `/account` displays the current user's email and profile information
-- The user can change their password from this page
+- `/account` serves as the login/registration surface for unauthenticated users
+- Authenticated users can view their current identity from the authenticated account surfaces
+- `/profile` shows the signed-in user's identity and account actions
+- `/settings` allows updating the user's email and accessing destructive account actions
+- A change-password action is available from the profile/account area and leads to a dedicated password-change flow
 - Changes are saved with confirmation feedback
 
 ---
