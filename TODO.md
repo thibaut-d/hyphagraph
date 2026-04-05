@@ -1,820 +1,186 @@
 # Current Work
 
-**Last updated**: 2026-04-05 (remaining actionable TODO items resolved)
-
-## Execution Plan — 2026-04-04
-
-### Objective
-Implement and verify every remaining actionable TODO item, grouping work to preserve architecture boundaries and keep validation targeted.
-
-### Impacted modules
-- `backend/app/models/`
-- `backend/app/api/`
-- `backend/app/services/`
-- `backend/app/schemas/`
-- `backend/alembic/`
-- `backend/tests/`
-- `frontend/src/api/`
-- `frontend/src/auth/`
-- `frontend/src/components/`
-- `frontend/src/views/`
-- `frontend/src/types/`
-- `frontend/src/api/__tests__/`
-- `e2e/tests/`
-
-### Assumptions
-- Future-model items can be implemented when they are already implied by the current app structure instead of requiring a separate product redesign.
-- Test-only credential cleanup is now in scope because the current request supersedes the earlier “left as-is” note.
-- Focused backend/frontend/E2E checks are sufficient unless a change proves cross-cutting enough to justify a wider suite.
-
-### Plan
-1. Patch backend integrity, canonical-graph, ORM/migration, and Alembic registration gaps with pytest coverage.
-2. Refactor backend route/service boundaries for discovery, inference scope typing, export, and document extraction ownership.
-3. Patch frontend auth-boundary, navigation, accessibility, IA, responsive, and wording issues with targeted Vitest coverage.
-4. Update pact/E2E/type-contract tests and align any stale client contracts.
-5. Run focused validation, mark completed items in this file, and leave only verified residual risks.
-
-### Validation
-- Focused `pytest` targets for backend services, API contracts, migrations, and export/extraction flows
-- Focused `vitest` targets for touched views/components/api clients
-- Relevant Playwright spec for the account-settings fixture fix
-
-### Risks
-- Backend/frontend contract drift during inference/export refactors
-- Audit/provenance regressions in relation and extraction flows
-- UX wording changes invalidating snapshot-style tests
-
-### Status
-completed
-
----
+**Last updated**: 2026-04-05
 
 ## Open Findings
 
-Audit-protocol note:
-
-- Near-term prioritized findings below should reflect `current-model defect` or `implementation gap`.
-- `future-model proposal` items should be captured separately as structural redesign candidates, not mixed into the main immediate-fix queue.
-
-### Database Audit — 2026-04-04
-
-Source: `.temp/database_audit_2026-04-04.md`
-
-#### Major
-
-- [x] **DBA0404-M1** `backend/app/models/entity_term.py:25-37` + `backend/alembic/versions/001_initial_schema.py:150-164` — `EntityTerm.language` is nullable, so the existing unique constraint on `(entity_id, term, language)` does not block duplicate `NULL`-language rows in PostgreSQL/SQLite. Add a dedicated partial uniqueness guard for `(entity_id, term)` where `language IS NULL`, keep the non-null uniqueness rule, and cover duplicate `language=None` create/bulk-update paths with tests. Verified resolved: partial unique index `ix_entity_terms_entity_term_null_language_unique` already exists in `entity_term.py:39-46`.
-- [x] **DBA0404-M2** `backend/app/services/relation_service.py:30-45` + `backend/app/services/entity_merge_service.py:215-221` + `backend/app/models/entity.py:27-41` — Relation create/update only verifies that the base `Entity.id` exists, so merged entities with no current revision and rejected entities can still be attached to new relations. Validate role targets against canonical entities only: current revision present, not rejected, and consistently handle merged entities. Verified resolved: `_validate_entity_ids()` in `relation_service.py` calls `canonical_entity_predicate()` which checks `is_current`, `status == confirmed`, `is_merged == False`, `is_rejected == False`.
-- [x] **DBA0404-M3** `backend/app/services/entity_merge_service.py:171-183` + `backend/app/models/relation_role_revision.py:14-31` — Entity merge rewrites current role rows in place without deduplicating `(relation_revision_id, entity_id, role_type)`, so merging an entity into another entity already holding the same role can leave duplicate participants in one relation revision. Add collision handling before the bulk update and enforce uniqueness if duplicate roles are never valid. Verified resolved: `entity_merge_service.py:171-207` already finds and deletes collision rows before the bulk UPDATE.
-- [x] **DBA0404-M4** `backend/app/services/derived_properties_service.py:55-158` + `backend/app/services/source_service.py:247-262` + `backend/app/services/entity_query_builder.py:96-140` — Multiple aggregate/filter queries include any current relation revision, even drafts and rejected relations, instead of only canonical confirmed non-rejected relations. Centralize and reuse a canonical relation predicate so derived metadata, filters, and source-role classification do not drift from visible graph state. Verified resolved: `canonical_relation_predicate()` in `query_predicates.py` is used consistently across all three services.
-
-#### Minor
-
-- [x] **DBA0404-m1** `backend/tests/conftest.py:104-123` + `backend/app/models/entity_revision.py:17-26` + `backend/app/models/source_revision.py:17-79` + `backend/app/models/relation_revision.py:17-67` + `backend/alembic/versions/010_add_revision_confirmation_fields.py:26-94` + `backend/app/schemas/source.py:16-33` + `backend/tests/test_source_service.py:22-45` — Fixed: bounded source trust-level validation is enforced at the schema layer, and `backend/tests/test_alembic_schema_parity.py` now pins the migration-only confirmation/trust/role-guard invariants that the SQLite metadata test database cannot model directly.
-- [x] **DBA0404-m2** `backend/alembic/env.py:11-31` + `backend/app/main.py:69-88` — Alembic autogenerate does not import the full live model set (`RelationType`, `StagedExtraction`, `BugReport` are missing), so future schema drift on those tables can be invisible during migration generation. Align Alembic model registration with runtime model registration.
-
-### Repository Coherence Audit — 2026-04-04
-
-Source: `.temp/repository_coherence_audit_2026-04-04.md`
-
-#### Major
-
-- [x] **RCA0404-M1** `README.md:57-60` + `docs/DEPLOY.md:106-110` + `docs/DEPLOY.md:150-152` + `docs/development/DEV_WORKFLOW.md:16-18` + `backend/app/main.py:118-123` + `Caddyfile:3-5` — The published API docs URL is documented as `/api/docs`, but FastAPI still exposes docs on its default route while Caddy preserves the `/api` prefix. Align the runtime and docs: either remount docs under `/api/docs` or change every published entrypoint and smoke check to the actual docs URL.
-- [x] **RCA0404-M2** `.env.sample:66-67` + `backend/app/config.py:43` + `README.md:57-60` + `backend/app/utils/email.py:121` + `backend/app/utils/email.py:197` — The default local `FRONTEND_URL` points to `http://localhost:3000` even though the documented default Docker access path is `http://localhost` through Caddy, so verification and reset links are generated for the wrong origin. Make the sample/config defaults match the documented Docker entrypoint or explicitly split proxied-Docker vs direct-Vite defaults.
-- [x] **RCA0404-M3** `.env.prod.template:56-64` + `scripts/setup-self-host.sh:96-108` — The self-host setup script rewrites secrets and `FRONTEND_URL` but leaves `EMAIL_FROM` and SMTP example domains on `mydomain.com`, which can produce stale sender domains in the default production email flow. Update the setup flow to rewrite or prompt for mail sender settings and document any required manual follow-up.
-- [x] **RCA0404-M4** `e2e/tests/auth/token-refresh.spec.ts:44-46` + `e2e/utils/db-setup.ts:80-85` + `e2e/fixtures/test-data.ts:9-10` + `docker-compose.e2e.yml:38-39` — E2E admin credentials have drifted across the suite (`changeme123`, `admin123`, and `admin`), so local runs can fail depending on which fallback path a test takes. Centralize the E2E admin credentials in one shared source and remove stale comments and incorrect hardcoded fallbacks.
-- [x] **RCA0404-M5** `docs/product/ROADMAP.md:3-15` + `docs/product/ROADMAP.md:115-120` + `TODO.md:58-74` — `ROADMAP.md` still claims there is no technical debt and duplicates stale open audit items even though `TODO.md` carries newer open findings, which contradicts the rule that `TODO.md` is the single source of truth for actionable work. Collapse roadmap debt tracking into a summary that points to `TODO.md` and remove stale item copies and unmaintained status counts.
-
-#### Minor
-
-- [x] **RCA0404-m1** `docs/DEPLOY.md:145-147` + `docs/development/DEV_WORKFLOW.md:11-13` + `README.md:53` + `backend/docker-entrypoint.sh:4-5` — Startup documentation still mixes manual `alembic upgrade head` instructions with the newer automatic-migration container behavior. Remove manual migration from normal startup docs and keep it only as an explicit debugging/recovery command.
-- [x] **RCA0404-m2** `docs/audit.md:3` — The audit guide hardcodes absolute filesystem links to `/home/thibaut/code/hyphagraph/...`, which no longer matches this repository path and is not portable. Replace those links with repo-relative references.
-
-### Page Information Architecture Audit — 2026-03-31
-
-Source: page-family IA audit across core list/detail/computed/review surfaces
-
-#### Critical
-
-- [x] **PIA31-C2** `frontend/src/app/routes.tsx:82-85` + `frontend/src/views/RelationsView.tsx:1-58` + `frontend/src/views/RelationDetailView.tsx:1-301` + `frontend/src/components/source-detail/SourceRelationsSection.tsx:57-114` + `frontend/src/components/extraction/ExtractionCard.tsx:148-166` + `frontend/src/views/SearchView.tsx:114-131` — Relations are treated as first-class objects in the domain and appear in multiple surfaces, but the app still has no relation detail page. Users can create, edit, export, search toward, and review relations, yet the only dedicated route family is a dead-end list page plus edit forms. Fixed: `/relations/:id` now renders a dedicated relation detail page with semantic summary, participant roles, source context, and audit metadata/links; source-detail rows, extraction review cards, and search results all point to that page; regression coverage added in `src/views/__tests__/RelationDetailView.test.tsx`, `src/components/source-detail/__tests__/SourceRelationsSection.test.tsx`, `src/views/__tests__/SearchView.test.tsx`, and the existing extraction-card link test.
-
-#### High
-
-- [x] **PIA31-H1** `frontend/src/views/SourceDetailView.tsx:212-249` + `frontend/src/components/source-detail/SourceMetadataSection.tsx:29-90` + `frontend/src/components/source-detail/SourceExtractionSection.tsx:53-234` + `frontend/src/components/source-detail/SourceRelationsSection.tsx:35-117` — The source detail page is not architected primarily as a verification page. After the identity block it foregrounds extraction controls, then only later shows the current evidence structure, and it still lacks a dedicated excerpt or document-grounded statement layer. Fixed: source detail now follows a verification-first order with an expanded identity/relevance summary, a dedicated source-backed statements section built from the source summary and recorded relation notes, the linked relations/entities section ahead of curation controls, and extraction guidance explicitly demoted below the evidence-reading flow. Covered by `src/views/__tests__/SourceDetailView.rendering.test.tsx`, `src/views/__tests__/SourceDetailView.errors.test.tsx`, and `src/components/source-detail/__tests__/SourceRelationsSection.test.tsx`.
-- [x] **PIA31-H2** `frontend/src/app/routes.tsx:57-59` + `frontend/src/views/ExplanationView.tsx:140-217` + `frontend/src/views/PropertyDetailView.tsx:176-249` — The product currently has two page types for the same computed role-level object: `Explanation` and `Property detail`. Both are backed by the same explanation payload, but they present different page identities, headers, and navigation logic. Fixed: the canonical computed role-level page is now the entity-hierarchy property detail route at `/entities/:id/properties/:roleType`; the legacy `/explain/:entityId/:roleType` route is a redirect shim only, inference/disagreement entry points now link directly to the canonical property detail page, and user-facing labels no longer present explanation as a separate page family. Covered by `src/views/__tests__/PropertyDetailView.test.tsx`, `src/views/__tests__/ExplanationView.test.tsx`, `src/components/__tests__/InferenceBlock.test.tsx`, and `src/views/__tests__/InferencesView.test.tsx`.
-- [x] **PIA31-H3** `frontend/src/views/InferencesView.tsx:67-167,177-242,269-317` — The inferences page is architected as a stack of asynchronous entity cards rather than as a true analysis index. That structure hides the page’s purpose, weakens scanning, and scales poorly when many entities and many inferred roles exist. Fixed: the page now renders a dense inference index with one row per entity-role reading, top-level summary metrics, search and role/direction filters, explicit columns for role, score direction, score, confidence, disagreement, evidence count, and direct links to the canonical property-detail page. Entity-level inference load failures are surfaced in a separate retry strip instead of being buried inside cards. Covered by `src/views/__tests__/InferencesView.test.tsx`.
-- [x] **PIA31-H4** `frontend/src/views/ReviewQueueView.tsx:110-307` — The review queue page tries to house two different review systems in one shell without a strong page model. The top-level tabs mix staged extraction review and LLM draft review, the first tab label is vague, and the page hierarchy shifts abruptly between queue summary cards, filters, batch actions, and record cards. Fixed: tab labels changed to action-oriented "Staged Extraction Review" / "LLM Draft Review"; all 13 missing structural i18n keys (`tab_staged`, `tab_drafts`, `queue_*_title`, `queue_*_description`, `summary_title`, `filters_title/description`, `batch_tools_title/description`, `items_title/description`) added to en.json and fr.json; section order is stable at identity → summary → filters → batch tools → items; tests updated and passing.
-
-### Navigation And Orientation Audit — 2026-03-31
-
-Source: cross-page navigation and detail-page orientation audit
-
-#### High
-
-- [x] **NAV31-H1** `frontend/src/views/SourceDetailView.tsx:212-249` + `frontend/src/components/entity/EntityDetailHeader.tsx:40-71` + `frontend/src/components/synthesis/SynthesisHeaderSection.tsx:24-46` + `frontend/src/views/ExplanationView.tsx:142-173` — Verified resolved in the current page model: source, entity, synthesis, property-detail, disagreements, evidence, and relation detail surfaces now share breadcrumb-based orientation plus parent/sibling exits; the legacy explanation page is a redirect shim into the canonical property-detail route instead of a separate orphaned detail family.
-
-### Evidence Traceability Audit — 2026-03-31
-
-Source: provenance, evidence-linking, and audit-trail audit
-
-#### Critical
-
-- [x] **ET31-C1** `frontend/src/components/EvidenceTrace.tsx:148-216` + `frontend/src/components/evidence/EvidenceTableSection.tsx:155-214` + `frontend/src/views/SourceDetailView.tsx:212-249` + `frontend/src/components/source-detail/SourceRelationsSection.tsx:57-186` — The audit trail stops at the source document level instead of landing users on the exact supporting evidence item. Evidence and explanation tables link only to `/sources/:id`, and the source page then shows a flat relation list without passage highlighting, deep-linking, or a stable target for the contributing relation or claim. Fixed: explanation and evidence-table links now target `/sources/:id?relation=:relationId#relation-:relationId`; source detail scrolls to and highlights the requested row; and the highlighted relation surfaces its supporting `notes`/text-span context inline so provenance inspection lands on the exact evidence item. Covered by `src/components/__tests__/EvidenceTrace.test.tsx`, `src/views/__tests__/EvidenceView.table.test.tsx`, `src/views/__tests__/SourceDetailView.rendering.test.tsx`, and `src/components/source-detail/__tests__/SourceRelationsSection.test.tsx`.
-
-#### High
-
-- [x] **ET31-H1** `frontend/src/components/EvidenceTrace.tsx:93-221` + `frontend/src/views/ExplanationView.tsx` + `frontend/src/views/PropertyDetailView.tsx` — The reusable evidence-trace table surfaces source metadata and numeric contribution signals, but it omits the actual supporting statement or passage that made the source relevant. Users can see that a source contributed, but not what it contributed, unless they navigate away. Fixed: added a dedicated supporting-statement column populated from relation notes, linked each source row to the exact source evidence anchor, and preserved source/provenance metadata as secondary columns. Covered by `src/components/__tests__/EvidenceTrace.test.tsx`.
-
-### Synthesis Explainability Audit — 2026-03-31
-
-Source: synthesis and computed-conclusion page audit
-
-#### High
-
-- [x] **SYN31-H1** `frontend/src/views/SynthesisView.tsx:141-177` + `frontend/src/components/synthesis/SynthesisHeaderSection.tsx:36-61` + `frontend/src/components/synthesis/SynthesisRelationsSection.tsx:49-164` — The synthesis page presents metrics, counts, and relation-type summaries, but it does not begin with a concise synthesis statement that tells the user what the evidence currently says about the entity. Users must infer the overall conclusion from stats and accordions. Fixed: added a top-level synthesis summary block that states the current evidence reading, confidence level, contradiction presence, and uncertainty note before the metric sections. Covered by `src/views/__tests__/SynthesisView.overview.test.tsx`.
-
-### Scalability Of IA Audit — 2026-03-31
-
-Source: page-structure stress test for larger evidence sets
-
-#### High
-
-- [x] **SCALE31-H1** `frontend/src/components/source-detail/SourceRelationsSection.tsx:1-303` + `frontend/src/views/SourceDetailView.tsx:245-249` — The source detail relation section does not scale structurally when a source has many linked relations. It renders one flat list with no grouping, filtering, sorting, or local search, so verification degrades into long scrolling and manual scanning. Fixed: source-detail relations now provide summary counts by direction, local direction filter chips, and expandable groups by relation kind while preserving row anchors, evidence highlighting, and deep links to exact evidence targets and relation detail/edit actions. Covered by `src/components/source-detail/__tests__/SourceRelationsSection.test.tsx` and `src/views/__tests__/SourceDetailView.rendering.test.tsx`.
-
-### Structural Redesign Candidates — Future-Model Proposals
-
-Source: items intentionally beyond the current `relation (claim)` product model; track separately from near-term implementation defects
-
-#### High
-
-- [x] **FMP31-H1** `frontend/src/app/routes.tsx:49-70,82-88` + `frontend/src/views/SourceDetailView.tsx:212-249` + `frontend/src/components/ClaimsList.tsx:1-206` + `frontend/src/api/search.ts:11-25,54-70` — Reclassified out of the immediate-fix queue: this remains a future-model proposal only. The current product still intentionally treats `relation (claim)` as the primary fact layer, so no separate claim page family was implemented in this pass.
-
-### Holistic Product UX Audit — 2026-03-31
-
-Source: in-app code-path audit across navigation, source/evidence/inference surfaces
-
-#### Major
-
-- [x] **HPUX31-M2** `frontend/src/components/layout/DesktopNavigation.tsx:75-148` — Verified resolved in the current navigation: the desktop `Entities` label is already a direct link to `/entities`, and category browsing is exposed as a separate adjacent chevron/menu affordance rather than replacing the top-level destination.
-- [x] **HPUX31-M4** `frontend/src/views/InferencesView.tsx:113-162,205-237` — Per-entity inference failures are not surfaced to the user. The page records `"Failed to load inferences"` into each card item, but `EntityInferenceCard` renders loading and success states only, so a failed card collapses into an ambiguous blank area rather than an explicit error. Fixed: `EntityInferenceCard` now renders a visible error `Alert` with a per-entity retry action, and `src/views/__tests__/InferencesView.test.tsx` covers the failure and retry path so transport failures stay distinct from “no inference.”
-
-#### Minor
-
-- [x] **HPUX31-m1** `frontend/src/views/ExplanationView.tsx:157-164` — The primary back affordance on the explanation page is an icon with click behavior but no button semantics, focus treatment, or accessible name. Replace the bare `ArrowBackIcon` with an actual `IconButton` or `Button` labeled for assistive technology so keyboard and screen-reader users can navigate out of the page reliably.
-
-### Comprehensive UX Audit — 2026-03-31
-
-Source: `.temp/comprehensive_ux_audit_2026-03-31.md`
-
-#### Major
-
-- [x] **UXA31-M1** `frontend/src/components/GlobalSearch.tsx:66-79,133-190` + `frontend/src/views/SearchView.tsx` — The header search presents itself as a global search entry point, but its interaction model is narrower and less explicit than the full search experience. It only deep-links entity and source suggestions, omits relation results from direct navigation, labels result types with raw backend terms, and relies on placeholder-only input text (`"Search entities, sources..."`) instead of an explicit field label. Fixed: header search now has an explicit accessible label, relation-aware suggestion routing, and consistent user-facing result-kind chips aligned with the full search surface. Covered by `frontend/src/components/__tests__/GlobalSearch.test.tsx` and the existing `frontend/src/views/__tests__/SearchView.test.tsx`.
-- [x] **UXA31-M2** `frontend/src/views/CreateRelationView.tsx:169-216,231-272` — Fixed: relation creation now includes scientist-facing helper text, evidence-first guidance, and clickable presets/examples for relation kind, direction, and participant role labels so users can build a valid relation without guessing internal terminology. Covered by `frontend/src/views/__tests__/CreateRelationView.test.tsx`.
-- [x] **UXA31-M3** `frontend/src/views/RelationsView.tsx:21-71` + `frontend/src/app/routes.tsx:82-85` — The top-level Relations destination behaves like a navigational dead end. It is exposed as a first-class page in routing and navigation, offers export/create actions, but the main body only states that no global relations list exists and sends users back to Sources. Fixed: the dedicated Relations page is now a redirect shim into the source-centered workflow instead of a dead-end explainer page, matching the existing navigation model where relation browsing lives under source evidence.
-
-#### Minor
-
-- [x] **UXA31-m1** `frontend/src/components/ProfileMenu.tsx:79-83` — The account/profile menu trigger is not an actual interactive control. The avatar is wrapped in a clickable `Box` with no button semantics, keyboard handling, focus treatment, or accessible name, so keyboard and assistive-technology users can miss or fail to open the account menu. Replace the trigger with `IconButton` or `button` semantics, add an accessible label and expanded-state attributes, and verify keyboard/focus behavior.
-
-### Information Architecture Audit — 2026-03-31
-
-Source: `.temp/information_architecture_audit_2026-03-31.md`
-
-#### Major
-
-- [x] **IA31-M1** `frontend/src/views/HomeView.tsx:183-301` — Fixed: the home surface now separates evidence-analysis guidance from object-management shortcuts, with the hero and follow-on sections organized around review, disagreement inspection, and provenance work instead of one mixed "knowledge graph overview" card grid.
-- [x] **IA31-M2** `frontend/src/views/SourcesView.tsx:190-260` + `frontend/src/views/EntitiesView.tsx:218-265` — Fixed: entity and source list-page top bars are now grouped into explicit task clusters with persistent labels, clearer hierarchy, and mobile-safe presentation instead of one overloaded action strip. Covered by `frontend/src/views/__tests__/EntitiesView.test.tsx` and `frontend/src/views/__tests__/SourcesView.test.tsx`.
-- [x] **IA31-M3** `frontend/src/components/source-detail/SourceExtractionSection.tsx:94-153` — Source extraction save feedback duplicates the same skipped-relation message across two alerts. The first alert already reports skipped relations and lists them, then a second warning restates that they were left in the review queue with slightly different wording. Collapse the post-save outcome into a single status block so one event yields one message path.
-
-#### Minor
-
-- [x] **IA31-m1** `frontend/src/components/source-detail/SourceExtractionSection.tsx:155-234` — Fixed: the extraction panel now follows a single narrative path with one primary action, one clearly labeled alternative input path, concise status/help copy, and reduced promotional duplication around the workflow.
-
-### Frontend UX Bug Audit — 2026-03-31
-
-Source: `.temp/frontend_ux_bug_audit_2026-03-31.md`
-
-#### Major
-
-- [x] **UX31-M1** `frontend/src/views/ReviewQueueView.tsx:46-67,82-99,223-245` + `frontend/src/hooks/useReviewQueue.ts:51-55` + `frontend/src/hooks/useSelection.ts:24-44` — Review-queue batch actions can target hidden items after the visible list changes. The queue clears and refetches extractions when filters/type change, but the independent `selectedIds` set is not reset, so the selection bar can keep acting on rows that are no longer visible in the current review context. Fixed: the review queue now clears selection whenever the filter context or visible extraction ID set changes, preventing hidden batch targets from surviving refetches. Covered by `src/views/__tests__/ReviewQueueView.test.tsx`.
-- [x] **UX31-M2** `frontend/src/components/extraction/ExtractionCard.tsx:161-168` + `frontend/src/app/routes.tsx:82-85` — The review queue exposes a broken "View Relation" action after materialization. `ExtractionCard` links to `/relations/:id`, but the router only defines `/relations`, `/relations/new`, `/relations/batch`, and `/relations/:id/edit`, so the CTA sends users to a non-existent route. Fixed: added the missing `/relations/:id` route and relation detail view so materialized relation links resolve to a real destination. Covered by `src/views/__tests__/RelationDetailView.test.tsx` and `src/components/extraction/__tests__/ExtractionCard.test.tsx`.
-
-### Communication Audit — 2026-03-31
-
-Source: `.temp/communication_audit_2026-03-31.md`
-
-#### Major
-
-- [x] **COMM31-M1** `frontend/src/api/__tests__/pact/entities.pact.test.ts:31-50` + `frontend/src/api/__tests__/pact/sources.pact.test.ts:22-41` + `frontend/src/api/__tests__/pact/relations.pact.test.ts:25-43` — Fixed in test coverage: the pact fixtures now pin the richer list payload fields the runtime clients actually consume, including review/status/provenance/role metadata and pagination details. Execution note: the pact mock server could not be started in this sandbox (`Operation not permitted`), so the tighter contracts were verified by static test updates plus the surrounding focused frontend suite.
-- [x] **COMM31-M2** `frontend/src/api/extractionReview.ts:96-128,192-205` + `backend/app/schemas/staged_extraction.py:97-113,204-233` — The extraction-review client advertises a broader shared filter contract than it actually sends over the wire. `StagedExtractionFilters` includes `source_id`, `auto_approved`, score bounds, flag filtering, auto-commit filtering, and sorting, but `listPendingExtractions()` and `listAllExtractions()` serialize only subsets, so callers can pass filters that are silently dropped before reaching the backend. Fixed: the client now serializes the supported source, score-range, flag, auto-commit, and sorting filters for both pending and admin extraction listings. Covered by `src/api/__tests__/extractionReview.test.ts`.
-
-### LLM Prompt Audit — 2026-03-31
-
-Source: `.temp/llm_prompt_audit_2026-03-31.md`
-
-#### Major
-
-- [x] **LLM31-M1** `backend/app/llm/prompts.py` - Extraction prompts allowed implied entities, relations, and claims instead of requiring explicit textual support. Fixed: tightened system, entity, relation, claim, and batch prompts to require explicit support and omission of unsupported items.
-- [x] **LLM31-M2** `backend/app/llm/prompts.py` - Entity summaries and examples encouraged background synthesis beyond the source text. Fixed: summaries are now source-bounded and examples no longer inject unstated medical facts.
-- [x] **LLM31-M3** `backend/app/llm/prompts.py` - Prompts did not explicitly preserve contradiction, hedging, and qualifiers as separate outputs. Fixed: added rules to preserve negation and uncertainty and to emit separate items for competing findings.
-
-#### Minor
-
-- [x] **LLM31-m1** `backend/app/llm/prompts.py` - Entity-linking prompt lacked a conservative uncertain-match rule. Fixed: prompt now requires `"NEW"` on uncertainty and forbids external-knowledge merges.
-
-### Full Audit - 2026-03-30 (score 81/100)
-
-Source: `.temp/full_audit_report_2026-03-30.md`
-
-#### Critical
-
-- [x] **AUD30-C1** `backend/app/services/document_service.py:101-106,162-167,223` - Document upload size limit is enforced only after `await file.read()` when `UploadFile.size` is missing, so oversized uploads can still be fully buffered into memory on extraction endpoints. Fixed: added `_read_bounded()` chunked reader (64 KB chunks); replaced unbounded `file.read()` calls in `extract_text_from_pdf` and `extract_text_from_txt`; added 8 unit tests in `backend/tests/test_document_service.py`.
-
-#### Major
-
-- [x] **AUD30-M1** `frontend/src/components/GlobalSearch.tsx:41-63` + `frontend/src/api/search.ts:106-119` - `AbortController` cleanup never reaches the actual network request, so stale suggestion fetches still run to completion after rapid typing or unmount. Fixed: `signal` was already wired through `getSuggestions()` → `apiFetch()`; added `AbortError` early-exit in `apiRequest` catch block (`client.tsx:162-165`) so aborted requests re-throw without logging or wrapping — `GlobalSearch` already guards state updates with `controller.signal.aborted`.
-- [x] **AUD30-M2** `frontend/src/views/ResendVerificationView.tsx:7-178` + `frontend/src/views/VerifyEmailView.tsx:7-176` - Auth recovery views bypass shared MUI/i18n patterns and `ResendVerificationView` shows both inline and toast errors for the same failure. Fixed: both views rewritten to use `useTranslation` + `resend_verification`/`verify_email` i18n namespaces (en + fr); `ResendVerificationView` now uses `useAsyncAction(setSubmitError)` so errors are inline-only (no toast); `VerifyEmailView` missing-token path drops `showError` and sets local error state only.
-- [x] **AUD30-M3** `frontend/src/views/CreateSourceView.tsx:153,170,178,328-340,354,368` + `frontend/src/components/layout/MobileDrawer.tsx:204` - Primary UI still ships hardcoded and malformed user-visible text. Fixed: removed redundant `✓` glyph from `create_source.autofilled` fallback (Alert icon handles it); PubMed/DOI chip labels use `t("create_source.pubmed_id_chip"/"doi_chip")` with interpolation; quality-scoring block (6 GRADE level strings + header) moved to `create_source.quality_level_*` keys (eliminates `•`/`⊕`/`◯` raw glyphs); summary placeholders use `t()`; `MobileDrawer` language label replaced with `t("menu.current_language")`; all keys added to en.json + fr.json.
-- [x] **AUD30-M4** `e2e/tests/sources/filters.spec.ts:75`, `e2e/tests/review-queue/queue.spec.ts:121`, `e2e/tests/entities/revision-history.spec.ts:45,127` - New Playwright specs rely on fixed sleeps instead of observable conditions, making CI timing-dependent. Fixed: `filters.spec.ts` waits for `[role="presentation"]` to not be visible; `queue.spec.ts` drops the sleep (subsequent `toBeVisible` already polls); `revision-history.spec.ts` uses `waitForLoadState('networkidle')` to confirm the save request has settled before reading back.
-
-#### Minor
-
-- [x] **AUD30-m1** `frontend/src/components/EntityTermsManager.tsx:70-80,118-120,160-162,217-220,382` - The entity-terms editor hardcodes language labels, validation copy, and fallback display text in component code. Fixed: `LANGUAGE_OPTIONS` entries carry `key` fields consumed via `t(opt.key)` in render and `getLanguageLabel`; `"International"` fallback and `"Display order: …"` secondary text use `t()`; `"Term cannot be empty"` validation uses `t("entityTerms.validation_term_empty")`; redundant `showError` on validation path removed; three `console.error` pre-log calls removed (covered by `handlePageError`); all 26 `entityTerms.*` keys added to en.json + fr.json.
-
-### Error Propagation to UI Audit — 2026-03-28 (score 62/100 → 100/100)
-
-Source: `.temp/error_propagation_audit_report_2026-03-28.md`
-
-#### Critical
-
-- [x] **ERR-C1** `backend/app/middleware/error_handler.py:30-35` + `frontend/src/api/client.tsx:66-78` — Dual error envelope. Fixed: dropped `"detail"` key from `app_exception_handler` and `validation_exception_handler`; all handlers now return `{"error":{…}}` exclusively; simplified `extractBackendErrorPayload` in client; added 7 canonical-envelope tests in `test_error_handlers.py`.
-- [x] **ERR-C2** `backend/app/utils/errors.py:17-79` + `frontend/src/utils/errorHandler.ts:15-74` — ErrorCode enum drift. Fixed: added `ENTITY_HAS_RELATIONS` to frontend enum; added `test_error_code_enum_matches_known_set` snapshot test to `test_error_handlers.py`.
-
-#### Major
-
-- [x] **ERR-M1** `frontend/src/hooks/useAsyncAction.ts` — Duplicate toast+inline display. Fixed: when `setError` is provided, `useAsyncAction` now sets local state and suppresses the Snackbar toast; without `setError` it delegates to `showError` (toast only). Rule documented in `CODE_GUIDE.md §15`.
-- [x] **ERR-M2** `frontend/src/hooks/useAsyncAction.ts`, `useAsyncResource.ts`, `usePageErrorHandler.ts` — No selection guidance. Fixed: added §15 to `docs/development/CODE_GUIDE.md` with a table documenting when to use each hook.
-- [x] **ERR-M3** `frontend/src/notifications/NotificationContext.tsx` — Developer details invisible. Fixed: added expandable "Dev details" section inside the Snackbar (dev builds only, gated on `import.meta.env.DEV`); shows `code`, `developerMessage`, `field`, `context`.
-- [x] **ERR-M4** `backend/app/api/error_handlers.py:20-62` — `@handle_extraction_errors` discarded error context. Fixed: non-`AppException` errors now preserve `str(exc)` as the `details` field of the wrapped `EXTRACTION_FAILED` AppException.
-
-#### Minor
-
-- [x] **ERR-m1** `frontend/src/notifications/NotificationContext.tsx` — Ad-hoc console.error. Fixed: `showError()` now calls `formatErrorForLogging(parsedError)`.
-- [x] **ERR-m2** `frontend/src/utils/errorHandler.ts` — `shouldShowErrorToUser()` undocumented fallback. Fixed: added JSDoc stating callers must still log via `formatErrorForLogging()` before redirecting.
-- [x] **ERR-m3** `backend/app/utils/errors.py:211` — `LLMServiceUnavailableException` leaked `OPENAI_API_KEY`. Fixed: message changed to "AI service is unavailable. Please try again later."; hint moved to `details`.
-- [x] **ERR-m4** `frontend/src/utils/errorHandler.ts:267-295` — Hardcoded status→i18n keys. Fixed: replaced if/else chain with `HTTP_STATUS_ERROR_CODES` and `HTTP_STATUS_MESSAGES` maps.
+_Items verified correct are marked `[x]`. Items with confirmed defects remain `[ ]` with the defect described. New defects found during review are prefixed **[NEW]**._
 
 ---
 
-### Full Repository Audit — 2026-03-29
+### Authentication & Authorization
 
-Source: `.temp/full_repository_audit_2026-03-29.md`
-
-#### Critical
-
-- [x] **AUD29R-C1** `Caddyfile:3-6` + `backend/app/main.py:129-147` — The default local dev proxy stripped `/api` with `handle_path` even though FastAPI routes are mounted under `/api`. Fixed by switching the local Caddy rule to `handle /api/*` so the prefix is preserved, and by adding `make dev-check`, which smoke-checks the proxied `/api/entities/filter-options` route instead of relying on the misleading `/api/docs` case.
-- [x] **AUD29R-C2** `backend/app/api/extraction_review.py:36-45,71-75,118-127` + `frontend/src/app/routes.tsx:86` + `frontend/src/components/Layout.tsx:35-40` + `frontend/src/components/ProtectedRoute.tsx:9-24` — The review queue was effectively available to any authenticated user. Fixed by requiring `get_current_active_superuser` on the read endpoints, adding a frontend `SuperuserRoute` for `/review-queue`, and hiding the review-queue navigation item unless the current user is a superuser.
-
-#### Major
-
-- [x] **AUD29R-M1** `docker-compose.e2e.yml:35,48,50,52` + `backend/app/config.py:7,32,38,46` — The E2E API container set several environment variables that the backend did not read: `ENVIRONMENT`, `SMTP_USERNAME`, `SMTP_FROM_EMAIL`, and `REQUIRE_EMAIL_VERIFICATION`. Fixed by renaming them to `ENV`, `SMTP_USER`, `EMAIL_FROM`, and `EMAIL_VERIFICATION_REQUIRED`, and by strengthening the E2E API health check to assert `TESTING`, `ENV`, `EMAIL_FROM`, and `EMAIL_VERIFICATION_REQUIRED` through `/api/test/health`.
-- [x] **AUD29R-M2** `frontend/src/api/extractionReview.ts:96-127` + `backend/app/api/extraction_review.py:37-58` + `backend/app/schemas/staged_extraction.py:216-236` + `backend/app/services/extraction_review/queries.py:24-57` — The pending-extractions contract was internally inconsistent. Fixed by parsing the full `StagedExtractionFilters` query model in the route, forcing only `status="pending"` at the boundary, and adding endpoint coverage that asserts `max_validation_score`, `auto_commit_eligible`, `sort_by`, `sort_order`, and pagination all survive the route layer.
-- [x] **AUD29R-M3** `frontend/src/app/routes.tsx:75` + `frontend/src/components/ProtectedRoute.tsx:9-24` + `frontend/src/components/ProfileMenu.tsx:135-143` + `frontend/src/views/AdminView.tsx:123-130` — The admin page route was only authenticated, not superuser-gated. Fixed by reusing `SuperuserRoute` for `/admin`, so manual navigation now matches the existing superuser-only UI entry points and the backend authorization boundary.
-
-### Small Bug Audit — 2026-03-29
-
-Source: `.temp/small_bug_audit_2026-03-29.md`
-
-#### Minor
-
-- [x] **AUD29S-m1** `frontend/src/components/BugReportDialog.tsx:35-45,53-66` — Anonymous bug-report CAPTCHA state is not cleared before reloading. If the dialog previously loaded a CAPTCHA successfully and a later reopen fails to fetch a fresh one, the old token/question remain in state and submission still uses stale CAPTCHA data. Fixed: the dialog now resets `captcha` on open and again on CAPTCHA fetch failure before surfacing the error state. Covered by `src/components/__tests__/BugReportDialog.test.tsx`.
-- [x] **AUD29S-m2** `frontend/src/components/GlobalSearch.tsx:41-62` + `frontend/src/api/search.ts:106-119` — Global search creates an `AbortController`, but the signal is never passed into `getSuggestions()`/`fetch()`. Cancellation is therefore cosmetic: slower responses from older queries can still win and overwrite newer suggestions. Fixed: threaded an optional `signal` through `getSuggestions()` into `apiFetch()` and passed `controller.signal` from `GlobalSearch`, with updated client/component coverage in `src/components/__tests__/GlobalSearch.test.tsx`.
-- [x] **AUD29S-m3** `e2e/tests/account/settings.spec.ts:57-65` + `e2e/fixtures/test-data.ts:7-10` — The mismatch-password E2E test hardcodes the current admin password as `changeme123` instead of using `ADMIN_USER.password`. If the E2E admin fixture changes, the test fails for the wrong reason. Fixed in code: the settings E2E now reads the current password from `ADMIN_USER.password`, keeping the test aligned with the shared fixture.
-
-### Design Audit — 2026-03-29
-
-Source: `.temp/design_audit_2026-03-29.md`
-
-#### Major
-
-- [x] **AUD29D-M1** `backend/app/api/document_extraction_routes/discovery.py:48-157,166-208,217-264` + `backend/app/api/document_extraction_schemas.py:4-40` — The extraction discovery routes are carrying domain validation and response-mapping logic that should live in schemas/services. `smart_discovery()` manually enforces slug/database/result constraints, `bulk_search_pubmed()` manually validates limits, and all three handlers hand-assemble response DTOs from service summaries. Fixed in code: request invariants now live in schema/helpers and route-edge validation utilities, while summary-to-response mapping lives in schema helpers so the routes stay focused on validate → authorize → call service → return schema. Validation status: `python3 -m compileall backend/app` plus `backend/.venv/bin/pytest backend/tests/test_search_service.py backend/tests/test_export_endpoints.py backend/tests/test_explain_endpoints.py backend/tests/test_smart_discovery_service.py backend/tests/test_document_extraction.py backend/tests/test_document_extraction_workflow.py -q`.
-- [x] **AUD29D-M2** `frontend/src/api/client.tsx:95-115,147-233` + `frontend/src/auth/AuthContext.tsx:64-145` — The shared API client owns auth/session UX instead of staying a transport boundary. It refreshes tokens, mutates auth storage, logs parsed errors, and hard-redirects with `window.location.href`, while `AuthContext` separately owns session restoration/logout behavior. Fixed: the API client now raises a typed auth-expired error and dispatches a session-expired event instead of redirecting directly; `AuthContext` owns the resulting token/user state transition.
-- [x] **AUD29D-M3** `backend/app/api/inferences.py:12-44` + `backend/app/api/explain.py:23-71` + `backend/app/api/inference_dependencies.py:12-44` + `frontend/src/api/inferences.ts:10-25` + `frontend/src/api/explanations.ts:88-98` — Scope filtering for inference/explanation is defined as an opaque JSON string in a query parameter and parsed by hand in `parse_scope_filter()`. That duplicates a weakly typed contract across backend routes and frontend clients instead of using the project’s normal schema-first pattern. Fixed in code: inference and explanation routes now share a typed query dependency that validates the optional scope payload and keeps the parsed contract explicit at the route boundary. Validation status: `python3 -m compileall backend/app` plus `backend/.venv/bin/pytest backend/tests/test_search_service.py backend/tests/test_export_endpoints.py backend/tests/test_explain_endpoints.py backend/tests/test_smart_discovery_service.py backend/tests/test_document_extraction.py backend/tests/test_document_extraction_workflow.py -q`.
-- [x] **AUD29D-M4** `backend/app/services/export_service.py:44-97,170-245,325-424,430-499` — Fixed: `ExportService` now uses shared typed loaders/serializers for entity/source/relation export payloads, batch-loads relation roles once, and builds full-graph exports directly from shared export items instead of reparsing its own JSON output. Covered by `backend/tests/test_export_endpoints.py`.
-- [x] **AUD29D-M5** `backend/app/services/document_extraction_processing.py:62-200,227-776` + `backend/app/services/document_extraction_workflow.py:1-95` — The document-extraction workflow is concentrated in a god module plus a barrel-style facade. One 776-line module mixes protocol definitions, preview orchestration, URL/PubMed fetch logic, source-revision enrichment, staged-extraction reconciliation, and graph materialization, then `document_extraction_workflow.py` re-exports nearly all of it and hides ownership boundaries. Fixed in code: internal API callers now import directly from the owning discovery/processing modules, and the workflow shim has been reduced to a narrow compatibility surface instead of a broad barrel export. Validation status: `python3 -m compileall backend/app` plus `backend/.venv/bin/pytest backend/tests/test_search_service.py backend/tests/test_export_endpoints.py backend/tests/test_explain_endpoints.py backend/tests/test_smart_discovery_service.py backend/tests/test_document_extraction.py backend/tests/test_document_extraction_workflow.py -q`.
-
-### Flow Audit — 2026-03-29
-
-Source: `.temp/flow_audit_2026-03-29.md`
-
-#### Critical
-
-- [x] **AUD29F-C1** `backend/app/api/entities.py:45-94` + `backend/app/services/entity_query_builder.py:47-79` + `backend/app/services/entity_service.py:101-121` + `backend/app/api/sources.py:111-168` + `backend/app/services/source_service.py:90-150` + `backend/app/api/relations.py:20-31` + `backend/app/services/relation_service.py:117-167` + `backend/app/repositories/relation_repo.py:16-40` — Regular entity/source/relation read flows still serve current draft revisions instead of only confirmed records. Fixed: added `status == "confirmed"` to `EntityQueryBuilder.build_base_query()`, `SourceService._build_list_query()`, and `RelationRepository.list_by_entity()`; `EntityService.get()`, `SourceService.get()`, and `RelationService.get()` raise 404 on draft current revisions; `RelationService.list_by_source()` skips draft revisions; removed `status` query param from public entity list endpoint; 11 regression tests added in `backend/tests/test_draft_isolation.py`.
-
-#### Major
-
-- [x] **AUD29F-M1** `backend/app/services/entity_linking_service.py:140-183` — Extraction linking can match against draft entities. Both exact-slug and synonym lookups only require `is_current == True`, so extraction preview may suggest or auto-link to a draft entity that has not been reviewed yet, letting approved extraction output attach to non-authoritative graph nodes. Fixed: added `EntityRevision.status == "confirmed"` to both `_find_exact_slug_match()` and `_find_synonym_match()`; 2 regression tests added to `test_entity_linking_service.py`.
-- [x] **AUD29F-M2** `frontend/src/views/SourcesView.tsx:106-174` — Source domain/role filters reset the list UI but do not trigger a fresh fetch. `loadSources()` reads `filters.domain` and `filters.role`, yet its `useCallback` dependencies omit them, so changing those controls leaves the callback stale and the rendered results can stay unfiltered. Fixed: added `filters.domain` and `filters.role` to the `loadSources()` dependency list and added `src/views/__tests__/SourcesView.test.tsx` coverage proving both filter changes trigger a refetch with the forwarded filter params.
-- [x] **AUD29F-M3** `frontend/src/views/SourcesView.tsx:92-104,226-227` + `frontend/src/components/ExportMenu.tsx:23-30,54-60` + `frontend/src/api/export.ts:5-25` + `backend/app/api/export.py:62-128` + `backend/app/services/export_service.py:170-187,325-362` — Export flows do not honor the same filters the UI forwards. The Sources screen sends its active `kind/year/trust/search/domain/role` filters into source and relation exports and comments that exports reflect “currently visible” data, but `export_sources()` ignores `domain` and `role` and does not search `origin`, while `export_relations()` accepts no filters at all. Fixed in code: export source queries now honor `origin` search plus domain/role filters, and relation exports accept the same forwarded source filter set. Validation status: backend syntax-checked with `python3 -m compileall backend/app`; backend integration tests could not be run locally because `pytest` is unavailable in this workspace.
-- [x] **AUD29F-M4** `backend/app/services/document_extraction_processing.py:727-775` + `backend/app/schemas/source.py:156-163` + `frontend/src/types/extraction.ts:139-145` — `SaveExtractionResult.created_entity_ids` is semantically wrong. The backend builds it from `entity_mapping` after merging `entity_links`, so it contains both newly created IDs and existing linked entity IDs even though the field name promises only created entities. Fixed: `save_extraction_to_graph()` now returns only IDs from `created_slug_to_id`, and `backend/tests/test_document_extraction_workflow.py` now asserts that linked entity IDs are excluded from `created_entity_ids`.
-
-### Communication Audit — 2026-03-29
-
-Source: `.temp/communication_audit_2026-03-29.md`
-
-#### Major
-
-- [x] **AUD29K-M1** `backend/app/schemas/entity.py:34-53` + `backend/app/schemas/source.py:58-82` + `backend/app/schemas/relation.py:58-77` + `frontend/src/types/entity.ts:1-12` + `frontend/src/types/source.ts:3-20` + `frontend/src/types/relation.ts:1-38` — Core read-contract type drift between backend and frontend bricks is no longer present. The frontend resource types now include the provenance/review/document fields returned by the backend. Remaining contract-coverage weakness is tracked separately in `COMM31-M1`.
-- [x] **AUD29K-M2** `backend/app/schemas/review.py:15-29` + `backend/app/services/revision_review_service.py:57-116` + `frontend/src/api/revisionReview.ts:15-26` — The revision-review API contract is inconsistent across bricks: backend draft-revision responses include `llm_review_status`, but the frontend `DraftRevisionRead` type omits it. Add the missing field to the frontend client type and cover it in the review-queue contract tests so the queue UI and API agree on the shape.
-- [x] **AUD29K-M3** `backend/app/schemas/pagination.py:14-56` + `frontend/src/api/entities.ts:44-49` + `frontend/src/api/sources.ts:24-29` — Pagination is named like a shared abstraction but behaves like separate contracts. Backend `PaginatedResponse` defines derived metadata (`has_more`, `current_page`, `total_pages`) as Python properties that are not serialized, while frontend clients separately define narrower pagination interfaces. Either expose the derived fields as real API fields or remove them from the backend schema and standardize one documented wire contract mirrored in the frontend.
-
-### Contract Audit — 2026-03-29
-
-Source: `.temp/contract_audit_2026-03-29.md`
-
-#### Major
-
-- [x] **AUD29T-M1** `backend/app/schemas/source.py:134-145` + `backend/app/services/document_extraction_processing.py:440-450` + `backend/app/services/document_extraction_processing.py:499-509` + `frontend/src/types/extraction.ts:119-127` + `frontend/src/components/ExtractionPreview.tsx:208-235` — The document-extraction preview contract drifts in both directions. Backend preview responses now carry `needs_review_count`, `auto_verified_count`, and `avg_validation_score`, but the frontend type drops those fields and instead advertises `extracted_text`, which the backend never returns. The UI still renders an extracted-text accordion behind that phantom field, while the real review metadata is unavailable to the type system. Define one canonical preview payload, remove or implement `extracted_text` end to end, add the real review metadata to the frontend type, and cover the payload with a contract test.
-- [x] **AUD29T-M2** `backend/app/api/revision_review.py:52-58` + `backend/app/services/revision_review_service.py:216-231` + `frontend/src/api/revisionReview.ts:38-61` — The revision-review counts endpoint has no backend schema even though the frontend treats it as a stable shared contract. Fixed: `DraftRevisionCountsResponse` schema (entity/relation/source/total) declared on the route; `test_counts_response_shape` backend test pins the exact wire shape; `revisionReview.pact.test.ts` adds frontend consumer contract coverage for `GET /api/review/revisions/counts`.
-- [x] **AUD29T-M3** `backend/app/schemas/staged_extraction.py:97-103` + `frontend/src/api/extractionReview.ts:24-44` — Staged extraction responses include `auto_approved` backend-side, but the frontend review type drops it. That hides whether an item was manually approved or auto-approved even though the backend already exposes that provenance. Add `auto_approved` to the frontend `StagedExtractionRead` contract and extend review-queue tests so provenance fields stay synchronized.
-
-#### Minor
-
-- [x] **AUD29T-m1** `frontend/src/types/domain.tsx:1-23` — The frontend still ships a second, stale set of domain contracts that do not match the actual API/resource types. For example, `Relation.direction` is modeled as `"positive" | "negative" | "null" | "mixed"`, which conflicts with the real relation/inference payloads. Fixed in repository state: `frontend/src/types/domain.tsx` no longer exists, leaving the canonical typed API/resource contracts as the only importable source of truth.
-
-### Frontend UX Audit — 2026-03-29
-
-Source: `.temp/frontend_ux_audit_2026-03-29.md`
-
-#### Major
-
-- [x] **AUD29U-M1** `frontend/src/components/ProtectedRoute.tsx:9-24` + `frontend/src/views/AccountView.tsx:17-69` — Protected routes discard the user’s intended destination. Unauthenticated users are always redirected to `/account` with no `returnTo` or router-state context, so after login they are not taken back to the edit/create/review page they originally requested. Fixed: `ProtectedRoute` preserves `returnTo` in router state and `AccountView` now redirects to that destination after successful login; `src/views/__tests__/AccountView.test.tsx` covers the post-login return navigation.
-- [x] **AUD29U-M2** `frontend/src/views/SearchView.tsx:129-152,239-258` — Relation search results are not traceable to the evidence item the user searched for. Clicking a relation result only opens `/sources/:sourceId`, which forces the user to manually rediscover the relevant relation inside the source page. Fixed: relation search hits now land on `/sources/:sourceId?relation=:relationId#relation-:relationId`, so search opens the exact evidence row already supported by source-detail highlighting; the search card also preserves a separate `Relation details` link to `/relations/:id`. Covered by `src/views/__tests__/SearchView.test.tsx` and the existing deep-link assertion in `src/views/__tests__/SourceDetailView.rendering.test.tsx`.
-- [x] **AUD29U-M3** `frontend/src/components/source-detail/SourceRelationsSection.tsx:151-174` — Source detail relation rows link to entities using semantic role names instead of entity labels. Users see links like `agent` or `target` rather than the connected entity slug/name, which weakens readability and graph traceability. Fixed: relation rows now render entity-first links using `entity_slug` when available, fall back to the entity ID when no slug exists, and move the semantic role into a readable caption like `aspirin (Drug)`. Covered by `src/components/source-detail/__tests__/SourceRelationsSection.test.tsx` and `src/views/__tests__/SourceDetailView.rendering.test.tsx`.
-- [x] **AUD29U-M4** `frontend/src/views/AccountView.tsx:104-112` + `frontend/src/views/AccountView.tsx:136-147` + `frontend/src/views/AccountView.tsx:185-198` — The account page submits login when users press Enter during registration. Login and registration share one form, but `onSubmit` always calls `handleLogin()`, so a user filling the registration-only confirmation field and pressing Enter triggers the wrong action. Fixed: the form now routes register submits explicitly and the confirmation field handles Enter as a registration action; `src/views/__tests__/AccountView.test.tsx` verifies the keyboard registration path.
-
-#### Minor
-
-- [x] **AUD29U-m1** `frontend/src/views/ReviewQueueView.tsx:111-121` + `frontend/src/views/ReviewQueueView.tsx:190-199` + `frontend/src/views/ReviewQueueView.tsx:226-252` + `frontend/src/views/ReviewQueueView.tsx:257-260` — The review queue layout does not adapt cleanly to small screens. Several controls stay in fixed horizontal rows and the score field keeps `width: 200`, which can create cramped or overflowing admin controls on mobile despite the UX brief’s stackable-layout requirement. Fixed: the review queue header, filter controls, batch tools, and tab strip now use responsive stacking/wrapping rules so the page remains usable on small screens. Covered by `frontend/src/views/__tests__/ReviewQueueView.test.tsx`.
-
-### UI Information Design Audit — 2026-03-30
-
-Source: `.temp/ui_information_design_audit_2026-03-30.md`
-
-#### Major
-
-- [x] **AUD30E-M1** `frontend/src/views/HomeView.tsx:154-165` + `frontend/src/views/HomeView.tsx:235-296` + `frontend/src/views/HomeView.tsx:303-345` — Fixed: the home page now leads with scientist-facing evidence-analysis goals, moves implementation jargon into secondary copy, and makes the primary actions about reviewing evidence, inspecting disagreement, and tracing provenance.
-- [x] **AUD30E-M2** `frontend/src/views/EntitiesView.tsx:268-282` + `frontend/src/views/EntitiesView.tsx:372-445` + `frontend/src/views/SourcesView.tsx:264-278` — Entity and source list pages announce active filters without revealing the actual analytical lens. Users only see "`n` filter(s) active" plus result counts, while the chosen category/trust/consensus/recency/domain filters stay hidden inside the drawer. Fixed: both list pages now expose inline active-filter summaries/chips with clear labels and remove affordances, so the current analytical lens stays visible on the page surface. Covered by the existing entity implementation and `frontend/src/views/__tests__/SourcesView.test.tsx`.
-- [x] **AUD30E-M3** `frontend/src/views/SearchView.tsx:160-196` + `frontend/src/views/SearchView.tsx:216-219` + `frontend/src/views/SearchView.tsx:239-269` — Fixed: search results now label ranking explicitly as match strength, separate result details from why-it-matched context, and add helper text clarifying that the ranking signal is not evidence confidence or quality. Covered by `frontend/src/views/__tests__/SearchView.test.tsx`.
-- [x] **AUD30E-M4** `frontend/src/components/source-detail/SourceMetadataSection.tsx:33-74` — Fixed: source metadata now separates bibliographic, provenance, and assessment groups, labels trust as evidence weight, and replaces raw URL presentation with a concise external-link affordance.
-
-#### Minor
-
-- [x] **AUD30E-m1** `frontend/src/views/ReviewQueueView.tsx:124-128` + `frontend/src/views/ReviewQueueView.tsx:136-184` + `frontend/src/views/ReviewQueueView.tsx:187-210` — Fixed: the staged-extraction queue now uses explicit queue naming, adds summary guidance for interpreting the metrics, and uses review-oriented helper copy instead of raw admin framing. Covered by `frontend/src/views/__tests__/ReviewQueueView.test.tsx`.
-
-### Entity Inference UX Audit — 2026-03-29
-
-Source: `.temp/entity_inference_ux_audit_2026-03-29.md`
-
-#### Major
-
-- [x] **AUD29I-M1** `frontend/src/components/InferenceBlock.tsx:18-53` + `frontend/src/components/InferenceBlock.tsx:191-221` + `frontend/src/components/InferenceBlock.tsx:236-277` — Entity inference cards show score, confidence, coverage, and disagreement as raw numbers without enough scientist-facing interpretation. `ScoreBar` maps `[-1, 1]` into a generic progress bar with no labeled axis or explanation of what positive, negative, or near-zero scores mean, and the role cards do not explain how confidence and disagreement should be read together. Fixed 2026-03-30: added score-polarity labels, interpretation copy, metric guidance, and clearer source-evidence framing in the inference UI.
-- [x] **AUD29I-M2** `frontend/src/views/ExplanationView.tsx:221-247` + `frontend/src/views/ExplanationView.tsx:250-263` — The explanation page acknowledges contradictions but does not structure the opposing evidence. When disagreement exists, the UI shows only a warning banner and then a mixed source trace, forcing scientists to reconstruct the competing sides manually. Fixed 2026-03-30: rendered explicit supporting-vs-contradicting evidence sections on the explanation page, each with its own trace table.
-- [x] **AUD29I-M3** `frontend/src/components/disagreements/DisagreementsGroupsSection.tsx:37-99` + `frontend/src/components/disagreements/DisagreementsGroupsSection.tsx:157-185` — The disagreements view hides the actual claim content scientists need to compare. Each side-by-side table only shows relation kind, confidence, and a source link, so the page exposes contradiction existence without exposing the competing statements themselves. Fixed 2026-03-30: enriched disagreement tables with claim wording plus context from scope/notes before the source link.
-- [x] **AUD29I-M4** `frontend/src/components/entity/ScopeFilterPanel.tsx:78-138` + `frontend/src/views/EntityDetailView.tsx:131-153` — Scope filtering is presented as raw key/value entry instead of domain-language filtering. Scientists must guess valid attribute names and type backend-style keys into free-text fields, which makes a powerful feature feel opaque and error-prone. Fixed 2026-03-30: replaced the raw attribute-first flow with guided scope-dimension selection, examples, clearer help text, and a still-available custom path.
-
-#### Minor
-
-- [x] **AUD29I-m1** `frontend/src/components/synthesis/SynthesisRelationsSection.tsx:124-153` — Synthesis relation rows look individually explorable, but every row under a relation kind navigates to the same destination and exposes little row-specific context. This adds repetitive visual detail without helping scientists understand why one row matters or differs from another. Fixed 2026-03-30: converted the section to representative evidence statements plus a single explicit property-detail action.
-
-### Code Audit — 2026-03-29
-
-Source: `.temp/code_audit_report_2026-03-29.md`
-
-#### Critical
-
-- [x] **AUD29-C1** `backend/app/api/revision_review.py:61-83` + `backend/app/services/revision_review_service.py:124-162` + `backend/app/models/entity_revision.py:64-70` — Draft revision confirmation still does not record reviewer provenance. The route does not pass the current superuser ID into `confirm()`, and the service never sets `confirmed_by_user_id` / `confirmed_at`, so confirmed LLM drafts remain unauditable. Pass `current_user.id` into the service, populate the confirmation fields for entity/relation/source revisions, and add a backend test that asserts both fields are written on confirm.
-
-#### Major
-
-- [x] **AUD29-M1** `backend/app/api/revision_review.py:34-58` — Review-queue list and count endpoints still depend on `get_current_user`, so any authenticated user can enumerate unreviewed LLM draft revisions and queue volume. Require `get_current_active_superuser` on both endpoints to match the confirm/discard authorization boundary.
-- [x] **AUD29-M2** `backend/app/services/revision_review_service.py:216-231` — `get_draft_counts()` counts every row with `status == "draft"` and ignores `is_current`, while the queue list only shows current drafts. The review badge and summary can therefore overstate the actionable queue. Add `is_current == True` to all three count queries and cover it with a service test.
-- [x] **AUD29-M3** `backend/app/api/explain.py:66-84` — The explanation endpoint catches every exception after `ValueError`, including `AppException`, and rewrites domain errors into generic 500s. Preserve existing `AppException`s with `except AppException: raise` before the generic fallback so auth/validation/not-found semantics survive.
-- [x] **AUD29-M4** `backend/app/api/auth_handlers.py:26-40` — `_set_refresh_cookie()` writes the refresh cookie with `domain=settings.COOKIE_DOMAIN`, but `_clear_refresh_cookie()` deletes it without the domain. In deployments that set `COOKIE_DOMAIN`, logout may leave the browser cookie intact and permit unintended session restoration attempts. Delete the cookie with the same domain/path tuple used when setting it, and add an auth handler test for non-`None` `COOKIE_DOMAIN`.
-
-### Deployment Audit v2 — 2026-03-28 (score 55/100 → 100/100 after fixes)
-
-Source: `.temp/deployment_audit_report_2026-03-28_v2.md`
-
-#### Critical
-
-- [x] **DEPLOY2-C1** `docker-compose.prod.yml:23` + `docker-compose.yml:31` — `volumes: []` in prod override does NOT clear base bind mounts. Fixed: moved dev bind mounts and `UV_LINK_MODE` to new `docker-compose.dev-mounts.yml`; removed bind mounts from base `docker-compose.yml`; removed `volumes: []` from `docker-compose.prod.yml`; updated `COMPOSE` in Makefile to include dev-mounts overlay. Verified with `docker compose config`: prod has no bind mounts.
-
-#### Major
-
-- [x] **DEPLOY2-M1** `Makefile:190` — `make self-host-check` web health check always fails: `curl` not in nginx:1.27-alpine. Fixed: replaced `curl` with `wget -qO-`.
-- [x] **DEPLOY2-M2** `docs/DEPLOY.md:100` — Section 3.4 documented redundant `make migrate-dev-server`. Fixed: removed step; added note that migrations run automatically on container start.
-
-#### Minor
-
-- [x] **DEPLOY2-m1** `docker-compose.e2e.yml:52` — E2E `web` depends_on `api` used `service_started`. Fixed: added health check to e2e `api`; changed web depends_on to `service_healthy`.
-- [x] **DEPLOY2-m2** `Makefile:97,102,107` — `db-shell`, `db-dump`, `db-restore` used host shell vars for `-U`/dbname. Fixed: wrapped pg commands in `sh -c '...'` so `$POSTGRES_USER`/`$POSTGRES_DB` expand from container environment.
+- [x] Refresh token rotation — old token invalidated, replay rejected, test present. (`tokens.py`)
+- [x] Token version column — `token_version` in JWT, stale tokens rejected, incremented on state changes, migration 012 correct. (`user.py`, `dependencies/auth.py`)
+- [x] Access token in-memory — no localStorage, cross-tab restoration via refresh cookie on mount. (`authStorage.ts`, `AuthContext.tsx`)
+- [x] Superuser guards — `get_current_active_superuser` on all extraction review, revision review, review queue, and admin endpoints. Frontend `SuperuserRoute` in place.
+- [x] Confirmed-only read isolation — entity/source/relation list+get, entity linking all filter `status == "confirmed"`. `test_draft_isolation.py` present.
 
 ---
 
-### Deployment Audit v1 — 2026-03-28 (score 62/100)
+### Search
 
-Source: `.temp/deployment_audit_report_2026-03-28.md`
-
-#### Critical
-
-- [x] **DEPLOY-C1** `docker-compose.prod.yml:20` — `api` command skips migrations. Fixed: added `alembic upgrade head` to api command; updated DEPLOY.md 6.3.
-- [x] **DEPLOY-C2** `docker-compose.prod.yml:27` — `web` service used `vite preview`. Fixed: wired `Dockerfile.prod` (nginx) into prod compose; updated Caddyfile.prod proxy to `web:80`; added `VITE_API_URL` build arg to `Dockerfile.prod`.
-
-#### Major
-
-- [x] **DEPLOY-M1** `deploy/caddy/Caddyfile.prod:1` — Placeholder domain. Fixed: added prominent REQUIRED comment; added concrete `sed` update step to DEPLOY.md 6.2.
-- [x] **DEPLOY-M2** `Makefile:173` — Backup `|| true` swallowed errors. Fixed: removed `|| true`; added `mkdir -p backups`.
-- [x] **DEPLOY-M3** `docker-compose.yml` — No API health check. Fixed: added `healthcheck` to `api` in base and self-host compose; updated `caddy` depends_on to `service_healthy`; added `curl` to backend Dockerfile.
-- [x] **DEPLOY-M4** `frontend/Dockerfile.prod` — Dead artifact. Fixed: wired into prod compose via DEPLOY-C2 fix.
-
-#### Minor
-
-- [x] **DEPLOY-m1** `backend/.env.test:9,16` — Fixed: committed test-only credentials were replaced with clearly invalid placeholder values so the repository no longer ships usable-looking test secrets by default.
-- [x] **DEPLOY-m2** `scripts/setup-self-host.sh:116` — Not idempotent. Fixed: replaced sed with `cat >` heredoc; re-running now overwrites the file correctly.
-- [x] **DEPLOY-m3** `Makefile:186-188` — `self-host-check` only checked API. Fixed: added web container curl check.
-- [x] **DEPLOY-m4** `deploy/caddy/Caddyfile.dev:1` — Placeholder domain. Fixed: added concrete sed step to DEPLOY.md 3.3.
+- [x] Auth boundary — both `/search` and `/search/suggestions` require `get_current_user`; suggestions filter confirmed. (`search.py`)
+- [x] Confirmed-only sub-searchers — entity, source, relation all filter `status == "confirmed"`.
+- [x] Cross-type pagination — single slice after merge, not per-type. (`common.py`)
+- [x] Relation search N+1 — role revisions batch-loaded in one query after collecting revision IDs. (`relation_search.py:56-63`)
+- [ ] **[NEW-SEARCH-M1]** `backend/alembic/versions/` — `pg_trgm` GIN indexes were claimed (DF-SCH-m1) but are absent from all migrations. Search uses `.contains()` which requires sequential scans. Add a migration creating GIN trigram indexes on all searched text columns (slug, title, summary, authors, origin, term).
 
 ---
 
-### Full System Audit — 2026-03-26 (score 83/100)
+### Inference & Computed Relations
 
-Source: `.temp/full_audit_report_2026-03-26.md`
-
-#### Critical
-
-- [x] **AUD26-C1** `backend/app/dependencies/auth.py:127-128` — `get_optional_current_user()` bare `except Exception` swallows all errors and returns `None`, making auth system failures indistinguishable from anonymous requests. Fixed: catch `HTTPException` only (covers `UnauthorizedException`/`ForbiddenException`); log and re-raise everything else. Tests added to `test_auth_endpoints.py::TestGetOptionalCurrentUser`.
-- [x] **AUD26-C2** `backend/app/services/document_extraction_processing.py:683-689` — Extraction silently discards relations on parse failure; API reports success while data is lost. Fixed: added `SkippedRelationDetail` schema (extraction_id + relation_type + text_span + error); `reconcile_staged_extractions` now returns `list[SkippedRelationDetail]` instead of `None`; `save_extraction_to_graph` propagates list into `SaveExtractionResult.skipped_relations`; frontend type updated; `SourceExtractionSection` renders a warning `Alert` when any relations were skipped. 2 new tests in `test_document_extraction_workflow.py`.
-
-#### Major
-
-- [x] **AUD26-M1** `backend/app/api/admin.py:105,146,181` — Route handlers execute raw `select()` queries instead of delegating to `AdminService`. Fixed: added `list_categories`, `create_category`, `get_category`, `update_category`, `delete_category` + `_require_category` to `AdminService`; moved `_cat_to_read` helper there; category routes now inject `admin_svc` and delegate; raw `select`, `IntegrityError`, `AsyncSession`, `UiCategory` imports removed from `admin.py`.
-- [x] **AUD26-M2** `backend/app/utils/audit.py:101-113` — Audit log failures are silently swallowed with no alerting. Fixed: added `_consecutive_audit_log_failures` counter + `_AUDIT_LOG_FAILURE_THRESHOLD = 5`; counter resets to 0 on success; emits `logger.critical(...)` on every failure at or above threshold, `logger.exception(...)` below it.
-- [x] **AUD26-M3** `backend/app/api/error_handlers.py:51` — `handle_extraction_errors` merges all exception types into `EXTRACTION_FAILED`. Fixed: added `except LLMError` handler (503), `except ValidationError` handler (422 with field details), and `except ValueError` handler (422) before the generic fallback.
-- [x] **AUD26-M4** `backend/app/services/pubmed_fetcher.py:188-190,338-340,467-469` — Generic `except Exception` handler drops PMID context and error type. Fixed: all three generic handlers now capture `exc` and pass `details=str(exc) or type(exc).__name__`.
-- [x] **AUD26-M5** `backend/app/api/test_helpers.py:35,91,182,214` — All four test-support endpoints return untyped dicts with no `response_model`. Fixed: defined `DatabaseResetResponse`, `ReviewQueueSeedResponse`, `UICategoriesSeedResponse`, `TestHealthResponse` in `backend/app/schemas/test_helpers.py`; wired as `response_model` on all four endpoints.
-- [x] **AUD26-M6** `backend/app/services/export_service.py:69,99-120` — Export service builds inline `dict` lists with no Pydantic schema. Fixed: defined `EntityExportItem`, `RelationExportItem`, `RelationRoleExportItem`, `SourceExportItem` in `backend/app/schemas/export.py`; all four collection loops now build typed model instances; `_export_*_json` methods use `model_dump(exclude_none=True)`.
-- [x] **AUD26-M7** `frontend/src/components/layout/MobileDrawer.tsx:28,37` + `DesktopNavigation.tsx:18,25` — `icon: any` and `user: any` props defeat TypeScript safety. Fixed: `icon` → `ComponentType<SvgIconProps>`; `user` → `UserRead | null` (from `../../types/auth`) in both components.
-- [x] **AUD26-M8** `e2e/tests/auth/token-refresh.spec.ts:20` — `waitForTimeout(1000)` anti-pattern causes flaky timing-dependent test. Fixed: removed sleep; preceding `waitForLoadState('networkidle')` already covers async token refresh network activity.
-- [x] **AUD26-M9** `backend/app/api/document_extraction_dependencies.py:4-9` — Module-level re-exports of test helpers (suppressed with `# noqa: F401`) couple production module load to test scaffolding. Fixed: removed three noqa re-export lines; `test_document_extraction.py` imports `calculate_relevance` from `app.services.document_extraction_workflow`; `document.py` imports `UrlFetcher` from `app.services.url_fetcher`; `discovery.py` imports `infer_trust_level_from_pubmed_metadata` from `app.utils.source_quality`.
-
-#### Minor
-
-- [x] **AUD26-m1** `backend/app/utils/access_token_manager.py:34,72` — `SECRET_KEY` cached at init; runtime rotation won't take effect. Fixed: `__init__` stores optional overrides; lazy `@property` methods resolve from `settings` at call time if no override was given.
-- [x] **AUD26-m2** `backend/app/api/service_dependencies.py` — Stateless service factories had no distinguishing comment. Fixed: added comment block explaining stateless vs DB-bound factories.
-- [x] **AUD26-m3** `backend/app/services/` (disagreement visibility) — Magic threshold constants. Fixed: extracted `_STRONG_THRESHOLD`, `_MODERATE_THRESHOLD`, `_WEAK_THRESHOLD` in `derived_properties_service.py`; documented in §12 of `COMPUTED_RELATIONS.md`.
-- [x] **AUD26-m4** `backend/app/main.py:45-46` — Token purge background task had no escalation. Fixed: added `_consecutive_token_purge_failures` counter + `_TOKEN_PURGE_FAILURE_THRESHOLD = 3`; `logger.critical(...)` fires at/above threshold.
-- [x] **AUD26-m5** `backend/app/services/bug_report_service.py:58-62` — CAPTCHA decode broad catch had no logging. Fixed: added `logger.warning(...)` in the malformed-token except block.
-- [x] **AUD26-m6** E2E runtime `test.skip(true, ...)` calls. Fixed: `admin/panel.spec.ts` silent API failures → `throw new Error(...)`; `email-verification.spec.ts` login-ok → `test.skip(loginResp.ok(), '...')`; `document-upload.spec.ts` LLM key → `test.skip(!envCheck, '...')` at test top; `relations/edit-delete.spec.ts` `!relationId` guards → `expect(relationId, '...').toBeTruthy()`.
-- [x] **AUD26-m7** `backend/tests/test_bug_report_service.py` — Missing boundary/concurrency coverage. Fixed: added `test_token_with_valid_base64_but_missing_colons_rejected` (no colon delimiters) and `test_concurrent_captcha_tokens_are_independent` (20 tokens, all unique, each verifies with its own answer).
-- [x] **AUD26-m8** `backend/tests/test_auth_endpoints.py` + `e2e/tests/auth/token-refresh.spec.ts` — Token rotation tests didn't assert old token rejected. Fixed: added `test_old_refresh_token_rejected_after_rotation` to `TestRefreshToken` (side_effect sequence); added E2E test extracting raw refresh token and re-presenting it post-rotation expecting 401/403.
-- [x] **AUD26-m9** `backend/app/services/inference/math.py:60` — Undocumented dict shapes. Fixed: defined `RelationEvidence` and `AggregationResult` TypedDicts; updated `aggregate_evidence` signature.
-- [x] **AUD26-m10** `backend/app/services/inference/read_models.py:40` — `resolve_entity_slugs` return shape undocumented. Fixed: return type `dict[UUID, str]` already in signature; added `ScopeFilter` TypedDict and `TypedDict` import in same file.
-- [x] **AUD26-m11** `backend/app/llm/prompts.py:10` — `TypedDict` import is actively used by `RelationPromptEntity`/`ExistingPromptEntity`; all format functions already carry `-> str` annotations. No change needed.
-- [x] **AUD26-m12** `backend/app/services/inference/read_models.py:59` — Bare `dict` in `matches_scope`. Fixed: defined `ScopeFilter(TypedDict, total=False)`; updated parameter type.
-- [x] **AUD26-m13** `backend/app/utils/auth.py:1-56` — Re-export facade with no documented rationale. Fixed: expanded module docstring to explain the single-import-point contract and direct-import prohibition.
-- [x] **AUD26-m14** `frontend/src/i18n/fr.json` — Missing French translations. Fixed: added `menu.navigation`, `menu.all_entities`, and complete `evidence_trace` section (9 keys).
-- [x] **AUD26-m15** `backend/app/api/test_helpers.py:35,91,182,214` — Functions missing return type annotations. Fixed as part of M5: `response_model` declarations make return types explicit via the schema classes.
+- [ ] **[NEW-INF-C1]** `backend/app/services/explanation_read_models.py:23-26` — `build_contradiction_detail()` accumulates `supporting_sources` and `contradicting_sources` correctly in lines 14–21, then discards them by hardcoding empty lists at lines 23–26. The returned `ContradictionDetail` always has `supporting_sources=[]` and `contradicting_sources=[]`. Fix: pass the accumulated lists into the constructor.
+- [ ] **[NEW-INF-M1]** `backend/app/models/relation_role_revision.py` — per-role `confidence` column is absent. The claim (DF-INF-M1) stated both `disagreement` and `confidence` would be stored per-role; only `disagreement` is present. Confidence is computed at `RoleInference` level but never persisted to the revision row. Clarify whether the column is intentionally deferred or needs to be added.
+- [x] Per-role disagreement stored in `RelationRoleRevision.disagreement`; populated during inference computation, not just as a global average. (`read_models.py:299`)
+- [x] Inference cache invalidated on source `trust_level` change — entities linked via confirmed relations are found and their cache entries deleted. (`source_service.py:306-327`)
+- [x] Canonical relation predicate used consistently across derived-properties, source-role classification, entity-query-builder, and export. (`query_predicates.py`)
 
 ---
 
-### E2E Skipped Tests — 2026-03-25
+### Extraction Pipeline
 
-Remaining `test.skip()` conditions after this session's fixes. All actionable skips resolved; remaining ones are intentional.
-
-#### Fixed
-
-- [x] **navigation.spec.ts** — Review queue link check: removed defensive skip; use `waitUntil:'networkidle'` + 10 s timeout for auth context hydration.
-- [x] **navigation.spec.ts** — Mobile drawer entities link: removed defensive skip; use `expect(...).toBeVisible({ timeout: 10000 })`.
-- [x] **relations/crud.spec.ts** — Entity select fields: `getByLabel(/^entity$/i)` doesn't find MUI v7 Select combobox buttons; changed to `getByRole('combobox', { name: /^entity$/i })`.
-- [x] **admin/panel.spec.ts** — "should restrict admin API" test: missing `password_confirmation` in registration → 422; fixed.
-- [x] **sources/crud.spec.ts** — Search test: search input is inside the filter drawer; updated test to open drawer first.
-- [x] **DisagreementsHeaderSection** — Synthesis button absent when no disagreements; added `Button component={RouterLink}` to the always-rendered header.
-- [x] **auth/email-verification.spec.ts** — Missing `password_confirmation` in registration call (prior session).
-- [x] **admin/panel.spec.ts** — Missing `password_confirmation` + misleading skip messages (prior session).
-- [x] **EntityDetailHeader** — No Synthesis or Disagreements navigation links (prior session).
-- [x] **SynthesisView / DisagreementsView** — Error state rendered with no back button when inference API fails (prior session).
-- [x] **LanguageSwitch** — Was `IconButton` with no text/aria-label; changed to `Button` showing next-language label ("FR"/"EN") (prior session).
-- [x] **SettingsView** — No UI-categories section; added superuser-only section linking to `/admin` (prior session).
-
-#### Intentional / acceptable skips
-
-- **PubMed import** tests: live network required — not fixable without network access or mocking.
-- **Review queue** tests: skip gracefully when `staged_extractions` table is empty — correct behavior.
-- **RDF export / CSV export**: optional features — skip if menu item absent is correct.
-- **Email verification** tests: skip when `EMAIL_VERIFICATION_REQUIRED=False` — correct for E2E env.
-- **File input** (`entities/import.spec.ts`): preview button stays disabled after Playwright `setInputFiles` on hidden input — browser automation limitation; test skips descriptively.
-- **LLM API key** (`document-upload.spec.ts`): requires `LLM_API_KEY` — environment-dependent.
-- **UI categories filter** (`entities/filters.spec.ts`): skip when no categories seeded — correct data-dependent behavior.
+- [ ] **[NEW-EXT-M1]** `backend/app/api/document_extraction_routes/document.py:114-211` — the document storage/extraction order is reversed from the claim. Both `upload_and_extract()` and `extract_from_url()` run extraction first (commits staged records), then attempt to store the document. If document storage fails, the committed extraction preview is orphaned with no cleanup path. The fix requires either: (a) storing the document first and only running extraction on success, or (b) rolling back the extraction commit when document storage fails.
+- [x] Staging batch transaction — `create_staged_extraction` uses explicit commit/rollback; auto-materialization path rolls back on failure. (`staging.py:53-77`)
+- [x] Missing entity reference in materialization — raises `ValueError` with structured message, does not log and continue. (`materialization.py:92-96, 162-166`)
+- [ ] **[NEW-EXT-m1]** `backend/app/services/batch_extraction_orchestrator.py:366-433` — text span validation is absent. Entity slug coherence (slugs cross-checked against extracted entity list) is implemented, but text spans are not verified against source text. This is a gap in the claimed semantic validation (DF-EXT-M6).
+- [x] Workflow refactor — `document_extraction_workflow.py` is a narrow re-export shim; internal callers import from owning modules directly. (`document_extraction_workflow.py:1-49`)
 
 ---
 
-### Data Flow Audit — Database to Frontend (2026-03-23)
+### Extraction Review
 
-Review identified correctness, security, and provenance problems across 12 data flows.
-Source: Parallel agent audit session 2026-03-23.
-
----
-
-#### AUTH
-
-##### Critical
-
-- [x] **DF-AUT-C1** `backend/app/models/user.py:29,36` — `reset_token` and `verification_token` stored as plaintext. Hash with SHA256 before storage (same pattern as refresh tokens). *(Supersedes deferred item "Plaintext reset/verification token storage".)*
-- [x] **DF-AUT-C2** `backend/app/services/user/tokens.py:65-95` — Refresh token not rotated after use. Same token can be replayed indefinitely until expiry. Invalidate the old token and issue a new one on every refresh.
-
-##### Major
-
-- [x] **DF-AUT-M1** `backend/app/dependencies/auth.py:23-82` — `get_current_user` checks `is_active` but not `is_verified`. When `EMAIL_VERIFICATION_REQUIRED=True`, unverified users can access all protected resources. Add `is_verified` check when the setting is enabled.
-- [x] **DF-AUT-M2** `frontend/src/auth/authStorage.ts` — Access token migrated from `localStorage` to in-memory module variable. Refresh token was already in an httpOnly cookie; AuthContext now auto-restores session on mount via the refresh cookie. Cross-tab localStorage lock replaced with in-memory Promise coalescing.
-- [x] **DF-AUT-M3** `backend/app/services/user/account.py` — Added `token_version` column to `User`; embedded as `tv` claim in access tokens; `get_current_user` rejects tokens whose `tv` mismatches DB value; `delete_user` and `deactivate_user` increment `token_version`. Migration 012.
-- [x] **DF-AUT-M4** `frontend/src/api/client.tsx:243-315` — Cross-tab refresh lock uses a 10-second timeout; stale lock allows concurrent refresh requests. Server-side rotation (C2 above) eliminates the replay risk; also replace the localStorage busy-poll with a `StorageEvent` listener.
-- [x] **DF-AUT-M5** `backend/app/api/admin.py` + `admin_service.py` — Removed duplicate `require_superuser`; all admin endpoints now use `get_current_active_superuser` (live DB check). `update_user` increments `token_version` when `is_superuser` or `is_active` changes to immediately invalidate outstanding tokens.
-- [x] **DF-AUT-M6** `frontend/src/api/client.tsx:317-321` — On 401 after failed refresh, unconditional `window.location.href = "/account"` redirect can loop if `AccountView` itself triggers auth. Guard with a check that the current path is not already `/account`.
+- [ ] **[NEW-RVW-C1]** `backend/app/models/entity.py:39-41`, `backend/app/models/relation.py:44-46` — `is_rejected` columns and migration 014 exist, and the flag is correctly filtered from list/search/export queries. However, the flag is **never set** during the rejection flow. `StagedExtraction.status` is set to `REJECTED` but the `is_rejected` boolean on materialized `Entity` and `Relation` rows is never written. Any entity or relation that was materialized before rejection remains visible in all queries. Fix: in the rejection path of `document_extraction_processing.py` (around line 670), find and set `is_rejected = True` on all entity/relation rows that were created from the staged extraction being rejected.
+- [x] Attribution — `created_by_user_id` set on `EntityRevision`, `RelationRevision`, and claim revisions during materialization. `auto_approved` column present in `StagedExtraction`, set in `auto_commit.py:85`. Migration 011 correct.
+- [x] Batch review failure inspection — `submitBatchReview()` checks `response.failed > 0` and shows warning. (`useReviewDialog.ts:94-105`)
 
 ---
 
-#### SEARCH
+### Revision Review
 
-##### Critical
-
-- [x] **DF-SCH-C1** `backend/app/api/search.py:25-29,78-82` — Neither `POST /search` nor `POST /search/suggestions` declares an auth dependency. The entire knowledge graph is readable by unauthenticated HTTP requests. Add `get_current_user` dependency to both handlers.
-- [x] **DF-SCH-C2** `backend/app/services/search_service.py:121-188` — Suggestions query filters on `is_current` but not `status == "confirmed"`. Draft revisions (LLM-created, pending review) are exposed to unauthenticated callers via autocomplete. Add `status == "confirmed"` filter.
-
-##### Major
-
-- [x] **DF-SCH-M1** `entity_search.py:23`, `source_search.py:19`, `relation_search.py:20` — Main search queries filter on `is_current` only, not `status`. Draft entities, sources, and relations appear in authenticated search results. Add `status == "confirmed"` filter to all three sub-searchers.
-- [x] **DF-SCH-M2** `backend/app/services/search_service.py:76-78` + `common.py:55-56` — DB-level `limit`/`offset` is applied per type, then a second in-memory slice is applied to the merged list. Cross-type pagination is unsound: page 2 returns the wrong items. Remove the second slice or fetch all matches before paginating once.
-- [x] **DF-SCH-M3** `backend/app/services/search/relation_search.py:39-44` — `map_row` issues a separate `SELECT` per relation result row to fetch `entity_ids`. N+1 queries. Batch-load role revisions with `WHERE relation_revision_id IN (...)` after collecting all IDs.
-- [x] **DF-SCH-M4** `frontend/src/views/SearchView.tsx:91-93,104-107` — No debounce and no `AbortController`: a new request fires on every keystroke; the last response wins regardless of order, producing stale results. Add 300ms debounce and cancel in-flight requests.
-- [x] **DF-SCH-M5** `backend/app/schemas/search.py:43` — `source_kind` is `Optional[List[str]]` with no enum validation. Unknown values silently return zero results. Change to a `SourceKind` literal/enum.
-
-##### Minor
-
-- [x] **DF-SCH-m1** `backend/app/services/search/common.py:17-21` — All queries use `ILIKE`/`LIKE`, no trigram or full-text index exists. The docstring claims "PostgreSQL full-text search" — this is false. Add `pg_trgm` GIN indexes on searched columns.
-- [x] **DF-SCH-m2** `frontend/src/views/SearchView.tsx:123-124` — Entity links use `result.id` (UUID); verify the entity detail route accepts UUID not slug, or change to `result.slug`. *(Verified: `GET /entities/{entity_id}` accepts UUID; `result.id` is correct — no code change needed.)*
+- [x] `confirm()` sets `is_current=True` on confirmed revision, populates `confirmed_by_user_id` and `confirmed_at`. (`revision_review_service.py:152-154`)
+- [ ] **[NEW-REV-M1]** `backend/app/services/revision_review_service.py:132, 142-149` — `SELECT FOR UPDATE` is applied only to the confirmed revision row. The sibling update (clearing `is_current=False` on all other revisions) runs outside the lock. A concurrent second confirm of a different revision for the same entity can race and leave two `is_current=True` rows. Fix: apply `with_for_update()` to the sibling query as well, or use a single `UPDATE ... WHERE entity_id = ? AND id != ? AND is_current = True` atomic statement.
+- [ ] **[NEW-REV-m1]** `backend/tests/test_revision_review_service.py` — no test asserts that all sibling revisions have `is_current=False` after `confirm()`. This is a critical invariant with no coverage.
+- [x] Partial unique index for `is_current=True` per revision parent present on entity/relation/source revision models.
+- [x] `SELECT FOR UPDATE` on confirmed revision prevents double-confirm of the same row. (`revision_review_service.py:132`)
+- [x] Optimistic item removal in `LlmDraftsPanel` — item removed on API success, background refresh failure surfaced separately. (`LlmDraftsPanel.tsx:87-113`)
 
 ---
 
-#### EXTRACTION REVIEW
+### Entity Merge
 
-##### Critical
-
-- [x] **DF-RVW-C1** `backend/app/api/extraction_review.py:145-150,196-201` — Single and batch review endpoints use `get_current_user`, not `get_current_active_superuser`. Any authenticated user can approve/reject knowledge graph extractions. Add superuser guard.
-- [x] **DF-RVW-C2** `backend/app/services/extraction_review/materialization.py:27-39,54-66,116-130` — `created_by_user_id` on `EntityRevision`/`RelationRevision` is never populated during materialization. All LLM-extracted items lack human attribution. Pass `reviewed_by` through to `create_new_revision()`.
-- [x] **DF-RVW-C3** `backend/app/services/extraction_review/auto_commit.py:84-86` — Auto-approved extractions do not set `reviewed_by`; field remains NULL. Added `auto_approved: bool` column (migration 011) set to `True` in `_materialize_approved`; exposed in schema and filters.
-- [x] **DF-RVW-C4** `frontend/src/hooks/useReviewDialog.ts:79-109` — `submitBatchReview()` does not inspect `response.failed`. Shows a single success message even when half the batch failed silently. Inspect `failed > 0` and show a detailed warning.
-
-##### Major
-
-- [x] **DF-RVW-M1** `backend/app/models/staged_extraction.py:12,38` — Rejecting a staged extraction only sets `status = "rejected"`; materialized entities/relations remain fully visible in the knowledge graph. Fixed: added `is_rejected` boolean flag (migration 014) to `entities` and `relations` base tables; `reject_extraction()` sets it; filtered from list/search/export queries; accessible by direct ID for audit.
-- [x] **DF-RVW-M2** `backend/app/services/extraction_review_service.py:175` vs `222` — `approve_extraction()` only accepts `PENDING`; `reject_extraction()` accepts `PENDING` and `AUTO_VERIFIED`. Asymmetry prevents re-approval of auto-verified items. Fixed: both guards now use `{PENDING, AUTO_VERIFIED}` reviewable set.
-- [x] **DF-RVW-M3** No mechanism to distinguish auto-approved items from human-reviewed items in queries or the UI. Fixed: see DF-RVW-C3 above.
+- [x] Circular merge guard — rejects if either entity appears as `source_entity_id` in existing merge records. (`entity_merge_service.py:121-129`)
+- [ ] **[NEW-MRG-M1]** `backend/app/services/entity_query_builder.py`, `backend/app/services/search/entity_search.py`, `backend/app/services/export_service.py` — `is_merged` is filtered in `canonical_entity_predicate()` (used for relation role lookups and inference) but is **not** filtered in entity list queries, entity search, or entity export. Merged entities remain fully visible in the public entity list, search results, and exports. Fix: add `is_merged == False` to `entity_query_builder.py` base query, `entity_search.py` search query, and the entity export query.
+- [ ] **[NEW-MRG-m1]** `backend/tests/test_entity_merge_service.py` — no test verifies that the circular merge guard rejects the attempt. The guard is implemented but untested.
+- [x] Inference cache invalidated for both source and target entity on merge. (`entity_merge_service.py:155-159`, covered by `test_merge_entities_invalidates_inference_cache`)
 
 ---
 
-#### REVISION REVIEW (Draft Confirm/Discard)
+### Export & Import
 
-##### Critical
-
-- [x] **DF-DRV-C1** `backend/app/services/revision_review_service.py:121-142` — `confirm()` sets `status = "confirmed"` but never touches `is_current`. If a prior confirmed revision exists with `is_current=True`, two revisions end up with `is_current=True`, violating the single-current-revision invariant. Fix: set confirmed revision to `is_current=True` and flip all sibling revisions to `is_current=False`.
-- [x] **DF-DRV-C2** `backend/app/services/revision_review_service.py:124-162` — Regression: revision models now have `confirmed_by_user_id` / `confirmed_at`, but `confirm()` still never populates them, so draft confirmations are not auditable. Pass reviewer identity into `confirm()` and set both fields during confirmation.
-- [x] **DF-DRV-C3** No DB constraint prevents multiple draft revisions for the same entity/source/relation. Add a partial unique index `UNIQUE (entity_id, status) WHERE status='draft'` (and equivalents) to enforce single-draft-per-parent.
-- [x] **DF-DRV-C4** `backend/app/services/revision_review_service.py:121-142` — Two concurrent admin confirms of the same draft both succeed (no locking). Use `SELECT FOR UPDATE` or an atomic `UPDATE ... WHERE status='draft'` with rows-affected check.
-
-##### Major
-
-- [x] **DF-DRV-M1** `backend/app/api/revision_review.py:61-108` — All four revision-review endpoints use `get_current_user`, not `get_current_active_superuser`. Any authenticated user can confirm or discard LLM drafts. Add superuser guard.
-- [x] **DF-DRV-M2** `backend/app/services/revision_review_service.py:62-115` — `_list_*_drafts()` methods filter on `status == "draft"` but not `is_current == True`. Non-current drafts appear in the review queue. Add `is_current=True` filter or document the intent.
-- [x] **DF-DRV-M3** `frontend/src/components/review/LlmDraftsPanel.tsx:73-97` — After confirm/discard, `load()` is called unconditionally. On slow networks, if `load()` fails, the success message is contradicted by an error. Optimistically remove the item on API success; show refresh failure separately.
+- [x] Audit trail — `status`, `created_at`, `created_by_user_id`, `llm_review_status` present in entity, source, and relation export schemas. (`export.py`)
+- [x] Import file size limit — 10 MB cap in `_check_file_size()` enforced before `file.file.read()`. HTTP 413 returned. (`import_routes.py:33-45`)
+- [x] Summary round-trip — JSON export flattens `summary` to `summary_en`/`summary_fr`. (`export_service.py:147-148, 190-191`)
+- [x] CSV N-ary roles — `roles_json` column, dynamic iteration over all roles, no 2-role assumption. (`export_service.py:450-465`)
+- [x] Import UI — client-side 10 MB check, `CircularProgress` indicators, `handleReset()` cancel on both import views.
 
 ---
 
-#### EXTRACTION PIPELINE
+### Smart Discovery
 
-##### Critical
-
-- [x] **DF-EXT-C1** `backend/app/schemas/source.py:126-137` vs `frontend/src/types/extraction.ts:121-129` — `DocumentExtractionPreview` backend schema includes `needs_review_count`, `auto_verified_count`, and `avg_validation_score`; frontend type omits all three. Add missing fields to the TypeScript interface.
-
-##### Major
-
-- [x] **DF-EXT-M1** `backend/app/services/extraction_review/materialization.py:78-84` — When an entity referenced in an extracted role cannot be found, the code logs a warning and silently creates the relation without that role. Relation is returned as successfully materialized. Treat missing entity references as a fatal error or return a structured failure result.
-- [x] **DF-EXT-M2** `backend/app/services/extraction_review/staging.py:54-69` — Auto-materialization path: `db.flush()` succeeds for each materialization call but a final `db.commit()` failure leaves the in-memory `staged` object in a different state than the DB. Wrap all materializations in explicit transaction with rollback on any failure.
-- [x] **DF-EXT-M3** `backend/app/services/document_extraction_processing.py:419-446` — No explicit transaction boundary wraps the full extraction pipeline (`run_validated_extraction` → `stage_review_batch` → `build_link_suggestions`). A mid-pipeline crash orphans `StagedExtraction` records. Wrap the full preview-build operation in a single `async with db.begin()`.
-- [x] **DF-EXT-M4** `backend/app/api/document_extraction_routes/document.py:114-153` — If `build_extraction_preview()` fails after `store_document_in_source()` succeeds, the document is persisted but the extraction returns an error. Clean up the stored document on extraction failure (or defer storage until after successful extraction).
-- [x] **DF-EXT-M5** `backend/app/services/batch_extraction_orchestrator.py:202-214` — Parallel filtering operations on `entities`/`entity_results` arrays may lose index alignment when both arrays are filtered independently. Use a unified list-of-tuples structure throughout the pipeline.
-- [x] **DF-EXT-M6** `backend/app/services/batch_extraction_orchestrator.py:223-249` — Semantic validation of LLM output is absent: relation `entity_slug` values are not checked against the extracted entity list; text spans are not verified against source text. Add cross-field semantic validation after schema validation.
-- [x] **DF-EXT-M7** `backend/app/api/extraction.py:248-258` — Status endpoint hardcodes `provider="OpenAI"` regardless of actual configured LLM provider. Query the actual provider from `get_llm_provider()`.
+- [x] PMID deduplication — `_find_existing_pmids()` called before import loop; already-imported PMIDs skipped. (`document_extraction_discovery.py:188, 370-386`)
+- [x] Rate limiting — `@limiter.limit("5/minute")` on all three discovery endpoints. (`discovery.py:47, 90, 129`)
+- [ ] **[NEW-DSC-M1]** `backend/app/services/document_extraction_discovery.py:109-117` — `discovery_query` is not stored in import provenance. `imported_at` and `import_method` are present, but the search query that led to the discovery is not recorded. Fix: pass the query string into the metadata dict as `"discovery_query"` when called from `run_smart_discovery()`.
+- [ ] **[NEW-DSC-M2]** `backend/app/services/document_extraction_discovery.py:116`, `backend/app/models/source_revision.py` — `calculated_trust_level` is stored as a JSON value inside `source_metadata`, not as a dedicated typed column. This loses type safety, prevents indexed queries on trust level, and is inconsistent with how trust level is handled elsewhere. Fix: add a `calculated_trust_level: Mapped[float | None]` column to `SourceRevision`, write it directly, and remove it from the metadata blob.
 
 ---
 
-#### INFERENCES / COMPUTED RELATIONS
+### API & Data Contracts
 
-##### Critical
-
-- [x] **DF-INF-C1** `backend/app/services/explanation_read_models.py:23-29` — `build_contradiction_detail()` returns a `ContradictionDetail` with empty source lists, expecting `attach_contradiction_sources()` to fill them. If `attach_contradiction_sources()` returns `None` (because only one direction is present), the contradiction detail is discarded entirely. Frontend shows "Disagreement: 45%" with no contradiction section. Fix: report contradictions whenever `disagreement > threshold`, even when only one direction is represented.
-- [x] **DF-INF-C2** `backend/app/services/explanation_read_models.py:33-49` — Contradiction logic requires both supporting and contradicting sources to be non-empty. This is backwards: the disagreement metric can be >0 with unidirectional evidence (internal magnitude cancellation). Decouple contradiction visibility from bidirectional-source requirement.
-- [x] **DF-INF-C3** `backend/app/services/inference/read_models.py:299-309` — Inference cache stores a global average disagreement in `ComputedRelation.uncertainty` but per-role disagreement values differ. When cached inferences are read back, all roles receive the same (incorrect) disagreement value. Store per-role disagreement in `RelationRoleRevision.disagreement`.
-
-##### Major
-
-- [x] **DF-INF-M1** `backend/app/services/inference/read_models.py:212-216` — Cached confidence is stored as `1.0` globally, while live inferences compute accurate per-role confidence. Store per-role confidence in `RelationRoleRevision` to keep cached and live inferences consistent.
-- [x] **DF-INF-M2** `backend/app/services/relation_service.py` — Inference cache is invalidated on relation create/update but not on source update (trust_level change). Add cache invalidation for all entities linked to a source when that source is updated.
-- [x] **DF-INF-M3** `backend/app/services/inference/detail_views.py:82` — `zip(source_ids, results, strict=False)` silently accepts mismatched lengths. A failed source fetch drops source metadata without warning. Change to `strict=True` and handle the resulting ValueError explicitly.
-- [x] **DF-INF-M4** `frontend/src/views/InferencesView.tsx:206-234` — Inferences fetched in a loop read `items.length` from stale closure for index calculation; concurrent async updates can assign inferences to wrong positions. Use functional state updates with explicit index tracking.
-- [x] **DF-INF-M5** `backend/app/services/inference/evidence_views.py:33-47` — `if role.weight:` treats explicit `0.0` as absent, falling back to relation direction. A role weight of 0 (neutral contribution) should be distinct from unset. Check `role.weight is not None` instead.
-
-##### Minor
-
-- [x] **DF-INF-m1** `backend/app/schemas/inference.py:14` — `score: Optional[float]` has no bounds constraint. Add `Field(..., ge=-1.0, le=1.0)` to catch out-of-range math errors before they reach the frontend.
-- [x] **DF-INF-m2** `backend/app/repositories/inference_repo.py` — `InferenceRepository` class is never instantiated; cache is managed by `ComputedRelationRepository`. Remove dead class to avoid confusion.
+- [x] API client auth separation — dispatches `AUTH_SESSION_EXPIRED_EVENT` instead of redirecting; `AuthContext` owns the state transition. (`client.tsx:205`, `AuthContext.tsx:69-82`)
+- [x] Extraction discovery route validation — request invariants in schema helpers, routes delegate to service. (`discovery.py`)
+- [x] Inference/explanation scope filter — typed query dependency shared across both route families.
+- [x] Error envelope — all handlers return `{"error": {...}}`; no `"detail"` fallback. (`error_handler.py`)
+- [x] `useAsyncAction` routing — `setError` provided → inline only; no `setError` → toast only. (`useAsyncAction.ts:39-47`)
+- [x] Pagination wire contract — four real serialized fields (`items`, `total`, `limit`, `offset`); no phantom derived fields. (`pagination.py`)
+- [x] `DocumentExtractionPreview` contract — `needs_review_count`, `auto_verified_count`, `avg_validation_score` on both backend schema and frontend type; `extracted_text` removed. (`source.py:143-154`, `extraction.ts:119-129`)
+- [x] Revision-review counts — `DraftRevisionCountsResponse` declared as `response_model` on `/counts` endpoint. (`revision_review.py:53`, `review.py:41-46`)
+- [x] Caddyfile routing — `handle /api/*` (prefix-preserving), not `handle_path`. (`Caddyfile:4`)
+- [x] Core frontend types — `created_by_user_id` and `llm_review_status` present on entity, source, and relation types.
 
 ---
 
-#### ENTITY MERGE
+### LLM Provenance & Prompts
 
-##### Critical
-
-- [x] **DF-MRG-C1** `backend/app/services/entity_merge_service.py` — No check prevents circular merges (A→B then B→A). Validate against `EntityMergeRecord` before proceeding: reject if either entity appears as a `source_entity_id` in any existing record.
-- [x] **DF-MRG-C2** `backend/app/repositories/relation_repo.py:37-61` — `list_by_entity()` does not filter `RelationRevision.is_current == True`. After merge, stale role revisions from the deactivated entity's old revisions can pollute inference calculations. Add `is_current=True` filter to the join.
-- [x] **DF-MRG-C3** `backend/app/services/entity_merge_service.py` — After merge, the source entity's revisions have `is_current=False` but the Entity row itself is not flagged. Direct entity queries can encounter an entity with no current revision in an ambiguous state. Add an `is_merged` flag (or `merged_into_entity_id` FK) to the `Entity` model and filter merged entities out of standard queries.
-
-##### Major
-
-- [x] **DF-MRG-M1** `backend/app/services/entity_merge_service.py` — No `source_entity_id != target_entity_id` guard. Self-merge partially succeeds and corrupts the entity. Add explicit validation before any DB operations.
-- [x] **DF-MRG-M2** `backend/app/services/entity_merge_service.py` — After merge, `ComputedRelation` cache entries for the target entity are not invalidated. Subsequent inference reads return stale data. Delete cached computed relations for the target entity on merge.
-- [x] **DF-MRG-M3** `backend/app/services/entity_merge_service.py:139-146` — The count query for `relations_moved` counts roles from all revisions, but the move operation only moves current-revision roles. `EntityMergeResult.relations_moved` is inflated. Add `is_current=True` filter to the count query.
+- [x] `llm_review_status` — present on all three revision models; `"pending_review"` on creation, `"auto_verified"` from auto-commit, `"confirmed"` on human confirm; in schemas, mappers, and export. (`bulk_creation_service.py:87`, `auto_commit.py:90-100`, `revision_review_service.py:156`)
+- [x] LLM extraction prompts — explicit textual support required; unsupported items omitted; contradictions, negation, and hedging preserved as separate outputs. (`prompts.py:18-38, 45-100`)
 
 ---
 
-#### RELATIONS
+### Frontend Pages & Navigation
 
-##### Critical
-
-- [x] **DF-REL-C1** `backend/app/schemas/relation.py:16-20` + `backend/app/mappers/relation_mapper.py:55-67` — `RelationRoleRevision.disagreement` field exists in the DB model but is absent from `RoleRevisionRead` schema and mapper. Computed disagreement is silently dropped on every relation read. Add field to schema and mapper.
-- [x] **DF-REL-C2** `backend/app/repositories/relation_repo.py:16-19` — `get_by_id()` does not eagerly load `revisions` or `roles`. Accessing these on the returned object triggers N+1 queries or a `lazy="raise"` error. Add `selectinload(Relation.revisions).selectinload(RelationRevision.roles)` to the query.
-
-##### Major
-
-- [x] **DF-REL-M1** `backend/app/services/validation_service.py:27-28` vs `backend/app/schemas/relation.py:32` — Schema marks `confidence` as `Optional[float] = None` but the validator rejects null confidence. Either make confidence required in the schema or remove the null check in the validator.
-- [x] **DF-REL-M2** `backend/app/api/relation_types.py:26-27,39` — `active_only: bool = True` query parameter is declared but never used; the service always returns active types. Either wire the parameter or remove it.
-- [x] **DF-REL-M3** `backend/app/models/relation_type.py:32` vs `backend/app/schemas/relation_type.py:13` — `description` is mapped as `JSON` in the model but expected as `str` in the schema. Standardize to `String` in the model.
-- [x] **DF-REL-M4** `frontend/src/types/relation.ts:13` — `entity_id?: string` field exists in the frontend `RelationRead` type but is not sent by the backend schema. Remove the orphaned field or add it to the backend if needed.
-- [x] **DF-REL-M5** `frontend/src/types/relation.ts:9-21` — `created_by_user_id` is present in backend `RelationRevisionRead` but absent from the frontend type. Add `created_by_user_id?: string | null`.
+- [x] Relation detail page — `/relations/:id` route defined; semantic summary, participant roles, source context, audit metadata rendered; all entry points updated; test present. (`RelationDetailView.tsx`, `routes.tsx:86`)
+- [x] Explanation/PropertyDetail consolidation — `ExplanationView` redirects to canonical PropertyDetail URL; all inference entry points use `/entities/:id/properties/:roleType`.
+- [x] Inferences index page — dense table with role/score direction/score/confidence/disagreement/evidence-count columns; failure strip above main table; test present.
+- [x] Evidence deep-linking — `EvidenceTrace` links to `/sources/:id?relation=:relationId#relation-:relationId`; source detail scrolls and highlights target row; search relation results use same deep link.
+- [x] `ProtectedRoute` `returnTo` — destination preserved in router state; `AccountView` redirects on login success.
+- [x] Source detail layout — identity → evidence section → relations table → extraction controls.
+- [x] Synthesis summary block — confidence/contradiction chips and evidence statement precede metric sections. (`SynthesisView.tsx:158-215`)
+- [x] Review queue — tabs labeled "Staged Extraction Review" / "LLM Draft Review"; section order stable; selection cleared on filter context change.
 
 ---
 
-#### SOURCES
+### Frontend UX & Evidence Presentation
 
-##### Critical
-
-- [x] **DF-SRC-C1** `backend/app/schemas/source.py:86-101` vs `frontend/src/api/sources.ts:41-52` — `SourceMetadataSuggestion.summary` is `Optional[I18nText]` (nested dict) on the backend but the frontend type declares flat `summary_en?: string | null` and `summary_fr?: string | null`. Metadata autofill will fail to populate summary fields after URL extraction. Align frontend type to `summary?: Record<string, string>` and update the form mapping.
-
-##### Major
-
-- [x] **DF-SRC-M1** `backend/app/schemas/source.py:56-75` + `backend/app/mappers/source_mapper.py` — `SourceRead` does not expose `document_format`, `document_file_name`, or `document_extracted_at` from `SourceRevision`. Frontend cannot show whether a document is attached or its format. Add optional document fields to `SourceRead` and update mapper.
-- [x] **DF-SRC-M2** `backend/app/schemas/source.py:56-75` — `SourceRead` omits `created_with_llm` and `created_by_user_id`. Provenance is invisible to frontend consumers. Add optional fields and update mapper.
-- [x] **DF-SRC-M3** `backend/app/mappers/source_mapper.py:66-80` — Fallback branch accesses deprecated flat fields (`kind`, `title`, etc.) directly on `Source`; these fields no longer exist in the dual-table architecture. Remove the fallback or add `hasattr()` guards to prevent `AttributeError`.
-- [x] **DF-SRC-M4** `frontend/src/views/CreateSourceView.tsx:28-37` + `EditSourceView.tsx:25-34` — Source kinds are hardcoded arrays. Changes to allowed kinds in the DB are not reflected. Use `filterOptions?.kinds` from the cache, falling back to the hardcoded list.
+- [x] InferenceBlock — labeled ScoreBar axis, score-polarity labels via `getScoreInterpretation()`, interpretation copy. (`InferenceBlock.tsx:26-92`)
+- [x] Explanation page — supporting and contradicting evidence in separate sections; contradictions rendered when disagreement present.
+- [x] Disagreements — claim wording via `formatRelationClaim()` visible; scope/context before source link; side-by-side tables. (`DisagreementsGroupsSection.tsx:92-117`)
+- [x] ScopeFilterPanel — guided dimension dropdown with `SCOPE_FILTER_SUGGESTIONS`; custom mode toggle available.
+- [x] Source relations section — direction filter chips, accordion groups by kind, summary counts, row anchors and deep links preserved.
+- [x] GlobalSearch — explicit `aria-label`, relation suggestions routed to `/relations/:id`.
 
 ---
 
-#### ENTITIES
+### Deployment
 
-##### Critical
-
-- [x] **DF-ENT-C1** `backend/app/schemas/entity.py:34-51` — `EntityRead` does not expose `created_by_user_id` from `EntityRevision`. Audit chain of custody is invisible at the API level. Add `created_by_user_id: Optional[UUID] = None` and populate in `entity_mapper.py`.
-- [x] **DF-ENT-C2** `backend/app/models/entity.py` — No `terms` relationship defined on `Entity`. `EntityTerm` references `entity_id` but the reverse relationship is missing, breaking cascades and making term loading require separate queries. Add `terms = relationship("EntityTerm", back_populates="entity", cascade="all, delete-orphan", lazy="raise")`.
-- [x] **DF-ENT-C3** `backend/app/models/entity_term.py:32` — `entity = relationship("Entity")` has no `back_populates`. Change to `back_populates="terms"`.
-
-##### Major
-
-- [x] **DF-ENT-M1** `backend/app/services/entity_service.py:254-295` — `get_filter_options()` executes multiple separate queries sequentially and can return `clinical_effects = None`. Batch aggregation queries with `asyncio.gather()`; return empty list instead of `None` for missing aggregations.
-- [x] **DF-ENT-M2** `frontend/src/views/EntitiesView.tsx:46-79` — `filterOptions?.clinical_effects.map(...)` will throw if `clinical_effects` is null. Add null coalescing: `filterOptions?.clinical_effects?.map(...) ?? []`.
-- [x] **DF-ENT-M3** `frontend/src/views/EntitiesView.tsx` + `EntityDetailView.tsx` — The `status` field (`draft`/`confirmed`) is sent by the backend but never displayed or filtered. LLM-created draft entities are indistinguishable from confirmed ones. Add a status badge to list items and detail view; add a draft filter.
-
-##### Minor
-
-- [x] **DF-ENT-m1** `backend/app/services/entity_query_builder.py:154-212` — Recency filter uses INNER JOIN with a year subquery; entities whose sources have `NULL` year are excluded. Use `COALESCE` or OUTER JOIN to handle unknown years.
-- [x] **DF-ENT-m2** `frontend/src/hooks/useEntityData.ts:23-76` — No `AbortController` on the fetch; unmounting during a request leaves a dangling promise. Add cleanup to cancel in-flight requests on unmount.
+- [x] Production compose — bind mounts live only in `docker-compose.dev-mounts.yml`; deployed stacks avoid app source mounts.
+- [x] API migrations on start — deployed API startup runs `alembic upgrade head` before serving traffic.
+- [x] Production web — deployed frontend is served as a static build, not via `vite preview`.
+- [x] API health check — present in base compose; `caddy` depends on `service_healthy`.
+- [x] Compose surface area — removed the redundant production-from-source stack; production docs now point to `docker-compose.self-host.yml` as the single supported prod path.
 
 ---
 
-#### SMART DISCOVERY / PUBMED
+### E2E Coverage
 
-##### Critical
-
-- [x] **DF-DSC-C1** `backend/app/services/document_extraction_discovery.py:166-219` — `bulk_import_pubmed_articles()` has no PMID duplicate detection. The same PubMed article can be imported multiple times, creating duplicate Source records. Call `_find_existing_pmids()` before the import loop and skip already-imported PMIDs.
-- [x] **DF-DSC-C2** `backend/app/api/document_extraction_routes/discovery.py:41-154` — Discovery and bulk-import endpoints have no rate limiting. An authenticated user can exhaust NCBI API quota or flood the DB with parallel bulk imports. Add `@limiter.limit("5/minute")` (or equivalent) to all three endpoints.
-
-##### Major
-
-- [x] **DF-DSC-M1** `backend/app/services/document_extraction_discovery.py:98-114` — Sources imported from PubMed store no `imported_at` timestamp or `discovery_query` provenance in metadata. Extend `source_metadata` with `imported_at`, `import_method`, and optionally `discovery_query`.
-- [x] **DF-DSC-M2** `backend/app/services/document_extraction_discovery.py:320-325` — `trust_level` is LLM-inferred and stored directly as the canonical source trust level without any human review. Store it in a separate `calculated_trust_level` field and leave `trust_level` NULL pending user confirmation, or add a review step before bulk-import commit.
-- [x] **DF-DSC-M3** `frontend/src/views/PubMedImportView.tsx` — Added `AbortController` for both search and import requests; Cancel buttons shown during in-flight operations; `AbortError` caught silently.
-- [x] **DF-DSC-M4** `frontend/src/types/pubmed.ts:32-37` + `frontend/src/api/smart-discovery.ts:48-53` — Bulk import response type is declared twice with identical shapes. Remove the duplicate from `smart-discovery.ts` and import from `pubmed.ts`.
+- [x] `E2E-G1` Token refresh — three-test suite: silent re-auth, redirect when both tokens absent, replay rejection after rotation. (`token-refresh.spec.ts`)
+- [x] `E2E-G2` Contradiction visibility — two contradictory relations seeded via API; disagreements page assertions present. (`viewing.spec.ts:115-186`)
+- [x] `E2E-G3` Revision history — entity and relation both tested; `updated_at` diff and field-value change asserted via API. (`revision-history.spec.ts`)
+- [x] `E2E-G4` Disagreements with real data — covered by E2E-G2 test with API-seeded contradictory data.
+- [x] `E2E-G5` Non-admin authorization — regular user session tested for both UI navigation and API 403. (`panel.spec.ts:80-153`)
+- [x] `E2E-G6` Pagination — entities created to exceed PAGE_SIZE; load-more verified; count asserted. (`pagination.spec.ts`)
+- [x] `E2E-G7` Export content — source title verified in downloaded JSON file contents. (`export.spec.ts:51-87`)
+- [x] `E2E-G8` Email verification — registration success message, unverified login denial, and conditional link-follow test all present. (`email-verification.spec.ts`)
+- [x] `E2E-G9` Unknown ID 404 — navigates to non-existent entity UUID, asserts not-found text or 404 heading. (`crud.spec.ts:182-192`)
 
 ---
 
-#### EXPORT / IMPORT
+## Defects Requiring Fixes
 
-##### Critical
-
-- [x] **DF-EXP-C1** `backend/app/services/export_service.py:39-77,162-222,312-369` — Export omits the `status` field (`draft`/`confirmed`) from entity, source, and relation revisions. On re-import, all records default to `confirmed`, bypassing review workflow for LLM-created drafts. Add `status` to all exported dicts.
-- [x] **DF-EXP-C2** `backend/app/services/export_service.py:62-77,183-222,353-368` — Revision `created_at` is never exported (only base `entity.created_at`); relation `created_by_user_id` is not exported at all. Add both fields to preserve audit trail on round-trip.
-- [x] **DF-EXP-C3** `backend/app/api/import_routes.py:34-61` — No file size limit on `UploadFile`. A multi-GB upload is read entirely into memory before validation. Add a size check (e.g., 10 MB cap) before `file.file.read()`.
-
-##### Major
-
-- [x] **DF-EXP-M1** `backend/app/services/export_service.py:63-67` vs `import_service.py:264-267` — JSON export serializes `summary` as `{"en": "...", "fr": "..."}` but JSON import expects flat `summary_en`/`summary_fr` keys. Round-trip import silently loses all summaries. Flatten summary in JSON export to match import expectations.
-- [x] **DF-EXP-M2** `backend/app/schemas/import_schema.py` — `SourceImportRow` has no `trust_level` field; imported sources always get `trust_level=None`. Add `trust_level: float | None = None` and pass it through in `import_sources()`.
-- [x] **DF-EXP-M3** `backend/app/services/export_service.py:258-273` — CSV export assumes exactly 2 roles (subject/object) per relation. N-ary relations lose extra roles silently. Store all roles as a JSON array in an additional column.
-- [x] **DF-EXP-M4** `frontend/src/views/ImportEntitiesView.tsx` + `ImportSourcesView.tsx` — No file size validation in the UI; no progress indicator; no cancel mechanism for large imports. Add client-side size check, progress bar, and abort capability.
-- [x] **DF-EXP-M5** `backend/app/services/export_service.py:144,298` — RDF/Turtle export does not escape quotes in string literals. Exported files fail to parse in RDF tools. Apply proper Turtle string escaping.
-
----
-
-### Full System Audit — 2026-03-23 (score 95/100)
-
-Source: `.temp/full_audit_report_2026-03-23.md`
-
-#### Major
-
-- [x] **AUD-M2** `backend/app/services/bulk_creation_service.py:83` + revision tables — Once materialized, LLM-generated revisions are structurally indistinguishable from human-authored ones. Added `llm_review_status: str | None` (nullable for human-authored rows; `"pending_review"` on creation, `"auto_verified"` from auto-commit, `"confirmed"` on human confirm) to all three revision models. Migration 013. Populated in `bulk_creation_service`, `materialization.py`, `auto_commit._materialize_approved`, and `revision_review_service.confirm`. Exposed in all read schemas, mappers, `DraftRevisionRead`, and export service.
-
-#### Minor
-
-- [x] **AUD-m1** `backend/app/services/export_service.py` — Dropped legacy `subject_slug`/`object_slug` CSV columns (always empty for N-ary roles); `roles_json` is the sole roles column. Fixed mismatched empty-result fallback header.
-
----
-
-### E2E Test Suite — Soundness and Coverage (2026-03-22)
-
-Review identified systemic correctness problems and coverage gaps across the full E2E suite.
-Source: E2E review session 2026-03-22.
-
-#### Critical — false-positive tests (no failure mode)
-
-- [x] **E2E-C1** `inferences/viewing.spec.ts:62-63` — "should navigate to inferences page" asserts `expect(url).toBeTruthy()`. Replace with `toHaveURL(/\/inferences/)` or a heading assertion.
-- [x] **E2E-C2** `inferences/viewing.spec.ts:71-78` — "should filter inferences" has zero assertions. Add at minimum an assertion that the page still renders after attempting a filter interaction.
-- [x] **E2E-C3** `explanations/trace.spec.ts:57-58` — "should display explanation trace" calls `.isVisible().catch(() => false)` with no `expect()`. Always passes. Add a real assertion or remove the test.
-- [x] **E2E-C4** `auth/login.spec.ts:117-121` — "should redirect to account page when accessing protected route without auth" — `url.includes('account')` is always true after redirect; tautological. Assert login form visibility without the URL fallback.
-- [x] **E2E-C5** `auth/register.spec.ts:55-62` — "should show error when registering with invalid email" only checks the URL. Add an assertion that a validation error message is visible.
-- [x] **E2E-C6** Eliminate pervasive conditional-test anti-pattern — `if (await x.isVisible()) { await expect(x).toBeVisible() }` throughout `entities/filters.spec.ts`, `sources/filters.spec.ts`, `relations/export.spec.ts`, `sources/export.spec.ts`, `relations/batch.spec.ts`, `review-queue/queue.spec.ts`. Each of these silently passes when the feature is absent. Replace with direct assertions backed by API-seeded preconditions.
-
-#### Critical — structural defects
-
-- [x] **E2E-C7** `relations/edit-delete.spec.ts` — if API relation creation fails in `beforeEach`, `relationId` is `''` and all tests skip silently. Replace silent skip with a thrown error so broken setup is visible.
-- [x] **E2E-C8** `relations/crud.spec.ts:138-156` — "should remove roles from relation" iterates all buttons looking for those with no text/aria-label to find a delete button. This is fragile and documents an accessibility defect. Add `aria-label="Remove role"` to delete IconButtons in the relation form, then update the test to use `getByRole('button', { name: /remove role/i })`.
-
-#### Major — weak or misleading assertions
-
-- [x] **E2E-M1** `auth/register.spec.ts:64-81` — weak-password test matches the Zod internal key `string_too_short`. Require a user-facing message instead (e.g. "at least 8 characters").
-- [x] **E2E-M2** `auth/login.spec.ts:55-64` — "should show error with empty credentials" only checks the URL. Assert that the login button is still visible and no auth token was set.
-- [x] **E2E-M3** `relations/edit-delete.spec.ts:98-118` — test is titled "should save a relation update and create a new revision" but never verifies a new revision exists. Add an API call or UI check that confirms revision count increased.
-- [x] **E2E-M4** `account/settings.spec.ts:84-129` — "should successfully change password for a test user" silently returns (passes) if the newly registered user cannot log in due to email verification requirements. Add an explicit skip or assertion that makes the precondition failure visible.
-- [x] **E2E-M5** `inferences/viewing.spec.ts:16-54` — "should view inferences on entity detail page" creates two entities but no relation, so inference computation is never triggered. Add an API-seeded relation between the entities before navigating to the detail page.
-- [x] **E2E-M6** `entities/crud.spec.ts:113-114` — `waitForTimeout(1000)` before delete click. Replace with `waitForLoadState('networkidle')` or a condition on a specific element.
-- [x] **E2E-M7** `sources/crud.spec.ts:114-117` — delete confirmation `getByRole('button', { name: /confirm|yes|delete/i })` is unscoped and could match the wrong button. Scope to `locator('[role="dialog"]')` as `entities/crud.spec.ts` correctly does.
-- [x] **E2E-M8** `entities/crud.spec.ts` — missing `afterEach` with `clearAuthState`. Add it for consistency with all other suites.
-- [x] **E2E-M9** `relations/batch.spec.ts:59` — source creation in the batch test fills `summary.*english` which is inside a collapsed "Advanced" section. Remove that fill (title + URL are sufficient, per `sources/crud.spec.ts`).
-- [x] **E2E-M10** `document-upload.spec.ts:64-81` — 60-second LLM-dependent assertion. Either mock the extraction API response or mark the test as requiring LLM availability and move it to a separate slow suite.
-- [x] **E2E-M11** `relations/crud.spec.ts` — heavy `beforeEach` creates source + 2 entities for every test including ones that don't need them (e.g. "should view relations list"). Move resource creation to only the tests that require it, or use a `beforeAll` with API calls.
-
-#### Coverage gaps — missing tests
-
-- [x] **E2E-G1** **Token refresh flow** — no test exercises `refresh_token`. Add a test that sets an expired `auth_token` (or clears it while keeping `refresh_token`) and verifies the app silently re-authenticates.
-- [x] **E2E-G2** **Contradiction visibility** — core HyphaGraph invariant has zero E2E coverage. Add a test: create two relations with contradictory claims for the same entity+role, navigate to the entity detail or disagreements page, and assert both are visible and neither is suppressed.
-- [x] **E2E-G3** **Entity and relation revision history** — edits are tested at the UI level but no test verifies a new revision was persisted. Add post-edit API checks or UI assertions that show a revision history entry was created.
-- [x] **E2E-G4** **Disagreements with real contradictory data** — all `disagreements/viewing.spec.ts` tests create fresh entities with no relations; only the empty-state path is exercised. Add a test with API-seeded contradictory relations that asserts actual disagreement groups are displayed.
-- [x] **E2E-G5** **Non-admin frontend authorization** — `admin/panel.spec.ts` tests the API 403 but no test verifies what a regular-user session sees when accessing admin-restricted UI surfaces.
-- [x] **E2E-G6** **Pagination correctness** — existing pagination tests only click "next" if visible; no test asserts that page 2 data differs from page 1.
-- [x] **E2E-G7** **Export content correctness** — export tests confirm a download event fires and the filename extension is correct; no test validates the file's actual contents.
-- [x] **E2E-G8** **Email verification flow** — registration tests acknowledge verification may be required but no test exercises the verification link or confirms the post-verification login state.
-- [x] **E2E-G9** **Unknown ID 404 handling** — no test navigates to `/entities/00000000-0000-0000-0000-000000000000` or a similar non-existent ID and asserts a user-facing not-found state.
-
-#### Minor / docs inconsistency
-
-- [x] **E2E-m1** `playwright.config.ts` — comment says "English only (no i18n testing)" but `i18n/language-switch.spec.ts` exists and runs. Update the comment.
-- [x] **E2E-m2** `playwright.config.ts` — Firefox and WebKit projects are commented out; `E2E_TESTING_GUIDE.md` lists all three browsers as active. Either enable them or update the guide.
-- [x] **E2E-m3** `auth/register.spec.ts:83-106` — "should allow login after successful registration" uses `expect(loggedIn || needsVerification).toBeTruthy()`. The `needsVerification` text could match unrelated page content. Tighten the locator or split into two tests for the verified and unverified paths.
-
----
-
-## Deferred Items
-
-From completed audits — low priority, no blocking risk.
-
-- **Plaintext reset/verification token storage** — elevated to DF-AUT-C1 above; no longer deferred.
+| ID | Severity | File | Description |
+|----|----------|------|-------------|
+| NEW-INF-C1 | **Critical** | `explanation_read_models.py:23-26` | `build_contradiction_detail()` hardcodes `supporting_sources=[]`, discarding accumulated evidence. Contradictions shown with no source attribution. |
+| NEW-RVW-C1 | **Critical** | `document_extraction_processing.py:~670` | `is_rejected` flag never set on `Entity`/`Relation` rows when an extraction is rejected. Column and migration exist; assignment is missing. |
+| NEW-EXT-M1 | **Major** | `document.py:114-211` | Extraction commits before document is stored. If document storage fails, extraction preview is orphaned with no cleanup. |
+| NEW-REV-M1 | **Major** | `revision_review_service.py:142-149` | Sibling `is_current=False` update runs outside the `SELECT FOR UPDATE` lock. Race condition can leave two `is_current=True` revisions for the same entity. |
+| NEW-MRG-M1 | **Major** | `entity_query_builder.py`, `entity_search.py`, `export_service.py` | `is_merged` not filtered in entity list, search, or export. Merged entities remain fully visible. |
+| NEW-DSC-M2 | **Major** | `document_extraction_discovery.py:116`, `source_revision.py` | `calculated_trust_level` stored as JSON blob value, not a typed column. Prevents indexed queries and type safety. |
+| NEW-SEARCH-M1 | **Major** | `backend/alembic/versions/` | `pg_trgm` GIN indexes not present in any migration. All text searches are sequential scans. |
+| NEW-INF-M1 | **Major** | `relation_role_revision.py` | Per-role `confidence` column absent. Only `disagreement` is stored per-role; confidence is computed but not persisted. |
+| NEW-DSC-M1 | **Major** | `document_extraction_discovery.py:109-117` | `discovery_query` not stored in import provenance metadata. |
+| NEW-EXT-m1 | **Minor** | `batch_extraction_orchestrator.py:366-433` | Text span validation missing. Only entity slug coherence is checked; spans not verified against source text. |
+| NEW-REV-m1 | **Minor** | `test_revision_review_service.py` | No test asserts siblings have `is_current=False` after `confirm()`. |
+| NEW-MRG-m1 | **Minor** | `test_entity_merge_service.py` | No test verifies circular merge guard rejects the attempt. |
 
 ---
 
@@ -825,44 +191,3 @@ From completed audits — low priority, no blocking risk.
 - **Advanced auth** — 2FA (TOTP), OAuth providers (Google, GitHub).
 - **Real-time collaboration** — WebSocket/SSE for live updates.
 - **Multi-tenancy / RBAC** — Organization model, role-based access control.
-
----
-
-## Audit Reports Index
-
-- `.temp/full_audit_report_2026-03-23.md` *(current — score 95/100, 1 major, 2 minor open)*
-
-- `.temp/audit_entity_write_flow_2026-03-22.md`
-- `.temp/audit_entity_creation_2026-03-22.md`
-- `.temp/audit_relation_creation_2026-03-22.md`
-- `.temp/audit_llm_integration_2026-03-22.md`
-- `.temp/audit_relation_extraction_2026-03-22.md`
-- `.temp/audit_login_2026-03-22.md`
-- `.temp/audit_payload_flows_2026-03-21.md`
-- `.temp/full_audit_report_2026-03-21b.md`
-- `.temp/full_audit_report_2026-03-21_prev.md`
-- `.temp/audit_inference_pipeline_2026-03-21.md`
-- `.temp/audit_smart_discovery_2026-03-22.md`
-- `.temp/audit_orm_2026-03-22.md`
-- `.temp/audit_database_operations_2026-03-22.md`
-- `.temp/audit_smart_discovery_2026-03-20.md`
-- `.temp/full_audit_report_2026-03-18.md`
-- `.temp/knowledge_integrity_report_v1.md`
-- `.temp/revision_architecture_provenance_report_v1.md`
-- `.temp/security_authentication_report_v2.md`
-- `.temp/api_service_boundary_report_v2.md`
-- `.temp/dead_code_compatibility_shims_report_v2.md`
-- `.temp/typed_contract_discipline_report_v3.md`
-- `.temp/test_suite_health_report_v2.md`
-- `.temp/audit_dataflow_entities_2026-03-23.md` *(agent output)*
-- `.temp/audit_dataflow_sources_2026-03-23.md`
-- `.temp/audit_dataflow_relations_2026-03-23.md`
-- `.temp/audit_dataflow_inferences_2026-03-23.md`
-- `.temp/audit_dataflow_extraction_2026-03-23.md`
-- `.temp/audit_dataflow_extraction_review_2026-03-23.md`
-- `.temp/audit_dataflow_revision_review_2026-03-23.md`
-- `.temp/audit_dataflow_search_2026-03-23.md`
-- `.temp/audit_dataflow_auth_2026-03-23.md`
-- `.temp/audit_dataflow_smart_discovery_2026-03-23.md`
-- `.temp/audit_dataflow_entity_merge_2026-03-23.md`
-- `.temp/audit_dataflow_export_import_2026-03-23.md`

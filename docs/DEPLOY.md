@@ -1,9 +1,9 @@
-# Multi-Environment Deployment (local, dev server, prod)
+# Multi-Environment Deployment (local, dev server, self-host)
 
 Goal: keep **one repository** that can run:
 - locally (developer machine)
 - on a dev server (`dev.mydomain.com`)
-- on a production server (`mydomain.com`)
+- for self-hosted production (`mydomain.com`)
 
 This document prioritizes your current need: **deploying the dev version on your OVH VPS**.
 
@@ -14,20 +14,20 @@ This document prioritizes your current need: **deploying the dev version on your
 ### Compose
 - `docker-compose.yml`: local/dev base stack
 - `docker-compose.server-dev.yml`: override for remote dev server
-- `docker-compose.prod.yml`: override for production
+- `docker-compose.self-host.yml`: self-hosted production stack from published images
 
 ### Caddy (versioned templates)
 - `deploy/caddy/Caddyfile.dev`
-- `deploy/caddy/Caddyfile.prod`
+- `deploy/caddy/Caddyfile.self-host`
 
 ### Environment templates
 - `.env.sample` (local)
 - `.env.dev.template` (dev server)
-- `.env.prod.template` (production)
+- `.env.prod.template` (self-host production)
 
 ### Makefile commands
 - `make up-dev-server`, `make down-dev-server`, `make logs-dev-server`, `make migrate-dev-server`
-- `make up-prod`, `make down-prod`, `make logs-prod`, `make migrate-prod`
+- `make self-host-setup`, `make self-host-up`, `make self-host-logs`, `make self-host-update`
 
 ---
 
@@ -161,42 +161,48 @@ make dev-check
 
 ---
 
-## 6. Production deployment (when ready)
+## 6. Production deployment (self-hosted)
 
 ### 6.1 Prepare production secrets
 
 ```bash
-cp .env.prod.template .env.prod
+cp .env.prod.template .env
 ```
 
-Fill all sensitive values.
+Fill all sensitive values, including `HYPHAGRAPH_VERSION`.
 
 ### 6.2 Update production domain
 
-Edit `deploy/caddy/Caddyfile.prod` and replace both `mydomain.com` occurrences with your actual domain:
+Edit `deploy/caddy/Caddyfile.self-host` and replace `your-domain.com` with your actual domain:
 
 ```bash
-sed -i "s|mydomain.com|yourdomain.com|g" deploy/caddy/Caddyfile.prod
+sed -i "s|your-domain.com|yourdomain.com|g" deploy/caddy/Caddyfile.self-host
 ```
 
 Verify the result before starting the stack:
 
 ```bash
-cat deploy/caddy/Caddyfile.prod
+cat deploy/caddy/Caddyfile.self-host
 ```
 
 ### 6.3 Start the production stack
 
 ```bash
-make up-prod
+make self-host-up
 ```
 
-Production override applies:
-- backend runs `alembic upgrade head` then uvicorn (no `--reload`)
-- frontend served by nginx (static build via `Dockerfile.prod`)
+Self-hosting applies:
+- backend and frontend pull published GHCR images pinned by `HYPHAGRAPH_VERSION`
+- backend runs `alembic upgrade head` then uvicorn on start
 - HTTPS Caddy with persisted certificates
 
-> Note: `make migrate-prod` still exists for manual migration runs (e.g. debugging), but it is no longer required as part of normal startup.
+Helpful follow-up commands:
+
+```bash
+make self-host-logs
+make self-host-check
+make self-host-update
+```
 
 ---
 
@@ -226,10 +232,10 @@ Stop dev:
 make down-dev-server
 ```
 
-Stop prod:
+Stop self-hosted prod:
 
 ```bash
-make down-prod
+make self-host-down
 ```
 
 Docker cleanup:
