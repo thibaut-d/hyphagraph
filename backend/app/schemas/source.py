@@ -90,6 +90,7 @@ class SourceRead(Schema):
     document_format: Optional[str] = None
     document_file_name: Optional[str] = None
     document_extracted_at: Optional[datetime] = None
+    graph_usage_count: int = 0
 
 
 class SourceWithHistory(SourceRead):

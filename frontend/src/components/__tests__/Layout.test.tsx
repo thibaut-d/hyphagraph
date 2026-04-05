@@ -40,6 +40,7 @@ vi.mock("react-i18next", () => ({
         "menu.entities": "Entities",
         "menu.sources": "Sources",
         "menu.search": "Search",
+        "menu.account": "Account",
         "menu.review_queue": "Review Queue",
         "auth.login": "Login",
         "common.change_language": "Change language",
@@ -95,6 +96,7 @@ describe("Layout", () => {
       expect(screen.getByText("Entities")).toBeInTheDocument();
       expect(screen.getByText("Sources")).toBeInTheDocument();
       expect(screen.getByText("Search")).toBeInTheDocument();
+      expect(screen.getByText("Account")).toBeInTheDocument();
     });
 
     it("renders global search component", () => {
@@ -118,7 +120,7 @@ describe("Layout", () => {
         </BrowserRouter>
       );
 
-      const languageButton = screen.getByRole("button", { name: /change language/i });
+      const languageButton = screen.getByRole("button", { name: "FR" });
       expect(languageButton).toBeInTheDocument();
     });
   });
@@ -208,6 +210,7 @@ describe("Layout", () => {
       expect(screen.getByText("Entities")).toBeInTheDocument();
       expect(screen.getByText("Sources")).toBeInTheDocument();
       expect(screen.getByText("Search")).toBeInTheDocument();
+      expect(screen.getByText("Account")).toBeInTheDocument();
     });
 
     it("renders navigation on entities route", () => {
@@ -247,6 +250,7 @@ describe("Layout", () => {
       expect(screen.getByText("Entities").closest("a")).toHaveAttribute("href", "/entities");
       expect(screen.getByText("Sources").closest("a")).toHaveAttribute("href", "/sources");
       expect(screen.getByText("Search").closest("a")).toHaveAttribute("href", "/search");
+      expect(screen.getByText("Account").closest("a")).toHaveAttribute("href", "/account");
     });
 
     it("title links to home page", () => {
@@ -286,7 +290,7 @@ describe("Layout", () => {
         </BrowserRouter>
       );
 
-      const languageButton = screen.getByRole("button", { name: /change language/i });
+      const languageButton = screen.getByRole("button", { name: "FR" });
       fireEvent.click(languageButton);
 
       expect(i18n.changeLanguage).toHaveBeenCalled();
@@ -304,7 +308,7 @@ describe("Layout", () => {
         </BrowserRouter>
       );
 
-      const languageButton = screen.getByRole("button", { name: /change language/i });
+      const languageButton = screen.getByRole("button", { name: "FR" });
       fireEvent.click(languageButton);
 
       // Should switch to French
@@ -323,7 +327,7 @@ describe("Layout", () => {
         </BrowserRouter>
       );
 
-      const languageButton = screen.getByRole("button", { name: /change language/i });
+      const languageButton = screen.getByRole("button", { name: "EN" });
       fireEvent.click(languageButton);
 
       // Should switch to English

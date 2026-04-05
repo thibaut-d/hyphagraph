@@ -25,7 +25,7 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 
 import type { EnrichedRelation } from "../../hooks/useEvidenceRelations";
 
-export type SortField = "kind" | "direction" | "confidence" | "source";
+export type SortField = "kind" | "direction" | "confidence" | "source" | "trust";
 export type SortOrder = "asc" | "desc";
 
 interface EvidenceTableSectionProps {
@@ -147,6 +147,11 @@ export function EvidenceTableSection({
               </TableSortLabel>
             </TableCell>
             <TableCell>
+              <TableSortLabel active={sortField === "trust"} direction={sortField === "trust" ? sortOrder : "asc"} onClick={() => onSort("trust")}>
+                <strong>{t("evidence.table.source_authority", "Source Authority")}</strong>
+              </TableSortLabel>
+            </TableCell>
+            <TableCell>
               <strong>{t("evidence.table.notes", "Notes")}</strong>
             </TableCell>
           </TableRow>
@@ -217,6 +222,14 @@ export function EvidenceTableSection({
                       {t("evidence.table.view_source", "View Source")}
                     </Link>
                   )}
+                </TableCell>
+
+                <TableCell>
+                  <Typography variant="body2">
+                    {relation.source?.trust_level != null
+                      ? `${Math.round(relation.source.trust_level * 100)}%`
+                      : t("common.not_available", "N/A")}
+                  </Typography>
                 </TableCell>
 
                 <TableCell>

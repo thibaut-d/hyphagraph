@@ -138,9 +138,19 @@ class SourceService:
         return items, total
 
     def _build_list_query(self, filters: Optional[SourceFilters]) -> Select:
+        relation_stats = self._build_relation_stats_subquery()
         query = (
-            select(Source, SourceRevision)
+            select(
+                Source,
+                SourceRevision,
+                func.coalesce(relation_stats.c.relation_count, 0).label("graph_usage_count"),
+            )
             .join(SourceRevision, Source.id == SourceRevision.source_id)
+            .join(
+                relation_stats,
+                Source.id == relation_stats.c.source_id,
+                isouter=True,
+            )
             .where(SourceRevision.is_current == True)
             .where(SourceRevision.status == "confirmed")
         )
@@ -150,7 +160,7 @@ class SourceService:
 
         query = self._apply_basic_filters(query, filters)
         query = self._apply_domain_filters(query, filters.domain)
-        query = self._apply_role_filters(query, filters.role)
+        query = self._apply_role_filters(query, filters.role, relation_stats)
         return query
 
     def _apply_basic_filters(self, query: Select, filters: SourceFilters) -> Select:
@@ -214,16 +224,10 @@ class SourceService:
         self,
         query: Select,
         roles: Optional[list[str]],
+        relation_stats,
     ) -> Select:
         if not roles:
             return query
-
-        relation_stats = self._build_relation_stats_subquery()
-        query = query.join(
-            relation_stats,
-            Source.id == relation_stats.c.source_id,
-            isouter=True,
-        )
 
         role_conditions = []
         if "pillar" in roles:
@@ -268,8 +272,15 @@ class SourceService:
         for row in rows:
             source = row[0]
             revision = row[1] if len(row) > 1 else None
+            graph_usage_count = row[2] if len(row) > 2 else 0
             if source and revision:
-                items.append(source_to_read(source, revision))
+                items.append(
+                    source_to_read(
+                        source,
+                        revision,
+                        graph_usage_count=int(graph_usage_count or 0),
+                    )
+                )
         return items
 
     async def update(self, source_id: str, payload: SourceWrite, user_id: UUID | None = None) -> SourceRead:

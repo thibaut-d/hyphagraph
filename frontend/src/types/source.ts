@@ -19,6 +19,7 @@ export interface SourceRead {
   document_format?: string | null;
   document_file_name?: string | null;
   document_extracted_at?: string | null;
+  graph_usage_count?: number;
 }
 
 export interface SourceWrite {

@@ -1,9 +1,11 @@
 import logging
 from uuid import UUID
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.schemas.relation import RelationWrite, RelationRead
+from app.schemas.pagination import PaginatedResponse
 from app.repositories.relation_repo import RelationRepository
 from app.repositories.computed_relation_repo import ComputedRelationRepository
 from app.models.entity import Entity
@@ -11,12 +13,13 @@ from app.models.entity_revision import EntityRevision
 from app.models.relation import Relation
 from app.models.relation_revision import RelationRevision
 from app.models.relation_role_revision import RelationRoleRevision
+from app.models.source_revision import SourceRevision
 from app.mappers.relation_mapper import (
     relation_revision_from_write,
     relation_to_read,
 )
 from app.services.validation_service import validate_relation
-from app.services.query_predicates import canonical_entity_predicate
+from app.services.query_predicates import canonical_entity_predicate, canonical_relation_predicate
 from app.utils.revision_helpers import get_current_revision, create_new_revision
 from app.utils.errors import RelationNotFoundException, ValidationException
 from app.services.inference.read_models import resolve_entity_slugs
@@ -144,6 +147,58 @@ class RelationService:
         entity_ids = {role.entity_id for role in current_revision.roles}
         entity_slug_map = await resolve_entity_slugs(self.db, entity_ids)
         return relation_to_read(relation, current_revision, entity_slug_map=entity_slug_map)
+
+    async def list_all(self, limit: int = 50, offset: int = 0) -> PaginatedResponse[RelationRead]:
+        count_stmt = (
+            select(func.count())
+            .select_from(Relation)
+            .join(RelationRevision, Relation.id == RelationRevision.relation_id)
+            .where(canonical_relation_predicate())
+        )
+        total_result = await self.db.execute(count_stmt)
+        total = total_result.scalar() or 0
+
+        list_stmt = (
+            select(Relation, RelationRevision, SourceRevision.title, SourceRevision.year)
+            .join(RelationRevision, Relation.id == RelationRevision.relation_id)
+            .join(
+                SourceRevision,
+                (Relation.source_id == SourceRevision.source_id)
+                & (SourceRevision.is_current == True)
+                & (SourceRevision.status == "confirmed"),
+            )
+            .where(canonical_relation_predicate())
+            .options(selectinload(RelationRevision.roles))
+            .order_by(RelationRevision.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        rows = (await self.db.execute(list_stmt)).all()
+
+        entity_ids = {
+            role.entity_id
+            for _, revision, _, _ in rows
+            for role in revision.roles
+        }
+        entity_slug_map = await resolve_entity_slugs(self.db, entity_ids)
+
+        items = [
+            relation_to_read(
+                relation,
+                revision,
+                entity_slug_map=entity_slug_map,
+                source_title=source_title,
+                source_year=source_year,
+            )
+            for relation, revision, source_title, source_year in rows
+        ]
+
+        return PaginatedResponse(
+            items=items,
+            total=total,
+            limit=limit,
+            offset=offset,
+        )
 
     async def list_by_source(self, source_id: str | UUID) -> list[RelationRead]:
         """List all relations for a source with their current revisions."""

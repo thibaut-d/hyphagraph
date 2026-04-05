@@ -16,6 +16,7 @@ import {
   ListItemIcon,
   Collapse,
   Divider,
+  Button,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
@@ -207,11 +208,43 @@ export function MobileDrawer({
 
       {/* Footer: Language switcher */}
       <Divider />
-      <Box sx={{ p: 1, display: "flex", alignItems: "center", gap: 1 }}>
-        <Typography variant="body2" sx={{ flexGrow: 1 }}>
-          {t("menu.current_language")}
-        </Typography>
-        <LanguageSwitch />
+      <Box sx={{ p: 2, display: "flex", flexDirection: "column", gap: 1.5 }}>
+        {user ? (
+          <Box>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+              {user.email}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {t("profile.signed_in", "Signed in")}
+            </Typography>
+            <Box sx={{ mt: 1 }}>
+              <Button
+                component={RouterLink}
+                to="/profile"
+                onClick={onClose}
+                size="small"
+              >
+                {t("profile.my_profile", "My Profile")}
+              </Button>
+            </Box>
+          </Box>
+        ) : (
+          <Button
+            component={RouterLink}
+            to="/account"
+            onClick={onClose}
+            size="small"
+            variant="outlined"
+          >
+            {t("auth.login", "Login")}
+          </Button>
+        )}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Typography variant="body2" sx={{ flexGrow: 1 }}>
+            {t("menu.current_language")}
+          </Typography>
+          <LanguageSwitch />
+        </Box>
       </Box>
     </Drawer>
   );

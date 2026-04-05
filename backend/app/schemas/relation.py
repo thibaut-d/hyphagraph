@@ -65,6 +65,8 @@ class RelationRead(Schema):
     created_at: datetime
     updated_at: datetime  # created_at of the current revision
     source_id: UUID  # Immutable
+    source_title: Optional[str] = None
+    source_year: Optional[int] = None
 
     # Current revision data
     kind: Optional[str] = None

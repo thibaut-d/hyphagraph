@@ -31,6 +31,8 @@ export interface RelationRead {
   created_at: string;
   updated_at: string;
   source_id: string;
+  source_title?: string | null;
+  source_year?: number | null;
   kind?: string | null;
   direction?: string | null;
   confidence?: number | null;

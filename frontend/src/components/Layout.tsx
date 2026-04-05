@@ -21,6 +21,7 @@ import CategoryIcon from "@mui/icons-material/Category";
 import LibraryBooksIcon from "@mui/icons-material/LibraryBooks";
 import RateReviewIcon from "@mui/icons-material/RateReview";
 import BugReportIcon from "@mui/icons-material/BugReport";
+import PersonIcon from "@mui/icons-material/Person";
 
 import { ProfileMenu } from "./ProfileMenu";
 import { LanguageSwitch } from "./layout/LanguageSwitch";
@@ -37,6 +38,7 @@ const menuItems = [
   { key: "menu.entities", path: "/entities", icon: CategoryIcon },
   { key: "menu.sources", path: "/sources", icon: LibraryBooksIcon },
   { key: "menu.search", path: "/search", icon: SearchIcon },
+  { key: "menu.account", path: "/account", icon: PersonIcon },
   {
     key: "menu.review_queue",
     path: "/review-queue",

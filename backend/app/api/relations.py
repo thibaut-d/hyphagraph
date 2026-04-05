@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from uuid import UUID
 
 from app.api.service_dependencies import get_relation_service
 from app.schemas.relation import RelationWrite, RelationRead
+from app.schemas.pagination import PaginatedResponse
 from app.services.relation_service import RelationService
 from app.dependencies.auth import get_current_user
 
@@ -16,6 +17,14 @@ async def create_relation(
     user=Depends(get_current_user),  # 🔒 auth required
 ):
     return await service.create(payload, user_id=user.id if user else None)
+
+@router.get("/", response_model=PaginatedResponse[RelationRead])
+async def list_relations(
+    limit: int = Query(50, description="Maximum number of results", ge=1, le=100),
+    offset: int = Query(0, description="Number of results to skip", ge=0),
+    service: RelationService = Depends(get_relation_service),
+):
+    return await service.list_all(limit=limit, offset=offset)
 
 @router.get("/by-source/{source_id}", response_model=list[RelationRead])
 async def list_relations_by_source(

@@ -2,6 +2,13 @@ import { apiFetch } from "./client";
 import type { RelationRead } from "../types/relation";
 import type { JsonObject } from "../types/json";
 
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export interface RoleWrite {
   entity_id: string;
   role_type: string;
@@ -22,6 +29,10 @@ export interface RelationWrite {
 
 export function listRelationsBySource(sourceId: string): Promise<RelationRead[]> {
   return apiFetch(`/relations/by-source/${sourceId}`);
+}
+
+export function listRelations(limit = 50, offset = 0): Promise<PaginatedResponse<RelationRead>> {
+  return apiFetch(`/relations?limit=${limit}&offset=${offset}`);
 }
 
 export function getRelation(relationId: string): Promise<RelationRead> {

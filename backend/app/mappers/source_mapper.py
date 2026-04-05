@@ -44,6 +44,8 @@ def source_revision_from_write(payload: SourceWrite) -> SourceRevisionPayload:
 def source_to_read(
     source: Source,
     current_revision: SourceRevision | None = None,
+    *,
+    graph_usage_count: int = 0,
 ) -> SourceRead:
     """
     ORM → Read
@@ -71,6 +73,7 @@ def source_to_read(
             document_format=current_revision.document_format,
             document_file_name=current_revision.document_file_name,
             document_extracted_at=current_revision.document_extracted_at,
+            graph_usage_count=graph_usage_count,
         )
     else:
         raise ValueError(f"Source {source.id} has no current revision")

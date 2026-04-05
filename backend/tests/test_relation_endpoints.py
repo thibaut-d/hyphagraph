@@ -51,6 +51,22 @@ class TestRelationEndpoints:
         finally:
             app.dependency_overrides.clear()
 
+    async def test_list_relations_returns_paginated_shape(self, override_get_db):
+        """Test listing relations returns paginated response shape."""
+        app.dependency_overrides[get_db] = override_get_db
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                response = await client.get("/api/relations/")
+                assert response.status_code == status.HTTP_200_OK
+                data = response.json()
+                assert "items" in data
+                assert "total" in data
+                assert "limit" in data
+                assert "offset" in data
+                assert isinstance(data["items"], list)
+        finally:
+            app.dependency_overrides.clear()
+
     async def test_get_nonexistent_relation(self, override_get_db):
         """Test getting non-existent relation returns 404."""
         app.dependency_overrides[get_db] = override_get_db
@@ -68,9 +84,8 @@ class TestRelationEndpoints:
         try:
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
                 source_id = uuid4()
-                response = await client.get(f"/api/relations/source/{source_id}")
-                # Returns 404 if source doesn't exist, 200 if it exists (even with no relations)
-                assert response.status_code in [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND]
+                response = await client.get(f"/api/relations/by-source/{source_id}")
+                assert response.status_code == status.HTTP_200_OK
         finally:
             app.dependency_overrides.clear()
 

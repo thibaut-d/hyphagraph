@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { BrowserRouter } from "react-router";
 import type { ReactNode } from "react";
 
@@ -142,5 +142,42 @@ describe("SourcesView", () => {
     expect(sourceApi.listSources).toHaveBeenLastCalledWith(
       expect.objectContaining({ role: ["agent"] }),
     );
+  });
+
+  it("renders authority and graph usage metrics for each source row", async () => {
+    mockUsePersistedFilters.mockImplementation(() => ({
+      filters: {},
+      setFilter: vi.fn(),
+      clearAllFilters: vi.fn(),
+      activeFilterCount: 0,
+    }));
+
+    vi.mocked(sourceApi.listSources).mockResolvedValue({
+      items: [
+        {
+          id: "source-1",
+          title: "Trial A",
+          kind: "study",
+          year: 2024,
+          url: "https://example.com/trial-a",
+          trust_level: 0.82,
+          graph_usage_count: 3,
+          created_at: new Date().toISOString(),
+          status: "confirmed",
+        } as any,
+      ],
+      total: 1,
+      limit: 50,
+      offset: 0,
+    });
+
+    renderView();
+
+    await waitFor(() => {
+      expect(screen.getByText("Trial A")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("Authority {{value}}%")).toBeInTheDocument();
+    expect(screen.getByText("Used {{count}}x")).toBeInTheDocument();
   });
 });

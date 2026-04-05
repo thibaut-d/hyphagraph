@@ -36,7 +36,7 @@ describe("EvidenceView table", () => {
       expect(screen.getAllByText("evidence.contradicts")).toHaveLength(1);
       expect(screen.getByText("80%")).toBeInTheDocument();
       expect(screen.getByText("60%")).toBeInTheDocument();
-      expect(screen.getByText("90%")).toBeInTheDocument();
+      expect(screen.getAllByText("90%").length).toBeGreaterThanOrEqual(1);
       expect(screen.getByText("Clinical Trial A")).toBeInTheDocument();
       expect(screen.getByText("Observational Study B")).toBeInTheDocument();
       expect(screen.getByText("Meta-Analysis C")).toBeInTheDocument();
@@ -67,7 +67,7 @@ describe("EvidenceView table", () => {
     );
   });
 
-  it("allows sorting by confidence, kind, and direction", async () => {
+  it("allows sorting by confidence, kind, direction, and source authority", async () => {
     renderEvidenceView();
 
     await waitFor(() => {
@@ -77,10 +77,12 @@ describe("EvidenceView table", () => {
     clickSortableHeader("evidence.table.confidence");
     clickSortableHeader("evidence.table.claim");
     clickSortableHeader("evidence.table.direction");
+    clickSortableHeader("evidence.table.source_authority");
 
     expect(screen.getByText("evidence.table.confidence")).toBeInTheDocument();
     expect(screen.getByText("evidence.table.claim")).toBeInTheDocument();
     expect(screen.getByText("evidence.table.direction")).toBeInTheDocument();
+    expect(screen.getByText("evidence.table.source_authority")).toBeInTheDocument();
   });
 
   it("shows filtered headers and filtered relations when a role type is provided", async () => {

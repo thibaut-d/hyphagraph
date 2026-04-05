@@ -41,6 +41,9 @@ def relation_to_read(
     relation: Relation,
     current_revision: RelationRevision,
     entity_slug_map: dict[UUID, str] | None = None,
+    *,
+    source_title: str | None = None,
+    source_year: int | None = None,
 ) -> RelationRead:
     """
     ORM → Read
@@ -72,6 +75,8 @@ def relation_to_read(
         created_at=relation.created_at,
         updated_at=current_revision.created_at,
         source_id=relation.source_id,
+        source_title=source_title,
+        source_year=source_year,
         kind=current_revision.kind,
         direction=current_revision.direction,
         confidence=current_revision.confidence,

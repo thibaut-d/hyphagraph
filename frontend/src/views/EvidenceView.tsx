@@ -116,6 +116,9 @@ export function EvidenceView() {
       case "source":
         comparison = (a.source?.title || "").localeCompare(b.source?.title || "");
         break;
+      case "trust":
+        comparison = (a.source?.trust_level ?? -1) - (b.source?.trust_level ?? -1);
+        break;
     }
 
     return sortOrder === "asc" ? comparison : -comparison;

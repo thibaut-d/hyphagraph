@@ -420,9 +420,28 @@ export function SourcesView() {
                 <ListItem key={s.id}>
                   <ListItemText
                     primary={
-                      <Link component={RouterLink} to={`/sources/${s.id}`}>
-                        {s.title ?? s.id}
-                      </Link>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+                        <Link component={RouterLink} to={`/sources/${s.id}`}>
+                          {s.title ?? s.id}
+                        </Link>
+                        {s.trust_level != null && (
+                          <Chip
+                            label={t("sources.authority_chip", "Authority {{value}}%", {
+                              value: Math.round(s.trust_level * 100),
+                            })}
+                            size="small"
+                            color={s.trust_level >= 0.75 ? "success" : "default"}
+                            variant="outlined"
+                          />
+                        )}
+                        <Chip
+                          label={t("sources.graph_usage_chip", "Used {{count}}x", {
+                            count: s.graph_usage_count ?? 0,
+                          })}
+                          size="small"
+                          variant="outlined"
+                        />
+                      </Box>
                     }
                     secondary={[
                       s.kind,

@@ -236,3 +236,34 @@ class TestSourceService:
 
         assert total == 0
         assert items == []
+
+    async def test_list_all_includes_graph_usage_count(self, db_session):
+        source_service = SourceService(db_session)
+        entity_service = EntityService(db_session)
+        relation_service = RelationService(db_session)
+
+        source = await source_service.create(
+            SourceWrite(kind="study", title="Usage Count Source", url="https://example.com/usage")
+        )
+        drug = await entity_service.create(EntityWrite(slug="usage-drug"))
+        outcome = await entity_service.create(EntityWrite(slug="usage-outcome"))
+
+        await relation_service.create(
+            RelationWrite(
+                source_id=str(source.id),
+                kind="association",
+                confidence=0.9,
+                direction="supports",
+                roles=[
+                    RoleWrite(role_type="agent", entity_id=str(drug.id)),
+                    RoleWrite(role_type="outcome", entity_id=str(outcome.id)),
+                ],
+            )
+        )
+
+        items, total = await source_service.list_all(
+            filters=SourceFilters(search="Usage Count Source")
+        )
+
+        assert total == 1
+        assert items[0].graph_usage_count == 1
