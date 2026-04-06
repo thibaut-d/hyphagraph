@@ -312,11 +312,11 @@ export function SourcesView() {
           spacing={1.25}
           sx={{ width: { xs: "100%", sm: "auto" } }}
         >
-          <Box>
+          <Box sx={{ pb: { xs: 0.5, md: 0 } }}>
             <Typography variant="caption" color="text.secondary">
               {t("sources.toolbar_refine", "Refine and export")}
             </Typography>
-            <Stack direction="row" spacing={1} flexWrap="wrap">
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ rowGap: 1 }}>
               <Badge badgeContent={activeFilterCount} color="primary">
                 <Button
                   variant="outlined"
@@ -331,11 +331,11 @@ export function SourcesView() {
               <ExportMenu exportType="relations" buttonText={t("export.relations", "Export Relations")} size="small" filterParams={sourceFilterParams} />
             </Stack>
           </Box>
-          <Box>
+          <Box sx={{ pb: { xs: 0.5, md: 0 } }}>
             <Typography variant="caption" color="text.secondary">
               {t("sources.toolbar_add", "Discover or add")}
             </Typography>
-            <Stack direction="row" spacing={1} flexWrap="wrap">
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ rowGap: 1 }}>
               <Button
                 component={RouterLink}
                 to="/sources/smart-discovery"
