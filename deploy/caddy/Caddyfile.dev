@@ -4,6 +4,10 @@ algiagraph.com {
     }
 
     handle {
+        @html {
+            not path *.js *.css *.png *.svg *.ico *.woff2 *.woff *.ttf
+        }
+        header @html Cache-Control "no-store, no-cache, must-revalidate"
         reverse_proxy web:3000
     }
 }

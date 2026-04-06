@@ -34,3 +34,12 @@ class BugReportRead(Schema):
     page_url: Optional[str] = None
     user_agent: Optional[str] = None
     created_at: datetime
+    resolved: bool = False
+    resolved_at: Optional[datetime] = None
+    resolved_by: Optional[UUID] = None
+
+
+class BugReportUpdate(Schema):
+    """Payload for updating a bug report (admin only)."""
+
+    resolved: bool

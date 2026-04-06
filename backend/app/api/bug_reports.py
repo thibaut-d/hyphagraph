@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.dependencies.auth import get_current_active_superuser, get_optional_current_user
 from app.models.user import User
-from app.schemas.bug_report import BugReportCreate, BugReportRead, CaptchaChallenge
+from app.schemas.bug_report import BugReportCreate, BugReportRead, BugReportUpdate, CaptchaChallenge
 from app.services.bug_report_service import BugReportService
 
 router = APIRouter(prefix="/bug-reports", tags=["bug-reports"])
@@ -68,6 +68,9 @@ async def submit_bug_report(
         page_url=report.page_url,
         user_agent=report.user_agent,
         created_at=report.created_at,
+        resolved=report.resolved,
+        resolved_at=report.resolved_at,
+        resolved_by=report.resolved_by,
     )
 
 
@@ -81,3 +84,18 @@ async def list_bug_reports(
     """List all bug reports. Superuser only."""
     items, _ = await service.list_reports(page=page, page_size=page_size)
     return items
+
+
+@router.patch("/{report_id}", response_model=BugReportRead)
+async def update_bug_report(
+    report_id: UUID,
+    payload: BugReportUpdate,
+    current_user: User = Depends(get_current_active_superuser),
+    service: BugReportService = Depends(_get_service),
+):
+    """Update a bug report (e.g. mark resolved). Superuser only."""
+    return await service.resolve(
+        report_id=report_id,
+        resolved=payload.resolved,
+        admin_id=current_user.id,
+    )

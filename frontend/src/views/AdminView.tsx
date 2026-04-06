@@ -45,6 +45,9 @@ import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import EmailIcon from "@mui/icons-material/Email";
 import CategoryIcon from "@mui/icons-material/Category";
+import BugReportIcon from "@mui/icons-material/BugReport";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
 import { apiFetch } from "../api/client";
 import { usePageErrorHandler } from "../hooks/usePageErrorHandler";
 import { AdminEditDialog } from "../components/admin/AdminEditDialog";
@@ -64,6 +67,18 @@ interface UserListItem {
   is_superuser: boolean;
   is_verified: boolean;
   created_at: string;
+}
+
+interface BugReportItem {
+  id: string;
+  user_id: string | null;
+  message: string;
+  page_url: string | null;
+  user_agent: string | null;
+  created_at: string;
+  resolved: boolean;
+  resolved_at: string | null;
+  resolved_by: string | null;
 }
 
 interface UICategoryItem {
@@ -107,6 +122,10 @@ export function AdminView() {
   const [selectedCat, setSelectedCat] = useState<UICategoryItem | null>(null);
   const [catForm, setCatForm] = useState(emptyCatForm());
   const [catSaving, setCatSaving] = useState(false);
+  // Bug report state
+  const [bugReports, setBugReports] = useState<BugReportItem[]>([]);
+  const [bugLoading, setBugLoading] = useState(false);
+  const [bugError, setBugError] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -114,6 +133,7 @@ export function AdminView() {
 
   useEffect(() => {
     if (activeTab === 1) loadCategories();
+    if (activeTab === 2) loadBugReports();
   }, [activeTab]);
 
   const loadData = async () => {
@@ -195,6 +215,35 @@ export function AdminView() {
       setCatError(parsedError.userMessage);
     } finally {
       setCatLoading(false);
+    }
+  };
+
+  const loadBugReports = async () => {
+    setBugLoading(true);
+    setBugError(null);
+    try {
+      const data = await apiFetch<BugReportItem[]>("/bug-reports");
+      setBugReports(data);
+    } catch (err) {
+      const parsedError = handlePageError(err, "Failed to load bug reports");
+      setBugError(parsedError.userMessage);
+    } finally {
+      setBugLoading(false);
+    }
+  };
+
+  const handleToggleResolved = async (report: BugReportItem) => {
+    try {
+      const updated = await apiFetch<BugReportItem>(`/bug-reports/${report.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ resolved: !report.resolved }),
+      });
+      setBugReports((prev) =>
+        prev.map((r) => (r.id === updated.id ? updated : r))
+      );
+    } catch (err) {
+      const parsedError = handlePageError(err, "Failed to update bug report");
+      setBugError(parsedError.userMessage);
     }
   };
 
@@ -290,10 +339,14 @@ export function AdminView() {
         <Tabs
           value={activeTab}
           onChange={(_, v) => setActiveTab(v)}
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
           sx={{ mt: 2 }}
         >
           <Tab icon={<PeopleIcon />} iconPosition="start" label="Users" />
           <Tab icon={<CategoryIcon />} iconPosition="start" label="UI Categories" />
+          <Tab icon={<BugReportIcon />} iconPosition="start" label="Bug Reports" />
         </Tabs>
       </Paper>
 
@@ -497,6 +550,109 @@ export function AdminView() {
                     <TableRow>
                       <TableCell colSpan={5} align="center">
                         <Typography color="text.secondary">No categories yet</Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </Paper>
+      )}
+
+      {/* ── Bug Reports tab ── */}
+      {activeTab === 2 && (
+        <Paper sx={{ p: 3 }}>
+          <Typography variant="h5" gutterBottom>Bug Reports</Typography>
+
+          {bugError && <Alert severity="error" sx={{ mb: 2 }}>{bugError}</Alert>}
+
+          {/* Summary chips */}
+          {!bugLoading && (
+            <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
+              <Chip label={`Total: ${bugReports.length}`} size="small" />
+              <Chip
+                label={`Open: ${bugReports.filter((r) => !r.resolved).length}`}
+                color="warning"
+                size="small"
+              />
+              <Chip
+                label={`Resolved: ${bugReports.filter((r) => r.resolved).length}`}
+                color="success"
+                size="small"
+              />
+            </Box>
+          )}
+
+          {bugLoading ? (
+            <Typography>Loading…</Typography>
+          ) : (
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>User</TableCell>
+                    <TableCell>Message</TableCell>
+                    <TableCell>Page</TableCell>
+                    <TableCell>Submitted</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Action</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {bugReports.map((report) => (
+                    <TableRow key={report.id}>
+                      <TableCell>
+                        <Typography variant="body2" noWrap sx={{ maxWidth: 160 }}>
+                          {report.user_id ?? "Anonymous"}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ maxWidth: 320, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                          {report.message.length > 200
+                            ? report.message.slice(0, 200) + "…"
+                            : report.message}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        {report.page_url ? (
+                          <Typography variant="body2" noWrap sx={{ maxWidth: 200 }} title={report.page_url}>
+                            {report.page_url}
+                          </Typography>
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">—</Typography>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {new Date(report.created_at).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={report.resolved ? "Resolved" : "Open"}
+                          color={report.resolved ? "success" : "warning"}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleToggleResolved(report)}
+                          title={report.resolved ? "Mark as open" : "Mark as resolved"}
+                          color={report.resolved ? "default" : "success"}
+                        >
+                          {report.resolved ? (
+                            <RadioButtonUncheckedIcon fontSize="small" />
+                          ) : (
+                            <CheckCircleOutlineIcon fontSize="small" />
+                          )}
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {bugReports.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} align="center">
+                        <Typography color="text.secondary">No bug reports yet</Typography>
                       </TableCell>
                     </TableRow>
                   )}

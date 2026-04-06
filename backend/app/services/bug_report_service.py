@@ -16,8 +16,10 @@ import random
 import secrets
 import time
 from base64 import urlsafe_b64decode, urlsafe_b64encode
+from datetime import datetime, timezone
 from uuid import UUID
 
+from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -134,7 +136,46 @@ class BugReportService:
                 page_url=r.page_url,
                 user_agent=r.user_agent,
                 created_at=r.created_at,
+                resolved=r.resolved,
+                resolved_at=r.resolved_at,
+                resolved_by=r.resolved_by,
             )
             for r in rows
         ]
         return items, total
+
+    # ------------------------------------------------------------------
+    # Resolve (admin)
+    # ------------------------------------------------------------------
+
+    async def resolve(
+        self, report_id: UUID, resolved: bool, admin_id: UUID
+    ) -> BugReportRead:
+        result = await self.db.execute(
+            select(BugReport).where(BugReport.id == report_id)
+        )
+        report = result.scalar_one_or_none()
+        if report is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Bug report not found",
+            )
+        report.resolved = resolved
+        report.resolved_at = datetime.now(timezone.utc) if resolved else None
+        report.resolved_by = admin_id if resolved else None
+        await self.db.commit()
+        await self.db.refresh(report)
+        logger.info(
+            "Bug report %s marked resolved=%s by admin %s", report_id, resolved, admin_id
+        )
+        return BugReportRead(
+            id=report.id,
+            user_id=report.user_id,
+            message=report.message,
+            page_url=report.page_url,
+            user_agent=report.user_agent,
+            created_at=report.created_at,
+            resolved=report.resolved,
+            resolved_at=report.resolved_at,
+            resolved_by=report.resolved_by,
+        )
