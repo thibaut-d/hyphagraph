@@ -41,6 +41,7 @@ describe("EntityTermsDisplay", () => {
     term: "Paracetamol",
     language: "en",
     display_order: null,
+    is_display_name: false,
     created_at: "2025-01-01T00:00:00Z",
     ...overrides,
   });
@@ -166,6 +167,23 @@ describe("EntityTermsDisplay", () => {
         expect(screen.getByText("Also known as")).toBeInTheDocument();
         expect(screen.getByText("Paracetamol")).toBeInTheDocument();
       });
+    });
+
+    it("does not repeat the display name inside aliases", async () => {
+      const mockTerms = [
+        createMockTerm({ id: "term-1", term: "Paracetamol", is_display_name: true }),
+        createMockTerm({ id: "term-2", term: "Doliprane", language: "fr" }),
+      ];
+
+      vi.spyOn(entityTermsApi, "listEntityTerms").mockResolvedValue(mockTerms);
+
+      renderWithNotifications(<EntityTermsDisplay entityId={mockEntityId} compact={false} />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Doliprane")).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText("Paracetamol")).not.toBeInTheDocument();
     });
 
     it("shows language labels in full mode", async () => {

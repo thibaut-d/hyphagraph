@@ -14,6 +14,7 @@ class EntityTermWrite(Schema):
     term: str
     language: Optional[str] = None  # ISO 639-1 code (en, fr) or None for international
     display_order: Optional[int] = None  # Lower = shown first
+    is_display_name: bool = False
 
 
 class EntityTermRead(Schema):
@@ -23,6 +24,7 @@ class EntityTermRead(Schema):
     term: str
     language: Optional[str] = None
     display_order: Optional[int] = None
+    is_display_name: bool = False
     created_at: datetime
 
 

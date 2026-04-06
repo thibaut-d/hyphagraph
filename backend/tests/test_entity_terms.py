@@ -91,9 +91,9 @@ async def test_entity_with_terms(db_session, test_entity):
 
     # Add three terms with different properties
     terms_data = [
-        {"term": "Paracetamol", "language": "en", "display_order": 1},
-        {"term": "Paracétamol", "language": "fr", "display_order": 2},
-        {"term": "Acetaminophen", "language": "en", "display_order": 3},
+        {"term": "Paracetamol", "language": "en", "display_order": 1, "is_display_name": True},
+        {"term": "Paracétamol", "language": "fr", "display_order": 2, "is_display_name": False},
+        {"term": "Acetaminophen", "language": "en", "display_order": 3, "is_display_name": False},
     ]
 
     created_terms = []
@@ -148,10 +148,13 @@ async def test_list_entity_terms_with_data(override_get_db, test_entity_with_ter
             # Verify order: display_order ascending
             assert data[0]["term"] == "Paracetamol"
             assert data[0]["display_order"] == 1
+            assert data[0]["is_display_name"] is True
             assert data[1]["term"] == "Paracétamol"
             assert data[1]["display_order"] == 2
+            assert data[1]["is_display_name"] is False
             assert data[2]["term"] == "Acetaminophen"
             assert data[2]["display_order"] == 3
+            assert data[2]["is_display_name"] is False
     finally:
         app.dependency_overrides.clear()
 
@@ -181,7 +184,8 @@ async def test_create_entity_term(override_get_db, override_auth, test_entity):
     payload = {
         "term": "Tylenol",
         "language": "en",
-        "display_order": 10
+        "display_order": 10,
+        "is_display_name": True,
     }
 
     app.dependency_overrides[get_db] = override_get_db
@@ -200,6 +204,7 @@ async def test_create_entity_term(override_get_db, override_auth, test_entity):
             assert data["term"] == "Tylenol"
             assert data["language"] == "en"
             assert data["display_order"] == 10
+            assert data["is_display_name"] is True
             assert data["entity_id"] == str(test_entity.id)
             assert "id" in data
             assert "created_at" in data
@@ -230,6 +235,7 @@ async def test_create_entity_term_minimal(override_get_db, override_auth, test_e
                 assert data["term"] == "Acetaminophen"
                 assert data["language"] is None
                 assert data["display_order"] is None
+                assert data["is_display_name"] is False
     finally:
         app.dependency_overrides.clear()
 
@@ -314,7 +320,8 @@ async def test_update_entity_term(override_get_db, override_auth, test_entity_wi
     payload = {
         "term": "Paracetamol Updated",
         "language": "en",
-        "display_order": 99
+        "display_order": 99,
+        "is_display_name": True,
     }
 
     app.dependency_overrides[get_db] = override_get_db
@@ -333,6 +340,7 @@ async def test_update_entity_term(override_get_db, override_auth, test_entity_wi
                 assert data["id"] == str(term_to_update.id)
                 assert data["term"] == "Paracetamol Updated"
                 assert data["display_order"] == 99
+                assert data["is_display_name"] is True
     finally:
         app.dependency_overrides.clear()
 
@@ -405,8 +413,8 @@ async def test_bulk_update_entity_terms(override_get_db, override_auth, db_sessi
     # New set of terms
     payload = {
         "terms": [
-            {"term": "NewTerm1", "language": "en", "display_order": 1},
-            {"term": "NewTerm2", "language": "fr", "display_order": 2},
+            {"term": "NewTerm1", "language": "en", "display_order": 1, "is_display_name": True},
+            {"term": "NewTerm2", "language": "fr", "display_order": 2, "is_display_name": False},
         ]
     }
 
@@ -425,7 +433,9 @@ async def test_bulk_update_entity_terms(override_get_db, override_auth, db_sessi
 
                 assert len(data) == 2
                 assert data[0]["term"] == "NewTerm1"
+                assert data[0]["is_display_name"] is True
                 assert data[1]["term"] == "NewTerm2"
+                assert data[1]["is_display_name"] is False
 
                 # Verify old terms were deleted
                 stmt = select(EntityTerm).where(EntityTerm.entity_id == entity.id)
@@ -434,6 +444,59 @@ async def test_bulk_update_entity_terms(override_get_db, override_auth, db_sessi
 
                 assert len(all_terms) == 2
                 assert all(term.id != old_terms[0].id for term in all_terms)
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_bulk_update_entity_terms_allows_display_names_in_different_languages(
+    override_get_db, override_auth, test_entity
+):
+    payload = {
+        "terms": [
+            {"term": "Paracetamol", "language": None, "is_display_name": True},
+            {"term": "Doliprane", "language": "fr", "is_display_name": True},
+        ]
+    }
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides.update(override_auth)
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.put(
+                f"/api/entities/{test_entity.id}/terms-bulk",
+                json=payload,
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+            assert len(data) == 2
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_bulk_update_entity_terms_rejects_multiple_display_names_for_same_language(
+    override_get_db, override_auth, test_entity
+):
+    payload = {
+        "terms": [
+            {"term": "Paracetamol", "language": "fr", "is_display_name": True},
+            {"term": "Doliprane", "language": "fr", "is_display_name": True},
+        ]
+    }
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides.update(override_auth)
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.put(
+                f"/api/entities/{test_entity.id}/terms-bulk",
+                json=payload,
+            )
+
+            assert response.status_code == 409
+            assert "display name" in response.json()["error"]["message"].lower()
     finally:
         app.dependency_overrides.clear()
 

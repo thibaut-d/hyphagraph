@@ -41,6 +41,36 @@ class EntityTermService:
             )
         )
 
+    @staticmethod
+    def _is_display_name_conflict_error(error: IntegrityError) -> bool:
+        error_str = str(error).lower()
+        return any(
+            token in error_str
+            for token in (
+                "ix_entity_terms_display_name_per_entity_language",
+                "ix_entity_terms_display_name_per_entity_international",
+            )
+        )
+
+    @staticmethod
+    def _validate_display_names_by_language(terms: List[EntityTermWrite]) -> None:
+        seen_languages: set[str | None] = set()
+        for term in terms:
+            if not term.is_display_name:
+                continue
+
+            language_key = term.language or None
+            if language_key in seen_languages:
+                language_label = language_key or "international"
+                raise AppException(
+                    status_code=409,
+                    error_code=ErrorCode.DATABASE_CONSTRAINT_VIOLATION,
+                    message="Only one display name is allowed per language",
+                    field="is_display_name",
+                    details=f"Multiple display names were provided for language '{language_label}'",
+                )
+            seen_languages.add(language_key)
+
     async def list_by_entity(self, entity_id: UUID) -> List[EntityTermRead]:
         """
         Get all terms for a specific entity.
@@ -83,6 +113,7 @@ class EntityTermService:
                 term=term.term,
                 language=term.language,
                 display_order=term.display_order,
+                is_display_name=term.is_display_name,
                 created_at=term.created_at,
             )
             for term in terms
@@ -119,6 +150,7 @@ class EntityTermService:
             term=payload.term,
             language=payload.language,
             display_order=payload.display_order,
+            is_display_name=payload.is_display_name,
         )
 
         self.db.add(term)
@@ -137,6 +169,15 @@ class EntityTermService:
                     details=f"Term '{payload.term}' already exists for this entity in language '{payload.language}'",
                     context={"entity_id": str(entity_id), "term": payload.term, "language": payload.language}
                 )
+            if self._is_display_name_conflict_error(e):
+                raise AppException(
+                    status_code=409,
+                    error_code=ErrorCode.DATABASE_CONSTRAINT_VIOLATION,
+                    message="Only one display name is allowed per language",
+                    field="is_display_name",
+                    details="Another display name already exists for this entity and language",
+                    context={"entity_id": str(entity_id), "language": payload.language},
+                )
             raise
 
         return EntityTermRead(
@@ -145,6 +186,7 @@ class EntityTermService:
             term=term.term,
             language=term.language,
             display_order=term.display_order,
+            is_display_name=term.is_display_name,
             created_at=term.created_at,
         )
 
@@ -187,6 +229,7 @@ class EntityTermService:
         term.term = payload.term
         term.language = payload.language
         term.display_order = payload.display_order
+        term.is_display_name = payload.is_display_name
 
         try:
             await self.db.commit()
@@ -202,6 +245,15 @@ class EntityTermService:
                     details=f"Term '{payload.term}' already exists for this entity in language '{payload.language}'",
                     context={"entity_id": str(entity_id), "term": payload.term, "language": payload.language}
                 )
+            if self._is_display_name_conflict_error(e):
+                raise AppException(
+                    status_code=409,
+                    error_code=ErrorCode.DATABASE_CONSTRAINT_VIOLATION,
+                    message="Only one display name is allowed per language",
+                    field="is_display_name",
+                    details="Another display name already exists for this entity and language",
+                    context={"entity_id": str(entity_id), "language": payload.language},
+                )
             raise
 
         return EntityTermRead(
@@ -210,6 +262,7 @@ class EntityTermService:
             term=term.term,
             language=term.language,
             display_order=term.display_order,
+            is_display_name=term.is_display_name,
             created_at=term.created_at,
         )
 
@@ -273,6 +326,8 @@ class EntityTermService:
         if not entity:
             raise EntityNotFoundException(entity_id=str(entity_id))
 
+        self._validate_display_names_by_language(terms)
+
         # Delete all existing terms
         delete_stmt = delete(EntityTerm).where(EntityTerm.entity_id == entity_id)
         await self.db.execute(delete_stmt)
@@ -285,6 +340,7 @@ class EntityTermService:
                 term=term_data.term,
                 language=term_data.language,
                 display_order=term_data.display_order,
+                is_display_name=term_data.is_display_name,
             )
             self.db.add(term)
             created_terms.append(term)
@@ -306,6 +362,15 @@ class EntityTermService:
                     details="Multiple terms with the same text and language were provided",
                     context={"entity_id": str(entity_id)}
                 )
+            if self._is_display_name_conflict_error(e):
+                raise AppException(
+                    status_code=409,
+                    error_code=ErrorCode.DATABASE_CONSTRAINT_VIOLATION,
+                    message="Only one display name is allowed per language",
+                    field="is_display_name",
+                    details="Multiple display names were provided for the same language",
+                    context={"entity_id": str(entity_id)},
+                )
             raise
 
         # Return in sorted order
@@ -323,6 +388,7 @@ class EntityTermService:
                 term=term.term,
                 language=term.language,
                 display_order=term.display_order,
+                is_display_name=term.is_display_name,
                 created_at=term.created_at,
             )
             for term in created_terms

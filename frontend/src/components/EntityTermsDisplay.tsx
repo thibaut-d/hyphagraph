@@ -22,11 +22,13 @@ import { listEntityTerms, EntityTermRead } from "../api/entityTerms";
 interface EntityTermsDisplayProps {
   entityId: string;
   compact?: boolean;
+  onTermsLoaded?: (terms: EntityTermRead[]) => void;
 }
 
 export function EntityTermsDisplay({
   entityId,
   compact = false,
+  onTermsLoaded,
 }: EntityTermsDisplayProps) {
   const { t } = useTranslation();
 
@@ -38,18 +40,20 @@ export function EntityTermsDisplay({
       try {
         const data = await listEntityTerms(entityId);
         setTerms(data);
+        onTermsLoaded?.(data);
       } catch (err) {
         // Log error but don't block UI - terms are optional
         console.error("Failed to load terms:", err);
         // Set empty array instead of error to allow page to function
         setTerms([]);
+        onTermsLoaded?.([]);
       } finally {
         setLoading(false);
       }
     };
 
     loadTerms();
-  }, [entityId]);
+  }, [entityId, onTermsLoaded]);
 
   if (loading) {
     return (
@@ -62,7 +66,9 @@ export function EntityTermsDisplay({
     );
   }
 
-  if (terms.length === 0) {
+  const visibleTerms = terms.filter((term) => !term.is_display_name);
+
+  if (visibleTerms.length === 0) {
     return null; // Don't show anything if no terms
   }
 
@@ -85,7 +91,7 @@ export function EntityTermsDisplay({
     // Compact mode: Just show terms as chips in a single row
     return (
       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-        {terms.map((term) => (
+        {visibleTerms.map((term) => (
           <Chip
             key={term.id}
             label={term.term}
@@ -109,7 +115,7 @@ export function EntityTermsDisplay({
       </Box>
 
       <Stack spacing={1}>
-        {terms.map((term) => (
+        {visibleTerms.map((term) => (
           <Box
             key={term.id}
             sx={{

@@ -9,6 +9,7 @@ import { BrowserRouter } from 'react-router';
 import { CreateEntityView } from '../CreateEntityView';
 import { NotificationProvider } from '../../notifications/NotificationContext';
 import * as entityApi from '../../api/entities';
+import * as entityTermsApi from '../../api/entityTerms';
 
 const translate = (key: string, defaultValueOrOptions?: string | { defaultValue?: string }) => {
   if (typeof defaultValueOrOptions === 'string') {
@@ -27,6 +28,7 @@ vi.mock('react-i18next', () => ({
 
 // Mock the API module
 vi.mock('../../api/entities');
+vi.mock('../../api/entityTerms');
 
 // Mock react-router navigation
 const mockNavigate = vi.fn();
@@ -67,7 +69,12 @@ describe('CreateEntityView', () => {
     renderWithProviders();
 
     expect(screen.getByLabelText(/slug/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/summary language/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^summary$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^display name$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/display name language/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /create/i })).toBeInTheDocument();
+    expect(screen.getByText(/alternative names & aliases/i)).toBeInTheDocument();
     await waitFor(() => {
       expect(entityApi.getEntityFilterOptions).toHaveBeenCalled();
     });
@@ -112,12 +119,222 @@ describe('CreateEntityView', () => {
       expect(entityApi.createEntity).toHaveBeenCalledWith({
         slug: 'aspirin',
         summary: undefined,
+        ui_category_id: undefined,
       });
     });
+
+    expect(entityTermsApi.bulkUpdateEntityTerms).not.toHaveBeenCalled();
 
     // Verify navigation
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalled();
+    });
+  });
+
+  it('switches summary language and submits all filled summaries', async () => {
+    const mockEntity = {
+      id: '123',
+      slug: 'aspirin',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      status: 'confirmed' as const,
+    };
+
+    vi.mocked(entityApi.createEntity).mockResolvedValue(mockEntity);
+
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(entityApi.getEntityFilterOptions).toHaveBeenCalled();
+    });
+
+    fireEvent.change(screen.getByLabelText(/slug/i), { target: { value: 'aspirin' } });
+
+    fireEvent.change(screen.getByLabelText(/^summary$/i), {
+      target: { value: 'English summary' },
+    });
+
+    fireEvent.mouseDown(screen.getByLabelText(/summary language/i));
+    fireEvent.click(screen.getByRole('option', { name: 'French' }));
+
+    fireEvent.change(screen.getByLabelText(/^summary$/i), {
+      target: { value: 'Résumé français' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /create/i }));
+
+    await waitFor(() => {
+      expect(entityApi.createEntity).toHaveBeenCalledWith({
+        slug: 'aspirin',
+        summary: {
+          en: 'English summary',
+          fr: 'Résumé français',
+        },
+        ui_category_id: undefined,
+      });
+    });
+  });
+
+  it('slugifies the slug field while typing', async () => {
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(entityApi.getEntityFilterOptions).toHaveBeenCalled();
+    });
+
+    const slugInput = screen.getByLabelText(/slug/i) as HTMLInputElement;
+
+    fireEvent.change(slugInput, { target: { value: 'Crème brûlée 2026!!!' } });
+
+    await waitFor(() => {
+      expect(slugInput.value).toBe('creme-brulee-2026-');
+    });
+  });
+
+  it('shows a dash immediately when typing a space', async () => {
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(entityApi.getEntityFilterOptions).toHaveBeenCalled();
+    });
+
+    const slugInput = screen.getByLabelText(/slug/i) as HTMLInputElement;
+
+    fireEvent.change(slugInput, { target: { value: 'aspirin ' } });
+
+    await waitFor(() => {
+      expect(slugInput.value).toBe('aspirin-');
+    });
+  });
+
+  it('adds aliases with languages and bulk-saves them after entity creation', async () => {
+    const mockEntity = {
+      id: '123',
+      slug: 'aspirin',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      status: 'confirmed' as const,
+    };
+
+    vi.mocked(entityApi.createEntity).mockResolvedValue(mockEntity);
+    vi.mocked(entityTermsApi.bulkUpdateEntityTerms).mockResolvedValue([]);
+
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(entityApi.getEntityFilterOptions).toHaveBeenCalled();
+    });
+
+    fireEvent.change(screen.getByLabelText(/slug/i), { target: { value: 'aspirin' } });
+    fireEvent.click(screen.getByRole('button', { name: /add term/i }));
+
+    fireEvent.change(screen.getByLabelText(/^term$/i), {
+      target: { value: 'Aspirine' },
+    });
+
+    fireEvent.mouseDown(screen.getByLabelText(/^language$/i));
+    fireEvent.click(screen.getByRole('option', { name: 'French' }));
+
+    fireEvent.click(screen.getByRole('button', { name: /create/i }));
+
+    await waitFor(() => {
+      expect(entityTermsApi.bulkUpdateEntityTerms).toHaveBeenCalledWith('123', {
+        terms: [
+          {
+            term: 'Aspirine',
+            language: 'fr',
+            display_order: 0,
+            is_display_name: false,
+          },
+        ],
+      });
+    });
+  });
+
+  it('saves display names as flagged terms per language', async () => {
+    const mockEntity = {
+      id: '123',
+      slug: 'paracetamol',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      status: 'confirmed' as const,
+    };
+
+    vi.mocked(entityApi.createEntity).mockResolvedValue(mockEntity);
+    vi.mocked(entityTermsApi.bulkUpdateEntityTerms).mockResolvedValue([]);
+
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(entityApi.getEntityFilterOptions).toHaveBeenCalled();
+    });
+
+    fireEvent.change(screen.getByLabelText(/slug/i), { target: { value: 'paracetamol' } });
+    fireEvent.change(screen.getByLabelText(/^display name$/i), {
+      target: { value: 'Paracetamol' },
+    });
+
+    fireEvent.mouseDown(screen.getAllByLabelText(/display name language/i)[0]);
+    fireEvent.click(screen.getByRole('option', { name: 'French' }));
+
+    fireEvent.change(screen.getByLabelText(/^display name$/i), {
+      target: { value: 'Paracétamol' },
+    });
+
+    fireEvent.mouseDown(screen.getAllByLabelText(/display name language/i)[0]);
+    fireEvent.click(screen.getByRole('option', { name: /international \/ no language/i }));
+
+    fireEvent.click(screen.getByRole('button', { name: /create/i }));
+
+    await waitFor(() => {
+      expect(entityTermsApi.bulkUpdateEntityTerms).toHaveBeenCalledWith('123', {
+        terms: [
+          {
+            term: 'Paracetamol',
+            language: null,
+            display_order: 0,
+            is_display_name: true,
+          },
+          {
+            term: 'Paracétamol',
+            language: 'fr',
+            display_order: 1,
+            is_display_name: true,
+          },
+        ],
+      });
+    });
+  });
+
+  it('normalizes trailing separators before submit', async () => {
+    const mockEntity = {
+      id: '123',
+      slug: 'aspirin',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      status: 'confirmed' as const,
+    };
+
+    vi.mocked(entityApi.createEntity).mockResolvedValue(mockEntity);
+
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(entityApi.getEntityFilterOptions).toHaveBeenCalled();
+    });
+
+    const slugInput = screen.getByLabelText(/slug/i);
+    fireEvent.change(slugInput, { target: { value: 'aspirin ' } });
+
+    const submitButton = screen.getByRole('button', { name: /create/i });
+    fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(entityApi.createEntity).toHaveBeenCalledWith({
+        slug: 'aspirin',
+        summary: undefined,
+        ui_category_id: undefined,
+      });
     });
   });
 
@@ -204,6 +421,8 @@ describe('CreateEntityView', () => {
         })
       );
     });
+
+    expect(entityTermsApi.bulkUpdateEntityTerms).not.toHaveBeenCalled();
   });
 
   it('submits form without category when none selected', async () => {
@@ -235,5 +454,7 @@ describe('CreateEntityView', () => {
         ui_category_id: undefined,
       });
     });
+
+    expect(entityTermsApi.bulkUpdateEntityTerms).not.toHaveBeenCalled();
   });
 });

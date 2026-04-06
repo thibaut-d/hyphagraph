@@ -31,7 +31,7 @@ Search and display terms for an entity.
 
 Key fields:
 
-- `entity_id`, `term`, `language`, `display_order`
+- `entity_id`, `term`, `language`, `display_order`, `is_display_name`
 
 ### Source
 

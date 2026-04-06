@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, Integer, ForeignKey, Index, UniqueConstraint, text
+from sqlalchemy import String, Integer, ForeignKey, Index, UniqueConstraint, text, Boolean
 from uuid import UUID
 from app.models.base import Base, UUIDMixin, TimestampMixin
 
@@ -28,6 +28,9 @@ class EntityTerm(Base, UUIDMixin, TimestampMixin):
     # Display order (smaller = shown first), nullable
     display_order: Mapped[int | None] = mapped_column(Integer)
 
+    # At most one display name per language, plus at most one international display name.
+    is_display_name: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+
     # Relationships
     entity = relationship("Entity", back_populates="terms")
 
@@ -43,5 +46,20 @@ class EntityTerm(Base, UUIDMixin, TimestampMixin):
             unique=True,
             postgresql_where=text("language IS NULL"),
             sqlite_where=text("language IS NULL"),
+        ),
+        Index(
+            "ix_entity_terms_display_name_per_entity_language",
+            "entity_id",
+            "language",
+            unique=True,
+            postgresql_where=text("is_display_name = true AND language IS NOT NULL"),
+            sqlite_where=text("is_display_name = 1 AND language IS NOT NULL"),
+        ),
+        Index(
+            "ix_entity_terms_display_name_per_entity_international",
+            "entity_id",
+            unique=True,
+            postgresql_where=text("is_display_name = true AND language IS NULL"),
+            sqlite_where=text("is_display_name = 1 AND language IS NULL"),
         ),
     )

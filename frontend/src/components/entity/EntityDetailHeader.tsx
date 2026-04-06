@@ -1,3 +1,4 @@
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router-dom";
 import {
@@ -19,6 +20,7 @@ import AutoGraphIcon from "@mui/icons-material/AutoGraph";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import { EntityRead } from "../../types/entity";
 import { EntityTermsDisplay } from "../EntityTermsDisplay";
+import type { EntityTermRead } from "../../api/entityTerms";
 
 /**
  * Header section for entity detail view.
@@ -37,7 +39,16 @@ export function EntityDetailHeader({
   entity,
   onDeleteClick,
 }: EntityDetailHeaderProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const [displayName, setDisplayName] = useState<string | null>(null);
+  const handleTermsLoaded = useCallback((terms: EntityTermRead[]) => {
+    const currentLanguage = i18n.language || "en";
+    const preferred =
+      terms.find((term) => term.is_display_name && !term.language) ||
+      terms.find((term) => term.is_display_name && term.language === currentLanguage);
+    setDisplayName(preferred?.term ?? null);
+  }, [i18n.language]);
+  const primaryLabel = displayName || entity.slug;
 
   return (
     <Paper sx={{ p: { xs: 2, sm: 3 } }}>
@@ -46,7 +57,7 @@ export function EntityDetailHeader({
           <Link component={RouterLink} to="/entities" underline="hover" color="inherit">
             {t("menu.entities", "Entities")}
           </Link>
-          <Typography color="text.primary">{entity.slug}</Typography>
+          <Typography color="text.primary">{primaryLabel}</Typography>
         </Breadcrumbs>
 
         <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
@@ -90,8 +101,13 @@ export function EntityDetailHeader({
                 variant="h4"
                 sx={{ fontSize: { xs: "1.75rem", sm: "2.125rem" } }}
               >
-                {entity.slug}
+                {primaryLabel}
               </Typography>
+              {displayName && (
+                <Typography variant="body2" color="text.secondary">
+                  {entity.slug}
+                </Typography>
+              )}
               {entity.status === "draft" && (
                 <Chip
                   label={t("entity.status_draft", "Draft")}
@@ -107,7 +123,7 @@ export function EntityDetailHeader({
 
             {/* Alternative Names/Aliases */}
             <Box sx={{ mt: 2 }}>
-              <EntityTermsDisplay entityId={entity.id} />
+              <EntityTermsDisplay entityId={entity.id} onTermsLoaded={handleTermsLoaded} />
             </Box>
           </Box>
 

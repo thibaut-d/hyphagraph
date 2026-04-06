@@ -4,6 +4,7 @@ export interface EntityTermWrite {
   term: string;
   language?: string | null;
   display_order?: number | null;
+  is_display_name?: boolean;
 }
 
 export interface EntityTermRead {
@@ -12,6 +13,7 @@ export interface EntityTermRead {
   term: string;
   language: string | null;
   display_order: number | null;
+  is_display_name?: boolean;
   created_at: string;
 }
 
