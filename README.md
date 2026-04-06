@@ -199,6 +199,8 @@ docker compose -f docker-compose.prod.yml logs -f
 | [Computed Relations](docs/architecture/COMPUTED_RELATIONS.md) | Inference mathematical model |
 | [Code Guide](docs/development/CODE_GUIDE.md) | Coding conventions and patterns |
 | [Dev Workflow](docs/development/DEV_WORKFLOW.md) | Development workflow and commit discipline |
+| [Remote Dev Access](docs/development/REMOTE_DEV_ACCESS.md) | Connect to the remote dev server with VS Code, Termius, or plain SSH |
+| [SSH Config Sync](docs/development/SSH_CONFIG_SYNC.md) | Keep the same OpenSSH aliases across machines safely |
 | [E2E Testing](docs/development/E2E_TESTING_GUIDE.md) | Playwright E2E testing guide |
 | [UX Design Brief](docs/product/UX.md) | UX principles and design constraints |
 | [AI Agent Guide](AGENTS.md) | Canonical AI-agent entrypoint and workflow |

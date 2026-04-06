@@ -35,6 +35,10 @@ services:
     command: sh ./docker-entrypoint.sh
     env_file:
       - .env
+    volumes:
+      - ./backend:/app
+    environment:
+      UV_LINK_MODE: copy
     depends_on:
       db:
         condition: service_healthy
@@ -52,6 +56,11 @@ services:
       dockerfile: Dockerfile
     env_file:
       - .env
+    environment:
+      __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS: algiagraph.com
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
     depends_on:
       - api
     restart: unless-stopped

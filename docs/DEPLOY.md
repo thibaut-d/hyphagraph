@@ -101,6 +101,7 @@ make remote-dev-up
 ```
 
 Migrations run automatically on container start (via `docker-entrypoint.sh`). No separate migration step is needed.
+The remote-dev compose file mounts `./backend` and `./frontend` into the running containers so edits made over SSH are reflected immediately by FastAPI reload and the Vite dev server.
 
 Verify:
 
@@ -114,6 +115,8 @@ curl -I https://dev.mydomain.com/api/docs
 ---
 
 ## 4. Remote development workflow
+
+For connection setup details, see `docs/development/REMOTE_DEV_ACCESS.md`.
 
 ### Recommended option: VS Code Remote SSH
 
