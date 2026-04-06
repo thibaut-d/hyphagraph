@@ -27,6 +27,8 @@ from app.models.entity import Entity
 from app.models.entity_revision import EntityRevision
 from app.models.source import Source
 from app.models.source_revision import SourceRevision
+from app.models.ui_category import UiCategory
+from app.schemas.entity_term import EntityTermWrite
 from app.schemas.import_schema import (
     EntityImportPreviewRow,
     EntityImportRow,
@@ -37,6 +39,7 @@ from app.schemas.import_schema import (
     SourceImportResult,
     SourceImportRow,
 )
+from app.services.entity_term_service import EntityTermService
 from app.utils.revision_helpers import create_new_revision
 
 logger = logging.getLogger(__name__)
@@ -115,8 +118,13 @@ class ImportService:
             rows.append(
                 EntityImportRow(
                     slug=slug,
+                    ui_category_slug=(raw.get("ui_category_slug") or "").strip() or None,
+                    display_name=(raw.get("display_name") or "").strip() or None,
+                    display_name_en=(raw.get("display_name_en") or "").strip() or None,
+                    display_name_fr=(raw.get("display_name_fr") or "").strip() or None,
                     summary_en=(raw.get("summary_en") or "").strip() or None,
                     summary_fr=(raw.get("summary_fr") or "").strip() or None,
+                    aliases=(raw.get("aliases") or "").strip() or None,
                 )
             )
         return rows
@@ -124,20 +132,37 @@ class ImportService:
     def parse_json(self, content: str) -> list[EntityImportRow]:
         """Parse JSON array text into a list of EntityImportRow objects."""
         data = json.loads(content)
+        # Unwrap export envelope: {"export_type": "entities", "entities": [...]}
+        if isinstance(data, dict) and isinstance(data.get("entities"), list):
+            data = data["entities"]
         if not isinstance(data, list):
             raise ValueError("JSON import must be an array of objects")
         rows: list[EntityImportRow] = []
         for item in data:
             slug = str(item.get("slug") or "").strip()
+            # aliases: accept either a semicolon string or an array of {term, language} objects
+            aliases_raw = item.get("aliases")
+            if isinstance(aliases_raw, list):
+                parts = []
+                for a in aliases_raw:
+                    if isinstance(a, dict):
+                        term = str(a.get("term") or "").strip()
+                        lang = str(a.get("language") or "").strip()
+                        if term:
+                            parts.append(f"{term}:{lang}")
+                aliases_str = ";".join(parts) or None
+            else:
+                aliases_str = str(aliases_raw).strip() or None if aliases_raw else None
             rows.append(
                 EntityImportRow(
                     slug=slug,
-                    summary_en=str(item["summary_en"]).strip() or None
-                    if item.get("summary_en")
-                    else None,
-                    summary_fr=str(item["summary_fr"]).strip() or None
-                    if item.get("summary_fr")
-                    else None,
+                    ui_category_slug=str(item.get("ui_category_slug") or "").strip() or None,
+                    display_name=str(item.get("display_name") or "").strip() or None,
+                    display_name_en=str(item.get("display_name_en") or "").strip() or None,
+                    display_name_fr=str(item.get("display_name_fr") or "").strip() or None,
+                    summary_en=str(item["summary_en"]).strip() or None if item.get("summary_en") else None,
+                    summary_fr=str(item["summary_fr"]).strip() or None if item.get("summary_fr") else None,
+                    aliases=aliases_str,
                 )
             )
         return rows
@@ -173,6 +198,7 @@ class ImportService:
 
         for i, row in enumerate(rows, start=1):
             slug = row.slug.strip() if row.slug else ""
+            display_name = row.display_name_en or row.display_name or row.display_name_fr
 
             if not slug:
                 preview_rows.append(
@@ -203,6 +229,8 @@ class ImportService:
                     EntityImportPreviewRow(
                         row=i,
                         slug=slug,
+                        display_name=display_name,
+                        ui_category_slug=row.ui_category_slug,
                         summary_en=row.summary_en,
                         summary_fr=row.summary_fr,
                         status="duplicate",
@@ -214,6 +242,8 @@ class ImportService:
                     EntityImportPreviewRow(
                         row=i,
                         slug=slug,
+                        display_name=display_name,
+                        ui_category_slug=row.ui_category_slug,
                         summary_en=row.summary_en,
                         summary_fr=row.summary_fr,
                         status="new",
@@ -234,6 +264,33 @@ class ImportService:
     # Commit (writes to DB)
     # -------------------------------------------------------------------------
 
+    @staticmethod
+    def _parse_aliases(aliases_str: str | None) -> list[tuple[str, str | None]]:
+        """Parse semicolon-separated 'term:lang' pairs into (term, language) tuples.
+
+        Language is None for international (empty or missing after colon).
+        Examples:
+            "ASA:en;AAS:fr;aspirin:" → [("ASA","en"), ("AAS","fr"), ("aspirin", None)]
+            "aspirin"               → [("aspirin", None)]
+        """
+        if not aliases_str:
+            return []
+        result = []
+        for part in aliases_str.split(";"):
+            part = part.strip()
+            if not part:
+                continue
+            if ":" in part:
+                term, _, lang = part.rpartition(":")
+                term = term.strip()
+                lang = lang.strip() or None
+            else:
+                term = part
+                lang = None
+            if term:
+                result.append((term, lang))
+        return result
+
     async def import_entities(
         self,
         rows: list[EntityImportRow],
@@ -244,15 +301,22 @@ class ImportService:
 
         Creates Entity + EntityRevision for each valid new row, per-item error
         handling so a duplicate or DB error in one row doesn't abort the batch.
+        Also creates entity terms (display names + aliases) when provided.
         """
         if len(rows) > MAX_IMPORT_ROWS:
             raise ValueError(
                 f"Import exceeds the {MAX_IMPORT_ROWS}-row limit ({len(rows)} rows provided)"
             )
 
+        # Pre-fetch all UiCategory slugs → UUID map in one query
+        cat_result = await self.db.execute(select(UiCategory.slug, UiCategory.id))
+        category_map: dict[str, UUID] = {slug: id_ for slug, id_ in cat_result.all()}
+
         created_ids: list[UUID] = []
         skipped_duplicates = 0
         invalid_count = 0
+
+        term_service = EntityTermService(self.db)
 
         for row in rows:
             slug = (row.slug or "").strip()
@@ -265,6 +329,8 @@ class ImportService:
                 summary = {"en": row.summary_en}
             if row.summary_fr:
                 summary = {**(summary or {}), "fr": row.summary_fr}
+
+            ui_category_id = category_map.get(row.ui_category_slug) if row.ui_category_slug else None
 
             try:
                 async with self.db.begin_nested():
@@ -280,6 +346,7 @@ class ImportService:
                         revision_data={
                             "slug": slug,
                             "summary": summary,
+                            "ui_category_id": ui_category_id,
                             "created_by_user_id": user_id,
                         },
                         set_as_current=True,
@@ -287,6 +354,37 @@ class ImportService:
 
                 # Only reached if the savepoint committed successfully
                 created_ids.append(entity.id)
+
+                # Build entity terms from display names + aliases
+                terms: list[EntityTermWrite] = []
+                order = 0
+                for lang, value in [
+                    (None, row.display_name),
+                    ("en", row.display_name_en),
+                    ("fr", row.display_name_fr),
+                ]:
+                    if value and value.strip():
+                        terms.append(EntityTermWrite(
+                            term=value.strip(),
+                            language=lang,
+                            display_order=order,
+                            is_display_name=True,
+                        ))
+                        order += 1
+
+                for term_text, lang in self._parse_aliases(row.aliases):
+                    # Skip alias if it duplicates a display name
+                    if not any(t.term == term_text and t.language == lang for t in terms):
+                        terms.append(EntityTermWrite(
+                            term=term_text,
+                            language=lang,
+                            display_order=order,
+                            is_display_name=False,
+                        ))
+                        order += 1
+
+                if terms:
+                    await term_service.bulk_update(entity.id, terms)
 
             except IntegrityError as e:
                 # Savepoint already rolled back; outer transaction is intact

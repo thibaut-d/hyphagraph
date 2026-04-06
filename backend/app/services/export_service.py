@@ -18,11 +18,13 @@ from sqlalchemy import String, and_, case, cast, distinct, func, or_, select
 
 from app.models.entity import Entity
 from app.models.entity_revision import EntityRevision
+from app.models.entity_term import EntityTerm
 from app.models.source import Source
 from app.models.source_revision import SourceRevision
 from app.models.relation import Relation
 from app.models.relation_revision import RelationRevision
 from app.models.relation_role_revision import RelationRoleRevision
+from app.models.ui_category import UiCategory
 from app.schemas.filters import SourceFilters
 from app.schemas.export import EntityExportItem, RelationExportItem, RelationRoleExportItem, SourceExportItem
 from app.services.query_predicates import canonical_relation_predicate
@@ -175,22 +177,60 @@ class ExportService:
         include_metadata: bool,
     ) -> list[EntityExportItem]:
         stmt = (
-            select(Entity, EntityRevision)
+            select(Entity, EntityRevision, UiCategory.slug.label("category_slug"))
             .join(EntityRevision, Entity.id == EntityRevision.entity_id)
+            .outerjoin(UiCategory, EntityRevision.ui_category_id == UiCategory.id)
             .where(EntityRevision.is_current == True)
             .where(Entity.is_rejected == False)
             .where(Entity.is_merged == False)  # NEW-MRG-M1
         )
 
         result = await self.db.execute(stmt)
+        rows = result.all()
+
+        # Bulk-load all EntityTerms for these entities in one query
+        entity_ids = [entity.id for entity, _, _ in rows]
+        terms_by_entity: dict[object, list[EntityTerm]] = defaultdict(list)
+        if entity_ids:
+            terms_result = await self.db.execute(
+                select(EntityTerm)
+                .where(EntityTerm.entity_id.in_(entity_ids))
+                .order_by(EntityTerm.entity_id, EntityTerm.display_order)
+            )
+            for (term,) in terms_result:
+                terms_by_entity[term.entity_id].append(term)
+
         items: list[EntityExportItem] = []
-        for entity, revision in result:
+        for entity, revision, category_slug in rows:
             summary = revision.summary or {}
+
+            # Build display names and aliases from terms
+            display_name: str | None = None
+            display_name_en: str | None = None
+            display_name_fr: str | None = None
+            alias_parts: list[str] = []
+            for term in terms_by_entity.get(entity.id, []):
+                if term.is_display_name:
+                    if term.language is None:
+                        display_name = term.term
+                    elif term.language == "en":
+                        display_name_en = term.term
+                    elif term.language == "fr":
+                        display_name_fr = term.term
+                else:
+                    lang_suffix = f":{term.language}" if term.language else ":"
+                    alias_parts.append(f"{term.term}{lang_suffix}")
+
             item = EntityExportItem(
                 id=str(entity.id),
                 slug=revision.slug,
+                ui_category_slug=category_slug,
+                display_name=display_name,
+                display_name_en=display_name_en,
+                display_name_fr=display_name_fr,
                 summary_en=summary.get("en"),
                 summary_fr=summary.get("fr"),
+                aliases=";".join(alias_parts) if alias_parts else None,
                 status=revision.status,
                 ui_category_id=str(revision.ui_category_id) if revision.ui_category_id else None,
             )
@@ -343,22 +383,30 @@ class ExportService:
     def _export_entities_csv(self, entities: List[EntityExportItem]) -> str:
         """Export entities as CSV."""
         if not entities:
-            return "id,slug,summary_en,summary_fr,ui_category_id,created_at\n"
+            return "slug,ui_category_slug,display_name,display_name_en,display_name_fr,summary_en,summary_fr,aliases\n"
 
         output = StringIO()
         writer = csv.writer(output)
 
-        # Header
-        writer.writerow(['id', 'slug', 'summary_en', 'summary_fr', 'ui_category_id', 'created_at', 'created_with_llm'])
+        # Header — import-compatible columns first, metadata at end
+        writer.writerow([
+            'slug', 'ui_category_slug', 'display_name', 'display_name_en', 'display_name_fr',
+            'summary_en', 'summary_fr', 'aliases',
+            'id', 'created_at', 'created_with_llm',
+        ])
 
         # Rows
         for entity in entities:
             writer.writerow([
-                entity.id,
                 entity.slug,
+                entity.ui_category_slug or '',
+                entity.display_name or '',
+                entity.display_name_en or '',
+                entity.display_name_fr or '',
                 entity.summary_en or '',
                 entity.summary_fr or '',
-                entity.ui_category_id or '',
+                entity.aliases or '',
+                entity.id,
                 entity.created_at or '',
                 entity.created_with_llm if entity.created_with_llm is not None else '',
             ])

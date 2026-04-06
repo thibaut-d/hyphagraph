@@ -22,7 +22,12 @@ class EntityExportItem(BaseModel):
     summary_en: Optional[str] = None
     summary_fr: Optional[str] = None
     status: Optional[str] = None
-    ui_category_id: Optional[str] = None
+    ui_category_slug: Optional[str] = None
+    display_name: Optional[str] = None
+    display_name_en: Optional[str] = None
+    display_name_fr: Optional[str] = None
+    aliases: Optional[str] = None
+    ui_category_id: Optional[str] = None  # kept for backward compatibility
     # metadata fields (present when include_metadata=True)
     created_at: Optional[str] = None
     revision_created_at: Optional[str] = None
