@@ -25,7 +25,6 @@ import AddIcon from "@mui/icons-material/Add";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import RateReviewIcon from "@mui/icons-material/RateReview";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
-import { useNotification } from "../notifications/NotificationContext";
 import { siteDisplayName } from "../config/site";
 
 interface Stats {
@@ -101,8 +100,11 @@ function StatCard({
 
 export function HomeView() {
   const { t } = useTranslation();
-  const { showError } = useNotification();
   const navigate = useNavigate();
+  const emptyGraphMessage = t(
+    "home.empty_graph",
+    "No data yet. Create entities and relationships to start building the graph.",
+  );
   const [stats, setStats] = useState<Stats>({
     entities: 0,
     sources: 0,
@@ -130,13 +132,19 @@ export function HomeView() {
           entities: 0,
           sources: 0,
           isLoading: false,
-          error: "Failed to load statistics",
+          error: emptyGraphMessage,
         });
       }
     }
 
     fetchStats();
-  }, []);
+  }, [emptyGraphMessage]);
+
+  const isEmptyGraph =
+    !stats.isLoading &&
+    !stats.error &&
+    stats.entities === 0 &&
+    stats.sources === 0;
 
   return (
     <Box sx={{ maxWidth: 1200, mx: "auto", p: 3 }}>
@@ -206,6 +214,12 @@ export function HomeView() {
       {stats.error && (
         <Alert severity="warning" sx={{ mb: 3 }}>
           {stats.error}
+        </Alert>
+      )}
+
+      {isEmptyGraph && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          {emptyGraphMessage}
         </Alert>
       )}
 
