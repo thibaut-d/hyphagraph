@@ -164,9 +164,16 @@ export function ImportEntitiesView() {
 
           {format === "csv" && (
             <Alert severity="info" sx={{ fontSize: "0.8rem" }}>
-              {t("import.csv_hint")}
-              <Box component="code" sx={{ display: "block", mt: 0.5, fontSize: "0.75rem" }}>
-                slug,summary_en,summary_fr
+              {t("import.csv_hint", "CSV must have a header row with columns:")}
+              <Box component="code" sx={{ display: "block", mt: 0.5, mb: 0.5, fontSize: "0.75rem", wordBreak: "break-all" }}>
+                slug,ui_category_slug,display_name,display_name_en,display_name_fr,summary_en,summary_fr,aliases
+              </Box>
+              {t("import.csv_example_label", "Example row:")}
+              <Box component="code" sx={{ display: "block", mt: 0.5, fontSize: "0.75rem", wordBreak: "break-all" }}>
+                aspirin,drugs,,Aspirin,Aspirine,Pain reliever,Analgésique,ASA:en;AAS:fr
+              </Box>
+              <Box sx={{ mt: 0.5, fontSize: "0.75rem", color: "text.secondary" }}>
+                {t("import.csv_aliases_hint", 'aliases: semicolon-separated "term:lang" pairs — e.g. ASA:en;AAS:fr;aspirin:')}
               </Box>
             </Alert>
           )}
@@ -174,8 +181,8 @@ export function ImportEntitiesView() {
           {format === "json" && (
             <Alert severity="info" sx={{ fontSize: "0.8rem" }}>
               {t("import.json_hint")}
-              <Box component="code" sx={{ display: "block", mt: 0.5, fontSize: "0.75rem" }}>
-                {`[{"slug":"aspirin","summary_en":"..."}]`}
+              <Box component="code" sx={{ display: "block", mt: 0.5, fontSize: "0.75rem", whiteSpace: "pre-wrap" }}>
+                {`[{"slug":"aspirin","ui_category_slug":"drugs","display_name_en":"Aspirin","display_name_fr":"Aspirine","summary_en":"Pain reliever","aliases":"ASA:en;AAS:fr"}]`}
               </Box>
             </Alert>
           )}
@@ -233,8 +240,9 @@ export function ImportEntitiesView() {
               <TableRow>
                 <TableCell sx={{ width: 60 }}>{t("import.col_row")}</TableCell>
                 <TableCell>{t("import.col_slug")}</TableCell>
+                <TableCell>{t("import.col_display_name", "Display Name")}</TableCell>
+                <TableCell>{t("import.col_category", "Category")}</TableCell>
                 <TableCell>{t("import.col_summary_en", "Summary (EN)")}</TableCell>
-                <TableCell>{t("import.col_summary_fr", "Summary (FR)")}</TableCell>
                 <TableCell>{t("import.col_status")}</TableCell>
               </TableRow>
             </TableHead>
@@ -243,11 +251,14 @@ export function ImportEntitiesView() {
                 <TableRow key={row.row}>
                   <TableCell>{row.row}</TableCell>
                   <TableCell>{row.slug}</TableCell>
-                  <TableCell sx={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {row.summary_en ?? "—"}
+                  <TableCell sx={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {row.display_name ?? "—"}
+                  </TableCell>
+                  <TableCell sx={{ maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {row.ui_category_slug ?? "—"}
                   </TableCell>
                   <TableCell sx={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {row.summary_fr ?? "—"}
+                    {row.summary_en ?? "—"}
                   </TableCell>
                   <TableCell>
                     <Chip

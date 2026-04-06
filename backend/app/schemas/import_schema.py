@@ -10,11 +10,21 @@ class EntityImportRow(Schema):
 
     Blank or empty slugs are allowed here; the service handles validation
     and marks those rows as 'invalid' in the preview/import response.
+
+    Supported columns:
+      slug, ui_category_slug, display_name, display_name_en, display_name_fr,
+      summary_en, summary_fr,
+      aliases  — semicolon-separated "term:lang" pairs, e.g. "ASA:en;AAS:fr;aspirin:"
     """
 
     slug: str = ""
+    ui_category_slug: str | None = None
+    display_name: str | None = None       # international display name
+    display_name_en: str | None = None
+    display_name_fr: str | None = None
     summary_en: str | None = None
     summary_fr: str | None = None
+    aliases: str | None = None            # semicolon-separated "term:lang" pairs
 
 
 class EntityImportPreviewRow(Schema):
@@ -22,6 +32,8 @@ class EntityImportPreviewRow(Schema):
 
     row: int
     slug: str
+    display_name: str | None = None
+    ui_category_slug: str | None = None
     summary_en: str | None = None
     summary_fr: str | None = None
     status: Literal["new", "duplicate", "invalid"]

@@ -12,6 +12,8 @@ export type ImportRowStatus = "new" | "duplicate" | "invalid";
 export interface EntityImportPreviewRow {
   row: number;
   slug: string;
+  display_name: string | null;
+  ui_category_slug: string | null;
   summary_en: string | null;
   summary_fr: string | null;
   status: ImportRowStatus;
