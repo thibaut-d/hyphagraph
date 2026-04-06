@@ -95,7 +95,7 @@ export function search(filters: SearchFilters): Promise<SearchResponse> {
     appendOptionalNumber(query, "offset", filters.offset);
   });
 
-  return apiFetch(`/search${buildQueryString(params)}`, {
+  return apiFetch(`/search/${buildQueryString(params)}`, {
     method: "POST",
   });
 }

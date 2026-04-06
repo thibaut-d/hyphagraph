@@ -71,7 +71,7 @@ export function listSources(filters?: SourceFilters): Promise<PaginatedResponse<
     appendOptionalNumber(query, "offset", filters?.offset);
   });
 
-  return apiFetch(`/sources${buildQueryString(params)}`);
+  return apiFetch(`/sources/${buildQueryString(params)}`);
 }
 
 export function getSource(id: string): Promise<SourceRead> {
