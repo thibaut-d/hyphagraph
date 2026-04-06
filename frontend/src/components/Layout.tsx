@@ -32,6 +32,7 @@ import { BugReportDialog } from "./BugReportDialog";
 import { useAuthContext } from "../auth/AuthContext";
 import { usePageErrorHandler } from "../hooks/usePageErrorHandler";
 import { getEntityFilterOptions } from "../api/entities";
+import { siteDisplayName } from "../config/site";
 import type { UICategoryOption } from "../api/entities";
 const menuItems = [
   { key: "menu.home", path: "/", icon: HomeIcon },
@@ -66,6 +67,10 @@ export function Layout() {
 
   // Entities dropdown state
   const [categories, setCategories] = useState<UICategoryOption[]>([]);
+
+  useEffect(() => {
+    document.title = siteDisplayName;
+  }, [siteDisplayName]);
 
   // Fetch UI categories for Entities dropdown
   useEffect(() => {
@@ -112,7 +117,7 @@ export function Layout() {
               mr: { xs: 0, md: 4 },
             }}
           >
-            HyphaGraph
+            {siteDisplayName}
           </Typography>
 
           {/* Desktop: Main menu (md+ only) */}

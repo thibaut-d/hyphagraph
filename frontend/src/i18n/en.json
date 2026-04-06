@@ -341,9 +341,9 @@
     "delete_failed": "Failed to delete account"
   },
   "home": {
-    "title": "HyphaGraph",
+    "title": "{{brand}}",
     "subtitle": "Trace claims, assess evidence quality, and surface contradictions",
-    "description": "HyphaGraph aggregates evidence from multiple sources and computes confidence across relations. Inspect which sources support or contradict each claim, follow the evidence trail, and understand where agreement breaks down.",
+    "description": "{{brand}} aggregates evidence from multiple sources and computes confidence across relations. Inspect which sources support or contradict each claim, follow the evidence trail, and understand where agreement breaks down.",
     "cta_explore_evidence": "Explore evidence",
     "cta_search": "Search the knowledge base",
     "data_heading": "Data",

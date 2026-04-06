@@ -341,9 +341,9 @@
     "delete_failed": "Échec de la suppression du compte"
   },
   "home": {
-    "title": "HyphaGraph",
+    "title": "{{brand}}",
     "subtitle": "Retracez les affirmations, évaluez la qualité des preuves et identifiez les contradictions",
-    "description": "HyphaGraph agrège les preuves de plusieurs sources et calcule la confiance sur l'ensemble des relations. Inspectez quelles sources soutiennent ou contredisent chaque affirmation, suivez la piste des preuves et comprenez où l'accord se rompt.",
+    "description": "{{brand}} agrège les preuves de plusieurs sources et calcule la confiance sur l'ensemble des relations. Inspectez quelles sources soutiennent ou contredisent chaque affirmation, suivez la piste des preuves et comprenez où l'accord se rompt.",
     "cta_explore_evidence": "Explorer les preuves",
     "cta_search": "Rechercher dans la base de connaissances",
     "data_heading": "Données",

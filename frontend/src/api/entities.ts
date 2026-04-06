@@ -69,7 +69,7 @@ export function listEntities(filters?: EntityFilters): Promise<PaginatedResponse
     appendOptionalNumber(query, "offset", filters?.offset);
   });
 
-  return apiFetch(`/entities${buildQueryString(params)}`);
+  return apiFetch(`/entities/${buildQueryString(params)}`);
 }
 
 export function getEntity(id: string, signal?: AbortSignal): Promise<EntityRead> {
@@ -77,7 +77,7 @@ export function getEntity(id: string, signal?: AbortSignal): Promise<EntityRead>
 }
 
 export function createEntity(payload: EntityWrite): Promise<EntityRead> {
-  return apiFetch("/entities", {
+  return apiFetch("/entities/", {
     method: "POST",
     body: JSON.stringify(payload),
   });

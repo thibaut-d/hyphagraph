@@ -26,6 +26,7 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import RateReviewIcon from "@mui/icons-material/RateReview";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import { useNotification } from "../notifications/NotificationContext";
+import { siteDisplayName } from "../config/site";
 
 interface Stats {
   entities: number;
@@ -151,7 +152,10 @@ export function HomeView() {
       >
         <Stack spacing={2}>
           <Typography variant="h3" fontWeight="bold">
-            {t("home.title", "HyphaGraph")}
+            {t("home.title", {
+              brand: siteDisplayName,
+              defaultValue: siteDisplayName,
+            })}
           </Typography>
           <Typography variant="h6" sx={{ opacity: 0.9 }}>
             {t(
@@ -162,7 +166,11 @@ export function HomeView() {
           <Typography variant="body1" sx={{ opacity: 0.85, maxWidth: 700 }}>
             {t(
               "home.description",
-              "Start from the evidence itself. Compare supporting and contradicting statements, inspect source quality, and keep provenance visible while you decide what the graph should say."
+              {
+                brand: siteDisplayName,
+                defaultValue:
+                  "Start from the evidence itself. Compare supporting and contradicting statements, inspect source quality, and keep provenance visible while you decide what the graph should say.",
+              }
             )}
           </Typography>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1} pt={1}>
