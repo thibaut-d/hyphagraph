@@ -45,7 +45,7 @@ export function SourcesView() {
     getSourceFilterOptions,
   );
   const [total, setTotal] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [hasMore, setHasMore] = useState(true);
   const [offset, setOffset] = useState(0);
 
@@ -120,6 +120,7 @@ export function SourcesView() {
 
   // Reset pagination when filters change
   useEffect(() => {
+    setIsLoading(true);
     setSources([]);
     setOffset(0);
     setHasMore(true);

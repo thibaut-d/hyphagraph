@@ -180,4 +180,66 @@ describe("SourcesView", () => {
     expect(screen.getByText("Authority {{value}}%")).toBeInTheDocument();
     expect(screen.getByText("Used {{count}}x")).toBeInTheDocument();
   });
+
+  it("keeps the loading state visible while an empty filtered list refetches", async () => {
+    let filters: Record<string, unknown> = {};
+    mockUsePersistedFilters.mockImplementation(() => ({
+      filters,
+      setFilter: vi.fn(),
+      clearAllFilters: vi.fn(),
+      activeFilterCount: Object.keys(filters).length,
+    }));
+
+    let resolveRefetch: ((value: Awaited<ReturnType<typeof sourceApi.listSources>>) => void) | null = null;
+    vi.mocked(sourceApi.listSources).mockImplementation((params) => {
+      if (params?.domain?.length) {
+        return new Promise((resolve) => {
+          resolveRefetch = resolve;
+        });
+      }
+
+      return Promise.resolve({
+        items: [],
+        total: 0,
+        limit: 50,
+        offset: 0,
+      });
+    });
+
+    const view = renderView();
+
+    await waitFor(() => {
+      expect(screen.getByText("No sources")).toBeInTheDocument();
+    });
+    expect(screen.getByText("No sources")).toBeInTheDocument();
+
+    filters = { domain: ["clinical"] };
+    view.rerender(
+      <NotificationProvider>
+        <BrowserRouter>
+          <SourcesView />
+        </BrowserRouter>
+      </NotificationProvider>,
+    );
+
+    await waitFor(() => {
+      expect(sourceApi.listSources).toHaveBeenLastCalledWith(
+        expect.objectContaining({ domain: ["clinical"] }),
+      );
+    });
+
+    expect(screen.getByRole("progressbar")).toBeInTheDocument();
+    expect(screen.queryByText("No sources match the current filters")).not.toBeInTheDocument();
+
+    resolveRefetch?.({
+      items: [],
+      total: 0,
+      limit: 50,
+      offset: 0,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("No sources match the current filters")).toBeInTheDocument();
+    });
+  });
 });

@@ -41,7 +41,7 @@ export function EntitiesView() {
   const { showError } = useNotification();
   const [entities, setEntities] = useState<EntityRead[]>([]);
   const [total, setTotal] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [hasMore, setHasMore] = useState(true);
   const [offset, setOffset] = useState(0);
   const filterOptions = useFilterOptionsCache<EntityFilterOptions>(
@@ -115,6 +115,7 @@ export function EntitiesView() {
 
   // Reset pagination when filters change
   useEffect(() => {
+    setIsLoading(true);
     setEntities([]);
     setOffset(0);
     setHasMore(true);

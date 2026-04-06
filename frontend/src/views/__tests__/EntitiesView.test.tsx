@@ -150,6 +150,7 @@ describe('EntitiesView', () => {
     renderView();
 
     expect(screen.getByRole('progressbar')).toBeInTheDocument();
+    expect(screen.queryByText('No entities')).not.toBeInTheDocument();
   });
 
   it('displays entity summaries', async () => {

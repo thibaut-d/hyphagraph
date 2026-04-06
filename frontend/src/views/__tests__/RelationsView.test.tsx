@@ -69,4 +69,13 @@ describe("RelationsView", () => {
     expect(screen.getByRole("link", { name: "treats" })).toHaveAttribute("href", "/relations/rel-1");
     expect(screen.getByText("Trial A (2024)")).toBeInTheDocument();
   });
+
+  it("does not flash the empty state before the first fetch resolves", () => {
+    vi.mocked(relationsApi.listRelations).mockImplementation(() => new Promise(() => {}));
+
+    renderView();
+
+    expect(screen.getByRole("progressbar")).toBeInTheDocument();
+    expect(screen.queryByText("No relations")).not.toBeInTheDocument();
+  });
 });

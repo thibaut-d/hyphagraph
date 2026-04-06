@@ -27,7 +27,7 @@ export default function RelationsView() {
   const { t } = useTranslation();
   const [relations, setRelations] = useState<RelationRead[]>([]);
   const [total, setTotal] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const loadRelations = useCallback(async () => {
