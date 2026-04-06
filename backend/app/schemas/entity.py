@@ -59,3 +59,24 @@ class EntityRead(Schema):
 class EntityWithHistory(EntityRead):
     """Entity with full revision history."""
     revisions: list[EntityRevisionRead] = []
+
+
+class EntityPrefillRequest(Schema):
+    """Request an AI-assisted, non-authoritative draft for the create-entity form."""
+    term: str = Field(..., min_length=1, max_length=200)
+    user_language: str = Field("en", pattern=r"^[a-z]{2}$")
+
+
+class EntityPrefillAlias(Schema):
+    """Draft alias term returned by the AI prefill endpoint."""
+    term: str = Field(..., min_length=1, max_length=200)
+    language: Optional[str] = Field(None, pattern=r"^[a-z]{2}$")
+
+
+class EntityPrefillDraft(Schema):
+    """Non-authoritative draft values for the create-entity form."""
+    slug: str = Field(..., pattern=r"^[a-z][a-z0-9-]*$", min_length=3, max_length=100)
+    display_names: dict[str, str] = Field(default_factory=dict)
+    summary: dict[str, str] = Field(default_factory=dict)
+    aliases: list[EntityPrefillAlias] = Field(default_factory=list)
+    ui_category_id: Optional[UUID] = None
