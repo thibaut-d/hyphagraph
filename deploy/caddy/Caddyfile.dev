@@ -1,4 +1,4 @@
-dev.mydomain.com {
+algiagraph.com {
     handle /api/* {
         reverse_proxy api:8000
     }
