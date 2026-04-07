@@ -398,7 +398,10 @@ export function EntitiesView() {
                           )}
                         </Box>
                       }
-                      secondary={e.summary?.en}
+                      secondary={
+                        e.summary?.[i18n.language.split("-")[0]] ??
+                        e.summary?.en
+                      }
                     />
                   </ListItem>
                 );

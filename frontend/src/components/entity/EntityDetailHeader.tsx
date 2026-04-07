@@ -84,35 +84,6 @@ export function EntityDetailHeader({
           <Typography color="text.primary">{primaryLabel}</Typography>
         </Breadcrumbs>
 
-        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-          <Button
-            component={RouterLink}
-            to="/entities"
-            startIcon={<ArrowBackIcon />}
-            size="small"
-          >
-            {t("common.back", "Back")}
-          </Button>
-          <Button
-            component={RouterLink}
-            to={entitySubpath(entity, "synthesis")}
-            startIcon={<AutoGraphIcon />}
-            size="small"
-            variant="outlined"
-          >
-            {t("entity.synthesis", "Synthesis")}
-          </Button>
-          <Button
-            component={RouterLink}
-            to={entitySubpath(entity, "disagreements")}
-            startIcon={<WarningAmberIcon />}
-            size="small"
-            variant="outlined"
-            color="warning"
-          >
-            {t("entity.disagreements", "Disagreements")}
-          </Button>
-        </Box>
         <Stack
           direction={{ xs: "column", sm: "row" }}
           justifyContent="space-between"
@@ -200,6 +171,36 @@ export function EntityDetailHeader({
             </Button>
           </Stack>
         </Stack>
+
+        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+          <Button
+            component={RouterLink}
+            to="/entities"
+            startIcon={<ArrowBackIcon />}
+            size="small"
+          >
+            {t("common.back", "Back")}
+          </Button>
+          <Button
+            component={RouterLink}
+            to={entitySubpath(entity, "synthesis")}
+            startIcon={<AutoGraphIcon />}
+            size="small"
+            variant="outlined"
+          >
+            {t("entity.synthesis", "Synthesis")}
+          </Button>
+          <Button
+            component={RouterLink}
+            to={entitySubpath(entity, "disagreements")}
+            startIcon={<WarningAmberIcon />}
+            size="small"
+            variant="outlined"
+            color="warning"
+          >
+            {t("entity.disagreements", "Disagreements")}
+          </Button>
+        </Box>
       </Stack>
     </Paper>
   );

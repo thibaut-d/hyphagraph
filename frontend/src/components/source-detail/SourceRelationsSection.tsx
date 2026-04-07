@@ -134,7 +134,7 @@ export function SourceRelationsSection({
   };
 
   return (
-    <Paper sx={{ p: 3 }}>
+    <Paper sx={{ p: { xs: 2, sm: 3 } }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
         <Typography variant="h5">{t("sources.linked_relations_entities", "Linked relations and entities")}</Typography>
         {hasRelations && (

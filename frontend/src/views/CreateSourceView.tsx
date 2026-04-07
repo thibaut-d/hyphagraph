@@ -84,7 +84,7 @@ export function CreateSourceView() {
           </Typography>
         </Box>
 
-        <Stack direction="row" spacing={2}>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
           <Alert severity="info" icon={<AutoFixHighIcon />} sx={{ flex: 1 }}>
             {t(
               "create_source.description_autofill",
@@ -96,7 +96,7 @@ export function CreateSourceView() {
             to="/sources/smart-discovery"
             variant="outlined"
             startIcon={<SearchIcon />}
-            sx={{ minWidth: 200 }}
+            sx={{ width: { xs: "100%", sm: "auto" }, flexShrink: 0 }}
           >
             {t("create_source.or_smart_discovery", "Or Smart Discovery")}
           </Button>
@@ -108,7 +108,14 @@ export function CreateSourceView() {
           <Stack spacing={3}>
             {/* URL Field with Auto-Fill */}
             <Box>
-              <Box sx={{ display: "flex", gap: 2, mb: 1 }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: { xs: "column", sm: "row" },
+                  gap: 2,
+                  mb: 1,
+                }}
+              >
                 <TextField
                   fullWidth
                   label={t("create_source.url_label", "Source URL") + " *"}
@@ -143,7 +150,7 @@ export function CreateSourceView() {
                   onClick={handleExtractMetadata}
                   disabled={extracting || !url.trim() || loading}
                   startIcon={extracting ? <CircularProgress size={20} /> : <AutoFixHighIcon />}
-                  sx={{ minWidth: 140, height: 56 }}
+                  sx={{ minWidth: { sm: 140 }, width: { xs: "100%", sm: "auto" }, flexShrink: 0 }}
                 >
                   {extracting
                     ? t("create_source.extracting", "Extracting...")

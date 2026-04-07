@@ -56,7 +56,7 @@ export function SourceExtractionSection({
   const { t } = useTranslation();
 
   return (
-    <Paper id="knowledge-extraction" sx={{ p: 3 }}>
+    <Paper id="knowledge-extraction" sx={{ p: { xs: 2, sm: 3 } }}>
       <Stack spacing={2}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <SmartToyIcon color="primary" />

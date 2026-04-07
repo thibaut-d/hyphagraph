@@ -147,19 +147,19 @@ export function HomeView() {
     stats.sources === 0;
 
   return (
-    <Box sx={{ maxWidth: 1200, mx: "auto", p: 3 }}>
+    <Box sx={{ maxWidth: 1200, mx: "auto" }}>
       {/* Hero Section */}
       <Paper
         sx={{
           background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
           color: "white",
-          p: 4,
+          p: { xs: 3, sm: 4 },
           mb: 4,
           borderRadius: 2,
         }}
       >
         <Stack spacing={2}>
-          <Typography variant="h3" fontWeight="bold">
+          <Typography variant="h3" fontWeight="bold" sx={{ fontSize: { xs: '1.75rem', sm: '2.5rem', md: '3rem' } }}>
             {t("home.title", {
               brand: siteDisplayName,
               defaultValue: siteDisplayName,
@@ -185,7 +185,7 @@ export function HomeView() {
             <Button
               variant="contained"
               color="inherit"
-              sx={{ color: "primary.main", bgcolor: "white" }}
+              sx={{ color: "primary.main", bgcolor: "white", width: { xs: "100%", sm: "auto" } }}
               onClick={() => navigate("/review-queue")}
             >
               {t("home.cta_review_evidence", "Review new evidence")}
@@ -193,7 +193,7 @@ export function HomeView() {
             <Button
               variant="outlined"
               color="inherit"
-              sx={{ borderColor: "rgba(255,255,255,0.6)", color: "white" }}
+              sx={{ borderColor: "rgba(255,255,255,0.6)", color: "white", width: { xs: "100%", sm: "auto" } }}
               onClick={() => navigate("/inferences")}
             >
               {t("home.cta_explore_evidence", "Explore evidence")}
@@ -201,7 +201,7 @@ export function HomeView() {
             <Button
               variant="outlined"
               color="inherit"
-              sx={{ borderColor: "rgba(255,255,255,0.6)", color: "white" }}
+              sx={{ borderColor: "rgba(255,255,255,0.6)", color: "white", width: { xs: "100%", sm: "auto" } }}
               onClick={() => navigate("/search")}
             >
               {t("home.cta_search", "Search the knowledge base")}

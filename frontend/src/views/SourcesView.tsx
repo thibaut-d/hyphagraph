@@ -15,7 +15,6 @@ import {
   Badge,
   Chip,
   CircularProgress,
-  Alert,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import FilterListIcon from "@mui/icons-material/FilterList";
@@ -367,7 +366,7 @@ export function SourcesView() {
               <Button
                 component={RouterLink}
                 to="/sources/new"
-                variant="outlined"
+                variant="contained"
                 startIcon={<AddIcon />}
                 size="small"
               >
@@ -400,12 +399,12 @@ export function SourcesView() {
             deleteIcon={<ClearAllIcon />}
             size="small"
           />
-          <Alert severity="info" sx={{ py: 0 }}>
+          <Typography variant="caption" color="text.secondary">
             {t("filters.showing_filtered_results", "Showing {{current}} of {{total}} result(s)", {
               current: sources.length,
               total,
             })}
-          </Alert>
+          </Typography>
         </Box>
       )}
 

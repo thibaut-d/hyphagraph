@@ -39,7 +39,7 @@ export function SourceMetadataSection({
   const { t } = useTranslation();
 
   return (
-    <Paper sx={{ p: 3 }}>
+    <Paper sx={{ p: { xs: 2, sm: 3 } }}>
       <Stack spacing={3}>
         <Breadcrumbs>
           <Link component={RouterLink} to="/sources" underline="hover" color="inherit">

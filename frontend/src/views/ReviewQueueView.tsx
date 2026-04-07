@@ -130,7 +130,7 @@ export function ReviewQueueView() {
   );
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box>
       <Stack spacing={3}>
         <Stack
           direction={{ xs: "column", sm: "row" }}

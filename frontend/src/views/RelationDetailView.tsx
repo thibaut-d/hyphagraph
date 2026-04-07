@@ -210,7 +210,7 @@ export function RelationDetailView() {
             </Stack>
           </Stack>
 
-          <Stack direction="row" spacing={1}>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             <Button
               component={RouterLink}
               to={`/relations/${relation.id}/edit`}
