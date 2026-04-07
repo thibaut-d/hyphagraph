@@ -29,8 +29,6 @@ import type {
 import {
   getRelationDisplayRoles,
   getRelationKey,
-  getRelationObject,
-  getRelationSubject,
 } from "../utils/extractionRelation";
 
 interface ExtractedRelationsListProps {
@@ -78,11 +76,11 @@ const relationTypeIcons: Record<RelationType, React.ReactElement> = {
 };
 
 function RelationToken({
+  role,
   label,
-  primary = false,
 }: {
+  role?: string;
   label: string;
-  primary?: boolean;
 }) {
   return (
     <Box
@@ -94,15 +92,25 @@ function RelationToken({
         px: 1,
         py: 0.5,
         borderRadius: 1,
-        border: primary ? 0 : 1,
+        border: 1,
         borderColor: "divider",
-        bgcolor: primary ? "primary.main" : "background.paper",
-        color: primary ? "primary.contrastText" : "text.primary",
+        bgcolor: "background.paper",
+        color: "text.primary",
+        gap: 0.5,
       }}
     >
+      {role && (
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ flexShrink: 0, textTransform: "uppercase", letterSpacing: 0.3 }}
+        >
+          {role}
+        </Typography>
+      )}
       <Typography
         variant="body2"
-        fontWeight={primary ? 600 : 400}
+        fontWeight={600}
         sx={{ overflowWrap: "anywhere", whiteSpace: "normal" }}
       >
         {label}
@@ -129,8 +137,6 @@ export const ExtractedRelationsList: React.FC<ExtractedRelationsListProps> = ({
       {relations.map((relation, index) => {
         const relationKey = getRelationKey(relation);
         const isSelected = selectedRelations.has(relationKey);
-        const subject = getRelationSubject(relation);
-        const object = getRelationObject(relation);
         const roles = getRelationDisplayRoles(relation);
 
         return (
@@ -161,7 +167,7 @@ export const ExtractedRelationsList: React.FC<ExtractedRelationsListProps> = ({
                   />
 
                   <Box sx={{ flex: 1, minWidth: 0 }}>
-                    {/* Subject -> Relation -> Object */}
+                    {/* Relation type and hyperedge role set */}
                     <Box
                       sx={{
                         display: "flex",
@@ -170,7 +176,6 @@ export const ExtractedRelationsList: React.FC<ExtractedRelationsListProps> = ({
                         flexWrap: "wrap",
                       }}
                     >
-                      <RelationToken label={subject} />
                       <Box
                         sx={{
                           display: "flex",
@@ -189,20 +194,17 @@ export const ExtractedRelationsList: React.FC<ExtractedRelationsListProps> = ({
                           {relationTypeLabels[relation.relation_type]}
                         </Typography>
                       </Box>
-                      <RelationToken label={object} />
                     </Box>
 
-                    {/* Additional roles */}
-                    {roles.length > 0 && (
-                      <Box sx={{ mt: 1, display: "flex", gap: 1, flexWrap: "wrap" }}>
-                        {roles.map(({ role, value }) => (
-                          <RelationToken
-                            key={`${relationKey}-${role}-${value}`}
-                            label={`${role}: ${value}`}
-                          />
-                        ))}
-                      </Box>
-                    )}
+                    <Box sx={{ mt: 1, display: "flex", gap: 1, flexWrap: "wrap" }}>
+                      {roles.map(({ role, value }) => (
+                        <RelationToken
+                          key={`${relationKey}-${role}-${value}`}
+                          role={role}
+                          label={value}
+                        />
+                      ))}
+                    </Box>
 
                     {/* Notes */}
                     {relation.notes && (

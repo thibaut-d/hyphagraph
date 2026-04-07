@@ -47,7 +47,7 @@ ENTITY_EXTRACTION_PROMPT = """Extract all relevant biomedical entities from the 
 For each entity, provide:
 - slug: A unique identifier following STRICT format rules (see below)
 - summary: A brief source-bounded description in English (prefer a short phrase or single sentence)
-- category: The entity type (drug, disease, symptom, biological_mechanism, treatment, biomarker, population, outcome)
+- category: The entity type (drug, disease, symptom, biological_mechanism, treatment, biomarker, population, outcome, other)
 - confidence: Your confidence in this extraction (high, medium, low)
 - text_span: The exact text from the source that mentions this entity
 
@@ -74,6 +74,7 @@ Categories:
 - biomarker: Measurable indicators (lab values, proteins, genes)
 - population: Patient groups, demographics (e.g., "adults over 65")
 - outcome: Clinical outcomes, endpoints (e.g., "mortality", "quality of life")
+- other: Source-stated context role fillers that can participate in relations, including comparator/control groups, dosages, durations, timeframes, study arms, and study conditions when they are explicitly mentioned
 
 Text to analyze:
 {text}
@@ -102,6 +103,20 @@ Respond with a JSON object containing an "entities" key. Example format:
     "category": "biological_mechanism",
     "confidence": "high",
     "text_span": "irreversibly inhibiting cyclooxygenase (COX) enzymes"
+  }},
+  {{
+    "slug": "dose-325-650mg",
+    "summary": "A dose range explicitly stated in the source.",
+    "category": "other",
+    "confidence": "high",
+    "text_span": "325-650mg"
+  }},
+  {{
+    "slug": "placebo",
+    "summary": "The comparator group explicitly stated in the source.",
+    "category": "other",
+    "confidence": "high",
+    "text_span": "placebo"
   }}
   ]
 }}
@@ -109,6 +124,7 @@ Respond with a JSON object containing an "entities" key. Example format:
 
 Only extract entities that are explicitly mentioned in the text.
 Do not create entities purely from implication, world knowledge, or inferred study context.
+If a contextual item will be used as a relation role, it MUST also appear in the entities array with a valid slug. Numeric context must be prefixed with a word, for example "dose-60mg-daily" or "duration-12-weeks", because slugs cannot start with numbers.
 """
 
 
@@ -172,6 +188,10 @@ RELATION EXTRACTION RULES:
 - Do not create a relation from background knowledge or weak implication alone
 - Preserve negation, uncertainty, study conditions, dosage, timeframe, comparator, and population in notes when relevant
 - If the text presents competing or contradictory findings, output separate relations rather than merging them
+- HyphaGraph relations are hyperedges: when one source statement includes context such as population, comparator, outcome, dosage, duration, mechanism, or study condition, keep that context as additional roles in the SAME relation instead of decomposing the statement into multiple binary relations
+- Do not add contextual roles that are not explicitly stated in the same source span
+- Every role entity_slug used in a relation must be present in the identified entity list above
+- Numeric context slugs must be prefixed with a word, for example "dose-60mg-daily" or "duration-12-weeks"
 
 SEMANTIC ROLES (use these instead of subject/object):
 - agent: Entity performing action (drug, treatment)
@@ -208,7 +228,7 @@ Do NOT use types like: "has", "integrates_with", "diagnosed_by", "correlates_wit
 Example roles in output:
 - {{"entity_slug": "aspirin", "role_type": "agent"}}
 - {{"entity_slug": "migraine", "role_type": "target"}}
-- {{"entity_slug": "325-650mg", "role_type": "dosage"}}
+- {{"entity_slug": "dose-325-650mg", "role_type": "dosage"}}
 
 Respond with a JSON object containing a "relations" key:
 ```json
@@ -219,7 +239,7 @@ Respond with a JSON object containing a "relations" key:
     "roles": [
       {{"entity_slug": "aspirin", "role_type": "agent"}},
       {{"entity_slug": "migraine", "role_type": "target"}},
-      {{"entity_slug": "325-650mg", "role_type": "dosage"}}
+      {{"entity_slug": "dose-325-650mg", "role_type": "dosage"}}
     ],
     "confidence": "high",
     "text_span": "aspirin 325-650mg is effective for migraine pain relief",
@@ -338,6 +358,8 @@ Extract:
    - category: drug, disease, symptom, biological_mechanism, treatment, biomarker, population, outcome, other
    - confidence: high, medium, low
    - summaries must stay source-bounded and must not add background facts not present in the text
+   - contextual role fillers such as explicitly stated comparator/control groups, dosages, durations, timeframes, study arms, and study conditions should be extracted as entities, usually with category "other", when they will participate in a relation
+   - numeric context slugs must be prefixed with a word, for example "dose-60mg-daily" or "duration-12-weeks"
 
 2. **Relations**: Relationships between entities
 
@@ -359,22 +381,30 @@ Extract:
    IMPORTANT: If the relationship doesn't clearly fit one of the specific types above, use "other".
    Do NOT invent new relation types like "has", "integrates_with", "diagnosed_by", "negatively-correlates-with", etc.
 
+   HYPERGRAPH ROLE RULE:
+   - HyphaGraph relations are n-ary hyperedges, not only binary subject/object pairs.
+   - When a single source statement includes population, comparator, outcome, dosage, duration, mechanism, condition, or study context, include those explicitly stated items as additional roles in the SAME relation.
+   - Do not split one contextual statement into several binary relations when one n-ary relation can preserve the source context.
+   - Do not add contextual roles that are not explicitly stated in the same source span.
+
    CRITICAL GUIDELINES FOR RELATION DIRECTION:
-   - treats: Subject is the treatment/drug, object is the disease/symptom
+   - treats: agent is the treatment/drug, target is the disease/symptom
      Example: "duloxetine treats fibromyalgia" (NOT "fibromyalgia treats duloxetine")
-   - causes: Subject is the cause, object is the effect/outcome
+   - causes: agent is the cause, target/outcome is the effect/outcome
      Example: "smoking causes cancer" (NOT "cancer causes smoking")
-   - biomarker_for: Subject is the biomarker/test, object is the disease/condition
+   - biomarker_for: biomarker is the biomarker/test, target is the disease/condition
      Example: "crp biomarker_for inflammation" (NOT "inflammation biomarker_for crp")
-   - affects_population: Subject is disease/condition, object is population group
+   - affects_population: condition is disease/condition, population is the population group
      Example: "fibromyalgia affects_population women" (NOT "women affects_population fibromyalgia")
      SPECIAL CASE: "healthy controls" are NOT affected by the disease - they are comparison groups
      Do NOT create: "disease affects healthy-controls" - this is illogical
-   - measures: Subject is the assessment tool, object is what it measures
+   - measures: measured_by is the assessment tool, target/outcome is what it measures
      Example: "vas measures pain" (NOT "pain measures vas")
 
    - confidence: high, medium, low
    - extract only explicitly stated relations and preserve caveats in notes
+   - every role entity_slug used in a relation MUST also appear in the entities array
+   - numeric context slugs must be prefixed with a word, for example "dose-60mg-daily" or "duration-12-weeks"
 
 3. **Claims**: Factual statements with evidence
 
@@ -420,6 +450,27 @@ Respond with JSON containing three arrays:
       "category": "disease",
       "confidence": "high",
       "text_span": "fibromyalgia"
+    }},
+    {{
+      "slug": "adults",
+      "summary": "The adult population explicitly stated in the source.",
+      "category": "population",
+      "confidence": "high",
+      "text_span": "adults"
+    }},
+    {{
+      "slug": "dose-60mg-daily",
+      "summary": "The daily 60mg dose explicitly stated in the source.",
+      "category": "other",
+      "confidence": "high",
+      "text_span": "60mg daily"
+    }},
+    {{
+      "slug": "placebo",
+      "summary": "The comparator group explicitly stated in the source.",
+      "category": "other",
+      "confidence": "high",
+      "text_span": "placebo"
     }}
   ],
   "relations": [
@@ -429,11 +480,12 @@ Respond with JSON containing three arrays:
         {{"entity_slug": "duloxetine", "role_type": "agent"}},
         {{"entity_slug": "fibromyalgia", "role_type": "target"}},
         {{"entity_slug": "adults", "role_type": "population"}},
-        {{"entity_slug": "60mg-daily", "role_type": "dosage"}}
+        {{"entity_slug": "dose-60mg-daily", "role_type": "dosage"}},
+        {{"entity_slug": "placebo", "role_type": "control_group"}}
       ],
       "confidence": "high",
-      "text_span": "duloxetine 60mg daily is effective for fibromyalgia in adults",
-      "notes": "FDA approved indication"
+      "text_span": "duloxetine 60mg daily is effective for fibromyalgia in adults compared with placebo",
+      "notes": "Context includes adult population, daily dose, and placebo comparator"
     }},
     {{
       "relation_type": "biomarker_for",

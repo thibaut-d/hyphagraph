@@ -1,8 +1,46 @@
 # Current Work
 
-**Last updated**: 2026-04-07 (mobile extraction preview UX)
+**Last updated**: 2026-04-07 (n-ary extraction relation context)
 
-## Active Plan: Mobile Extraction Preview UX
+## Active Plan: N-ary Extraction Relation Context
+
+### Objective
+Make extracted relations reflect HyphaGraph hyperedges by preserving explicitly stated contextual roles and previewing all roles as first-class relation context.
+
+### Impacted modules
+- `backend/app/llm/prompts.py`
+- `backend/tests/test_llm_prompts.py`
+- `frontend/src/components/ExtractedRelationsList.tsx`
+- `frontend/src/components/__tests__/ExtractedRelationsList.test.tsx`
+
+### Assumptions
+- The backend schema and relation materialization already support more than two roles.
+- The current issue is that extraction guidance and preview rendering still bias toward binary subject/object relations.
+- Extra contextual roles must only be extracted when explicitly present in the source span.
+
+### Plan
+1. Strengthen relation and batch prompts to ask for n-ary hyperedges when source text includes population, comparator, outcome, dosage, duration, mechanism, or study context.
+2. Ensure contextual role fillers are also extracted as entities with valid slugs, including prefixed numeric slugs such as `dose-60mg-daily`.
+3. Keep the evidence-first guard against adding unstated contextual roles.
+4. Render extracted relation roles directly instead of subject/object plus additional roles.
+5. Add focused prompt and frontend display regression coverage.
+6. Run targeted backend/frontend validation.
+
+### Validation
+- `docker compose -p hyphagraph-dev -f docker-compose.remote-dev.yml exec -T api uv run pytest tests/test_llm_prompts.py`
+- `cd frontend && npm test -- --run src/components/__tests__/ExtractedRelationsList.test.tsx`
+- `cd frontend && npm test -- --run src/components/__tests__/ExtractionPreview.test.tsx src/views/__tests__/SourceDetailView.rendering.test.tsx`
+- `cd frontend && npm run build`
+- `git diff --check`
+
+### Risks
+- Prompt changes can encourage over-extraction if they are not explicitly bounded to source-stated context.
+- Preview changes must not break binary relations; binary relations should render as a two-role hyperedge.
+
+### Status
+validated
+
+## Previous Plan: Mobile Extraction Preview UX
 
 ### Objective
 Keep extraction review and source quality/trust metadata usable on small screens without hiding important evidence signals.
