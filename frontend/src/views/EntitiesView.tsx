@@ -295,7 +295,7 @@ export function EntitiesView() {
             <Typography variant="caption" color="text.secondary">
               {t("entities.toolbar_manage", "Add data")}
             </Typography>
-            <Stack direction="row" spacing={1} flexWrap="wrap">
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
               <Button
                 component={RouterLink}
                 to="/entities/import"
