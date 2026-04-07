@@ -1,8 +1,51 @@
 # Current Work
 
-**Last updated**: 2026-04-07 (source summary creation UX)
+**Last updated**: 2026-04-07 (empty extraction root-cause fix)
 
-## Active Plan: Source Creation Summary UX
+## Active Plan: Empty Extraction Root-Cause Fix
+
+### Objective
+Prevent blank fetched documents from being stored and extracted as valid zero-item previews, while preserving PubMed abstract text when optional PMC enrichment returns an empty body.
+
+### Impacted modules
+- `backend/app/services/pubmed_fetcher.py`
+- `backend/app/services/document_extraction_processing.py`
+- `backend/tests/test_pubmed_fetcher.py`
+- `backend/tests/test_document_extraction_workflow.py`
+- `frontend/src/components/ExtractionPreview.tsx`
+- `frontend/src/i18n/en.json`
+- `frontend/src/i18n/fr.json`
+- `frontend/src/components/__tests__/ExtractionPreview.test.tsx`
+
+### Assumptions
+- The juvenile fibromyalgia source had a source summary, but its stored extraction document body was empty.
+- PubMed abstract text is preferable to replacing the document body with empty PMC enrichment output.
+- Blank fetched document text is a fetch/parsing failure, not a legitimate extraction input.
+- The UI must not present an empty extraction as high-confidence or quick-saveable.
+
+### Plan
+1. Guard high-confidence frontend logic so it only applies when the preview contains extracted items.
+2. Add an explicit empty-state alert and suppress save/quick-save affordances for empty previews.
+3. Preserve PubMed abstract text when PMC enrichment returns empty text.
+4. Reject blank fetched URL/PubMed document text before storing the document or running extraction.
+5. Add focused frontend and backend regression coverage.
+
+### Validation
+- `cd frontend && npm test -- --run src/components/__tests__/ExtractionPreview.test.tsx`
+- `docker compose -p hyphagraph-dev -f docker-compose.remote-dev.yml exec -T api uv run pytest tests/test_pubmed_fetcher.py tests/test_document_extraction_workflow.py`
+- `docker compose -p hyphagraph-dev -f docker-compose.remote-dev.yml exec -T api uv run ruff check app/services/pubmed_fetcher.py app/services/document_extraction_processing.py tests/test_pubmed_fetcher.py tests/test_document_extraction_workflow.py`
+- `cd frontend && npm run build`
+- `git diff --check`
+
+### Risks
+- Existing translations must remain valid JSON.
+- Relation-only previews should still be reviewable and saveable if relation creation is supported by linked entities.
+- The backend now returns a validation error for empty fetched text, so the frontend error path must surface the error instead of showing a preview.
+
+### Status
+validated
+
+## Previous Plan: Source Creation Summary UX
 
 ### Objective
 Align source creation summary entry with the more capable entity creation summary editor.

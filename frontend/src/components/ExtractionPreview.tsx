@@ -141,12 +141,15 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
     relationsSelected: selectedRelations.size,
   };
 
+  const hasExtractedItems = preview.entities.length > 0 || preview.relations.length > 0;
   // Auto-accept logic: If all entities are high-confidence matches, show quick save option
   const allHighConfidence =
+    hasExtractedItems &&
+    preview.entities.length > 0 &&
     preview.link_suggestions.every((s) => s.match_type === "exact" || s.match_type === "synonym") &&
     preview.entities.every((e) => e.confidence === "high");
 
-  const hasDecisions = stats.toCreate > 0 || stats.toLink > 0;
+  const hasDecisions = stats.toCreate > 0 || stats.toLink > 0 || stats.relationsSelected > 0;
 
   return (
     <Paper sx={{ p: 3, border: 2, borderColor: "primary.main" }}>
@@ -158,7 +161,9 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
             <Typography variant="h5">{t("extraction_preview.title")}</Typography>
           </Box>
           <Typography variant="body2" color="text.secondary">
-            {allHighConfidence ? (
+            {!hasExtractedItems ? (
+              <>{t("extraction_preview.empty_msg")}</>
+            ) : allHighConfidence ? (
               <>
                 <strong>{t("extraction_preview.high_confidence_bold")}</strong>{" "}
                 {t("extraction_preview.high_confidence_rest")}
@@ -228,6 +233,17 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
           />
         </Box>
 
+        {!hasExtractedItems && (
+          <Alert severity="warning">
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              {t("extraction_preview.empty_title")}
+            </Typography>
+            <Typography variant="body2">
+              {t("extraction_preview.empty_guidance")}
+            </Typography>
+          </Alert>
+        )}
+
         {error && (
           <Alert severity="error" onClose={() => setError(null)}>
             {error}
@@ -235,7 +251,7 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
         )}
 
         {/* Help message when all entities are skipped */}
-        {stats.toCreate === 0 && stats.toLink === 0 && !saving && (
+        {hasExtractedItems && stats.toCreate === 0 && stats.toLink === 0 && !saving && (
           <Alert severity="info">
             {t("extraction_preview.no_entities_alert")}
           </Alert>
@@ -271,7 +287,9 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
         {/* Actions */}
         <Box sx={{ display: "flex", gap: 2, justifyContent: "space-between", alignItems: "center" }}>
           <Typography variant="caption" color="text.secondary" sx={{ flex: 1 }}>
-            {hasDecisions
+            {!hasExtractedItems
+              ? t("extraction_preview.empty_action_guidance")
+              : hasDecisions
               ? t("extraction_preview.review_guidance")
               : t("extraction_preview.all_skipped")}
           </Typography>
@@ -281,7 +299,7 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
                 {t("common.cancel")}
               </Button>
             )}
-            {!allHighConfidence && (
+            {!allHighConfidence && hasExtractedItems && (
               <Button
                 variant="contained"
                 size="large"

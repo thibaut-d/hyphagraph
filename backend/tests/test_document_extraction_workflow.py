@@ -19,12 +19,15 @@ from app.services.document_extraction_workflow import (
     ReviewSummary,
     build_extraction_preview_with_service,
     build_link_suggestions,
+    fetch_document_from_url,
     load_source_document_text,
     reconcile_staged_extractions,
     save_extraction_to_graph,
     stage_review_batch,
 )
+from app.services.pubmed_fetcher import PubMedArticle
 from app.services.source_service import SourceService
+from app.services.url_fetcher import UrlFetchResult
 from app.utils.errors import ValidationException
 
 
@@ -90,6 +93,76 @@ class TestLoadSourceDocumentText:
 
         assert exc_info.value.error_detail.message == "Source has no uploaded document"
         assert exc_info.value.error_detail.context == {"source_id": str(source.id)}
+
+
+@pytest.mark.asyncio
+class TestFetchDocumentFromUrl:
+    async def test_rejects_empty_generic_url_text(self, db_session):
+        source_id = uuid4()
+
+        class FakePubMedFetcher:
+            def extract_pmid_from_url(self, url):
+                return None
+
+        class FakeUrlFetcher:
+            async def fetch_url(self, url):
+                return UrlFetchResult(
+                    text="   ",
+                    url=url,
+                    title=None,
+                    char_count=0,
+                    truncated=False,
+                    warnings=[],
+                )
+
+        with pytest.raises(ValidationException) as exc_info:
+            await fetch_document_from_url(
+                db_session,
+                source_id=source_id,
+                url="https://example.com/blank",
+                pubmed_fetcher_factory=FakePubMedFetcher,
+                url_fetcher_factory=FakeUrlFetcher,
+            )
+
+        assert exc_info.value.error_detail.message == "Fetched document has no extractable text"
+        assert exc_info.value.error_detail.context == {
+            "source_id": str(source_id),
+            "url": "https://example.com/blank",
+        }
+
+    async def test_rejects_empty_pubmed_text(self, db_session):
+        source_id = uuid4()
+
+        class FakePubMedFetcher:
+            def extract_pmid_from_url(self, url):
+                return "41003152"
+
+            async def fetch_by_pmid(self, pmid):
+                return PubMedArticle(
+                    pmid=pmid,
+                    title="Management of Juvenile Fibromyalgia",
+                    abstract="",
+                    authors=[],
+                    journal=None,
+                    year=2025,
+                    doi=None,
+                    url=f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/",
+                    full_text="",
+                )
+
+        with pytest.raises(ValidationException) as exc_info:
+            await fetch_document_from_url(
+                db_session,
+                source_id=source_id,
+                url="https://pubmed.ncbi.nlm.nih.gov/41003152/",
+                pubmed_fetcher_factory=FakePubMedFetcher,
+            )
+
+        assert exc_info.value.error_detail.message == "Fetched document has no extractable text"
+        assert exc_info.value.error_detail.context == {
+            "source_id": str(source_id),
+            "url": "https://pubmed.ncbi.nlm.nih.gov/41003152/",
+        }
 
 
 @pytest.mark.asyncio
@@ -358,7 +431,7 @@ class TestSaveExtractionToGraph:
         revision_result = await db_session.execute(
             select(EntityRevision).where(
                 EntityRevision.entity_id == entity_id,
-                EntityRevision.is_current == True,
+                EntityRevision.is_current.is_(True),
             )
         )
         revision = revision_result.scalar_one()

@@ -41,17 +41,17 @@ from app.schemas.source import (
 )
 from app.services.batch_extraction_orchestrator import BatchExtractionOrchestrator
 from app.services.bulk_creation_service import BulkCreationService
-from app.services.entity_prefill_service import EntityPrefillService
-from app.services.entity_linking_service import EntityLinkMatch as ExistingEntityLinkMatch
 from app.services.entity_linking_service import EntityLinkingService
+from app.services.entity_linking_service import EntityLinkMatch as ExistingEntityLinkMatch
+from app.services.entity_prefill_service import EntityPrefillService
 from app.services.extraction_review_service import ExtractionReviewService
-from app.utils.revision_helpers import create_new_revision
 from app.services.extraction_service import ExtractionService
 from app.services.extraction_validation_service import ValidationResult
 from app.services.pubmed_fetcher import PubMedArticle, PubMedFetcher
 from app.services.source_service import SourceService
-from app.services.url_fetcher import UrlFetchResult, UrlFetcher
+from app.services.url_fetcher import UrlFetcher, UrlFetchResult
 from app.utils.errors import SourceNotFoundException, ValidationException
+from app.utils.revision_helpers import create_new_revision
 
 logger = logging.getLogger(__name__)
 
@@ -245,6 +245,17 @@ class FetchedDocument:
     file_name: str
 
 
+def validate_fetched_document_text(text: str, *, source_id: UUID, url: str) -> str:
+    if text.strip():
+        return text
+
+    raise ValidationException(
+        message="Fetched document has no extractable text",
+        details="The source URL returned an empty document body. Try a fuller document or another URL.",
+        context={"source_id": str(source_id), "url": url},
+    )
+
+
 def _build_default_entity_prefill_service(db: AsyncSession) -> EntityPrefillService:
     return EntityPrefillService(db=db, llm_provider=get_llm_provider())
 
@@ -258,7 +269,7 @@ async def load_source_document_text(db: AsyncSession, source_id: UUID) -> str:
     """
     stmt = select(SourceRevision).where(
         SourceRevision.source_id == source_id,
-        SourceRevision.is_current == True,
+        SourceRevision.is_current.is_(True),
     )
     result = await db.execute(stmt)
     revision = result.scalar_one_or_none()
@@ -563,18 +574,20 @@ async def fetch_document_from_url(
 
     if not pmid:
         fetch_result = await url_fetcher_factory().fetch_url(url)
+        document_text = validate_fetched_document_text(fetch_result.text, source_id=source_id, url=url)
         return FetchedDocument(
-            text=fetch_result.text,
+            text=document_text,
             document_format="txt",
             file_name="web_content.txt",
         )
 
     article = await pubmed_fetcher.fetch_by_pmid(pmid)
+    document_text = validate_fetched_document_text(article.full_text, source_id=source_id, url=url)
     await ensure_source_exists(db, source_id)
     await _update_source_revision_from_pubmed(db, source_id=source_id, article=article)
 
     return FetchedDocument(
-        text=article.full_text,
+        text=document_text,
         document_format="txt",
         file_name=f"pubmed_{pmid}.txt",
     )
@@ -597,7 +610,7 @@ async def _update_source_revision_from_pubmed(
     """
     stmt = select(SourceRevision).where(
         SourceRevision.source_id == source_id,
-        SourceRevision.is_current == True,
+        SourceRevision.is_current.is_(True),
     )
     result = await db.execute(stmt)
     revision = result.scalar_one_or_none()
@@ -771,7 +784,7 @@ async def _find_existing_entity_slugs(db: AsyncSession, slugs: list[str]) -> set
     result = await db.execute(
         select(EntityRevision.slug).where(
             EntityRevision.slug.in_(slugs),
-            EntityRevision.is_current == True,
+            EntityRevision.is_current.is_(True),
         )
     )
     return set(result.scalars().all())

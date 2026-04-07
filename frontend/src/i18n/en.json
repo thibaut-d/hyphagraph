@@ -646,6 +646,10 @@
   },
   "extraction_preview": {
     "title": "Extraction Complete!",
+    "empty_msg": "Extraction finished, but no entities or relations were found in the selected text.",
+    "empty_title": "No extractable knowledge found",
+    "empty_guidance": "The source text was stored for review, but the extraction worker did not return any graph items. Try a fuller document, another URL, or curate relations manually from the source-backed summary above.",
+    "empty_action_guidance": "No entities or relations are available to save from this extraction.",
     "high_confidence_bold": "High-confidence extraction detected.",
     "high_confidence_rest": "All entities have exact or synonym matches. You can quick-save or review details below.",
     "review_msg": "Review extracted entities and relations before saving to the knowledge graph.",

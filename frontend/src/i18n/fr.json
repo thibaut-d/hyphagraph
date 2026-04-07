@@ -628,6 +628,10 @@
   },
   "extraction_preview": {
     "title": "Extraction terminée !",
+    "empty_msg": "L'extraction est terminée, mais aucune entité ni relation n'a été trouvée dans le texte sélectionné.",
+    "empty_title": "Aucune connaissance extractible trouvée",
+    "empty_guidance": "Le texte source a été enregistré pour révision, mais le module d'extraction n'a renvoyé aucun élément de graphe. Essayez un document plus complet, une autre URL, ou créez des relations manuellement à partir du résumé sourcé ci-dessus.",
+    "empty_action_guidance": "Aucune entité ni relation n'est disponible à enregistrer depuis cette extraction.",
     "high_confidence_bold": "Extraction à haute confiance détectée.",
     "high_confidence_rest": "Toutes les entités ont des correspondances exactes ou synonymes. Vous pouvez effectuer une sauvegarde rapide ou examiner les détails ci-dessous.",
     "review_msg": "Révisez les entités et relations extraites avant de les enregistrer dans le graphe de connaissances.",
