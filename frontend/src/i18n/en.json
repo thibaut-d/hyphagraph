@@ -16,6 +16,8 @@
     "load_more": "Load More",
     "confidence": "Confidence",
     "cancel": "Cancel",
+    "back": "Back",
+    "save": "Save",
     "edit": "Edit",
     "delete": "Delete",
     "deleting": "Deleting...",
@@ -133,6 +135,8 @@
   },
   "entity": {
     "inference": "Related assertions",
+    "synthesis": "Synthesis",
+    "disagreements": "Disagreements",
     "delete_confirm_title": "Delete Entity",
     "delete_confirm_message": "Are you sure you want to delete this entity? This action cannot be undone."
   },
@@ -192,7 +196,10 @@
     "description": "Update the entity information. The slug is the unique identifier for this entity.",
     "save": "Save Changes",
     "saving": "Saving...",
-    "error": "Failed to update entity"
+    "error": "Failed to update entity",
+    "terms_title": "Names and terms",
+    "terms_description": "Manage display names, aliases, abbreviations, and brands for this entity.",
+    "actions_description": "Review the information above, then save your changes or cancel."
   },
   "sources": {
     "title": "Sources",
@@ -445,6 +452,13 @@
     "source_evidence_desc": "Click on any source to view its full details",
     "scope_filter": "Applied Scope Filter"
   },
+  "inference": {
+    "computed": "Computed",
+    "computed_reading_title": "Computed Reading of the Evidence",
+    "computed_reading_description": "This section summarizes how the current evidence reads for each role. It is a computed interpretation of the evidence base, not an unquestionable conclusion.",
+    "source_evidence_title": "Source Evidence",
+    "source_evidence_description": "These source-backed relations are the evidence the computed reading is built from. Use them to inspect the exact claims, their direction, and their context."
+  },
   "evidence_trace": {
     "empty": "No source evidence available.",
     "no_statement": "—",
@@ -466,6 +480,7 @@
   "filters": {
     "title": "Filters",
     "clear_all": "Clear All",
+    "clear_scope_filters": "Clear Scope Filters",
     "active_count": "{{count}} active filter",
     "active_count_plural": "{{count}} active filters",
     "showing_results": "Showing {{count}} of {{total}} results",
@@ -730,6 +745,9 @@
     "kind_alias": "Alias",
     "kind_abbreviation": "Abbreviation",
     "kind_brand": "Brand",
+    "is_display_name": "Display name",
+    "loading": "Loading terms...",
+    "alsoKnownAs": "Also known as",
     "displayOrder": "Display Order",
     "displayOrderHelp": "Lower numbers appear first (optional)",
     "display_order_value": "Display order: {{order}}",

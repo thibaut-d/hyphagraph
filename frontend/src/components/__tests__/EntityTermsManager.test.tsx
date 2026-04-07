@@ -162,6 +162,7 @@ describe("EntityTermsManager", () => {
             language: null,
             display_order: null,
             term_kind: "alias",
+            is_display_name: false,
           }
         );
       });
@@ -313,10 +314,63 @@ describe("EntityTermsManager", () => {
               language: "en",
               display_order: null,
               term_kind: "alias",
+              is_display_name: false,
             }
           );
         });
       }
+    });
+
+    it("preserves display-name terms when editing", async () => {
+      const originalTerm = createMockTerm({
+        id: "term-1",
+        term: "Paracetamol",
+        language: "en",
+        is_display_name: true,
+      });
+      const updatedTerm = createMockTerm({
+        id: "term-1",
+        term: "Paracetamol",
+        language: "en",
+        is_display_name: true,
+      });
+
+      vi.spyOn(entityTermsApi, "listEntityTerms")
+        .mockResolvedValueOnce([originalTerm])
+        .mockResolvedValueOnce([updatedTerm]);
+
+      vi.spyOn(entityTermsApi, "updateEntityTerm").mockResolvedValue(updatedTerm);
+
+      renderWithNotifications(<EntityTermsManager entityId={mockEntityId} />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Paracetamol")).toBeInTheDocument();
+      });
+
+      const editButtons = screen.getAllByRole("button");
+      const editButton = editButtons.find(
+        (btn) => btn.querySelector("svg")?.getAttribute("data-testid") === "EditIcon"
+      );
+      expect(editButton).toBeDefined();
+
+      fireEvent.click(editButton!);
+
+      await waitFor(() => {
+        expect(screen.getByText("Edit Term")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText("Save"));
+
+      await waitFor(() => {
+        expect(entityTermsApi.updateEntityTerm).toHaveBeenCalledWith(
+          mockEntityId,
+          "term-1",
+          expect.objectContaining({
+            term: "Paracetamol",
+            is_display_name: true,
+          }),
+        );
+      });
     });
   });
 
@@ -531,6 +585,7 @@ describe("EntityTermsManager", () => {
             language: null,
             display_order: 2,
             term_kind: "alias",
+            is_display_name: false,
           }
         );
       });

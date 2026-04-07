@@ -29,7 +29,7 @@ vi.mock("../../EntityTermsDisplay", () => ({
 }));
 
 describe("EntityDetailHeader", () => {
-  it("prefers the international display name over a current-language display name", () => {
+  it("prefers the current-language display name over an international display name", () => {
     mockTerms.splice(
       0,
       mockTerms.length,
@@ -61,7 +61,7 @@ describe("EntityDetailHeader", () => {
           entity={{
             id: "entity-1",
             slug: "paracetamol",
-            summary: { en: "Pain reliever" },
+            summary: { en: "Pain reliever", fr: "Antalgique" },
             status: "confirmed",
             created_at: "2026-04-06T00:00:00Z",
             updated_at: "2026-04-06T00:00:00Z",
@@ -71,8 +71,10 @@ describe("EntityDetailHeader", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole("heading", { name: "Paracetamol" })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Paracétamol" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Paracétamol" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Paracetamol" })).not.toBeInTheDocument();
+    expect(screen.getByText("Antalgique")).toBeInTheDocument();
+    expect(screen.queryByText("Pain reliever")).not.toBeInTheDocument();
   });
 
   it("falls back to the current language display name when no international name exists", () => {
@@ -108,5 +110,27 @@ describe("EntityDetailHeader", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Paracétamol" })).toBeInTheDocument();
+  });
+
+  it("falls back to the English summary when no current-language summary exists", () => {
+    mockTerms.splice(0, mockTerms.length);
+
+    render(
+      <MemoryRouter>
+        <EntityDetailHeader
+          entity={{
+            id: "entity-1",
+            slug: "paracetamol",
+            summary: { en: "Pain reliever" },
+            status: "confirmed",
+            created_at: "2026-04-06T00:00:00Z",
+            updated_at: "2026-04-06T00:00:00Z",
+          }}
+          onDeleteClick={() => {}}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("Pain reliever")).toBeInTheDocument();
   });
 });

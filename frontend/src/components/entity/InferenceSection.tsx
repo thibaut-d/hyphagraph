@@ -102,7 +102,7 @@ export function InferenceSection({
                 onClick={onClearScopeFilters}
                 startIcon={<CloseIcon />}
               >
-                Clear Scope Filters
+                {t("filters.clear_scope_filters", "Clear Scope Filters")}
               </Button>
             )}
           </Stack>

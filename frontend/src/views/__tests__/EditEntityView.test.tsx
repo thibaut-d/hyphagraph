@@ -36,8 +36,18 @@ vi.mock('react-router', async () => {
 
 // Mock EntityTermsManager component
 vi.mock('../../components/EntityTermsManager', () => ({
-  EntityTermsManager: ({ entityId, readonly }: { entityId: string; readonly: boolean }) => (
-    <div data-testid="entity-terms-manager">Entity Terms Manager for {entityId}</div>
+  EntityTermsManager: ({
+    entityId,
+    readonly,
+    showHeader,
+  }: {
+    entityId: string;
+    readonly: boolean;
+    showHeader?: boolean;
+  }) => (
+    <div data-testid="entity-terms-manager">
+      Entity Terms Manager for {entityId}; readonly {String(readonly)}; showHeader {String(showHeader)}
+    </div>
   ),
 }));
 
@@ -88,8 +98,11 @@ describe('EditEntityView', () => {
     await waitFor(() => {
       expect(screen.getByDisplayValue('aspirin')).toBeInTheDocument();
       expect(screen.getByDisplayValue('Analgesic drug')).toBeInTheDocument();
-      expect(screen.getByDisplayValue('Médicament analgésique')).toBeInTheDocument();
     }, { timeout: 3000 });
+    expect(screen.getByText('FR')).toBeInTheDocument();
+    expect(screen.getByText('EN')).toBeInTheDocument();
+    expect(screen.getByText('Identity')).toBeInTheDocument();
+    expect(screen.getByText('Names and terms')).toBeInTheDocument();
   });
 
   it('displays loading state initially', () => {
@@ -171,6 +184,73 @@ describe('EditEntityView', () => {
     });
   });
 
+  it('slugifies slug input before submit', async () => {
+    const updatedEntity = { ...mockEntity, slug: 'paracetamol' };
+    vi.mocked(entityApi.updateEntity).mockResolvedValue(updatedEntity);
+
+    renderEditView();
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('aspirin')).toBeInTheDocument();
+    });
+
+    const slugInput = screen.getByLabelText(/slug/i);
+    fireEvent.change(slugInput, { target: { value: 'Paracétamol test ' } });
+
+    expect(screen.getByDisplayValue('paracetamol-test-')).toBeInTheDocument();
+
+    const submitButton = screen.getByRole('button', { name: /save/i });
+    fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(entityApi.updateEntity).toHaveBeenCalledWith(
+        mockEntity.id,
+        expect.objectContaining({
+          slug: 'paracetamol-test',
+        })
+      );
+    });
+  });
+
+  it('switches summary language and submits all filled summaries', async () => {
+    const updatedEntity = {
+      ...mockEntity,
+      summary: {
+        ...mockEntity.summary,
+        es: 'Medicamento analgésico',
+      },
+    };
+    vi.mocked(entityApi.updateEntity).mockResolvedValue(updatedEntity);
+
+    renderEditView();
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Analgesic drug')).toBeInTheDocument();
+    });
+
+    fireEvent.mouseDown(screen.getByLabelText(/summary language/i));
+    fireEvent.click(await screen.findByRole('option', { name: 'Spanish' }));
+
+    const summaryInput = screen.getByLabelText(/^Summary$/i);
+    fireEvent.change(summaryInput, { target: { value: 'Medicamento analgésico' } });
+
+    const submitButton = screen.getByRole('button', { name: /save/i });
+    fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(entityApi.updateEntity).toHaveBeenCalledWith(
+        mockEntity.id,
+        expect.objectContaining({
+          summary: {
+            en: 'Analgesic drug',
+            fr: 'Médicament analgésique',
+            es: 'Medicamento analgésico',
+          },
+        })
+      );
+    });
+  });
+
   it('submits form with changed UI category', async () => {
     const updatedEntity = { ...mockEntity, ui_category_id: 'cat-2' };
     vi.mocked(entityApi.updateEntity).mockResolvedValue(updatedEntity);
@@ -208,7 +288,7 @@ describe('EditEntityView', () => {
 
     // Wait for entity to load
     await waitFor(() => {
-      expect(screen.getByTestId('entity-terms-manager')).toBeInTheDocument();
+      expect(screen.getByTestId('entity-terms-manager')).toHaveTextContent('showHeader false');
     });
   });
 

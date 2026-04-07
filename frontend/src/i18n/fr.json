@@ -16,6 +16,8 @@
     "load_more": "Charger plus",
     "confidence": "Confiance",
     "cancel": "Annuler",
+    "back": "Retour",
+    "save": "Enregistrer",
     "edit": "Modifier",
     "delete": "Supprimer",
     "deleting": "Suppression...",
@@ -133,6 +135,8 @@
   },
   "entity": {
     "inference": "Assertions liées",
+    "synthesis": "Synthèse",
+    "disagreements": "Désaccords",
     "delete_confirm_title": "Supprimer l'entité",
     "delete_confirm_message": "Êtes-vous sûr de vouloir supprimer cette entité ? Cette action ne peut pas être annulée."
   },
@@ -192,7 +196,10 @@
     "description": "Mettre à jour les informations de l'entité. Le slug est l'identifiant unique de cette entité.",
     "save": "Enregistrer les modifications",
     "saving": "Enregistrement...",
-    "error": "Échec de la mise à jour de l'entité"
+    "error": "Échec de la mise à jour de l'entité",
+    "terms_title": "Noms et termes",
+    "terms_description": "Gérez les noms affichés, alias, abréviations et marques de cette entité.",
+    "actions_description": "Vérifiez les informations ci-dessus, puis enregistrez vos modifications ou annulez."
   },
   "sources": {
     "title": "Sources",
@@ -445,9 +452,17 @@
     "source_evidence_desc": "Cliquez sur n'importe quelle source pour voir ses détails complets",
     "scope_filter": "Filtre de portée appliqué"
   },
+  "inference": {
+    "computed": "Calculé",
+    "computed_reading_title": "Lecture calculée des preuves",
+    "computed_reading_description": "Cette section résume la façon dont les preuves actuelles se lisent pour chaque rôle. Il s'agit d'une interprétation calculée de la base de preuves, pas d'une conclusion incontestable.",
+    "source_evidence_title": "Preuves issues des sources",
+    "source_evidence_description": "Ces relations appuyées par des sources constituent les preuves sur lesquelles repose la lecture calculée. Utilisez-les pour examiner les affirmations exactes, leur direction et leur contexte."
+  },
   "filters": {
     "title": "Filtres",
     "clear_all": "Tout effacer",
+    "clear_scope_filters": "Effacer les filtres de portée",
     "active_count": "{{count}} filtre actif",
     "active_count_plural": "{{count}} filtres actifs",
     "showing_results": "Affichage de {{count}} sur {{total}} résultats",
@@ -712,6 +727,9 @@
     "kind_alias": "Alias",
     "kind_abbreviation": "Abréviation",
     "kind_brand": "Marque",
+    "is_display_name": "Nom affiché",
+    "loading": "Chargement des termes...",
+    "alsoKnownAs": "Aussi connu sous le nom de",
     "displayOrder": "Ordre d'affichage",
     "displayOrderHelp": "Les numéros inférieurs apparaissent en premier (facultatif)",
     "display_order_value": "Ordre d'affichage : {{order}}",

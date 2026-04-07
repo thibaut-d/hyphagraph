@@ -37,6 +37,8 @@ import {
   DialogContent,
   DialogActions,
   Divider,
+  Checkbox,
+  FormControlLabel,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -58,6 +60,7 @@ import {
 interface EntityTermsManagerProps {
   entityId: string;
   readonly?: boolean;
+  showHeader?: boolean;
 }
 
 interface TermFormData {
@@ -65,6 +68,7 @@ interface TermFormData {
   language: string;
   display_order: number | null;
   term_kind: "alias" | "abbreviation" | "brand";
+  is_display_name: boolean;
 }
 
 const LANGUAGE_OPTIONS = [
@@ -102,6 +106,7 @@ const LANGUAGE_MENU_PROPS = {
 export function EntityTermsManager({
   entityId,
   readonly = false,
+  showHeader = true,
 }: EntityTermsManagerProps) {
   const { t } = useTranslation();
   const handlePageError = usePageErrorHandler();
@@ -117,6 +122,7 @@ export function EntityTermsManager({
     language: "",
     display_order: null,
     term_kind: "alias",
+    is_display_name: false,
   });
 
   // Delete confirmation dialog
@@ -151,6 +157,7 @@ export function EntityTermsManager({
       language: "",
       display_order: null,
       term_kind: "alias",
+      is_display_name: false,
     });
   };
 
@@ -163,6 +170,7 @@ export function EntityTermsManager({
       language: term.language || "",
       display_order: term.display_order,
       term_kind: term.term_kind,
+      is_display_name: term.is_display_name ?? false,
     });
   };
 
@@ -175,6 +183,7 @@ export function EntityTermsManager({
       language: "",
       display_order: null,
       term_kind: "alias",
+      is_display_name: false,
     });
   };
 
@@ -193,6 +202,7 @@ export function EntityTermsManager({
         language: formData.language || null,
         display_order: formData.display_order,
         term_kind: formData.term_kind,
+        is_display_name: formData.is_display_name,
       };
 
       if (isAdding) {
@@ -251,15 +261,38 @@ export function EntityTermsManager({
   return (
     <Paper sx={{ p: 2 }}>
       <Stack spacing={2}>
-        {/* Header */}
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <TranslateIcon color="action" />
-            <Typography variant="h6">
-              {t("entityTerms.title", "Alternative Names & Aliases")}
+        {showHeader && (
+          <>
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <TranslateIcon color="action" />
+                <Typography variant="h6">
+                  {t("entityTerms.title", "Alternative Names & Aliases")}
+                </Typography>
+              </Box>
+              {!readonly && !isAdding && !editingId && (
+                <Button
+                  startIcon={<AddIcon />}
+                  onClick={handleAdd}
+                  size="small"
+                  variant="outlined"
+                >
+                  {t("entityTerms.addTerm", "Add Term")}
+                </Button>
+              )}
+            </Box>
+
+            <Typography variant="body2" color="text.secondary">
+              {t(
+                "entityTerms.description",
+                "Add alternative names, synonyms, or translations to help users find this entity."
+              )}
             </Typography>
-          </Box>
-          {!readonly && !isAdding && !editingId && (
+          </>
+        )}
+
+        {!showHeader && !readonly && !isAdding && !editingId && (
+          <Box>
             <Button
               startIcon={<AddIcon />}
               onClick={handleAdd}
@@ -268,15 +301,8 @@ export function EntityTermsManager({
             >
               {t("entityTerms.addTerm", "Add Term")}
             </Button>
-          )}
-        </Box>
-
-        <Typography variant="body2" color="text.secondary">
-          {t(
-            "entityTerms.description",
-            "Add alternative names, synonyms, or translations to help users find this entity."
-          )}
-        </Typography>
+          </Box>
+        )}
 
         {error && (
           <Alert severity="error" onClose={() => setError(null)}>
@@ -369,6 +395,21 @@ export function EntityTermsManager({
                 </Select>
               </FormControl>
 
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={formData.is_display_name}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        is_display_name: e.target.checked,
+                      })
+                    }
+                  />
+                }
+                label={t("entityTerms.is_display_name", "Display name")}
+              />
+
               <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
                 <Button
                   startIcon={<CancelIcon />}
@@ -445,6 +486,13 @@ export function EntityTermsManager({
                               {term.term_kind === "brand" && (
                                 <Chip
                                   label={t("entityTerms.kind_brand", "Brand")}
+                                  size="small"
+                                  variant="outlined"
+                                />
+                              )}
+                              {term.is_display_name && (
+                                <Chip
+                                  label={t("entityTerms.is_display_name", "Display name")}
                                   size="small"
                                   variant="outlined"
                                 />

@@ -22,6 +22,24 @@ import { EntityRead } from "../../types/entity";
 import { EntityTermsDisplay } from "../EntityTermsDisplay";
 import type { EntityTermRead } from "../../api/entityTerms";
 
+function normalizeUiLanguage(language: string): string {
+  return language.split("-")[0] || "en";
+}
+
+function resolveLocalizedText(
+  value: Record<string, string> | null | undefined,
+  preferredLanguage: string,
+): string | null {
+  if (!value) return null;
+  return (
+    value[preferredLanguage] ||
+    value[""] ||
+    value.en ||
+    Object.values(value).find((candidate) => candidate.trim().length > 0) ||
+    null
+  );
+}
+
 /**
  * Header section for entity detail view.
  *
@@ -42,13 +60,18 @@ export function EntityDetailHeader({
   const { t, i18n } = useTranslation();
   const [displayName, setDisplayName] = useState<string | null>(null);
   const handleTermsLoaded = useCallback((terms: EntityTermRead[]) => {
-    const currentLanguage = i18n.language || "en";
+    const currentLanguage = normalizeUiLanguage(i18n.language || "en");
     const preferred =
+      terms.find((term) => term.is_display_name && term.language === currentLanguage) ||
       terms.find((term) => term.is_display_name && !term.language) ||
-      terms.find((term) => term.is_display_name && term.language === currentLanguage);
+      terms.find((term) => term.is_display_name && term.language === "en");
     setDisplayName(preferred?.term ?? null);
   }, [i18n.language]);
   const primaryLabel = displayName || entity.slug;
+  const summary = resolveLocalizedText(
+    entity.summary,
+    normalizeUiLanguage(i18n.language || "en"),
+  );
 
   return (
     <Paper sx={{ p: { xs: 2, sm: 3 } }}>
@@ -117,9 +140,11 @@ export function EntityDetailHeader({
                 />
               )}
             </Box>
-            <Typography variant="subtitle2" color="text.secondary">
-              {entity.summary?.en}
-            </Typography>
+            {summary && (
+              <Typography variant="subtitle2" color="text.secondary">
+                {summary}
+              </Typography>
+            )}
 
             {/* Alternative Names/Aliases */}
             <Box sx={{ mt: 2 }}>
