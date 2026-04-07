@@ -15,6 +15,9 @@ import {
   Chip,
   Collapse,
   Link,
+  FormControl,
+  InputLabel,
+  Select,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
@@ -38,6 +41,37 @@ const SOURCE_KINDS = [
   "other",
 ];
 
+const LANGUAGE_OPTIONS = [
+  { code: "en", label: "English" },
+  { code: "fr", label: "French" },
+  { code: "es", label: "Spanish" },
+  { code: "de", label: "German" },
+  { code: "it", label: "Italian" },
+  { code: "pt", label: "Portuguese" },
+  { code: "zh", label: "Chinese" },
+  { code: "ja", label: "Japanese" },
+  { code: "la", label: "Latin" },
+];
+
+const LANGUAGE_SELECT_SX = {
+  "& .MuiSelect-select": {
+    minWidth: 0,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+};
+
+const LANGUAGE_MENU_PROPS = {
+  PaperProps: {
+    sx: {
+      "& .MuiMenuItem-root": {
+        whiteSpace: "normal",
+      },
+    },
+  },
+};
+
 export function CreateSourceView() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -54,8 +88,8 @@ export function CreateSourceView() {
     year, setYear,
     origin, setOrigin,
     trustLevel, setTrustLevel,
-    summaryEn, setSummaryEn,
-    summaryFr, setSummaryFr,
+    summaries, setSummaries,
+    activeSummaryLanguage, setActiveSummaryLanguage,
     sourceMetadata,
     getFieldError,
     hasFieldError,
@@ -70,6 +104,15 @@ export function CreateSourceView() {
     handleExtractMetadata,
     handleSubmit,
   } = useCreateSourceForm();
+
+  const getLanguageLabel = (language: string): string => {
+    const option = LANGUAGE_OPTIONS.find((candidate) => candidate.code === language);
+    return option ? t(`entityTerms.lang_${option.code}`, option.label) : language.toUpperCase();
+  };
+
+  const filledSummaryLanguages = Object.entries(summaries)
+    .filter(([, value]) => value.trim().length > 0)
+    .map(([language]) => language);
 
   return (
     <Paper sx={{ p: { xs: 2, sm: 3, md: 4 }, maxWidth: 900, mx: "auto" }}>
@@ -360,30 +403,78 @@ export function CreateSourceView() {
                   </Collapse>
                 </Box>
 
-                <TextField
-                  label={t("create_source.summary_en", "Summary (English)")}
-                  value={summaryEn}
-                  onChange={(e) => setSummaryEn(e.target.value)}
-                  disabled={loading}
-                  fullWidth
-                  multiline
-                  rows={3}
-                  placeholder={t("create_source.summary_en_placeholder")}
-                  sx={{
-                    "& .MuiInputBase-root": autofilled && summaryEn ? { bgcolor: "success.50" } : {},
-                  }}
-                />
+                <Box>
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={2}
+                    alignItems={{ xs: "stretch", sm: "center" }}
+                    sx={{ mb: 2 }}
+                  >
+                    <FormControl sx={{ minWidth: { xs: "100%", sm: 220 } }}>
+                      <InputLabel id="source-summary-language-label">
+                        {t("create_source.summary_language", "Summary language")}
+                      </InputLabel>
+                      <Select
+                        labelId="source-summary-language-label"
+                        label={t("create_source.summary_language", "Summary language")}
+                        value={activeSummaryLanguage}
+                        onChange={(e) => setActiveSummaryLanguage(e.target.value)}
+                        disabled={loading}
+                        renderValue={(value) => getLanguageLabel(value)}
+                        sx={LANGUAGE_SELECT_SX}
+                        MenuProps={LANGUAGE_MENU_PROPS}
+                      >
+                        {LANGUAGE_OPTIONS.map((option) => (
+                          <MenuItem key={option.code} value={option.code}>
+                            {t(`entityTerms.lang_${option.code}`, option.label)}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
 
-                <TextField
-                  label={t("create_source.summary_fr", "Summary (French)")}
-                  value={summaryFr}
-                  onChange={(e) => setSummaryFr(e.target.value)}
-                  disabled={loading}
-                  fullWidth
-                  multiline
-                  rows={3}
-                  placeholder={t("create_source.summary_fr_placeholder")}
-                />
+                    {filledSummaryLanguages.length > 0 && (
+                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                        {filledSummaryLanguages.map((language) => (
+                          <Chip
+                            key={language}
+                            color="success"
+                            size="small"
+                            label={language.toUpperCase()}
+                          />
+                        ))}
+                      </Stack>
+                    )}
+                  </Stack>
+
+                  <TextField
+                    label={t("create_source.summary", "Summary")}
+                    value={summaries[activeSummaryLanguage] ?? ""}
+                    onChange={(e) =>
+                      setSummaries((current) => ({
+                        ...current,
+                        [activeSummaryLanguage]: e.target.value,
+                      }))
+                    }
+                    disabled={loading}
+                    fullWidth
+                    multiline
+                    rows={3}
+                    helperText={t(
+                      "create_source.summary_help",
+                      "Optional source summary in the selected language",
+                    )}
+                    placeholder={t("create_source.summary_placeholder", {
+                      language: getLanguageLabel(activeSummaryLanguage),
+                      defaultValue: "Summary in {{language}}",
+                    })}
+                    sx={{
+                      "& .MuiInputBase-root":
+                        autofilled && (summaries[activeSummaryLanguage] ?? "").trim().length > 0
+                          ? { bgcolor: "success.50" }
+                          : {},
+                    }}
+                  />
+                </Box>
               </Stack>
             </Paper>
 

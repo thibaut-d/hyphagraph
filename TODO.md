@@ -1,8 +1,41 @@
 # Current Work
 
-**Last updated**: 2026-04-05 (story remediation pass)
+**Last updated**: 2026-04-07 (source summary creation UX)
 
-## Active Plan: Slug Entity URLs
+## Active Plan: Source Creation Summary UX
+
+### Objective
+Align source creation summary entry with the more capable entity creation summary editor.
+
+### Impacted modules
+- `frontend/src/hooks/useCreateSourceForm.ts`
+- `frontend/src/views/CreateSourceView.tsx`
+- `frontend/src/views/__tests__/CreateSourceView.test.tsx`
+
+### Assumptions
+- The source API already accepts `summary` as a language-keyed map.
+- This is a frontend-only UX/payload construction change.
+- Existing URL metadata extraction should keep preserving English and French summaries when returned.
+
+### Plan
+1. Store source creation summaries as a language-keyed map.
+2. Render one language-selectable summary field with filled-language chips.
+3. Submit all filled summaries in the payload.
+4. Update focused component tests and run targeted validation.
+
+### Validation
+- `cd frontend && npm test -- --run src/views/__tests__/CreateSourceView.test.tsx`
+- `cd frontend && npm test -- --run src/views/__tests__/CreateEntityView.test.tsx src/views/__tests__/CreateSourceView.test.tsx`
+- `git diff --check`
+
+### Risks
+- Source metadata autofill could regress if extracted summaries are not merged into the new map.
+- Test selectors that expected fixed English/French fields need to follow the new language-selector workflow.
+
+### Status
+validated
+
+## Previous Plan: Slug Entity URLs
 
 ### Objective
 Use current entity slugs as canonical public entity URLs while keeping UUID URLs working for compatibility.
