@@ -5,6 +5,7 @@ from uuid import uuid4
 import pytest
 
 from app.llm.base import LLMError
+from app.llm.schemas import ExtractedEntity
 from app.services.entity_prefill_service import EntityPrefillService
 from app.utils.errors import AppException
 
@@ -148,3 +149,35 @@ async def test_entity_prefill_service_rejects_llm_api_error() -> None:
         )
 
     assert exc_info.value.status_code == 502
+
+
+@pytest.mark.asyncio
+async def test_entity_prefill_service_reuses_prompt_for_extracted_entities() -> None:
+    db = AsyncMock()
+    db.execute.return_value = _ExecuteResult([])
+    llm_provider = AsyncMock()
+    llm_provider.generate_json.return_value = {
+        "slug": "acetylsalicylic-acid",
+        "display_names": {"en": "Acetylsalicylic acid"},
+        "summary": {"en": "A nonsteroidal anti-inflammatory drug."},
+        "aliases": [{"term": "Aspirin", "language": None, "term_kind": "brand"}],
+        "ui_category_id": None,
+    }
+
+    entity = ExtractedEntity(
+        slug="aspirin",
+        summary="Aspirin mention in the source.",
+        category="drug",
+        confidence="high",
+        text_span="Aspirin",
+    )
+
+    draft = await EntityPrefillService(
+        db=db,
+        llm_provider=llm_provider,
+    ).generate_draft_for_extracted_entity(entity, "en")
+
+    assert draft.slug == "acetylsalicylic-acid"
+    prompt = llm_provider.generate_json.await_args.kwargs["prompt"]
+    assert "Draft values for a new entity from this user term: Aspirin" in prompt
+    assert "based on the canonical English or internationally used entity name" in prompt

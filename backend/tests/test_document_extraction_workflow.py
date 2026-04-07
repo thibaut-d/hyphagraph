@@ -2,13 +2,17 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import select
 
 from app.llm.schemas import ExtractedEntity, ExtractedRelation, ExtractedRole
 from app.models.entity import Entity
 from app.models.entity_revision import EntityRevision
+from app.models.entity_term import EntityTerm
 from app.models.relation import Relation
 from app.models.relation_revision import RelationRevision
 from app.models.staged_extraction import ExtractionStatus, ExtractionType, StagedExtraction
+from app.models.ui_category import UiCategory
+from app.schemas.entity import EntityPrefillDraft
 from app.schemas.source import SourceWrite
 from app.services.document_extraction_workflow import (
     ExtractedBatch,
@@ -241,12 +245,20 @@ class TestSaveExtractionToGraph:
         created_entity_id = uuid4()
         linked_entity_id = uuid4()
         created_relation_id = uuid4()
+        prefill_draft = EntityPrefillDraft(
+            slug="acetylsalicylic-acid",
+            display_names={},
+            summary={"en": "An analgesic drug."},
+            aliases=[],
+            ui_category_id=None,
+        )
 
         class FakeBulkCreationService:
             def __init__(self, db):
                 self.db = db
 
-            async def bulk_create_entities(self, *, entities, user_id):
+            async def bulk_create_entities(self, *, entities, entity_prefill_drafts, user_id):
+                assert entity_prefill_drafts == {"aspirin": prefill_draft}
                 return ({entities[0].slug: created_entity_id}, [])
 
             async def bulk_create_relations(self, *, relations, entity_mapping, source_id, user_id):
@@ -256,10 +268,20 @@ class TestSaveExtractionToGraph:
                 assert relations[0].relation_type == "treats"
                 return (relations, [created_relation_id], [])
 
+        class FakeEntityPrefillService:
+            def __init__(self, db):
+                self.db = db
+
+            async def generate_draft_for_extracted_entity(self, entity, user_language):
+                assert entity.slug == "aspirin"
+                assert user_language == "en"
+                return prefill_draft
+
         request = SimpleNamespace(
             entities_to_create=[build_extracted_entity("aspirin")],
             entity_links={"pain": linked_entity_id},
             relations_to_create=[build_extracted_relation("aspirin", "pain")],
+            user_language="en",
         )
 
         result = await save_extraction_to_graph(
@@ -268,6 +290,7 @@ class TestSaveExtractionToGraph:
             request=request,
             user_id=None,
             bulk_creation_service_factory=FakeBulkCreationService,
+            entity_prefill_service_factory=FakeEntityPrefillService,
         )
 
         assert result.entities_created == 1
@@ -276,6 +299,90 @@ class TestSaveExtractionToGraph:
         assert result.created_relation_ids == [created_relation_id]
         assert result.created_entity_ids == [created_entity_id]
         assert result.skipped_relations == []
+
+    async def test_save_extraction_to_graph_applies_prefill_to_new_entities(
+        self, db_session, test_user
+    ):
+        source_service = SourceService(db_session)
+        source = await source_service.create(
+            SourceWrite(
+                kind="study",
+                title="Prefill Extraction Source",
+                url="https://example.com/prefill-extraction",
+            ),
+            user_id=test_user.id,
+        )
+        category = UiCategory(slug="drug", labels={"en": "Drug"}, order=1)
+        db_session.add(category)
+        await db_session.flush()
+
+        class FakeEntityPrefillService:
+            def __init__(self, db):
+                self.db = db
+
+            async def generate_draft_for_extracted_entity(self, entity, user_language):
+                assert entity.slug == "aspirin"
+                assert user_language == "fr"
+                return EntityPrefillDraft(
+                    slug="acetylsalicylic-acid",
+                    display_names={"en": "Acetylsalicylic acid", "fr": "Acide acétylsalicylique"},
+                    summary={
+                        "en": "A nonsteroidal anti-inflammatory drug.",
+                        "fr": "Un anti-inflammatoire non stéroïdien.",
+                    },
+                    aliases=[
+                        {"term": "Aspirin", "language": None, "term_kind": "brand"},
+                        {"term": "ASA", "language": "en", "term_kind": "abbreviation"},
+                    ],
+                    ui_category_id=category.id,
+                )
+
+        request = SimpleNamespace(
+            entities_to_create=[build_extracted_entity("aspirin")],
+            entity_links={},
+            relations_to_create=[],
+            user_language="fr",
+        )
+
+        result = await save_extraction_to_graph(
+            db_session,
+            source_id=source.id,
+            request=request,
+            user_id=test_user.id,
+            entity_prefill_service_factory=FakeEntityPrefillService,
+        )
+
+        assert result.entities_created == 1
+        entity_id = result.created_entity_ids[0]
+
+        revision_result = await db_session.execute(
+            select(EntityRevision).where(
+                EntityRevision.entity_id == entity_id,
+                EntityRevision.is_current == True,
+            )
+        )
+        revision = revision_result.scalar_one()
+        assert revision.slug == "acetylsalicylic-acid"
+        assert revision.summary == {
+            "en": "A nonsteroidal anti-inflammatory drug.",
+            "fr": "Un anti-inflammatoire non stéroïdien.",
+        }
+        assert revision.ui_category_id == category.id
+        assert revision.status == "draft"
+        assert revision.llm_review_status == "pending_review"
+
+        terms_result = await db_session.execute(
+            select(EntityTerm)
+            .where(EntityTerm.entity_id == entity_id)
+            .order_by(EntityTerm.display_order)
+        )
+        terms = terms_result.scalars().all()
+        assert [(term.term, term.language, term.is_display_name, term.term_kind) for term in terms] == [
+            ("Acetylsalicylic acid", "en", True, "alias"),
+            ("Acide acétylsalicylique", "fr", True, "alias"),
+            ("Aspirin", None, False, "brand"),
+            ("ASA", "en", False, "abbreviation"),
+        ]
 
 
 @pytest.mark.asyncio

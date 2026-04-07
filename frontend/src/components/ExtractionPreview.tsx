@@ -76,7 +76,7 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
     new Set(preview.relations.map(getRelationKey))
   );
 
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const handleSave = async () => {
@@ -103,6 +103,7 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
         entities_to_create: entitiesToCreate,
         entity_links: entityLinks,
         relations_to_create: relationsToCreate,
+        user_language: i18n.language.slice(0, 2),
       };
 
       const result = await saveExtraction(preview.source_id, request);

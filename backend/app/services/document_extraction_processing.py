@@ -21,12 +21,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.llm.client import get_llm_provider
 from app.llm.schemas import ExtractedClaim, ExtractedEntity, ExtractedRelation
 from app.models.entity import Entity
+from app.models.entity_revision import EntityRevision
+from app.models.entity_term import EntityTerm
 from app.models.source import Source
 from app.models.source_revision import SourceRevision
 from app.models.staged_extraction import ExtractionStatus, ExtractionType, StagedExtraction
 from app.schemas.common_types import SlugEntityMap
+from app.schemas.entity import EntityPrefillDraft
 from app.schemas.source import (
     DocumentExtractionPreview,
     EntityLinkMatch,
@@ -37,6 +41,7 @@ from app.schemas.source import (
 )
 from app.services.batch_extraction_orchestrator import BatchExtractionOrchestrator
 from app.services.bulk_creation_service import BulkCreationService
+from app.services.entity_prefill_service import EntityPrefillService
 from app.services.entity_linking_service import EntityLinkMatch as ExistingEntityLinkMatch
 from app.services.entity_linking_service import EntityLinkingService
 from app.services.extraction_review_service import ExtractionReviewService
@@ -154,6 +159,7 @@ class BulkCreationServiceProtocol(Protocol):
         self,
         *,
         entities: list[ExtractedEntity],
+        entity_prefill_drafts: dict[str, EntityPrefillDraft] | None = None,
         user_id: UUID | None,
     ) -> tuple[SlugEntityMap, list[str]]: ...
 
@@ -169,6 +175,18 @@ class BulkCreationServiceProtocol(Protocol):
 
 class BulkCreationServiceFactory(Protocol):
     def __call__(self, db: AsyncSession) -> BulkCreationServiceProtocol: ...
+
+
+class EntityPrefillServiceProtocol(Protocol):
+    async def generate_draft_for_extracted_entity(
+        self,
+        entity: ExtractedEntity,
+        user_language: str,
+    ) -> EntityPrefillDraft: ...
+
+
+class EntityPrefillServiceFactory(Protocol):
+    def __call__(self, db: AsyncSession) -> EntityPrefillServiceProtocol: ...
 
 
 class PubMedFetcherProtocol(Protocol):
@@ -225,6 +243,10 @@ class FetchedDocument:
     text: str
     document_format: str
     file_name: str
+
+
+def _build_default_entity_prefill_service(db: AsyncSession) -> EntityPrefillService:
+    return EntityPrefillService(db=db, llm_provider=get_llm_provider())
 
 
 async def load_source_document_text(db: AsyncSession, source_id: UUID) -> str:
@@ -723,6 +745,103 @@ async def reconcile_staged_extractions(
     return skipped_relations
 
 
+async def _build_entity_prefill_drafts(
+    db: AsyncSession,
+    *,
+    entities: list[ExtractedEntity],
+    user_language: str,
+    entity_prefill_service_factory: EntityPrefillServiceFactory,
+) -> dict[str, EntityPrefillDraft]:
+    if not entities:
+        return {}
+
+    prefill_service = entity_prefill_service_factory(db)
+    drafts: dict[str, EntityPrefillDraft] = {}
+    for entity in entities:
+        drafts[entity.slug] = await prefill_service.generate_draft_for_extracted_entity(
+            entity,
+            user_language,
+        )
+    return drafts
+
+
+async def _find_existing_entity_slugs(db: AsyncSession, slugs: list[str]) -> set[str]:
+    if not slugs:
+        return set()
+    result = await db.execute(
+        select(EntityRevision.slug).where(
+            EntityRevision.slug.in_(slugs),
+            EntityRevision.is_current == True,
+        )
+    )
+    return set(result.scalars().all())
+
+
+def _entity_terms_from_prefill_draft(draft: EntityPrefillDraft) -> list[EntityTerm]:
+    terms: list[EntityTerm] = []
+    display_order = 0
+    seen: set[tuple[str, str | None]] = set()
+
+    for language, value in draft.display_names.items():
+        term = value.strip()
+        normalized_language = language or None
+        key = (term.casefold(), normalized_language)
+        if not term or key in seen:
+            continue
+        terms.append(
+            EntityTerm(
+                term=term,
+                language=normalized_language,
+                display_order=display_order,
+                is_display_name=True,
+                term_kind="alias",
+            )
+        )
+        seen.add(key)
+        display_order += 1
+
+    for alias in draft.aliases:
+        term = alias.term.strip()
+        key = (term.casefold(), alias.language)
+        if not term or key in seen:
+            continue
+        terms.append(
+            EntityTerm(
+                term=term,
+                language=alias.language,
+                display_order=display_order,
+                is_display_name=False,
+                term_kind=alias.term_kind,
+            )
+        )
+        seen.add(key)
+        display_order += 1
+
+    return terms
+
+
+async def _attach_prefill_terms_to_new_entities(
+    db: AsyncSession,
+    *,
+    original_slug_to_entity_id: SlugEntityMap,
+    prefill_drafts: dict[str, EntityPrefillDraft],
+    preexisting_prefill_slugs: set[str],
+) -> None:
+    attached_entity_ids: set[UUID] = set()
+    for original_slug, draft in prefill_drafts.items():
+        if draft.slug in preexisting_prefill_slugs:
+            continue
+        entity_id = original_slug_to_entity_id.get(original_slug)
+        if entity_id is None:
+            continue
+        if entity_id in attached_entity_ids:
+            continue
+        for term in _entity_terms_from_prefill_draft(draft):
+            term.entity_id = entity_id
+            db.add(term)
+        attached_entity_ids.add(entity_id)
+
+
 async def save_extraction_to_graph(
     db: AsyncSession,
     *,
@@ -730,6 +849,7 @@ async def save_extraction_to_graph(
     request: SaveExtractionRequest,
     user_id: UUID | None,
     bulk_creation_service_factory: BulkCreationServiceFactory = BulkCreationService,
+    entity_prefill_service_factory: EntityPrefillServiceFactory = _build_default_entity_prefill_service,
 ) -> SaveExtractionResult:
     """
     Materialise a user-confirmed extraction into the knowledge graph.
@@ -748,13 +868,30 @@ async def save_extraction_to_graph(
     bulk_service = bulk_creation_service_factory(db)
     entity_mapping: SlugEntityMap = {}
     all_warnings: list[str] = []
+    prefill_drafts = await _build_entity_prefill_drafts(
+        db,
+        entities=request.entities_to_create,
+        user_language=getattr(request, "user_language", "en"),
+        entity_prefill_service_factory=entity_prefill_service_factory,
+    )
+    preexisting_prefill_slugs = await _find_existing_entity_slugs(
+        db,
+        [draft.slug for draft in prefill_drafts.values()],
+    )
 
     if request.entities_to_create:
         entity_mapping, entity_warnings = await bulk_service.bulk_create_entities(
             entities=request.entities_to_create,
+            entity_prefill_drafts=prefill_drafts,
             user_id=user_id,
         )
         all_warnings.extend(entity_warnings)
+        await _attach_prefill_terms_to_new_entities(
+            db,
+            original_slug_to_entity_id=entity_mapping,
+            prefill_drafts=prefill_drafts,
+            preexisting_prefill_slugs=preexisting_prefill_slugs,
+        )
 
     entity_mapping.update(request.entity_links)
 

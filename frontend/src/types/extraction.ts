@@ -136,6 +136,7 @@ export interface SaveExtractionRequest {
   entities_to_create: ExtractedEntity[];
   entity_links: Record<string, string>;  // extracted_slug -> existing_entity_id
   relations_to_create: ExtractedRelation[];
+  user_language?: string;
 }
 
 export interface SkippedRelationDetail {

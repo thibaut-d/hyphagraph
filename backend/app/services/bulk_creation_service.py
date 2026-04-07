@@ -17,6 +17,7 @@ from app.models.relation_revision import RelationRevision
 from app.models.relation_role_revision import RelationRoleRevision
 from app.llm.schemas import ExtractedEntity, ExtractedRelation
 from app.schemas.common_types import SlugEntityMap
+from app.schemas.entity import EntityPrefillDraft
 from app.utils.revision_helpers import create_new_revision
 from app.utils.confidence import CONFIDENCE_FLOAT
 from app.config import settings
@@ -43,6 +44,7 @@ class BulkCreationService:
     async def bulk_create_entities(
         self,
         entities: list[ExtractedEntity],
+        entity_prefill_drafts: dict[str, EntityPrefillDraft] | None = None,
         user_id: UUID | None = None
     ) -> tuple[SlugEntityMap, list[str]]:
         """
@@ -64,10 +66,17 @@ class BulkCreationService:
         """
         entity_mapping: SlugEntityMap = {}
         warnings = []
+        prefill_drafts = entity_prefill_drafts or {}
 
         # Process entities one at a time using savepoints (begin_nested) so a duplicate-slug error
         # only rolls back that single entity, leaving all others intact.
         for extracted in entities:
+            draft = prefill_drafts.get(extracted.slug)
+            slug = draft.slug if draft else extracted.slug
+            summary = draft.summary if draft else (
+                {"en": extracted.summary} if extracted.summary else None
+            )
+            ui_category_id = draft.ui_category_id if draft else None
             try:
                 async with self.db.begin_nested():
                     # Create base entity
@@ -77,9 +86,9 @@ class BulkCreationService:
 
                     # Prepare revision data
                     revision_data = {
-                        "slug": extracted.slug,
-                        "summary": {"en": extracted.summary} if extracted.summary else None,
-                        "ui_category_id": None,  # Will be set by frontend/user later
+                        "slug": slug,
+                        "summary": summary,
+                        "ui_category_id": ui_category_id,
                         "created_with_llm": settings.OPENAI_MODEL,  # Track LLM provenance
                         "created_by_user_id": user_id,
                         # LLM-created revisions start as drafts pending human review
@@ -106,13 +115,13 @@ class BulkCreationService:
                 error_msg = str(e.orig).lower()
                 if ('ix_entity_revisions_slug_current_unique' in error_msg or
                     'unique constraint failed: entity_revisions.slug' in error_msg):
-                    warning = f"Skipping duplicate entity slug: {extracted.slug}"
+                    warning = f"Skipping duplicate entity slug: {slug}"
                     warnings.append(warning)
                     logger.warning(warning)
 
                     # Find the existing entity so we can still create relations to it
                     stmt = select(EntityRevision).where(
-                        EntityRevision.slug == extracted.slug,
+                        EntityRevision.slug == slug,
                         EntityRevision.is_current == True
                     )
                     result = await self.db.execute(stmt)
@@ -124,7 +133,7 @@ class BulkCreationService:
                 else:
                     raise
             except Exception as e:
-                logger.error("Failed to create entity '%s' in bulk operation: %s", extracted.slug, e, exc_info=True)
+                logger.error("Failed to create entity '%s' in bulk operation: %s", slug, e, exc_info=True)
                 raise
 
         logger.info(

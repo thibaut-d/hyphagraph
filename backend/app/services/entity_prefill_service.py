@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.llm.base import LLMError, LLMProvider
+from app.llm.schemas import ExtractedEntity
 from app.models.ui_category import UiCategory
 from app.schemas.entity import EntityPrefillAlias, EntityPrefillDraft
 from app.utils.errors import AppException, ErrorCode, ValidationException
@@ -63,6 +64,20 @@ class EntityPrefillService:
             language_prompt,
         )
         return self._validate_response(response_data, allowed_category_ids)
+
+    async def generate_draft_for_extracted_entity(
+        self,
+        entity: ExtractedEntity,
+        user_language: str,
+    ) -> EntityPrefillDraft:
+        """Build a create-entity draft for an LLM-extracted candidate.
+
+        This intentionally reuses the same prompt and validation path as the
+        create-entity form so extraction-created entities get the same
+        canonicalization, category, display-name, and alias handling.
+        """
+        term = entity.text_span.strip() or entity.slug.replace("-", " ")
+        return await self.generate_draft(term, user_language)
 
     async def _build_category_prompt(self) -> tuple[str, set[UUID]]:
         result = await self.db.execute(select(UiCategory).order_by(UiCategory.order, UiCategory.id))
