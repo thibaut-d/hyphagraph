@@ -50,6 +50,7 @@ describe("SourceDetailView rendering", () => {
       renderSourceDetailView(mockSource.id);
 
       await waitFor(() => {
+        expect(screen.getByText("Evidence weight: 85%")).toBeInTheDocument();
         expect(screen.getAllByText("Quality: 85%").length).toBeGreaterThanOrEqual(1);
       });
     });
@@ -130,11 +131,11 @@ describe("SourceDetailView rendering", () => {
 
       expect(screen.getByRole("link", { name: "aspirin" })).toHaveAttribute(
         "href",
-        "/entities/entity-1",
+        "/entities/aspirin",
       );
       expect(screen.getByRole("link", { name: "platelets" })).toHaveAttribute(
         "href",
-        "/entities/entity-2",
+        "/entities/platelets",
       );
       expect(screen.getAllByText("(Drug)")).toHaveLength(2);
     });

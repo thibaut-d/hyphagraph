@@ -80,9 +80,17 @@ export function SourceMetadataSection({
           </Button>
         </Box>
 
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-          <Stack spacing={2} sx={{ flex: 1 }}>
-            <Typography variant="h4">
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            flexDirection: { xs: "column", sm: "row" },
+            gap: 2,
+          }}
+        >
+          <Stack spacing={2} sx={{ flex: 1, minWidth: 0, width: "100%" }}>
+            <Typography variant="h4" sx={{ overflowWrap: "anywhere" }}>
               {source.title ?? t("sources.untitled", "Untitled source")}
             </Typography>
 
@@ -160,11 +168,12 @@ export function SourceMetadataSection({
                 <Typography variant="overline" color="text.secondary" lineHeight={1.5}>
                   {t("source_metadata.section_assessment", "Quality assessment")}
                 </Typography>
-                <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+                <Box sx={{ display: "flex", gap: 1, alignItems: "center", flexWrap: "wrap" }}>
                   <Chip
                     label={t("source_metadata.trust_label", "Evidence weight: {{pct}}%", { pct: Math.round(source.trust_level * 100) })}
                     size="small"
                     color={source.trust_level >= 0.9 ? "success" : source.trust_level >= 0.75 ? "info" : "default"}
+                    sx={{ maxWidth: "100%" }}
                   />
                   <Typography variant="caption" color="text.secondary">
                     {t("source_metadata.trust_hint", "Algorithmic quality score — affects inference weighting")}
@@ -174,7 +183,7 @@ export function SourceMetadataSection({
             )}
           </Stack>
 
-          <Box sx={{ display: "flex", gap: 1 }}>
+          <Box sx={{ display: "flex", gap: 1, alignSelf: { xs: "flex-end", sm: "flex-start" } }}>
             <IconButton
               component={RouterLink}
               to={`/sources/${source.id}/edit`}

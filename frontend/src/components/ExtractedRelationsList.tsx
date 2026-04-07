@@ -77,6 +77,40 @@ const relationTypeIcons: Record<RelationType, React.ReactElement> = {
   other: <ScienceIcon fontSize="small" />,
 };
 
+function RelationToken({
+  label,
+  primary = false,
+}: {
+  label: string;
+  primary?: boolean;
+}) {
+  return (
+    <Box
+      sx={{
+        display: "inline-flex",
+        alignItems: "center",
+        maxWidth: "100%",
+        minWidth: 0,
+        px: 1,
+        py: 0.5,
+        borderRadius: 1,
+        border: primary ? 0 : 1,
+        borderColor: "divider",
+        bgcolor: primary ? "primary.main" : "background.paper",
+        color: primary ? "primary.contrastText" : "text.primary",
+      }}
+    >
+      <Typography
+        variant="body2"
+        fontWeight={primary ? 600 : 400}
+        sx={{ overflowWrap: "anywhere", whiteSpace: "normal" }}
+      >
+        {label}
+      </Typography>
+    </Box>
+  );
+}
+
 export const ExtractedRelationsList: React.FC<ExtractedRelationsListProps> = ({
   relations,
   selectedRelations,
@@ -112,14 +146,21 @@ export const ExtractedRelationsList: React.FC<ExtractedRelationsListProps> = ({
             <CardContent>
               <Stack spacing={2}>
                 {/* Relation header with checkbox */}
-                <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: { xs: 1, sm: 2 },
+                    flexWrap: { xs: "wrap", sm: "nowrap" },
+                  }}
+                >
                   <Checkbox
                     checked={isSelected}
                     onChange={() => onToggle(relationKey)}
                     sx={{ mt: -1 }}
                   />
 
-                  <Box sx={{ flex: 1 }}>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
                     {/* Subject -> Relation -> Object */}
                     <Box
                       sx={{
@@ -129,7 +170,7 @@ export const ExtractedRelationsList: React.FC<ExtractedRelationsListProps> = ({
                         flexWrap: "wrap",
                       }}
                     >
-                      <Chip label={subject} variant="outlined" />
+                      <RelationToken label={subject} />
                       <Box
                         sx={{
                           display: "flex",
@@ -140,26 +181,24 @@ export const ExtractedRelationsList: React.FC<ExtractedRelationsListProps> = ({
                           bgcolor: "primary.main",
                           color: "white",
                           borderRadius: 1,
+                          maxWidth: "100%",
                         }}
                       >
                         {relationTypeIcons[relation.relation_type]}
-                        <Typography variant="body2" fontWeight="medium">
+                        <Typography variant="body2" fontWeight="medium" sx={{ overflowWrap: "anywhere" }}>
                           {relationTypeLabels[relation.relation_type]}
                         </Typography>
                       </Box>
-                      <Chip label={object} variant="outlined" />
+                      <RelationToken label={object} />
                     </Box>
 
                     {/* Additional roles */}
                     {roles.length > 0 && (
                       <Box sx={{ mt: 1, display: "flex", gap: 1, flexWrap: "wrap" }}>
                         {roles.map(({ role, value }) => (
-                          <Chip
+                          <RelationToken
                             key={`${relationKey}-${role}-${value}`}
                             label={`${role}: ${value}`}
-                            size="small"
-                            variant="outlined"
-                            sx={{ fontSize: "0.75rem" }}
                           />
                         ))}
                       </Box>
@@ -182,6 +221,7 @@ export const ExtractedRelationsList: React.FC<ExtractedRelationsListProps> = ({
                     label={relation.confidence}
                     size="small"
                     color={confidenceColors[relation.confidence]}
+                    sx={{ ml: { xs: 0, sm: 0 } }}
                   />
                 </Box>
 
@@ -193,10 +233,13 @@ export const ExtractedRelationsList: React.FC<ExtractedRelationsListProps> = ({
                     borderRadius: 1,
                     borderLeft: "3px solid",
                     borderColor: "primary.main",
-                    ml: 5, // Align with content (after checkbox)
+                    ml: { xs: 0, sm: 5 }, // Align with content (after checkbox) on wider screens.
                   }}
                 >
-                  <Typography variant="body2" sx={{ fontStyle: "italic" }}>
+                  <Typography
+                    variant="body2"
+                    sx={{ fontStyle: "italic", overflowWrap: "anywhere", whiteSpace: "pre-wrap" }}
+                  >
                     "{relation.text_span}"
                   </Typography>
                 </Box>

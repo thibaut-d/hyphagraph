@@ -1,8 +1,47 @@
 # Current Work
 
-**Last updated**: 2026-04-07 (empty extraction root-cause fix)
+**Last updated**: 2026-04-07 (mobile extraction preview UX)
 
-## Active Plan: Empty Extraction Root-Cause Fix
+## Active Plan: Mobile Extraction Preview UX
+
+### Objective
+Keep extraction review and source quality/trust metadata usable on small screens without hiding important evidence signals.
+
+### Impacted modules
+- `frontend/src/components/ExtractionPreview.tsx`
+- `frontend/src/components/EntityLinkingSuggestions.tsx`
+- `frontend/src/components/ExtractedRelationsList.tsx`
+- `frontend/src/components/source-detail/SourceMetadataSection.tsx`
+- `frontend/src/components/source-detail/SourceVerificationSummary.tsx`
+- `frontend/src/views/__tests__/SourceDetailView.rendering.test.tsx`
+- `frontend/src/views/__tests__/SourceDetailView.test-support.tsx`
+
+### Assumptions
+- The issue is responsive layout rather than missing data.
+- The quality/trust metadata should remain visible on mobile and should wrap instead of being clipped.
+- Compact extraction tables are too dense for phones; mobile should use card review only.
+
+### Plan
+1. Make extraction preview padding, stats, quick-save, and action rows responsive.
+2. Make extracted entity and relation cards wrap chips/actions instead of squeezing content.
+3. Hide compact entity table mode on narrow screens and use card review there.
+4. Make source metadata and verification summary wrap trust/quality chips on small screens.
+5. Update focused tests and run targeted frontend validation.
+
+### Validation
+- `cd frontend && npm test -- --run src/components/__tests__/ExtractionPreview.test.tsx`
+- `cd frontend && npm test -- --run src/components/__tests__/ExtractionPreview.test.tsx src/views/__tests__/SourceDetailView.rendering.test.tsx`
+- `cd frontend && npm run build`
+- `git diff --check`
+
+### Risks
+- Desktop table mode remains available, but mobile review should avoid dense columns.
+- Changing responsive wrapping must not remove or conditionally hide trust/quality signals.
+
+### Status
+validated
+
+## Previous Plan: Empty Extraction Root-Cause Fix
 
 ### Objective
 Prevent blank fetched documents from being stored and extracted as valid zero-item previews, while preserving PubMed abstract text when optional PMC enrichment returns an empty body.
