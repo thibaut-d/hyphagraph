@@ -1,7 +1,9 @@
 from uuid import UUID
-from typing import Optional
+from typing import Literal, Optional
 from datetime import datetime
 from app.schemas.base import Schema
+
+EntityTermKind = Literal["alias", "abbreviation", "brand"]
 
 
 class EntityTermWrite(Schema):
@@ -15,6 +17,7 @@ class EntityTermWrite(Schema):
     language: Optional[str] = None  # ISO 639-1 code (en, fr) or None for international
     display_order: Optional[int] = None  # Lower = shown first
     is_display_name: bool = False
+    term_kind: EntityTermKind = "alias"
 
 
 class EntityTermRead(Schema):
@@ -25,6 +28,7 @@ class EntityTermRead(Schema):
     language: Optional[str] = None
     display_order: Optional[int] = None
     is_display_name: bool = False
+    term_kind: EntityTermKind = "alias"
     created_at: datetime
 
 

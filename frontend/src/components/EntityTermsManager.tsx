@@ -64,19 +64,40 @@ interface TermFormData {
   term: string;
   language: string;
   display_order: number | null;
+  term_kind: "alias" | "abbreviation" | "brand";
 }
 
 const LANGUAGE_OPTIONS = [
-  { code: "", key: "entityTerms.lang_international" },
-  { code: "en", key: "entityTerms.lang_en" },
-  { code: "fr", key: "entityTerms.lang_fr" },
-  { code: "es", key: "entityTerms.lang_es" },
-  { code: "de", key: "entityTerms.lang_de" },
-  { code: "it", key: "entityTerms.lang_it" },
-  { code: "pt", key: "entityTerms.lang_pt" },
-  { code: "zh", key: "entityTerms.lang_zh" },
-  { code: "ja", key: "entityTerms.lang_ja" },
+  { code: "", key: "entityTerms.lang_international", label: "International / No language" },
+  { code: "en", key: "entityTerms.lang_en", label: "English" },
+  { code: "fr", key: "entityTerms.lang_fr", label: "French" },
+  { code: "es", key: "entityTerms.lang_es", label: "Spanish" },
+  { code: "de", key: "entityTerms.lang_de", label: "German" },
+  { code: "it", key: "entityTerms.lang_it", label: "Italian" },
+  { code: "pt", key: "entityTerms.lang_pt", label: "Portuguese" },
+  { code: "zh", key: "entityTerms.lang_zh", label: "Chinese" },
+  { code: "ja", key: "entityTerms.lang_ja", label: "Japanese" },
+  { code: "la", key: "entityTerms.lang_la", label: "Latin" },
 ];
+
+const LANGUAGE_SELECT_SX = {
+  "& .MuiSelect-select": {
+    minWidth: 0,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+};
+
+const LANGUAGE_MENU_PROPS = {
+  PaperProps: {
+    sx: {
+      "& .MuiMenuItem-root": {
+        whiteSpace: "normal",
+      },
+    },
+  },
+};
 
 export function EntityTermsManager({
   entityId,
@@ -95,6 +116,7 @@ export function EntityTermsManager({
     term: "",
     language: "",
     display_order: null,
+    term_kind: "alias",
   });
 
   // Delete confirmation dialog
@@ -128,6 +150,7 @@ export function EntityTermsManager({
       term: "",
       language: "",
       display_order: null,
+      term_kind: "alias",
     });
   };
 
@@ -139,6 +162,7 @@ export function EntityTermsManager({
       term: term.term,
       language: term.language || "",
       display_order: term.display_order,
+      term_kind: term.term_kind,
     });
   };
 
@@ -150,6 +174,7 @@ export function EntityTermsManager({
       term: "",
       language: "",
       display_order: null,
+      term_kind: "alias",
     });
   };
 
@@ -167,6 +192,7 @@ export function EntityTermsManager({
         term: formData.term.trim(),
         language: formData.language || null,
         display_order: formData.display_order,
+        term_kind: formData.term_kind,
       };
 
       if (isAdding) {
@@ -209,9 +235,9 @@ export function EntityTermsManager({
   };
 
   const getLanguageLabel = (code: string | null): string => {
-    if (!code) return t("entityTerms.lang_international_short");
+    if (!code) return t("entityTerms.lang_international_short", "International");
     const option = LANGUAGE_OPTIONS.find((opt) => opt.code === code);
-    return option ? t(option.key) : code;
+    return option ? t(option.key, option.label) : code;
   };
 
   // Group terms by language for display
@@ -281,17 +307,23 @@ export function EntityTermsManager({
               />
 
               <FormControl fullWidth size="small">
-                <InputLabel>{t("entityTerms.language", "Language")}</InputLabel>
+                <InputLabel shrink>{t("entityTerms.language", "Language")}</InputLabel>
                 <Select
                   value={formData.language}
                   onChange={(e) =>
                     setFormData({ ...formData, language: e.target.value })
                   }
                   label={t("entityTerms.language", "Language")}
+                  displayEmpty
+                  renderValue={(value) => getLanguageLabel(value)}
+                  sx={LANGUAGE_SELECT_SX}
+                  MenuProps={LANGUAGE_MENU_PROPS}
                 >
                   {LANGUAGE_OPTIONS.map((opt) => (
                     <MenuItem key={opt.code} value={opt.code}>
-                      {t(opt.key)}
+                      {opt.code
+                        ? t(opt.key, opt.label)
+                        : t("entityTerms.lang_international_short", "International")}
                     </MenuItem>
                   ))}
                 </Select>
@@ -316,6 +348,26 @@ export function EntityTermsManager({
                   "Lower numbers appear first (optional)"
                 )}
               />
+
+              <FormControl fullWidth size="small">
+                <InputLabel>{t("entityTerms.termKind", "Term kind")}</InputLabel>
+                <Select
+                  value={formData.term_kind}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      term_kind: e.target.value as TermFormData["term_kind"],
+                    })
+                  }
+                  label={t("entityTerms.termKind", "Term kind")}
+                >
+                  <MenuItem value="alias">{t("entityTerms.kind_alias", "Alias")}</MenuItem>
+                  <MenuItem value="abbreviation">
+                    {t("entityTerms.kind_abbreviation", "Abbreviation")}
+                  </MenuItem>
+                  <MenuItem value="brand">{t("entityTerms.kind_brand", "Brand")}</MenuItem>
+                </Select>
+              </FormControl>
 
               <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
                 <Button
@@ -371,10 +423,34 @@ export function EntityTermsManager({
                     >
                       <ListItemText
                         primary={term.term}
+                        secondaryTypographyProps={{ component: "div" }}
                         secondary={
-                          term.display_order !== null
-                            ? t("entityTerms.display_order_value", { order: term.display_order })
-                            : undefined
+                          term.display_order !== null || term.term_kind !== "alias" ? (
+                            <Stack direction="row" spacing={1} alignItems="center">
+                              {term.display_order !== null && (
+                                <span>
+                                  {t("entityTerms.display_order_value", {
+                                    order: term.display_order,
+                                    defaultValue: "Display order: {{order}}",
+                                  })}
+                                </span>
+                              )}
+                              {term.term_kind === "abbreviation" && (
+                                <Chip
+                                  label={t("entityTerms.kind_abbreviation", "Abbreviation")}
+                                  size="small"
+                                  variant="outlined"
+                                />
+                              )}
+                              {term.term_kind === "brand" && (
+                                <Chip
+                                  label={t("entityTerms.kind_brand", "Brand")}
+                                  size="small"
+                                  variant="outlined"
+                                />
+                              )}
+                            </Stack>
+                          ) : undefined
                         }
                       />
                       {!readonly && (

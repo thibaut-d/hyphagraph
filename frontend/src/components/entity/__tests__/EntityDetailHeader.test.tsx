@@ -40,6 +40,7 @@ describe("EntityDetailHeader", () => {
         language: null,
         display_order: 0,
         is_display_name: true,
+        term_kind: "alias",
         created_at: "2026-04-06T00:00:00Z",
       },
       {
@@ -49,6 +50,7 @@ describe("EntityDetailHeader", () => {
         language: "fr",
         display_order: 1,
         is_display_name: true,
+        term_kind: "alias",
         created_at: "2026-04-06T00:00:00Z",
       },
     );
@@ -84,6 +86,7 @@ describe("EntityDetailHeader", () => {
         language: "fr",
         display_order: 1,
         is_display_name: true,
+        term_kind: "alias",
         created_at: "2026-04-06T00:00:00Z",
       },
     );

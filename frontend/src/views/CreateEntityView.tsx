@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Typography,
@@ -16,12 +16,22 @@ import {
   FormControl,
   InputLabel,
   Chip,
+  CircularProgress,
+  Link,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import DeleteIcon from "@mui/icons-material/Delete";
 
-import { createEntity, EntityWrite, getEntityFilterOptions, EntityFilterOptions } from "../api/entities";
+import {
+  createEntity,
+  EntityWrite,
+  getEntityFilterOptions,
+  EntityFilterOptions,
+  prefillEntity,
+  type EntityPrefillDraft,
+} from "../api/entities";
 import { bulkUpdateEntityTerms, type EntityTermWrite } from "../api/entityTerms";
+import { search as searchApi, type EntitySearchResult } from "../api/search";
 import { useAsyncAction } from "../hooks/useAsyncAction";
 import { useValidationMessage } from "../hooks/useValidationMessage";
 import { useNotification } from "../notifications/NotificationContext";
@@ -32,8 +42,13 @@ type AliasDraft = {
   id: string;
   term: string;
   language: string;
+  term_kind: "alias" | "abbreviation" | "brand";
 };
 type SummaryMap = Record<string, string>;
+type EntityDraftValues = Pick<
+  EntityPrefillDraft,
+  "slug" | "display_names" | "summary" | "aliases" | "ui_category_id"
+>;
 
 const LANGUAGE_OPTIONS = [
   { code: "", label: "International" },
@@ -45,14 +60,40 @@ const LANGUAGE_OPTIONS = [
   { code: "pt", label: "Portuguese" },
   { code: "zh", label: "Chinese" },
   { code: "ja", label: "Japanese" },
+  { code: "la", label: "Latin" },
 ];
+
+const LANGUAGE_SELECT_SX = {
+  "& .MuiSelect-select": {
+    minWidth: 0,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+};
+
+const LANGUAGE_MENU_PROPS = {
+  PaperProps: {
+    sx: {
+      "& .MuiMenuItem-root": {
+        whiteSpace: "normal",
+      },
+    },
+  },
+};
 
 function createAliasDraft(): AliasDraft {
   return {
     id: globalThis.crypto?.randomUUID?.() ?? `alias-${Date.now()}-${Math.random()}`,
     term: "",
     language: "",
+    term_kind: "alias",
   };
+}
+
+function normalizeUiLanguage(language: string): string {
+  const normalized = language.split("-")[0]?.toLowerCase() ?? "en";
+  return /^[a-z]{2}$/.test(normalized) ? normalized : "en";
 }
 
 function FormSection({
@@ -86,7 +127,16 @@ export function CreateEntityView() {
   const navigate = useNavigate();
   const { showError } = useNotification();
   const currentLanguage = i18n.language || "en";
+  const userLanguage = normalizeUiLanguage(currentLanguage);
 
+  const [lookupTerm, setLookupTerm] = useState("");
+  const [lookupResults, setLookupResults] = useState<EntitySearchResult[]>([]);
+  const [lookupSearchedTerm, setLookupSearchedTerm] = useState("");
+  const [lookupError, setLookupError] = useState<string | null>(null);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupHasSearched, setLookupHasSearched] = useState(false);
+  const [aiPrefillLoading, setAiPrefillLoading] = useState(false);
+  const [prefillError, setPrefillError] = useState<string | null>(null);
   const [slug, setSlug] = useState("");
   const [displayNames, setDisplayNames] = useState<SummaryMap>({});
   const [activeDisplayNameLanguage, setActiveDisplayNameLanguage] = useState("");
@@ -133,6 +183,121 @@ export function CreateEntityView() {
              cat.id
     }));
   }, [filterOptions, i18n.language]);
+
+  const getLanguageLabel = (language: string): string => {
+    const option = LANGUAGE_OPTIONS.find((candidate) => candidate.code === language);
+    return option ? t(`entityTerms.lang_${option.code}`, option.label) : language.toUpperCase();
+  };
+
+  const applyDraftValues = (draft: EntityDraftValues) => {
+    const nextSlug = slugifyInput(draft.slug);
+    if (nextSlug) {
+      setSlug(nextSlug);
+      clearError("slug");
+    }
+    setDisplayNames(draft.display_names);
+    setSummaries(draft.summary);
+    setUiCategoryId(draft.ui_category_id ?? null);
+    setAliases(
+      draft.aliases.map((alias) => ({
+        id: createAliasDraft().id,
+        term: alias.term,
+        language: alias.language ?? "",
+        term_kind: alias.term_kind ?? "alias",
+      })),
+    );
+
+    if (Object.prototype.hasOwnProperty.call(draft.display_names, "")) {
+      setActiveDisplayNameLanguage("");
+    } else {
+      setActiveDisplayNameLanguage(
+        draft.display_names[userLanguage] !== undefined
+          ? userLanguage
+          : Object.keys(draft.display_names)[0] ?? "",
+      );
+    }
+
+    setActiveSummaryLanguage(
+      draft.summary[userLanguage] !== undefined
+        ? userLanguage
+        : Object.keys(draft.summary)[0] ?? userLanguage,
+    );
+  };
+
+  const handleLookup = async () => {
+    const term = lookupTerm.trim();
+    setLookupError(null);
+    setPrefillError(null);
+    setLookupHasSearched(false);
+    if (!term) {
+      setLookupError(t("create_entity.lookup_required", "Enter a term to search first."));
+      return;
+    }
+
+    setLookupLoading(true);
+    try {
+      const response = await searchApi({
+        query: term,
+        types: ["entity"],
+        limit: 5,
+      });
+      setLookupResults(
+        response.results.filter((result): result is EntitySearchResult => result.type === "entity"),
+      );
+      setLookupSearchedTerm(term);
+      setLookupHasSearched(true);
+    } catch (error) {
+      setLookupError(
+        t("create_entity.lookup_error", "Failed to search existing entities."),
+      );
+      showError(error);
+    } finally {
+      setLookupLoading(false);
+    }
+  };
+
+  const handleSimplePrefill = () => {
+    const term = lookupSearchedTerm || lookupTerm.trim();
+    if (!term) {
+      setPrefillError(t("create_entity.lookup_required", "Enter a term to search first."));
+      return;
+    }
+    applyDraftValues({
+      slug: slugifyInput(term),
+      display_names: { [userLanguage]: term },
+      summary: {},
+      aliases: [],
+      ui_category_id: null,
+    });
+  };
+
+  const handleAiPrefill = async () => {
+    const term = lookupSearchedTerm || lookupTerm.trim();
+    setPrefillError(null);
+    if (!term) {
+      setPrefillError(t("create_entity.lookup_required", "Enter a term to search first."));
+      return;
+    }
+
+    setAiPrefillLoading(true);
+    try {
+      const draft = await prefillEntity({
+        term,
+        user_language: userLanguage,
+      });
+      applyDraftValues(draft);
+    } catch (error) {
+      setPrefillError(
+        t(
+          "create_entity.ai_prefill_error",
+          "AI prefill failed. Check that the API key is configured, then try again.",
+        ),
+      );
+      showError(error);
+    } finally {
+      setAiPrefillLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -183,6 +348,7 @@ export function CreateEntityView() {
           language: alias.language || null,
           display_order: displayNameTerms.length + index,
           is_display_name: false,
+          term_kind: alias.term_kind,
         }))
         .filter(
           (alias) =>
@@ -268,10 +434,123 @@ export function CreateEntityView() {
         <form onSubmit={handleSubmit}>
           <Stack spacing={3}>
             <FormSection
+              title={t("create_entity.lookup_title", "Check before creating")}
+              description={t(
+                "create_entity.lookup_description",
+                "Search existing entity slugs and terms first. If nothing matches, prefill the form from the term.",
+              )}
+            >
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                <TextField
+                  label={t("create_entity.lookup_term", "Entity term")}
+                  value={lookupTerm}
+                  onChange={(e) => {
+                    setLookupTerm(e.target.value);
+                    setLookupError(null);
+                    setPrefillError(null);
+                  }}
+                  disabled={loading || lookupLoading || aiPrefillLoading}
+                  fullWidth
+                  helperText={t(
+                    "create_entity.lookup_help",
+                    "Example: Paracetamol, Doliprane, acetaminophen",
+                  )}
+                />
+                <Button
+                  type="button"
+                  variant="contained"
+                  onClick={handleLookup}
+                  disabled={loading || lookupLoading || aiPrefillLoading}
+                  sx={{ minWidth: { sm: 160 } }}
+                >
+                  {lookupLoading ? (
+                    <CircularProgress color="inherit" size={20} />
+                  ) : (
+                    t("create_entity.lookup_action", "Search")
+                  )}
+                </Button>
+              </Stack>
+
+              {lookupError && <Alert severity="error">{lookupError}</Alert>}
+              {prefillError && <Alert severity="error">{prefillError}</Alert>}
+
+              {lookupHasSearched && lookupResults.length > 0 && (
+                <Alert severity="warning">
+                  <Stack spacing={1}>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {t(
+                        "create_entity.lookup_existing_found",
+                        "Possible existing entities found. Open the existing entity instead of creating a duplicate.",
+                      )}
+                    </Typography>
+                    <Stack spacing={0.5}>
+                      {lookupResults.map((result) => (
+                        <Link
+                          key={result.id}
+                          component={RouterLink}
+                          to={`/entities/${result.id}`}
+                          underline="hover"
+                        >
+                          {result.slug}
+                        </Link>
+                      ))}
+                    </Stack>
+                  </Stack>
+                </Alert>
+              )}
+
+              {lookupHasSearched && !lookupLoading && !lookupError && lookupResults.length === 0 && (
+                <Alert severity="success">
+                  {t(
+                    "create_entity.lookup_no_match",
+                    "No existing entity found for this term. Choose a prefill option, then review before creating.",
+                  )}
+                </Alert>
+              )}
+
+              {lookupHasSearched && !lookupLoading && !lookupError && lookupResults.length === 0 && (
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                  <Button
+                    type="button"
+                    variant="outlined"
+                    onClick={handleSimplePrefill}
+                    disabled={loading || aiPrefillLoading}
+                    fullWidth
+                  >
+                    {t("create_entity.simple_prefill", "Prefill slug and display name")}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outlined"
+                    onClick={handleAiPrefill}
+                    disabled={loading || aiPrefillLoading}
+                    fullWidth
+                  >
+                    {aiPrefillLoading ? (
+                      <Stack direction="row" spacing={1} alignItems="center" justifyContent="center">
+                        <CircularProgress
+                          aria-label={t(
+                            "create_entity.ai_prefill_progress",
+                            "AI prefill in progress",
+                          )}
+                          color="inherit"
+                          size={18}
+                        />
+                        <span>{t("create_entity.ai_prefilling", "Filling with AI...")}</span>
+                      </Stack>
+                    ) : (
+                      t("create_entity.ai_prefill", "Fill the form with AI")
+                    )}
+                  </Button>
+                </Stack>
+              )}
+            </FormSection>
+
+            <FormSection
               title={t("create_entity.identity_title", "Identity")}
               description={t(
                 "create_entity.identity_description",
-                "Define the canonical identifier and category for this entity.",
+                "Define the canonical identifier and category for this entity. Prefer an international or English term for the slug.",
               )}
             >
               <TextField
@@ -329,7 +608,7 @@ export function CreateEntityView() {
                 alignItems={{ xs: "stretch", sm: "center" }}
               >
                 <FormControl sx={{ minWidth: { xs: "100%", sm: 260 } }}>
-                  <InputLabel id="display-name-language-label">
+                  <InputLabel id="display-name-language-label" shrink>
                     {t("create_entity.display_name_language", "Display name language")}
                   </InputLabel>
                   <Select
@@ -338,22 +617,14 @@ export function CreateEntityView() {
                     value={activeDisplayNameLanguage}
                     onChange={(e) => setActiveDisplayNameLanguage(e.target.value)}
                     disabled={loading}
-                    sx={{
-                      "& .MuiSelect-select": {
-                        whiteSpace: "normal",
-                        overflow: "visible",
-                        textOverflow: "clip",
-                      },
-                    }}
-                    MenuProps={{
-                      PaperProps: {
-                        sx: {
-                          "& .MuiMenuItem-root": {
-                            whiteSpace: "normal",
-                          },
-                        },
-                      },
-                    }}
+                    displayEmpty
+                    renderValue={(value) =>
+                      value
+                        ? getLanguageLabel(value)
+                        : t("entityTerms.lang_international_short", "International")
+                    }
+                    sx={LANGUAGE_SELECT_SX}
+                    MenuProps={LANGUAGE_MENU_PROPS}
                   >
                     {LANGUAGE_OPTIONS.map((option) => (
                       <MenuItem key={`display-${option.code || "international"}`} value={option.code}>
@@ -401,7 +672,9 @@ export function CreateEntityView() {
                 placeholder={
                   activeDisplayNameLanguage
                     ? t("create_entity.display_name_placeholder", {
-                        defaultValue: `Display name in ${LANGUAGE_OPTIONS.find((option) => option.code === activeDisplayNameLanguage)?.label ?? activeDisplayNameLanguage.toUpperCase()}`,
+                        language:
+                          getLanguageLabel(activeDisplayNameLanguage),
+                        defaultValue: "Display name in {{language}}",
                       })
                     : t(
                         "create_entity.display_name_placeholder_international",
@@ -433,6 +706,9 @@ export function CreateEntityView() {
                     value={activeSummaryLanguage}
                     onChange={(e) => setActiveSummaryLanguage(e.target.value)}
                     disabled={loading}
+                    renderValue={(value) => getLanguageLabel(value)}
+                    sx={LANGUAGE_SELECT_SX}
+                    MenuProps={LANGUAGE_MENU_PROPS}
                   >
                     {LANGUAGE_OPTIONS.filter((option) => option.code !== "").map((option) => (
                       <MenuItem key={option.code} value={option.code}>
@@ -469,7 +745,9 @@ export function CreateEntityView() {
                   "Optional description of this entity",
                 )}
                 placeholder={t("create_entity.summary_placeholder", {
-                  defaultValue: `Summary in ${LANGUAGE_OPTIONS.find((option) => option.code === activeSummaryLanguage)?.label ?? activeSummaryLanguage.toUpperCase()}`,
+                  language:
+                    getLanguageLabel(activeSummaryLanguage),
+                  defaultValue: "Summary in {{language}}",
                 })}
               />
             </FormSection>
@@ -528,7 +806,7 @@ export function CreateEntityView() {
                           />
 
                           <FormControl sx={{ minWidth: { xs: "100%", md: 220 } }}>
-                            <InputLabel id={`alias-language-label-${alias.id}`}>
+                            <InputLabel id={`alias-language-label-${alias.id}`} shrink>
                               {t("entityTerms.language", "Language")}
                             </InputLabel>
                             <Select
@@ -538,32 +816,50 @@ export function CreateEntityView() {
                               onChange={(e) =>
                                 updateAlias(alias.id, { language: e.target.value })
                               }
+                              displayEmpty
+                              renderValue={(value) =>
+                                value
+                                  ? getLanguageLabel(value)
+                                  : t("entityTerms.lang_international_short", "International")
+                              }
                               disabled={loading}
-                              sx={{
-                                "& .MuiSelect-select": {
-                                  whiteSpace: "normal",
-                                  overflow: "visible",
-                                  textOverflow: "clip",
-                                },
-                              }}
-                              MenuProps={{
-                                PaperProps: {
-                                  sx: {
-                                    "& .MuiMenuItem-root": {
-                                      whiteSpace: "normal",
-                                    },
-                                  },
-                                },
-                              }}
+                              sx={LANGUAGE_SELECT_SX}
+                              MenuProps={LANGUAGE_MENU_PROPS}
                             >
                               {LANGUAGE_OPTIONS.map((option) => (
                                 <MenuItem key={option.code || "international"} value={option.code}>
-                                  {t(
-                                    `entityTerms.lang_${option.code || "international"}`,
-                                    option.label,
-                                  )}
+                                  {option.code
+                                    ? t(`entityTerms.lang_${option.code}`, option.label)
+                                    : t("entityTerms.lang_international_short", "International")}
                                 </MenuItem>
                               ))}
+                            </Select>
+                          </FormControl>
+
+                          <FormControl sx={{ minWidth: { xs: "100%", md: 180 } }}>
+                            <InputLabel id={`alias-kind-label-${alias.id}`}>
+                              {t("entityTerms.termKind", "Term kind")}
+                            </InputLabel>
+                            <Select
+                              labelId={`alias-kind-label-${alias.id}`}
+                              label={t("entityTerms.termKind", "Term kind")}
+                              value={alias.term_kind}
+                              onChange={(e) =>
+                                updateAlias(alias.id, {
+                                  term_kind: e.target.value as AliasDraft["term_kind"],
+                                })
+                              }
+                              disabled={loading}
+                            >
+                              <MenuItem value="alias">
+                                {t("entityTerms.kind_alias", "Alias")}
+                              </MenuItem>
+                              <MenuItem value="abbreviation">
+                                {t("entityTerms.kind_abbreviation", "Abbreviation")}
+                              </MenuItem>
+                              <MenuItem value="brand">
+                                {t("entityTerms.kind_brand", "Brand")}
+                              </MenuItem>
                             </Select>
                           </FormControl>
                         </Stack>

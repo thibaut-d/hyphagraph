@@ -10,6 +10,7 @@ import { CreateEntityView } from '../CreateEntityView';
 import { NotificationProvider } from '../../notifications/NotificationContext';
 import * as entityApi from '../../api/entities';
 import * as entityTermsApi from '../../api/entityTerms';
+import * as searchApi from '../../api/search';
 
 const translate = (key: string, defaultValueOrOptions?: string | { defaultValue?: string }) => {
   if (typeof defaultValueOrOptions === 'string') {
@@ -29,6 +30,7 @@ vi.mock('react-i18next', () => ({
 // Mock the API module
 vi.mock('../../api/entities');
 vi.mock('../../api/entityTerms');
+vi.mock('../../api/search');
 
 // Mock react-router navigation
 const mockNavigate = vi.fn();
@@ -63,6 +65,16 @@ describe('CreateEntityView', () => {
       evidence_quality_range: null,
       year_range: null,
     });
+    vi.mocked(searchApi.search).mockResolvedValue({
+      query: '',
+      results: [],
+      total: 0,
+      limit: 5,
+      offset: 0,
+      entity_count: 0,
+      source_count: 0,
+      relation_count: 0,
+    });
   });
 
   it('renders form with required fields', async () => {
@@ -73,10 +85,165 @@ describe('CreateEntityView', () => {
     expect(screen.getByLabelText(/^summary$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^display name$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/display name language/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/entity term/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /create/i })).toBeInTheDocument();
     expect(screen.getByText(/alternative names & aliases/i)).toBeInTheDocument();
     await waitFor(() => {
       expect(entityApi.getEntityFilterOptions).toHaveBeenCalled();
+    });
+  });
+
+  it('searches for existing entities and links to matches', async () => {
+    vi.mocked(searchApi.search).mockResolvedValue({
+      query: 'Doliprane',
+      results: [
+        {
+          id: 'entity-1',
+          type: 'entity',
+          title: 'paracetamol',
+          slug: 'paracetamol',
+          relevance_score: 0.95,
+        },
+      ],
+      total: 1,
+      limit: 5,
+      offset: 0,
+      entity_count: 1,
+      source_count: 0,
+      relation_count: 0,
+    });
+
+    renderWithProviders();
+
+    fireEvent.change(screen.getByLabelText(/entity term/i), {
+      target: { value: 'Doliprane' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
+
+    await waitFor(() => {
+      expect(searchApi.search).toHaveBeenCalledWith({
+        query: 'Doliprane',
+        types: ['entity'],
+        limit: 5,
+      });
+    });
+    expect(screen.getByRole('link', { name: 'paracetamol' })).toHaveAttribute(
+      'href',
+      '/entities/entity-1',
+    );
+  });
+
+  it('prefills slug and display name from the searched term when no entity exists', async () => {
+    renderWithProviders();
+
+    fireEvent.change(screen.getByLabelText(/entity term/i), {
+      target: { value: 'Doliprane' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
+
+    await screen.findByText(/no existing entity found/i);
+
+    fireEvent.click(screen.getByRole('button', { name: /prefill slug and display name/i }));
+
+    expect(screen.getByLabelText(/slug/i)).toHaveValue('doliprane');
+    expect(screen.getByLabelText(/^display name$/i)).toHaveValue('Doliprane');
+  });
+
+  it('prefills the form from an AI draft after duplicate search finds no match', async () => {
+    vi.mocked(entityApi.prefillEntity).mockResolvedValue({
+      slug: 'paracetamol',
+      display_names: {
+        en: 'Acetaminophen',
+        fr: 'Paracétamol',
+      },
+      summary: {
+        en: 'Analgesic and antipyretic drug.',
+        fr: 'Médicament antalgique et antipyrétique.',
+      },
+      aliases: [
+        {
+          term: 'Doliprane',
+          language: 'fr',
+          term_kind: 'brand',
+        },
+        {
+          term: 'Tylenol',
+          language: 'en',
+          term_kind: 'alias',
+        },
+      ],
+      ui_category_id: 'cat-1',
+    });
+
+    renderWithProviders();
+
+    fireEvent.change(screen.getByLabelText(/entity term/i), {
+      target: { value: 'Paracetamol' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
+
+    await screen.findByText(/no existing entity found/i);
+
+    fireEvent.click(screen.getByRole('button', { name: /fill the form with ai/i }));
+
+    await waitFor(() => {
+      expect(entityApi.prefillEntity).toHaveBeenCalledWith({
+        term: 'Paracetamol',
+        user_language: 'en',
+      });
+    });
+
+    expect(screen.getByLabelText(/slug/i)).toHaveValue('paracetamol');
+    expect(screen.getByLabelText(/^display name$/i)).toHaveValue('Acetaminophen');
+    expect(screen.getByLabelText(/^summary$/i)).toHaveValue('Analgesic and antipyretic drug.');
+    expect(screen.getAllByLabelText(/^term$/i)[0]).toHaveValue('Doliprane');
+    expect(screen.getAllByLabelText(/^term$/i)[1]).toHaveValue('Tylenol');
+
+    fireEvent.mouseDown(screen.getAllByLabelText(/display name language/i)[0]);
+    fireEvent.click(screen.getByRole('option', { name: 'French' }));
+    expect(screen.getByLabelText(/^display name$/i)).toHaveValue('Paracétamol');
+
+    fireEvent.mouseDown(screen.getByLabelText(/summary language/i));
+    fireEvent.click(screen.getByRole('option', { name: 'French' }));
+    expect(screen.getByLabelText(/^summary$/i)).toHaveValue('Médicament antalgique et antipyrétique.');
+  });
+
+  it('shows a spinner while AI prefill is running', async () => {
+    let resolveDraft: (draft: entityApi.EntityPrefillDraft) => void = () => {};
+    const prefillPromise = new Promise<entityApi.EntityPrefillDraft>((resolve) => {
+      resolveDraft = resolve;
+    });
+    vi.mocked(entityApi.prefillEntity).mockReturnValue(prefillPromise);
+
+    renderWithProviders();
+
+    fireEvent.change(screen.getByLabelText(/entity term/i), {
+      target: { value: 'Fibromyalgia' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
+
+    await screen.findByText(/no existing entity found/i);
+    fireEvent.click(screen.getByRole('button', { name: /fill the form with ai/i }));
+
+    expect(await screen.findByRole('progressbar', { name: /ai prefill in progress/i }))
+      .toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /filling with ai/i })).toBeDisabled();
+
+    resolveDraft({
+      slug: 'fibromyalgia',
+      display_names: {
+        en: 'Fibromyalgia',
+      },
+      summary: {
+        en: 'Chronic pain condition.',
+      },
+      aliases: [],
+      ui_category_id: null,
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('progressbar', { name: /ai prefill in progress/i }))
+        .not.toBeInTheDocument();
     });
   });
 
@@ -245,6 +412,7 @@ describe('CreateEntityView', () => {
             language: 'fr',
             display_order: 0,
             is_display_name: false,
+            term_kind: 'alias',
           },
         ],
       });

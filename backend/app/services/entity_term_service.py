@@ -71,6 +71,19 @@ class EntityTermService:
                 )
             seen_languages.add(language_key)
 
+    @staticmethod
+    def _read_schema(term: EntityTerm) -> EntityTermRead:
+        return EntityTermRead(
+            id=term.id,
+            entity_id=term.entity_id,
+            term=term.term,
+            language=term.language,
+            display_order=term.display_order,
+            is_display_name=term.is_display_name,
+            term_kind=term.term_kind,
+            created_at=term.created_at,
+        )
+
     async def list_by_entity(self, entity_id: UUID) -> List[EntityTermRead]:
         """
         Get all terms for a specific entity.
@@ -106,18 +119,7 @@ class EntityTermService:
         result = await self.db.execute(stmt)
         terms = result.scalars().all()
 
-        return [
-            EntityTermRead(
-                id=term.id,
-                entity_id=term.entity_id,
-                term=term.term,
-                language=term.language,
-                display_order=term.display_order,
-                is_display_name=term.is_display_name,
-                created_at=term.created_at,
-            )
-            for term in terms
-        ]
+        return [self._read_schema(term) for term in terms]
 
     async def create(
         self, entity_id: UUID, payload: EntityTermWrite
@@ -151,6 +153,7 @@ class EntityTermService:
             language=payload.language,
             display_order=payload.display_order,
             is_display_name=payload.is_display_name,
+            term_kind=payload.term_kind,
         )
 
         self.db.add(term)
@@ -180,15 +183,7 @@ class EntityTermService:
                 )
             raise
 
-        return EntityTermRead(
-            id=term.id,
-            entity_id=term.entity_id,
-            term=term.term,
-            language=term.language,
-            display_order=term.display_order,
-            is_display_name=term.is_display_name,
-            created_at=term.created_at,
-        )
+        return self._read_schema(term)
 
     async def update(
         self, entity_id: UUID, term_id: UUID, payload: EntityTermWrite
@@ -230,6 +225,7 @@ class EntityTermService:
         term.language = payload.language
         term.display_order = payload.display_order
         term.is_display_name = payload.is_display_name
+        term.term_kind = payload.term_kind
 
         try:
             await self.db.commit()
@@ -256,15 +252,7 @@ class EntityTermService:
                 )
             raise
 
-        return EntityTermRead(
-            id=term.id,
-            entity_id=term.entity_id,
-            term=term.term,
-            language=term.language,
-            display_order=term.display_order,
-            is_display_name=term.is_display_name,
-            created_at=term.created_at,
-        )
+        return self._read_schema(term)
 
     async def delete(self, entity_id: UUID, term_id: UUID) -> None:
         """
@@ -341,6 +329,7 @@ class EntityTermService:
                 language=term_data.language,
                 display_order=term_data.display_order,
                 is_display_name=term_data.is_display_name,
+                term_kind=term_data.term_kind,
             )
             self.db.add(term)
             created_terms.append(term)
@@ -381,15 +370,4 @@ class EntityTermService:
             )
         )
 
-        return [
-            EntityTermRead(
-                id=term.id,
-                entity_id=term.entity_id,
-                term=term.term,
-                language=term.language,
-                display_order=term.display_order,
-                is_display_name=term.is_display_name,
-                created_at=term.created_at,
-            )
-            for term in created_terms
-        ]
+        return [self._read_schema(term) for term in created_terms]

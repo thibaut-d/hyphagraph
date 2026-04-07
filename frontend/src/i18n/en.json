@@ -23,7 +23,8 @@
     "error": "An error occurred",
     "back_to_entity": "Back to Entity",
     "no_data": "No data",
-    "not_available": "N/A"
+    "not_available": "N/A",
+    "remove": "Remove"
   },
   "scope_filter": {
     "title": "Scope Filter",
@@ -138,6 +139,7 @@
   "create_entity": {
     "title": "Create Entity",
     "description": "Create a new entity in the knowledge graph. The slug is a unique identifier for this entity.",
+    "identity_description": "Define the canonical identifier and category for this entity. Prefer an international or English term for the slug.",
     "slug": "Slug",
     "slug_help": "A unique identifier (e.g., person-albert-einstein)",
     "slug_required": "Slug is required",
@@ -146,7 +148,44 @@
     "summary_help": "Optional description of this entity",
     "create": "Create Entity",
     "creating": "Creating...",
-    "error": "Failed to create entity"
+    "error": "Failed to create entity",
+    "filter_options_error": "Failed to load entity category options",
+    "lookup_required": "Enter a term to search first.",
+    "lookup_error": "Failed to search existing entities.",
+    "ai_prefill_error": "AI prefill failed. Check that the API key is configured, then try again.",
+    "slug_format": "Slug must be 3-100 lowercase letters, digits, or hyphens, starting with a letter",
+    "alias_save_error": "Entity created, but failed to save aliases.",
+    "lookup_title": "Check before creating",
+    "lookup_description": "Search existing entity slugs and terms first. If nothing matches, prefill the form from the term.",
+    "lookup_term": "Entity term",
+    "lookup_help": "Example: Paracetamol, Doliprane, acetaminophen",
+    "lookup_action": "Search",
+    "lookup_existing_found": "Possible existing entities found. Open the existing entity instead of creating a duplicate.",
+    "lookup_no_match": "No existing entity found for this term. Choose a prefill option, then review before creating.",
+    "simple_prefill": "Prefill slug and display name",
+    "ai_prefill_progress": "AI prefill in progress",
+    "ai_prefilling": "Filling with AI...",
+    "ai_prefill": "Fill the form with AI",
+    "identity_title": "Identity",
+    "category": "Category",
+    "category_help": "Optional: Select a category to help organize this entity",
+    "display_name_title": "Display name",
+    "display_name_help": "Optional. Set the preferred human-facing name for this entity.",
+    "display_name_language": "Display name language",
+    "display_name_language_international": "International / No language",
+    "display_name_lang_international_short": "INTL",
+    "display_name": "Display name",
+    "display_name_placeholder": "Display name in {{language}}",
+    "display_name_placeholder_international": "International display name",
+    "summary_title": "Summary",
+    "summary_section_description": "Add descriptive text in one or more languages.",
+    "summary_language": "Summary language",
+    "summary": "Summary",
+    "summary_placeholder": "Summary in {{language}}",
+    "aliases_empty": "No aliases yet. Add synonyms or translated names if this entity is known by other terms.",
+    "alias_row": "Alias {{index}}",
+    "actions_title": "Actions",
+    "actions_description": "Review the information above, then create the entity or cancel."
   },
   "edit_entity": {
     "title": "Edit Entity",
@@ -687,6 +726,10 @@
     "editTerm": "Edit Term",
     "term": "Term",
     "language": "Language",
+    "termKind": "Term kind",
+    "kind_alias": "Alias",
+    "kind_abbreviation": "Abbreviation",
+    "kind_brand": "Brand",
     "displayOrder": "Display Order",
     "displayOrderHelp": "Lower numbers appear first (optional)",
     "display_order_value": "Display order: {{order}}",
@@ -704,6 +747,7 @@
     "lang_it": "Italian",
     "lang_pt": "Portuguese",
     "lang_zh": "Chinese",
-    "lang_ja": "Japanese"
+    "lang_ja": "Japanese",
+    "lang_la": "Latin"
   }
 }

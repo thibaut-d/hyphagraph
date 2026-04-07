@@ -1,10 +1,13 @@
 import { apiFetch } from "./client";
 
+export type EntityTermKind = "alias" | "abbreviation" | "brand";
+
 export interface EntityTermWrite {
   term: string;
   language?: string | null;
   display_order?: number | null;
   is_display_name?: boolean;
+  term_kind?: EntityTermKind;
 }
 
 export interface EntityTermRead {
@@ -14,6 +17,7 @@ export interface EntityTermRead {
   language: string | null;
   display_order: number | null;
   is_display_name?: boolean;
+  term_kind: EntityTermKind;
   created_at: string;
 }
 

@@ -48,6 +48,20 @@ export interface EntityFilterOptions {
   recency_options?: string[];
 }
 
+export interface EntityPrefillAlias {
+  term: string;
+  language: string | null;
+  term_kind?: "alias" | "abbreviation" | "brand";
+}
+
+export interface EntityPrefillDraft {
+  slug: string;
+  display_names: Record<string, string>;
+  summary: Record<string, string>;
+  aliases: EntityPrefillAlias[];
+  ui_category_id?: string | null;
+}
+
 export interface PaginatedResponse<T> {
   items: T[];
   total: number;
@@ -78,6 +92,16 @@ export function getEntity(id: string, signal?: AbortSignal): Promise<EntityRead>
 
 export function createEntity(payload: EntityWrite): Promise<EntityRead> {
   return apiFetch("/entities/", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function prefillEntity(payload: {
+  term: string;
+  user_language: string;
+}): Promise<EntityPrefillDraft> {
+  return apiFetch("/entities/prefill", {
     method: "POST",
     body: JSON.stringify(payload),
   });

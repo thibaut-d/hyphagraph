@@ -86,6 +86,28 @@ class TestEntityEndpoints:
         finally:
             app.dependency_overrides.clear()
 
+    async def test_prefill_entity_requires_configured_llm(
+        self,
+        mock_current_user,
+        override_get_db,
+    ):
+        """Test AI prefill fails visibly when the LLM provider is not configured."""
+        from app.dependencies.auth import get_current_user
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_current_user] = lambda: mock_current_user
+        try:
+            with patch("app.api.entities.is_llm_available", return_value=False):
+                async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                    response = await client.post(
+                        "/api/entities/prefill",
+                        json={"term": "Paracetamol", "user_language": "en"},
+                    )
+                    assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+                    assert response.json()["error"]["code"] == "LLM_SERVICE_UNAVAILABLE"
+        finally:
+            app.dependency_overrides.clear()
+
     async def test_get_entity(self, override_get_db):
         """Test getting specific entity."""
         app.dependency_overrides[get_db] = override_get_db

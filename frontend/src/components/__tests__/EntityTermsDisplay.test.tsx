@@ -21,6 +21,13 @@ vi.mock("react-i18next", () => ({
       const translations: Record<string, string> = {
         "entityTerms.loading": "Loading terms...",
         "entityTerms.alsoKnownAs": "Also known as",
+        "entityTerms.lang_en": "English",
+        "entityTerms.lang_fr": "French",
+        "entityTerms.lang_es": "Spanish",
+        "entityTerms.lang_de": "German",
+        "entityTerms.lang_it": "Italian",
+        "entityTerms.lang_pt": "Portuguese",
+        "entityTerms.lang_la": "Latin",
       };
       return translations[key] || defaultValue || key;
     },
@@ -42,6 +49,7 @@ describe("EntityTermsDisplay", () => {
     language: "en",
     display_order: null,
     is_display_name: false,
+    term_kind: "alias",
     created_at: "2025-01-01T00:00:00Z",
     ...overrides,
   });
@@ -202,8 +210,8 @@ describe("EntityTermsDisplay", () => {
       });
 
       // Check for language chips
-      expect(screen.getByText("EN")).toBeInTheDocument();
-      expect(screen.getByText("FR")).toBeInTheDocument();
+      expect(screen.getAllByText("English").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("French").length).toBeGreaterThan(0);
     });
 
     it("does not show language chip when language is null", async () => {
@@ -220,7 +228,7 @@ describe("EntityTermsDisplay", () => {
       });
 
       // Should not show any language chips
-      expect(screen.queryByText("EN")).not.toBeInTheDocument();
+      expect(screen.queryByText("English")).not.toBeInTheDocument();
     });
 
     it("renders multiple terms in full mode", async () => {
@@ -249,6 +257,7 @@ describe("EntityTermsDisplay", () => {
         createMockTerm({ id: "term-4", term: "German", language: "de" }),
         createMockTerm({ id: "term-5", term: "Italian", language: "it" }),
         createMockTerm({ id: "term-6", term: "Portuguese", language: "pt" }),
+        createMockTerm({ id: "term-7", term: "Paracetamolum", language: "la" }),
       ];
 
       vi.spyOn(entityTermsApi, "listEntityTerms").mockResolvedValue(mockTerms);
@@ -256,16 +265,17 @@ describe("EntityTermsDisplay", () => {
       renderWithNotifications(<EntityTermsDisplay entityId={mockEntityId} compact={false} />);
 
       await waitFor(() => {
-        expect(screen.getByText("English")).toBeInTheDocument();
+        expect(screen.getAllByText("English").length).toBeGreaterThan(0);
       });
 
       // Check language labels
-      expect(screen.getByText("EN")).toBeInTheDocument();
-      expect(screen.getByText("FR")).toBeInTheDocument();
-      expect(screen.getByText("ES")).toBeInTheDocument();
-      expect(screen.getByText("DE")).toBeInTheDocument();
-      expect(screen.getByText("IT")).toBeInTheDocument();
-      expect(screen.getByText("PT")).toBeInTheDocument();
+      expect(screen.getAllByText("English").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("French").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Spanish").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("German").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Italian").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Portuguese").length).toBeGreaterThan(0);
+      expect(screen.getByText("Latin")).toBeInTheDocument();
     });
 
     it("uppercases unknown language codes", async () => {

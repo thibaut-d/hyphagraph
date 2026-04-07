@@ -149,6 +149,7 @@ async def test_list_entity_terms_with_data(override_get_db, test_entity_with_ter
             assert data[0]["term"] == "Paracetamol"
             assert data[0]["display_order"] == 1
             assert data[0]["is_display_name"] is True
+            assert data[0]["term_kind"] == "alias"
             assert data[1]["term"] == "Paracétamol"
             assert data[1]["display_order"] == 2
             assert data[1]["is_display_name"] is False
@@ -205,6 +206,7 @@ async def test_create_entity_term(override_get_db, override_auth, test_entity):
             assert data["language"] == "en"
             assert data["display_order"] == 10
             assert data["is_display_name"] is True
+            assert data["term_kind"] == "alias"
             assert data["entity_id"] == str(test_entity.id)
             assert "id" in data
             assert "created_at" in data
@@ -236,6 +238,63 @@ async def test_create_entity_term_minimal(override_get_db, override_auth, test_e
                 assert data["language"] is None
                 assert data["display_order"] is None
                 assert data["is_display_name"] is False
+                assert data["term_kind"] == "alias"
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_create_entity_term_abbreviation(override_get_db, override_auth, test_entity):
+    """Test creating a term marked as an abbreviation."""
+    payload = {
+        "term": "FM",
+        "language": "en",
+        "term_kind": "abbreviation",
+    }
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides.update(override_auth)
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.post(
+                f"/api/entities/{test_entity.id}/terms",
+                json=payload,
+            )
+
+            assert response.status_code == 201
+            data = response.json()
+            assert data["term"] == "FM"
+            assert data["language"] == "en"
+            assert data["term_kind"] == "abbreviation"
+            assert data["is_display_name"] is False
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_create_entity_term_brand(override_get_db, override_auth, test_entity):
+    """Test creating a term marked as a brand name."""
+    payload = {
+        "term": "Doliprane",
+        "language": "fr",
+        "term_kind": "brand",
+    }
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides.update(override_auth)
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.post(
+                f"/api/entities/{test_entity.id}/terms",
+                json=payload,
+            )
+
+            assert response.status_code == 201
+            data = response.json()
+            assert data["term"] == "Doliprane"
+            assert data["language"] == "fr"
+            assert data["term_kind"] == "brand"
+            assert data["is_display_name"] is False
     finally:
         app.dependency_overrides.clear()
 

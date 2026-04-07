@@ -3,11 +3,16 @@ from uuid import UUID
 from typing import Optional, List
 
 from app.api.service_dependencies import get_entity_service
-from app.schemas.entity import EntityWrite, EntityRead
+from app.database import get_db
+from app.llm.client import get_llm_provider, is_llm_available
+from app.schemas.entity import EntityPrefillDraft, EntityPrefillRequest, EntityWrite, EntityRead
 from app.schemas.filters import EntityFilters, EntityFilterOptions
 from app.schemas.pagination import PaginatedResponse
 from app.services.entity_service import EntityService
+from app.services.entity_prefill_service import EntityPrefillService
 from app.dependencies.auth import get_current_user
+from app.utils.errors import LLMServiceUnavailableException
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
 
@@ -41,6 +46,26 @@ async def create_entity(
     user=Depends(get_current_user),
 ):
     return await service.create(payload, user_id=user.id)
+
+
+@router.post("/prefill", response_model=EntityPrefillDraft)
+async def prefill_entity(
+    payload: EntityPrefillRequest,
+    db: AsyncSession = Depends(get_db),
+    _user=Depends(get_current_user),
+):
+    """
+    Build an editable, non-authoritative draft for the create-entity form.
+
+    This endpoint never writes to the database. It requires an authenticated user
+    and a configured LLM provider because it may use external AI services.
+    """
+    if not is_llm_available():
+        raise LLMServiceUnavailableException(
+            details="LLM service is not configured. Please set OPENAI_API_KEY."
+        )
+    service = EntityPrefillService(db=db, llm_provider=get_llm_provider())
+    return await service.generate_draft(payload.term, payload.user_language)
 
 @router.get("/", response_model=PaginatedResponse[EntityRead])
 async def list_entities(

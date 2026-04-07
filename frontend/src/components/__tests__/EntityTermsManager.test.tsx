@@ -51,6 +51,8 @@ describe("EntityTermsManager", () => {
     term: "Paracetamol",
     language: "en",
     display_order: null,
+    is_display_name: false,
+    term_kind: "alias",
     created_at: "2025-01-01T00:00:00Z",
     ...overrides,
   });
@@ -159,6 +161,7 @@ describe("EntityTermsManager", () => {
             term: "Acetaminophen",
             language: null,
             display_order: null,
+            term_kind: "alias",
           }
         );
       });
@@ -309,6 +312,7 @@ describe("EntityTermsManager", () => {
               term: "Acetaminophen",
               language: "en",
               display_order: null,
+              term_kind: "alias",
             }
           );
         });
@@ -526,6 +530,7 @@ describe("EntityTermsManager", () => {
             term: "Acetaminophen",
             language: null,
             display_order: 2,
+            term_kind: "alias",
           }
         );
       });

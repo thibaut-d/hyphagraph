@@ -31,6 +31,9 @@ class EntityTerm(Base, UUIDMixin, TimestampMixin):
     # At most one display name per language, plus at most one international display name.
     is_display_name: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
 
+    # Non-display terms can be ordinary aliases or abbreviations/acronyms.
+    term_kind: Mapped[str] = mapped_column(String(32), nullable=False, default="alias", server_default=text("'alias'"))
+
     # Relationships
     entity = relationship("Entity", back_populates="terms")
 

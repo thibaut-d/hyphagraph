@@ -75,14 +75,15 @@ export function EntityTermsDisplay({
   const getLanguageLabel = (code: string | null): string => {
     if (!code) return "";
     const labels: Record<string, string> = {
-      en: "EN",
-      fr: "FR",
-      es: "ES",
-      de: "DE",
-      it: "IT",
-      pt: "PT",
-      zh: "ZH",
-      ja: "JA",
+      en: t("entityTerms.lang_en", "English"),
+      fr: t("entityTerms.lang_fr", "French"),
+      es: t("entityTerms.lang_es", "Spanish"),
+      de: t("entityTerms.lang_de", "German"),
+      it: t("entityTerms.lang_it", "Italian"),
+      pt: t("entityTerms.lang_pt", "Portuguese"),
+      zh: t("entityTerms.lang_zh", "Chinese"),
+      ja: t("entityTerms.lang_ja", "Japanese"),
+      la: t("entityTerms.lang_la", "Latin"),
     };
     return labels[code] || code.toUpperCase();
   };
@@ -98,6 +99,7 @@ export function EntityTermsDisplay({
             size="small"
             variant="outlined"
             icon={term.language ? undefined : <TranslateIcon />}
+            color={term.term_kind === "abbreviation" ? "secondary" : term.term_kind === "brand" ? "primary" : "default"}
           />
         ))}
       </Box>
@@ -132,6 +134,22 @@ export function EntityTermsDisplay({
             {term.language && (
               <Chip
                 label={getLanguageLabel(term.language)}
+                size="small"
+                variant="outlined"
+                sx={{ fontSize: "0.7rem", height: 18 }}
+              />
+            )}
+            {term.term_kind === "abbreviation" && (
+              <Chip
+                label={t("entityTerms.kind_abbreviation", "Abbreviation")}
+                size="small"
+                variant="outlined"
+                sx={{ fontSize: "0.7rem", height: 18 }}
+              />
+            )}
+            {term.term_kind === "brand" && (
+              <Chip
+                label={t("entityTerms.kind_brand", "Brand")}
                 size="small"
                 variant="outlined"
                 sx={{ fontSize: "0.7rem", height: 18 }}

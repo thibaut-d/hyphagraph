@@ -1,7 +1,7 @@
 from uuid import UUID
-from typing import Optional
+from typing import Literal, Optional
 from datetime import datetime
-from pydantic import Field
+from pydantic import Field, field_validator
 from app.schemas.base import Schema
 
 
@@ -71,6 +71,27 @@ class EntityPrefillAlias(Schema):
     """Draft alias term returned by the AI prefill endpoint."""
     term: str = Field(..., min_length=1, max_length=200)
     language: Optional[str] = Field(None, pattern=r"^[a-z]{2}$")
+    term_kind: Literal["alias", "abbreviation", "brand"] = "alias"
+
+    @field_validator("language", mode="before")
+    @classmethod
+    def normalize_language(cls, value: object) -> str | None:
+        if value is None:
+            return None
+        normalized = str(value).strip().lower()
+        if normalized in {"", "international"}:
+            return None
+        return normalized
+
+    @field_validator("term_kind", mode="before")
+    @classmethod
+    def normalize_term_kind(cls, value: object) -> str:
+        normalized = str(value or "").strip().lower()
+        if normalized in {"abbreviation", "abbr", "acronym", "initialism"}:
+            return "abbreviation"
+        if normalized in {"brand", "brand_name", "brand-name", "trade", "trade_name", "trademark"}:
+            return "brand"
+        return "alias"
 
 
 class EntityPrefillDraft(Schema):
