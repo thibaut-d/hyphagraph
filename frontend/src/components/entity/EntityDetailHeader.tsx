@@ -8,10 +8,10 @@ import {
   Breadcrumbs,
   Button,
   Chip,
+  Divider,
   Link,
   Typography,
 } from "@mui/material";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
@@ -84,46 +84,68 @@ export function EntityDetailHeader({
           <Typography color="text.primary">{primaryLabel}</Typography>
         </Breadcrumbs>
 
+        <Box>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+            <Typography variant="h4" sx={{ fontSize: { xs: "1.75rem", sm: "2.125rem" } }}>
+              {primaryLabel}
+            </Typography>
+            {displayName && (
+              <Typography variant="body2" color="text.secondary" sx={{ alignSelf: "center" }}>
+                {entity.slug}
+              </Typography>
+            )}
+            {entity.status === "draft" && (
+              <Chip
+                label={t("entity.status_draft", "Draft")}
+                size="small"
+                color="warning"
+                variant="outlined"
+                sx={{ alignSelf: "center" }}
+              />
+            )}
+          </Box>
+          {summary && (
+            <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 0.5 }}>
+              {summary}
+            </Typography>
+          )}
+          <Box sx={{ mt: 1.5 }}>
+            <EntityTermsDisplay entityId={entity.id} onTermsLoaded={handleTermsLoaded} />
+          </Box>
+        </Box>
+
+        <Divider />
+
         <Stack
           direction={{ xs: "column", sm: "row" }}
           justifyContent="space-between"
           alignItems={{ xs: "flex-start", sm: "center" }}
-          spacing={2}
+          spacing={1}
         >
-          <Box sx={{ flexGrow: 1 }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-              <Typography
-                variant="h4"
-                sx={{ fontSize: { xs: "1.75rem", sm: "2.125rem" } }}
-              >
-                {primaryLabel}
-              </Typography>
-              {displayName && (
-                <Typography variant="body2" color="text.secondary">
-                  {entity.slug}
-                </Typography>
-              )}
-              {entity.status === "draft" && (
-                <Chip
-                  label={t("entity.status_draft", "Draft")}
-                  size="small"
-                  color="warning"
-                  variant="outlined"
-                />
-              )}
-            </Box>
-            {summary && (
-              <Typography variant="subtitle2" color="text.secondary">
-                {summary}
-              </Typography>
-            )}
+          {/* Sub-view navigation */}
+          <Stack direction="row" spacing={1} flexWrap="wrap">
+            <Button
+              component={RouterLink}
+              to={entitySubpath(entity, "synthesis")}
+              variant="outlined"
+              startIcon={<AutoGraphIcon />}
+              size="small"
+            >
+              {t("entity.synthesis", "Synthesis")}
+            </Button>
+            <Button
+              component={RouterLink}
+              to={entitySubpath(entity, "disagreements")}
+              variant="outlined"
+              color="warning"
+              startIcon={<WarningAmberIcon />}
+              size="small"
+            >
+              {t("entity.disagreements", "Disagreements")}
+            </Button>
+          </Stack>
 
-            {/* Alternative Names/Aliases */}
-            <Box sx={{ mt: 2 }}>
-              <EntityTermsDisplay entityId={entity.id} onTermsLoaded={handleTermsLoaded} />
-            </Box>
-          </Box>
-
+          {/* Entity actions */}
           <Stack
             direction={{ xs: "column", sm: "row" }}
             spacing={1}
@@ -132,7 +154,7 @@ export function EntityDetailHeader({
             <Button
               component={RouterLink}
               to={`/sources/smart-discovery?entity=${entity.slug}`}
-              variant="contained"
+              variant="outlined"
               color="secondary"
               startIcon={<SearchIcon />}
               size="small"
@@ -143,7 +165,7 @@ export function EntityDetailHeader({
             <Button
               component={RouterLink}
               to={entitySubpath(entity, "edit")}
-              color="primary"
+              variant="outlined"
               startIcon={<EditIcon />}
               size="small"
               sx={{ width: { xs: "100%", sm: "auto" } }}
@@ -151,7 +173,18 @@ export function EntityDetailHeader({
               {t("common.edit", "Edit")}
             </Button>
             <Button
+              component={RouterLink}
+              to={`/relations/new?entity_id=${entity.id}`}
+              variant="contained"
+              startIcon={<AddIcon />}
+              size="small"
+              sx={{ width: { xs: "100%", sm: "auto" } }}
+            >
+              {t("relation.create", "Create relation")}
+            </Button>
+            <Button
               onClick={onDeleteClick}
+              variant="outlined"
               color="error"
               startIcon={<DeleteIcon />}
               size="small"
@@ -159,48 +192,8 @@ export function EntityDetailHeader({
             >
               {t("common.delete", "Delete")}
             </Button>
-            <Button
-              component={RouterLink}
-              to={`/relations/new?entity_id=${entity.id}`}
-              variant="outlined"
-              startIcon={<AddIcon />}
-              size="small"
-              sx={{ width: { xs: "100%", sm: "auto" } }}
-            >
-              {t("relation.create", "Create relation")}
-            </Button>
           </Stack>
         </Stack>
-
-        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-          <Button
-            component={RouterLink}
-            to="/entities"
-            startIcon={<ArrowBackIcon />}
-            size="small"
-          >
-            {t("common.back", "Back")}
-          </Button>
-          <Button
-            component={RouterLink}
-            to={entitySubpath(entity, "synthesis")}
-            startIcon={<AutoGraphIcon />}
-            size="small"
-            variant="outlined"
-          >
-            {t("entity.synthesis", "Synthesis")}
-          </Button>
-          <Button
-            component={RouterLink}
-            to={entitySubpath(entity, "disagreements")}
-            startIcon={<WarningAmberIcon />}
-            size="small"
-            variant="outlined"
-            color="warning"
-          >
-            {t("entity.disagreements", "Disagreements")}
-          </Button>
-        </Box>
       </Stack>
     </Paper>
   );
