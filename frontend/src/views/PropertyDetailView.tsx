@@ -36,6 +36,7 @@ import { getEntity } from "../api/entities";
 import type { EntityRead } from "../types/entity";
 import { EvidenceTrace } from "../components/EvidenceTrace";
 import { usePageErrorHandler } from "../hooks/usePageErrorHandler";
+import { entityPath, entitySubpath } from "../utils/entityPath";
 
 export function PropertyDetailView() {
   const { id, roleType } = useParams<{ id: string; roleType: string }>();
@@ -57,8 +58,9 @@ export function PropertyDetailView() {
 
     setLoading(true);
     setError(null);
-    Promise.all([getEntity(id), getExplanation(id, roleType)])
-      .then(([entityData, explanationData]) => {
+    getEntity(id)
+      .then(async (entityData) => {
+        const explanationData = await getExplanation(entityData.id, roleType);
         setEntity(entityData);
         setExplanation(explanationData);
       })
@@ -90,6 +92,7 @@ export function PropertyDetailView() {
   }
 
   const entityLabel = entity.slug;
+  const canonicalEntityPath = entityPath(entity);
 
   const contradictionDetail = explanation.contradictions;
   const hasContradictions =
@@ -179,7 +182,7 @@ export function PropertyDetailView() {
         <Link component={RouterLink} to="/entities" underline="hover">
           {t("menu.entities", "Entities")}
         </Link>
-        <Link component={RouterLink} to={`/entities/${id}`} underline="hover">
+        <Link component={RouterLink} to={canonicalEntityPath} underline="hover">
           {entityLabel}
         </Link>
         <Typography color="text.primary">{roleType}</Typography>
@@ -188,7 +191,7 @@ export function PropertyDetailView() {
       <Box>
         <Button
           startIcon={<ArrowBackIcon />}
-          onClick={() => navigate(`/entities/${id}`)}
+          onClick={() => navigate(canonicalEntityPath)}
           variant="outlined"
           size="small"
         >
@@ -331,7 +334,7 @@ export function PropertyDetailView() {
       </Box>
 
       <Box sx={{ display: "flex", justifyContent: "center" }}>
-        <Button variant="outlined" onClick={() => navigate(`/entities/${id}/properties/${roleType}/evidence`)}>
+        <Button variant="outlined" onClick={() => navigate(entitySubpath(entity, `properties/${roleType}/evidence`))}>
           {t("property.view_all_evidence", "View All Related Evidence")}
         </Button>
       </Box>

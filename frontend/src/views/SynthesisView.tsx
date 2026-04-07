@@ -41,6 +41,7 @@ import { SynthesisRelationsSection } from "../components/synthesis/SynthesisRela
 import { SynthesisStatsSection } from "../components/synthesis/SynthesisStatsSection";
 import type { RelationRead } from "../types/relation";
 import { useEntityInferenceDetail } from "../hooks/useEntityInferenceDetail";
+import { entityPath, entitySubpath } from "../utils/entityPath";
 
 /**
  * SynthesisView Component
@@ -96,6 +97,7 @@ export function SynthesisView() {
   }
 
   const entityLabel = entity.slug;
+  const canonicalEntityPath = entityPath(entity);
 
   // Calculate synthesis statistics
   const relationsByKind = inference?.relations_by_kind || {};
@@ -147,9 +149,9 @@ export function SynthesisView() {
   return (
     <Stack spacing={3}>
       <SynthesisHeaderSection
-        entityId={id!}
+        entityId={entity.slug}
         entityLabel={entityLabel}
-        onBack={() => navigate(`/entities/${id}`)}
+        onBack={() => navigate(canonicalEntityPath)}
       />
 
       {hasData ? (
@@ -218,14 +220,14 @@ export function SynthesisView() {
           <SynthesisRelationsSection
             summaries={relationKindSummaries}
             relationsByKind={relationsByKind}
-            onSelectKind={(kind) => navigate(`/entities/${id}/properties/${kind}`)}
+            onSelectKind={(kind) => navigate(entitySubpath(entity, `properties/${kind}`))}
           />
 
           <SynthesisFooterSection
             contradictionCount={contradictionTotal}
             relationTypeCount={relationTypeCount}
-            onViewDisagreements={() => navigate(`/entities/${id}/disagreements`)}
-            onBackToDetail={() => navigate(`/entities/${id}`)}
+            onViewDisagreements={() => navigate(entitySubpath(entity, "disagreements"))}
+            onBackToDetail={() => navigate(canonicalEntityPath)}
           />
         </>
       ) : (

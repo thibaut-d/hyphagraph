@@ -129,7 +129,7 @@ describe('CreateEntityView', () => {
     });
     expect(screen.getByRole('link', { name: 'paracetamol' })).toHaveAttribute(
       'href',
-      '/entities/entity-1',
+      '/entities/paracetamol',
     );
   });
 

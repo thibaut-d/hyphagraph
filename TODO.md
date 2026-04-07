@@ -2,6 +2,46 @@
 
 **Last updated**: 2026-04-05 (story remediation pass)
 
+## Active Plan: Slug Entity URLs
+
+### Objective
+Use current entity slugs as canonical public entity URLs while keeping UUID URLs working for compatibility.
+
+### Impacted modules
+- `backend/app/api/entities.py`
+- `backend/app/api/inferences.py`
+- `backend/app/api/explain.py`
+- `backend/app/services/entity_service.py`
+- `backend/app/repositories/entity_repo.py`
+- `frontend/src/views/`
+- `frontend/src/components/`
+- `frontend/src/hooks/`
+- targeted backend/frontend tests
+
+### Assumptions
+- Current entity revision slugs are unique and safe as human-facing identifiers.
+- UUIDs remain the internal identifier for writes, entity terms, and deletion.
+- Slug lookup must not change inference computation, evidence visibility, or revision provenance.
+
+### Plan
+1. Add backend current-slug lookup and ref resolution.
+2. Accept either UUID or slug for read/inference/explanation endpoints.
+3. Generate entity links with slugs where slug data is available.
+4. Resolve slug routes to UUIDs before frontend mutation or term operations.
+5. Add focused regression coverage and run targeted checks.
+
+### Validation
+- Backend pytest for entity endpoints and inference/explanation affected paths.
+- Frontend Vitest for entity detail, edit, list/search/link generation, and affected evidence/synthesis navigation.
+- `git diff --check`.
+
+### Risks
+- Frontend/backend contract drift if a route starts passing slugs to UUID-only write endpoints.
+- Evidence filtering can break if route slug is compared to relation `entity_id`; resolved UUID must be used there.
+
+### Status
+validated
+
 ## Open Findings
 
 - [x] **STORY-REL-M2** `frontend/src/views/CreateRelationView.tsx:146` — successful relation creation now navigates to the created relation detail page. Verified by `frontend/src/views/__tests__/CreateRelationView.test.tsx`.

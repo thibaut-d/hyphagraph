@@ -187,6 +187,31 @@ describe('EntityDetailView', () => {
       });
     });
 
+    it('loads entity data by slug and fetches inference by resolved UUID', async () => {
+      renderWithRouter('aspirin');
+
+      await waitFor(() => {
+        expect(getEntity).toHaveBeenCalledWith('aspirin', expect.any(AbortSignal));
+        expect(getInferenceForEntity).toHaveBeenCalledWith(
+          '123e4567-e89b-12d3-a456-426614174000',
+          {}
+        );
+      });
+
+      expect(mockNavigate).not.toHaveBeenCalledWith(
+        '/entities/aspirin',
+        expect.objectContaining({ replace: true })
+      );
+    });
+
+    it('redirects UUID detail URLs to the canonical slug URL', async () => {
+      renderWithRouter('123e4567-e89b-12d3-a456-426614174000');
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/entities/aspirin', { replace: true });
+      });
+    });
+
     it('shows edit button', async () => {
       renderWithRouter('123e4567-e89b-12d3-a456-426614174000');
 
@@ -325,7 +350,7 @@ describe('EntityDetailView', () => {
       renderWithRouter('123e4567-e89b-12d3-a456-426614174000');
 
       await waitFor(() => {
-        expect(screen.getByText(/scope filter/i)).toBeInTheDocument();
+        expect(screen.getByText(/^scope filter$/i)).toBeInTheDocument();
       });
     });
 
@@ -333,12 +358,12 @@ describe('EntityDetailView', () => {
       renderWithRouter('123e4567-e89b-12d3-a456-426614174000');
 
       await waitFor(() => {
-        const accordion = screen.getByText(/scope filter/i);
+        const accordion = screen.getByText(/^scope filter$/i);
         fireEvent.click(accordion);
       });
 
       await waitFor(() => {
-        expect(screen.getByLabelText(/attribute/i)).toBeInTheDocument();
+        expect(screen.getByLabelText(/scope dimension/i)).toBeInTheDocument();
         expect(screen.getByLabelText(/value/i)).toBeInTheDocument();
       });
     });
@@ -348,18 +373,17 @@ describe('EntityDetailView', () => {
 
       // Expand accordion
       await waitFor(() => {
-        fireEvent.click(screen.getByText(/scope filter/i));
+        fireEvent.click(screen.getByText(/^scope filter$/i));
       });
 
       // Fill in filter
       await waitFor(() => {
-        const attributeInput = screen.getByLabelText(/attribute/i);
+        fireEvent.click(screen.getByText(/population: adults/i));
         const valueInput = screen.getByLabelText(/value/i);
 
-        fireEvent.change(attributeInput, { target: { value: 'population' } });
         fireEvent.change(valueInput, { target: { value: 'adults' } });
 
-        const addButton = screen.getByText('Add');
+        const addButton = screen.getByText('Apply scope filter');
         fireEvent.click(addButton);
       });
 
@@ -377,22 +401,20 @@ describe('EntityDetailView', () => {
 
       // Add a filter
       await waitFor(() => {
-        fireEvent.click(screen.getByText(/scope filter/i));
+        fireEvent.click(screen.getByText(/^scope filter$/i));
       });
 
       await waitFor(() => {
-        fireEvent.change(screen.getByLabelText(/attribute/i), {
-          target: { value: 'population' },
-        });
+        fireEvent.click(screen.getByText(/population: adults/i));
         fireEvent.change(screen.getByLabelText(/value/i), {
           target: { value: 'adults' },
         });
-        fireEvent.click(screen.getByText('Add'));
+        fireEvent.click(screen.getByText('Apply scope filter'));
       });
 
       // Should show chip
       await waitFor(() => {
-        expect(screen.getByText(/population: adults/i)).toBeInTheDocument();
+        expect(screen.getByText('Population: adults')).toBeInTheDocument();
       });
     });
 
@@ -401,17 +423,15 @@ describe('EntityDetailView', () => {
 
       // Add a filter first
       await waitFor(() => {
-        fireEvent.click(screen.getByText(/scope filter/i));
+        fireEvent.click(screen.getByText(/^scope filter$/i));
       });
 
       await waitFor(() => {
-        fireEvent.change(screen.getByLabelText(/attribute/i), {
-          target: { value: 'population' },
-        });
+        fireEvent.click(screen.getByText(/population: adults/i));
         fireEvent.change(screen.getByLabelText(/value/i), {
           target: { value: 'adults' },
         });
-        fireEvent.click(screen.getByText('Add'));
+        fireEvent.click(screen.getByText('Apply scope filter'));
       });
 
       // Clear the filter count
@@ -419,7 +439,7 @@ describe('EntityDetailView', () => {
 
       // Click delete on chip
       await waitFor(() => {
-        const chip = screen.getByText(/population: adults/i);
+        const chip = screen.getByText('Population: adults');
         const deleteIcon = chip.parentElement?.querySelector('[data-testid="CancelIcon"]');
         if (deleteIcon) fireEvent.click(deleteIcon);
       });

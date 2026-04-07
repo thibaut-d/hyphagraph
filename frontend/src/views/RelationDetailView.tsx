@@ -261,7 +261,11 @@ export function RelationDetailView() {
                       <Typography variant="subtitle2" color="text.secondary">
                         {role.role_type}
                       </Typography>
-                      <Link component={RouterLink} to={`/entities/${role.entity_id}`} underline="hover">
+                      <Link
+                        component={RouterLink}
+                        to={`/entities/${role.entity_slug || role.entity_id}`}
+                        underline="hover"
+                      >
                         {role.entity_slug || role.entity_id}
                       </Link>
                     </Box>

@@ -123,7 +123,7 @@ describe("RelationDetailView", () => {
     expect(screen.getByText(/Document-grounded relation/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "View source" })).toHaveAttribute("href", "/sources/src-1");
     expect(screen.getByRole("link", { name: "Edit" })).toHaveAttribute("href", "/relations/rel-1/edit");
-    expect(screen.getByRole("link", { name: "aspirin" })).toHaveAttribute("href", "/entities/entity-1");
+    expect(screen.getByRole("link", { name: "aspirin" })).toHaveAttribute("href", "/entities/aspirin");
     expect(screen.getByText(/Relation ID:/)).toBeInTheDocument();
   });
 

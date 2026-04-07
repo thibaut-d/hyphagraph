@@ -118,12 +118,12 @@ async def list_entities(
         offset=offset
     )
 
-@router.get("/{entity_id}", response_model=EntityRead)
+@router.get("/{entity_ref}", response_model=EntityRead)
 async def get_entity(
-    entity_id: UUID,
+    entity_ref: str,
     service: EntityService = Depends(get_entity_service),
 ):
-    return await service.get(entity_id)
+    return await service.get_by_ref(entity_ref)
 
 @router.put("/{entity_id}", response_model=EntityRead)
 async def update_entity(

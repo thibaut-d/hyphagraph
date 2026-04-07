@@ -410,7 +410,7 @@ export default function InferencesView() {
                 {filteredRows.map((row) => (
                   <TableRow key={`${row.entityId}-${row.roleType}`} hover>
                     <TableCell>
-                      <Button component={RouterLink} to={`/entities/${row.entityId}`} size="small">
+                      <Button component={RouterLink} to={`/entities/${row.entitySlug}`} size="small">
                         {row.entitySlug}
                       </Button>
                     </TableCell>
@@ -431,7 +431,7 @@ export default function InferencesView() {
                     <TableCell align="right">
                       <Button
                         component={RouterLink}
-                        to={`/entities/${row.entityId}/properties/${row.roleType}`}
+                        to={`/entities/${row.entitySlug}/properties/${row.roleType}`}
                         size="small"
                         startIcon={<HelpOutlineIcon />}
                         variant="outlined"

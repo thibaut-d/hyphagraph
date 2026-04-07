@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Alert, Typography, Stack, CircularProgress } from "@mui/material";
@@ -29,7 +30,7 @@ export function EntityDetailView() {
     error: inferenceError,
     sourceWarning,
     loadInference,
-  } = useEntityInference(id);
+  } = useEntityInference(entity?.id);
   const {
     scopeFilter,
     newFilterKey,
@@ -57,6 +58,12 @@ export function EntityDetailView() {
     activeFilterCount: evidenceFilterCount,
   } = useFilterDrawer();
 
+  useEffect(() => {
+    if (id && entity?.slug && id !== entity.slug) {
+      navigate(`/entities/${entity.slug}`, { replace: true });
+    }
+  }, [entity?.slug, id, navigate]);
+
   // Use inference filtering hook
   const { filteredInference, hiddenRelationsCount } = useInferenceFiltering(
     inference,
@@ -67,8 +74,8 @@ export function EntityDetailView() {
 
   // Handler functions
   const handleDeleteConfirm = () => {
-    if (!id) return;
-    confirmDelete(id, () => navigate("/entities"));
+    if (!entity) return;
+    confirmDelete(entity.id, () => navigate("/entities"));
   };
 
   const handleAddFilter = () => {

@@ -339,7 +339,7 @@ export function SourceRelationsSection({
                                           component="span"
                                           sx={{ display: "inline-flex", alignItems: "baseline", gap: 0.5 }}
                                         >
-                                          <Link component={RouterLink} to={`/entities/${role.entity_id}`}>
+                                          <Link component={RouterLink} to={`/entities/${role.entity_slug || role.entity_id}`}>
                                             {entityLabel}
                                           </Link>
                                           <Typography component="span" variant="caption" color="text.secondary">

@@ -26,6 +26,7 @@ import {
   type RelationSearchResult,
 } from "../api/search";
 import { usePageErrorHandler } from "../hooks/usePageErrorHandler";
+import { entityPath } from "../utils/entityPath";
 
 const RESULTS_PER_PAGE = 20;
 
@@ -131,7 +132,7 @@ export function SearchView() {
 
   const getResultLink = (result: SearchResult): string => {
     if (result.type === "entity") {
-      return `/entities/${result.id}`;
+      return entityPath(result);
     } else if (result.type === "source") {
       return `/sources/${result.id}`;
     } else if (result.type === "relation") {

@@ -23,10 +23,8 @@ export function useEntityInferenceDetail(
       throw new Error("Missing entity ID");
     }
 
-    const [entity, inference] = await Promise.all([
-      getEntity(entityId),
-      getInferenceDetailForEntity(entityId),
-    ]);
+    const entity = await getEntity(entityId);
+    const inference = await getInferenceDetailForEntity(entity.id);
 
     return { entity, inference };
   }, [entityId]);

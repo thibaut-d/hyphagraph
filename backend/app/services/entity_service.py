@@ -1,11 +1,11 @@
 import asyncio
 import logging
+from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 from typing import Optional, Tuple
-from uuid import UUID
 
 from app.schemas.entity import EntityWrite, EntityRead
 from app.schemas.filters import EntityFilters, EntityFilterOptions, UICategoryOption, ClinicalEffectOption
@@ -106,6 +106,30 @@ class EntityService:
                 entity_id=str(entity_id)
             )
 
+        return await self._read_confirmed_entity(entity, str(entity_id))
+
+    async def get_by_slug(self, slug: str) -> EntityRead:
+        """Get entity by its current confirmed slug."""
+        entity = await self.repo.get_by_current_slug(slug)
+        if not entity:
+            raise EntityNotFoundException(entity_id=slug)
+
+        return await self._read_confirmed_entity(entity, slug)
+
+    async def get_by_ref(self, entity_ref: str) -> EntityRead:
+        """Get entity by UUID string or current confirmed slug."""
+        try:
+            return await self.get(UUID(entity_ref))
+        except ValueError:
+            return await self.get_by_slug(entity_ref)
+
+    async def resolve_ref_to_id(self, entity_ref: str) -> UUID:
+        """Resolve a UUID string or current confirmed slug to an entity UUID."""
+        entity = await self.get_by_ref(entity_ref)
+        return entity.id
+
+    async def _read_confirmed_entity(self, entity: Entity, lookup_ref: str) -> EntityRead:
+        """Map an entity to its current confirmed read model."""
         # Get current revision
         current_revision = await get_current_revision(
             db=self.db,
@@ -114,7 +138,7 @@ class EntityService:
             parent_id=entity.id,
         )
         if current_revision is None or current_revision.status != "confirmed":
-            raise EntityNotFoundException(entity_id=str(entity_id))
+            raise EntityNotFoundException(entity_id=lookup_ref)
 
         result = entity_to_read(entity, current_revision)
         result.consensus_level = await self.derived_properties_service.get_entity_consensus_level(entity.id)

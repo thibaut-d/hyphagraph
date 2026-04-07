@@ -8,7 +8,6 @@ allowing users to trace inference scores back to source documents.
 import logging
 
 from fastapi import APIRouter, Depends
-from uuid import UUID
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +16,9 @@ from app.api.inference_dependencies import (
     get_explanation_service,
     get_inference_scope_query,
 )
+from app.api.service_dependencies import get_entity_service
 from app.schemas.explanation import ExplanationRead
+from app.services.entity_service import EntityService
 from app.services.explanation_service import ExplanationService
 from app.utils.errors import AppException, ErrorCode
 
@@ -25,11 +26,12 @@ from app.utils.errors import AppException, ErrorCode
 router = APIRouter()
 
 
-@router.get("/inference/{entity_id}/{role_type}", response_model=ExplanationRead)
+@router.get("/inference/{entity_ref}/{role_type}", response_model=ExplanationRead)
 async def explain_inference(
-    entity_id: UUID,
+    entity_ref: str,
     role_type: str,
     query: InferenceScopeQuery = Depends(get_inference_scope_query),
+    entity_service: EntityService = Depends(get_entity_service),
     service: ExplanationService = Depends(get_explanation_service),
 ):
     """
@@ -60,6 +62,7 @@ async def explain_inference(
         404: Role type not found in computed inference
         500: Internal server error during inference computation
     """
+    entity_id = await entity_service.resolve_ref_to_id(entity_ref)
     try:
         return await service.explain_inference(entity_id, role_type, query.scope_filter)
     except ValueError:

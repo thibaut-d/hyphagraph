@@ -33,6 +33,7 @@ import { useFilterOptionsCache } from "../hooks/useFilterOptionsCache";
 import { usePersistedFilters } from "../hooks/usePersistedFilters";
 import { useDebounce } from "../hooks/useDebounce";
 import { useInfiniteScroll } from "../hooks/useInfiniteScroll";
+import { entityPath } from "../utils/entityPath";
 
 const PAGE_SIZE = 50;
 
@@ -368,7 +369,7 @@ export function EntitiesView() {
                     <ListItemText
                       primary={
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                          <Link component={RouterLink} to={`/entities/${e.id}`}>
+                          <Link component={RouterLink} to={entityPath(e)}>
                             {e.slug}
                           </Link>
                           {categoryLabel && (

@@ -1,8 +1,10 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from uuid import UUID
 
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.models.entity import Entity
+from app.models.entity_revision import EntityRevision
 
 
 class EntityRepository:
@@ -19,6 +21,18 @@ class EntityRepository:
 
     async def get_by_id(self, entity_id: UUID) -> Entity | None:
         stmt = select(Entity).where(Entity.id == entity_id)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_by_current_slug(self, slug: str) -> Entity | None:
+        stmt = (
+            select(Entity)
+            .join(EntityRevision, Entity.id == EntityRevision.entity_id)
+            .where(
+                EntityRevision.slug == slug,
+                EntityRevision.is_current == True,
+            )
+        )
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 

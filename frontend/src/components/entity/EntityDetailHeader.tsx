@@ -21,6 +21,7 @@ import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import { EntityRead } from "../../types/entity";
 import { EntityTermsDisplay } from "../EntityTermsDisplay";
 import type { EntityTermRead } from "../../api/entityTerms";
+import { entitySubpath } from "../../utils/entityPath";
 
 function normalizeUiLanguage(language: string): string {
   return language.split("-")[0] || "en";
@@ -94,7 +95,7 @@ export function EntityDetailHeader({
           </Button>
           <Button
             component={RouterLink}
-            to={`/entities/${entity.id}/synthesis`}
+            to={entitySubpath(entity, "synthesis")}
             startIcon={<AutoGraphIcon />}
             size="small"
             variant="outlined"
@@ -103,7 +104,7 @@ export function EntityDetailHeader({
           </Button>
           <Button
             component={RouterLink}
-            to={`/entities/${entity.id}/disagreements`}
+            to={entitySubpath(entity, "disagreements")}
             startIcon={<WarningAmberIcon />}
             size="small"
             variant="outlined"
@@ -170,7 +171,7 @@ export function EntityDetailHeader({
             </Button>
             <Button
               component={RouterLink}
-              to={`/entities/${entity.id}/edit`}
+              to={entitySubpath(entity, "edit")}
               color="primary"
               startIcon={<EditIcon />}
               size="small"

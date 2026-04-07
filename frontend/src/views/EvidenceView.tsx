@@ -72,7 +72,7 @@ export function EvidenceView() {
   const entity = data?.entity ?? null;
   const inference = data?.inference ?? null;
   const { relations: fallbackRelations, sourceLoadFailures } = useEvidenceRelations(
-    id,
+    entity?.id,
     roleType,
     inference?.evidence_items ? null : inference,
   );
@@ -80,7 +80,7 @@ export function EvidenceView() {
     ? inference.evidence_items.filter((relation: EvidenceItemRead) =>
         roleType
           ? relation.roles.some(
-              (role) => role.entity_id === id && role.role_type === roleType,
+              (role) => role.entity_id === entity?.id && role.role_type === roleType,
             )
           : true,
       )
@@ -150,19 +150,19 @@ export function EvidenceView() {
   return (
     <Stack spacing={3}>
       <EvidenceHeaderSection
-        entityId={id!}
+        entityId={entity.slug}
         entityLabel={entityLabel}
         roleType={roleType}
         relationCount={relations.length}
         onBack={() =>
           roleType
-            ? navigate(`/entities/${id}/properties/${roleType}`)
-            : navigate(`/entities/${id}`)
+            ? navigate(`/entities/${entity.slug}/properties/${roleType}`)
+            : navigate(`/entities/${entity.slug}`)
         }
       />
 
       <EvidenceTableSection
-        entityId={id!}
+        entityId={entity.id}
         entityLabel={entityLabel}
         language={i18n.language}
         roleType={roleType}

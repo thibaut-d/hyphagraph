@@ -25,6 +25,7 @@ import { EntityRead } from "../types/entity";
 import { EntityTermsManager } from "../components/EntityTermsManager";
 import { useNotification } from "../notifications/NotificationContext";
 import { useAsyncAction } from "../hooks/useAsyncAction";
+import { entityPath } from "../utils/entityPath";
 import { slugifyInput } from "../utils/slug";
 
 type SummaryMap = Record<string, string>;
@@ -178,7 +179,7 @@ export function EditEntityView() {
       return;
     }
 
-    if (!id) return;
+    if (!entity) return;
 
     const result = await runSave(async () => {
       const summary = Object.fromEntries(
@@ -193,10 +194,10 @@ export function EditEntityView() {
         ui_category_id: uiCategoryId || undefined,
       };
 
-      await updateEntity(id, payload);
+      const updatedEntity = await updateEntity(entity.id, payload);
 
       // Navigate back to the entity detail page
-      navigate(`/entities/${id}`);
+      navigate(entityPath(updatedEntity));
     }, t("common.error", "An error occurred"));
 
     if (!result.ok) {
@@ -229,7 +230,7 @@ export function EditEntityView() {
       <Stack spacing={3}>
         {/* Header with back button */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-          <IconButton onClick={() => navigate(`/entities/${id}`)} size="small">
+          <IconButton onClick={() => navigate(entityPath(entity))} size="small">
             <ArrowBackIcon />
           </IconButton>
           <Typography variant="h5" sx={{ fontWeight: 600 }}>
@@ -363,7 +364,7 @@ export function EditEntityView() {
             </FormSection>
 
             {/* Entity Terms Manager */}
-            {id && (
+            {entity && (
               <FormSection
                 title={t("edit_entity.terms_title", "Names and terms")}
                 description={t(
@@ -371,7 +372,7 @@ export function EditEntityView() {
                   "Manage display names, aliases, abbreviations, and brands for this entity.",
                 )}
               >
-                <EntityTermsManager entityId={id} readonly={saving} showHeader={false} />
+                <EntityTermsManager entityId={entity.id} readonly={saving} showHeader={false} />
               </FormSection>
             )}
 
@@ -385,7 +386,7 @@ export function EditEntityView() {
               <Box sx={{ display: "flex", gap: 2 }}>
                 <Button
                   variant="outlined"
-                  onClick={() => navigate(`/entities/${id}`)}
+                  onClick={() => navigate(entityPath(entity))}
                   disabled={saving}
                   fullWidth
                 >

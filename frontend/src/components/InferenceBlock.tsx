@@ -266,6 +266,7 @@ function RoleInferenceCard({
 
 export function InferenceBlock({
   inference,
+  currentEntitySlug,
 }: {
   inference: InferenceRead | null;
   currentEntitySlug?: string;
@@ -295,7 +296,7 @@ export function InferenceBlock({
               <RoleInferenceCard
                 key={roleInf.role_type}
                 roleInference={roleInf}
-                entityId={inference.entity_id}
+                entityId={currentEntitySlug || inference.entity_id}
               />
             ))}
           </Stack>

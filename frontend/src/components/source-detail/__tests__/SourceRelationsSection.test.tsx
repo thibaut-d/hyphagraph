@@ -97,7 +97,7 @@ describe("SourceRelationsSection", () => {
 
     expect(screen.getByRole("link", { name: "aspirin" })).toHaveAttribute(
       "href",
-      "/entities/entity-1",
+      "/entities/aspirin",
     );
     expect(screen.getByRole("link", { name: "entity-2" })).toHaveAttribute(
       "href",
