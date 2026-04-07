@@ -1,17 +1,26 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from uuid import UUID
 from typing import Optional, List
 
 from app.api.service_dependencies import get_entity_service
 from app.database import get_db
 from app.llm.client import get_llm_provider, is_llm_available
-from app.schemas.entity import EntityPrefillDraft, EntityPrefillRequest, EntityWrite, EntityRead
+from app.schemas.entity import (
+    EntityPrefillDraft,
+    EntityPrefillRequest,
+    EntitySmartSuggestRequest,
+    EntitySmartSuggestResponse,
+    EntityWrite,
+    EntityRead,
+)
 from app.schemas.filters import EntityFilters, EntityFilterOptions
 from app.schemas.pagination import PaginatedResponse
 from app.services.entity_service import EntityService
 from app.services.entity_prefill_service import EntityPrefillService
+from app.services.entity_suggest_service import EntitySuggestService
 from app.dependencies.auth import get_current_user
 from app.utils.errors import LLMServiceUnavailableException
+from app.utils.rate_limit import limiter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
@@ -66,6 +75,34 @@ async def prefill_entity(
         )
     service = EntityPrefillService(db=db, llm_provider=get_llm_provider())
     return await service.generate_draft(payload.term, payload.user_language)
+
+
+@router.post("/smart-suggest", response_model=EntitySmartSuggestResponse)
+@limiter.limit("10/minute")
+async def smart_suggest_entities(
+    request: Request,
+    payload: EntitySmartSuggestRequest,
+    _user=Depends(get_current_user),
+) -> EntitySmartSuggestResponse:
+    """
+    Suggest entity term names for a free-text topic query.
+
+    Uses an LLM to propose a list of canonical (generic, non-brand) entity names
+    relevant to the given topic. The result is non-authoritative and is presented
+    to the user for review before any entities are created.
+
+    This endpoint never writes to the database.
+    """
+    if not is_llm_available():
+        raise LLMServiceUnavailableException(
+            details="LLM service is not configured. Please set OPENAI_API_KEY."
+        )
+    service = EntitySuggestService(llm_provider=get_llm_provider())
+    terms = await service.suggest_entity_terms(
+        payload.query, payload.count, payload.user_language
+    )
+    return EntitySmartSuggestResponse(terms=terms, query_used=payload.query)
+
 
 @router.get("/", response_model=PaginatedResponse[EntityRead])
 async def list_entities(

@@ -767,5 +767,26 @@
     "lang_zh": "Chinese",
     "lang_ja": "Japanese",
     "lang_la": "Latin"
+  },
+  "entity_smart_discover": {
+    "button": "Smart Discover",
+    "dialog_title": "Smart Discover Entities",
+    "dialog_description": "Describe a topic and the AI will propose a list of relevant entity names for you to review before creating them.",
+    "query_label": "Topic or area of interest",
+    "query_placeholder": "e.g. widespread chronic pain medication",
+    "query_help": "Describe the domain, condition, or substance area to explore.",
+    "count_label": "Number of entities: {{count}}",
+    "discover_button": "Discover",
+    "discovering": "Discovering...",
+    "review_title": "Review suggested entities ({{count}})",
+    "review_description": "Add or remove entities from the list. Each will be created using AI prefill.",
+    "add_term_label": "Add entity name",
+    "add_term_button": "Add",
+    "create_button": "Smart Create ({{count}})",
+    "creating": "Creating {{done}} / {{total}}...",
+    "done_created": "Created {{count}} entities",
+    "done_failed": "{{count}} failed: {{terms}}",
+    "empty_list_warning": "No entities in the list. Add some terms to continue.",
+    "back_button": "Back"
   }
 }

@@ -767,5 +767,26 @@
       "supports": "Soutient",
       "contradicts": "Contredit"
     }
+  },
+  "entity_smart_discover": {
+    "button": "Découverte IA",
+    "dialog_title": "Découverte intelligente d'entités",
+    "dialog_description": "Décrivez un sujet et l'IA proposera une liste de noms d'entités pertinentes à vérifier avant de les créer.",
+    "query_label": "Sujet ou domaine d'intérêt",
+    "query_placeholder": "ex. médicament contre la douleur chronique",
+    "query_help": "Décrivez le domaine, la pathologie ou la substance à explorer.",
+    "count_label": "Nombre d'entités : {{count}}",
+    "discover_button": "Découvrir",
+    "discovering": "Découverte en cours...",
+    "review_title": "Vérifier les entités suggérées ({{count}})",
+    "review_description": "Ajoutez ou supprimez des entités de la liste. Chacune sera créée avec le préremplissage IA.",
+    "add_term_label": "Ajouter un nom d'entité",
+    "add_term_button": "Ajouter",
+    "create_button": "Créer ({{count}})",
+    "creating": "Création {{done}} / {{total}}...",
+    "done_created": "{{count}} entité(s) créée(s)",
+    "done_failed": "{{count}} échec(s) : {{terms}}",
+    "empty_list_warning": "La liste est vide. Ajoutez des termes pour continuer.",
+    "back_button": "Retour"
   }
 }

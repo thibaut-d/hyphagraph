@@ -20,11 +20,13 @@ import {
   Chip,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import UploadIcon from "@mui/icons-material/Upload";
 import ClearAllIcon from "@mui/icons-material/ClearAll";
 
 import { FilterDrawer, FilterSection, CheckboxFilter, SearchFilter, RangeFilter } from "../components/filters";
+import { EntitySmartDiscoveryDialog } from "../components/entity/EntitySmartDiscoveryDialog";
 import { ScrollToTop } from "../components/ScrollToTop";
 import { ExportMenu } from "../components/ExportMenu";
 import { useFilterDrawer } from "../hooks/useFilterDrawer";
@@ -44,6 +46,7 @@ export function EntitiesView() {
   const [isLoading, setIsLoading] = useState(true);
   const [hasMore, setHasMore] = useState(true);
   const [offset, setOffset] = useState(0);
+  const [smartDiscoveryOpen, setSmartDiscoveryOpen] = useState(false);
   const filterOptions = useFilterOptionsCache<EntityFilterOptions>(
     'entity-filter-options-cache',
     getEntityFilterOptions,
@@ -303,6 +306,14 @@ export function EntitiesView() {
                 {t("entities.import", "Import")}
               </Button>
               <Button
+                variant="outlined"
+                startIcon={<AutoAwesomeIcon />}
+                onClick={() => setSmartDiscoveryOpen(true)}
+                size="small"
+              >
+                {t("entity_smart_discover.button", "Smart Discover")}
+              </Button>
+              <Button
                 component={RouterLink}
                 to="/entities/new"
                 variant="contained"
@@ -527,6 +538,12 @@ export function EntitiesView() {
 
       {/* Scroll to top button */}
       <ScrollToTop />
+
+      <EntitySmartDiscoveryDialog
+        open={smartDiscoveryOpen}
+        onClose={() => setSmartDiscoveryOpen(false)}
+        onCreated={() => loadEntities(0)}
+      />
     </Stack>
   );
 }
