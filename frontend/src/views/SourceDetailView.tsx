@@ -53,6 +53,7 @@ export function SourceDetailView() {
   const [saveResult, setSaveResult] = useState<SaveExtractionResult | null>(null);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const lastScrolledRelationIdRef = useRef<string | null>(null);
+  const extractionPreviewRef = useRef<HTMLDivElement | null>(null);
 
   // URL extraction state
   const [urlDialogOpen, setUrlDialogOpen] = useState(false);
@@ -103,6 +104,14 @@ export function SourceDetailView() {
     row.scrollIntoView({ behavior: "smooth", block: "center" });
     lastScrolledRelationIdRef.current = highlightedRelationId;
   }, [highlightedRelationId, relations]);
+
+  useEffect(() => {
+    if (!extractionPreview) {
+      return;
+    }
+
+    extractionPreviewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [extractionPreview]);
 
   const handleDelete = async () => {
     if (!id) return;
@@ -263,11 +272,13 @@ export function SourceDetailView() {
       />
 
       {extractionPreview && (
-        <ExtractionPreview
-          preview={extractionPreview}
-          onSaveComplete={handleSaveComplete}
-          onCancel={handleCancelExtraction}
-        />
+        <Box ref={extractionPreviewRef}>
+          <ExtractionPreview
+            preview={extractionPreview}
+            onSaveComplete={handleSaveComplete}
+            onCancel={handleCancelExtraction}
+          />
+        </Box>
       )}
 
       <SourceRelationsSection

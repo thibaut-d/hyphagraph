@@ -1,8 +1,41 @@
 # Current Work
 
-**Last updated**: 2026-04-07 (n-ary extraction relation context)
+**Last updated**: 2026-04-07 (auto-extract preview visibility)
 
-## Active Plan: N-ary Extraction Relation Context
+## Active Plan: Auto-Extract Preview Visibility
+
+### Objective
+Make the source detail auto-extract action visibly surface extraction results when the preview is inserted above the current extraction controls.
+
+### Impacted modules
+- `frontend/src/views/SourceDetailView.tsx`
+- `frontend/src/views/__tests__/SourceDetailView.rendering.test.tsx`
+- `frontend/src/components/source-detail/__tests__/SourceExtractionSection.test.tsx`
+
+### Assumptions
+- The primary URL extraction handler is callable, but its preview is rendered above the extraction controls and can be outside the current viewport.
+- The correct fix is to reveal the produced review UI, not to add a second extraction pathway.
+
+### Plan
+1. Add an explicit preview scroll target to `SourceDetailView`.
+2. Scroll the preview into view whenever a new extraction preview is set.
+3. Stabilize source-detail rendering assertions that depended on relation accordions already being expanded.
+4. Add regression coverage for the primary auto-extract URL button.
+5. Run targeted frontend validation.
+
+### Validation
+- `cd frontend && npm test -- --run src/views/__tests__/SourceDetailView.rendering.test.tsx src/components/source-detail/__tests__/SourceExtractionSection.test.tsx`
+- `cd frontend && npm run build`
+- `git diff --check`
+
+### Risks
+- Automatic scrolling should only run when a preview exists so normal source page load and relation deep-link behavior remain unchanged.
+- If the backend returns an error, the existing error notification path should remain the only failure surface.
+
+### Status
+validated
+
+## Previous Plan: N-ary Extraction Relation Context
 
 ### Objective
 Make extracted relations reflect HyphaGraph hyperedges by preserving explicitly stated contextual roles and previewing all roles as first-class relation context.

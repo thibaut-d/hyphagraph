@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 
 import {
   getSource,
@@ -124,12 +124,21 @@ describe("SourceDetailView rendering", () => {
       renderSourceDetailView(mockSource.id);
 
       await waitFor(() => {
-        expect(screen.getAllByRole("link").length).toBeGreaterThan(0);
         expect(screen.getAllByTitle(/edit/i).length).toBeGreaterThanOrEqual(3);
         expect(screen.getAllByTitle(/delete/i).length).toBeGreaterThanOrEqual(3);
       });
 
-      expect(screen.getByRole("link", { name: "aspirin" })).toHaveAttribute(
+      const effectGroup = await screen.findByRole("button", { name: /effect 1 1 neutral/i });
+      if (effectGroup.getAttribute("aria-expanded") === "false") {
+        fireEvent.click(effectGroup);
+      }
+
+      const mechanismGroup = await screen.findByRole("button", { name: /mechanism 1 1 supports/i });
+      if (mechanismGroup.getAttribute("aria-expanded") === "false") {
+        fireEvent.click(mechanismGroup);
+      }
+
+      expect(await screen.findByRole("link", { name: "aspirin" })).toHaveAttribute(
         "href",
         "/entities/aspirin",
       );
