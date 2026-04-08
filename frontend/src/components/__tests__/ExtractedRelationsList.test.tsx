@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { ExtractedRelationsList } from "../ExtractedRelationsList";
-import type { ExtractedRelation } from "../../types/extraction";
+import type { ExtractedEntity, ExtractedRelation } from "../../types/extraction";
 
 const naryRelation: ExtractedRelation = {
   relation_type: "treats",
@@ -30,11 +30,50 @@ const naryRelation: ExtractedRelation = {
   },
 };
 
+const extractedEntities: ExtractedEntity[] = [
+  {
+    slug: "duloxetine",
+    summary: "Drug mention",
+    category: "drug",
+    confidence: "high",
+    text_span: "duloxetine",
+  },
+  {
+    slug: "juvenile-fibromyalgia",
+    summary: "Condition mention",
+    category: "disease",
+    confidence: "high",
+    text_span: "juvenile fibromyalgia",
+  },
+  {
+    slug: "adolescents",
+    summary: "Population mention",
+    category: "population",
+    confidence: "high",
+    text_span: "adolescents",
+  },
+  {
+    slug: "pain-intensity",
+    summary: "Outcome mention",
+    category: "outcome",
+    confidence: "high",
+    text_span: "pain intensity",
+  },
+  {
+    slug: "placebo",
+    summary: "Comparator mention",
+    category: "other",
+    confidence: "high",
+    text_span: "placebo",
+  },
+];
+
 describe("ExtractedRelationsList", () => {
   it("renders n-ary relation roles directly instead of reducing the relation to subject and object", () => {
     render(
       <ExtractedRelationsList
         relations={[naryRelation]}
+        entities={extractedEntities}
         selectedRelations={new Set(["selected"])}
         onToggle={vi.fn()}
       />,
@@ -44,11 +83,11 @@ describe("ExtractedRelationsList", () => {
     expect(screen.getByText("agent")).toBeInTheDocument();
     expect(screen.getByText("duloxetine")).toBeInTheDocument();
     expect(screen.getByText("target")).toBeInTheDocument();
-    expect(screen.getByText("juvenile-fibromyalgia")).toBeInTheDocument();
+    expect(screen.getByText("juvenile fibromyalgia")).toBeInTheDocument();
     expect(screen.getByText("population")).toBeInTheDocument();
     expect(screen.getByText("adolescents")).toBeInTheDocument();
     expect(screen.getByText("outcome")).toBeInTheDocument();
-    expect(screen.getByText("pain-intensity")).toBeInTheDocument();
+    expect(screen.getByText("pain intensity")).toBeInTheDocument();
     expect(screen.getByText("control_group")).toBeInTheDocument();
     expect(screen.getByText("placebo")).toBeInTheDocument();
     expect(screen.getByText("Finding")).toBeInTheDocument();

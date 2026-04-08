@@ -234,6 +234,7 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
           </Typography>
           <ExtractedRelationsList
             relations={preview.relations}
+            entities={preview.entities}
             selectedRelations={selectedRelations}
             onToggle={handleRelationToggle}
           />

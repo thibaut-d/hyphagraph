@@ -58,6 +58,7 @@ SUMMARY RULES:
 - Do NOT add background medical facts that are not stated in the provided text
 - Do NOT expand the summary into a general encyclopedia definition
 - If the text gives only the entity name with no local description, use a minimal summary closely matching the mention
+- For contextual entities such as dosage, duration, timeframe, or study condition, prefer concrete source wording and measurable values over vague normalization
 
 CRITICAL SLUG FORMAT REQUIREMENTS:
 - MUST start with a lowercase letter (a-z)
@@ -127,6 +128,7 @@ Respond with a JSON object containing an "entities" key. Example format:
 Only extract entities that are explicitly mentioned in the text.
 Do not create entities purely from implication, world knowledge, or inferred study context.
 If a contextual item will be used as a relation role, it MUST also appear in the entities array with a valid slug. Numeric context must be prefixed with a word, for example "dose-60mg-daily" or "duration-12-weeks", because slugs cannot start with numbers.
+Do NOT create vague contextual entities like "duration-short-term", "duration-long-term", "dose-high", or "dose-standard" when the source does not give a concrete measurable value. If the source only gives a vague qualifier, keep it in notes or methodology_text instead of turning it into an entity.
 """
 
 
@@ -205,6 +207,7 @@ RELATION EXTRACTION RULES:
 - If the text presents competing or contradictory findings, output separate relations rather than merging them
 - HyphaGraph relations are hyperedges: when one source statement includes context such as population, comparator, outcome, dosage, duration, mechanism, or study condition, keep that context as additional roles in the SAME relation instead of decomposing the statement into multiple binary relations
 - Do not add contextual roles that are not explicitly stated in the same source span
+- Do not create duration or dosage roles from vague qualifiers alone. Prefer exact values like "12 weeks" or "60mg daily". If the source only says "short-term", "long-term", "high dose", or similar vague language, keep that in notes or methodology_text instead of a role entity.
 - Every role entity_slug used in a relation must be present in the identified entity list above
 - Numeric context slugs must be prefixed with a word, for example "dose-60mg-daily" or "duration-12-weeks"
 
@@ -376,6 +379,7 @@ GLOBAL RULES:
 - Preserve proof-level details when explicitly stated, including study design, participant count, and statistical support
 - Keep study findings separate from background statements, hypotheses, and methodology notes
 - If an item is not clearly supported, omit it instead of guessing
+- Prefer precise measurable context. Do not create vague duration/dosage/timeframe entities such as "duration-short-term" when the source does not state an exact value.
 
 Extract:
 1. **Entities**: All drugs, diseases, symptoms, treatments, biomarkers, and other relevant entities
@@ -442,6 +446,7 @@ Extract:
    - statement_kind should usually be "finding" for explicit study results and should only be "background", "hypothesis", or "methodology" when the text clearly frames it that way
    - finding_polarity should reflect whether the source supports, contradicts, or leaves the relation mixed/uncertain
    - study_design, sample_size, and statistical_support should only be included when the source text states them or directly signals them
+   - do not create vague duration or dosage role entities from labels like "short-term", "long-term", "high dose", or "standard dose" unless the source provides an exact measurable value
 
 3. **Claims**: Factual statements with evidence
 

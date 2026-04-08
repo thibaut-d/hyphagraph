@@ -29,6 +29,7 @@ import type {
   StatementKind,
   FindingPolarity,
   StudyDesign,
+  ExtractedEntity,
 } from "../types/extraction";
 import {
   getRelationDisplayRoles,
@@ -37,6 +38,7 @@ import {
 
 interface ExtractedRelationsListProps {
   relations: ExtractedRelation[];
+  entities?: ExtractedEntity[];
   selectedRelations: Set<string>;
   onToggle: (relationKey: string) => void;
 }
@@ -227,9 +229,14 @@ function RelationToken({
 
 export const ExtractedRelationsList: React.FC<ExtractedRelationsListProps> = ({
   relations,
+  entities = [],
   selectedRelations,
   onToggle,
 }) => {
+  const entityLabels = new Map(
+    entities.map((entity) => [entity.slug, entity.text_span || entity.slug] as const),
+  );
+
   if (relations.length === 0) {
     return (
       <Alert severity="info">
@@ -243,7 +250,10 @@ export const ExtractedRelationsList: React.FC<ExtractedRelationsListProps> = ({
       {relations.map((relation, index) => {
         const relationKey = getRelationKey(relation);
         const isSelected = selectedRelations.has(relationKey);
-        const roles = getRelationDisplayRoles(relation);
+        const roles = getRelationDisplayRoles(relation).map(({ role, value }) => ({
+          role,
+          value: entityLabels.get(value) || value,
+        }));
         const contextChips = renderStudyContextChips(relation.study_context);
 
         return (
