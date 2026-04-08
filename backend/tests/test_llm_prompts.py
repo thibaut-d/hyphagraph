@@ -30,6 +30,10 @@ def test_relation_prompt_requires_explicit_relations_and_separate_conflicts():
     assert "HyphaGraph relations are hyperedges" in RELATION_EXTRACTION_PROMPT
     assert "additional roles in the SAME relation" in RELATION_EXTRACTION_PROMPT
     assert "Every role entity_slug used in a relation must be present" in RELATION_EXTRACTION_PROMPT
+    assert "statement_kind" in RELATION_EXTRACTION_PROMPT
+    assert "finding_polarity" in RELATION_EXTRACTION_PROMPT
+    assert "study_design" in RELATION_EXTRACTION_PROMPT
+    assert "sample_size" in RELATION_EXTRACTION_PROMPT
     assert "dose-325-650mg" in RELATION_EXTRACTION_PROMPT
     assert '"entity_slug": "325-650mg"' not in RELATION_EXTRACTION_PROMPT
 
@@ -55,6 +59,9 @@ def test_batch_prompt_carries_global_evidence_first_constraints():
     assert "Only extract information that is clearly and explicitly stated" in prompt
     assert "HyphaGraph relations are n-ary hyperedges" in prompt
     assert "include those explicitly stated items as additional roles in the SAME relation" in prompt
+    assert "Keep study findings separate from background statements, hypotheses, and methodology notes" in prompt
+    assert "include study_context for every relation" in prompt
+    assert "participant count" in prompt
     assert "contextual role fillers" in prompt
     assert "dose-60mg-daily" in prompt
     assert "placebo" in prompt

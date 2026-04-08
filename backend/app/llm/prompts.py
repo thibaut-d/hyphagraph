@@ -30,8 +30,10 @@ Guidelines:
 - If support is missing or ambiguous, omit the item instead of guessing.
 - Be precise and conservative in extraction
 - Distinguish between established facts, hypotheses, and reported findings
+- Treat a study finding, a background statement, and a hypothesis as different statement kinds
 - Note uncertainty levels when present in the source
 - Preserve population, dosage, comparator, timeframe, and study conditions when present
+- Preserve proof-level details when present, including study design, sample size, and statistical support
 - Never merge or reconcile conflicting statements into a single output item
 - Use standardized medical terminology only when it is already present in the text or is a direct surface-form normalization of the same mention
 - Preserve numerical values and dosages exactly as stated
@@ -182,11 +184,24 @@ For each relation, provide:
 - confidence: Your confidence in this relation (high, medium, low)
 - text_span: The exact text that states this relation
 - notes: Any important caveats, conditions, or context
+- study_context: Structured metadata with:
+  - statement_kind: one of finding, background, hypothesis, methodology
+  - finding_polarity: one of supports, contradicts, mixed, neutral, uncertain
+  - evidence_strength: one of strong, moderate, weak, anecdotal when support level is stated or directly signaled
+  - study_design: one of meta_analysis, systematic_review, randomized_controlled_trial, nonrandomized_trial, cohort_study, case_control_study, cross_sectional_study, case_series, case_report, guideline, review, animal_study, in_vitro, background, unknown
+  - sample_size: integer when the source gives a participant count
+  - sample_size_text: exact participant-count wording when present
+  - assertion_text: faithful source-bounded statement for this relation
+  - methodology_text: short methodology/applicability note when explicitly stated
+  - statistical_support: exact p-value / CI / RR / effect-size wording when explicitly stated
 
 RELATION EXTRACTION RULES:
 - Extract only relations that are explicitly stated in the text
 - Do not create a relation from background knowledge or weak implication alone
 - Preserve negation, uncertainty, study conditions, dosage, timeframe, comparator, and population in notes when relevant
+- Prefer one relation per explicit study statement or finding span
+- If the text says an intervention did not work, was inconclusive, or had mixed results, still extract the relation but set study_context.finding_polarity accordingly instead of rewriting it as a positive effect
+- If the text gives only a mechanistic assumption, background rationale, or methodology note, mark study_context.statement_kind accordingly
 - If the text presents competing or contradictory findings, output separate relations rather than merging them
 - HyphaGraph relations are hyperedges: when one source statement includes context such as population, comparator, outcome, dosage, duration, mechanism, or study condition, keep that context as additional roles in the SAME relation instead of decomposing the statement into multiple binary relations
 - Do not add contextual roles that are not explicitly stated in the same source span
@@ -243,7 +258,15 @@ Respond with a JSON object containing a "relations" key:
     ],
     "confidence": "high",
     "text_span": "aspirin 325-650mg is effective for migraine pain relief",
-    "notes": "Most effective when taken at onset of symptoms"
+    "notes": "Most effective when taken at onset of symptoms",
+    "study_context": {{
+      "statement_kind": "finding",
+      "finding_polarity": "supports",
+      "evidence_strength": "moderate",
+      "study_design": "unknown",
+      "assertion_text": "Aspirin 325-650mg was reported as effective for migraine pain relief.",
+      "methodology_text": "Applies when taken at symptom onset."
+    }}
   }},
   {{
     "relation_type": "causes",
@@ -254,7 +277,15 @@ Respond with a JSON object containing a "relations" key:
     ],
     "confidence": "high",
     "text_span": "aspirin commonly causes stomach irritation",
-    "notes": "Risk increases with higher doses and prolonged use"
+    "notes": "Risk increases with higher doses and prolonged use",
+    "study_context": {{
+      "statement_kind": "finding",
+      "finding_polarity": "supports",
+      "evidence_strength": "moderate",
+      "study_design": "unknown",
+      "assertion_text": "Aspirin was reported to cause stomach irritation.",
+      "methodology_text": "Risk increases with higher doses and prolonged use."
+    }}
   }}
   ]
 }}
@@ -342,6 +373,8 @@ GLOBAL RULES:
 - Do not use outside medical knowledge
 - Do not reconcile contradictions or competing findings; keep them as separate items
 - Preserve uncertainty, negation, dosage, population, comparator, timeframe, and study conditions
+- Preserve proof-level details when explicitly stated, including study design, participant count, and statistical support
+- Keep study findings separate from background statements, hypotheses, and methodology notes
 - If an item is not clearly supported, omit it instead of guessing
 
 Extract:
@@ -405,6 +438,10 @@ Extract:
    - extract only explicitly stated relations and preserve caveats in notes
    - every role entity_slug used in a relation MUST also appear in the entities array
    - numeric context slugs must be prefixed with a word, for example "dose-60mg-daily" or "duration-12-weeks"
+   - include study_context for every relation
+   - statement_kind should usually be "finding" for explicit study results and should only be "background", "hypothesis", or "methodology" when the text clearly frames it that way
+   - finding_polarity should reflect whether the source supports, contradicts, or leaves the relation mixed/uncertain
+   - study_design, sample_size, and statistical_support should only be included when the source text states them or directly signals them
 
 3. **Claims**: Factual statements with evidence
 
@@ -485,7 +522,16 @@ Respond with JSON containing three arrays:
       ],
       "confidence": "high",
       "text_span": "duloxetine 60mg daily is effective for fibromyalgia in adults compared with placebo",
-      "notes": "Context includes adult population, daily dose, and placebo comparator"
+      "notes": "Context includes adult population, daily dose, and placebo comparator",
+      "study_context": {{
+        "statement_kind": "finding",
+        "finding_polarity": "supports",
+        "evidence_strength": "strong",
+        "study_design": "randomized_controlled_trial",
+        "assertion_text": "Duloxetine 60mg daily was reported as effective for fibromyalgia in adults compared with placebo.",
+        "methodology_text": "Randomized placebo-controlled comparison in adults.",
+        "statistical_support": "p<0.001"
+      }}
     }},
     {{
       "relation_type": "biomarker_for",
@@ -496,7 +542,14 @@ Respond with JSON containing three arrays:
       ],
       "confidence": "high",
       "text_span": "miRNA-223-3p levels correlate with pain severity in women with fibromyalgia",
-      "notes": "Potential diagnostic biomarker"
+      "notes": "Potential diagnostic biomarker",
+      "study_context": {{
+        "statement_kind": "hypothesis",
+        "finding_polarity": "uncertain",
+        "evidence_strength": "weak",
+        "study_design": "unknown",
+        "assertion_text": "miRNA-223-3p was proposed as a potential biomarker in women with fibromyalgia."
+      }}
     }},
     {{
       "relation_type": "mechanism",
@@ -506,7 +559,13 @@ Respond with JSON containing three arrays:
       ],
       "confidence": "high",
       "text_span": "duloxetine inhibits serotonin and norepinephrine reuptake",
-      "notes": "SNRI mechanism of action"
+      "notes": "SNRI mechanism of action",
+      "study_context": {{
+        "statement_kind": "background",
+        "finding_polarity": "neutral",
+        "study_design": "background",
+        "assertion_text": "Duloxetine inhibits serotonin and norepinephrine reuptake."
+      }}
     }}
   ],
   "claims": [

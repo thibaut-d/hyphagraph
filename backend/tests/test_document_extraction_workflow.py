@@ -373,6 +373,91 @@ class TestSaveExtractionToGraph:
         assert result.created_entity_ids == [created_entity_id]
         assert result.skipped_relations == []
 
+    async def test_save_extraction_to_graph_persists_relation_study_context_and_direction(
+        self, db_session, test_user
+    ):
+        source_service = SourceService(db_session)
+        source = await source_service.create(
+            SourceWrite(
+                kind="study",
+                title="Contextualized Extraction Source",
+                url="https://example.com/contextualized-extraction",
+            ),
+            user_id=test_user.id,
+        )
+
+        aspirin = Entity()
+        pain = Entity()
+        db_session.add_all([aspirin, pain])
+        await db_session.flush()
+        db_session.add_all(
+            [
+                EntityRevision(entity_id=aspirin.id, slug="aspirin", is_current=True),
+                EntityRevision(entity_id=pain.id, slug="pain", is_current=True),
+            ]
+        )
+        await db_session.commit()
+
+        from app.llm.schemas import ExtractedRelationStudyContext
+
+        request = SimpleNamespace(
+            entities_to_create=[],
+            entity_links={"aspirin": aspirin.id, "pain": pain.id},
+            relations_to_create=[
+                ExtractedRelation(
+                    relation_type="treats",
+                    roles=[
+                        ExtractedRole(entity_slug="aspirin", role_type="agent"),
+                        ExtractedRole(entity_slug="pain", role_type="target"),
+                    ],
+                    confidence="high",
+                    text_span="In a randomized controlled trial (n=120), aspirin did not improve pain versus placebo.",
+                    notes="Null effect in the randomized comparison.",
+                    study_context=ExtractedRelationStudyContext(
+                        statement_kind="finding",
+                        finding_polarity="contradicts",
+                        evidence_strength="strong",
+                        study_design="randomized_controlled_trial",
+                        sample_size=120,
+                        sample_size_text="n=120",
+                        assertion_text="Aspirin did not improve pain versus placebo.",
+                        methodology_text="Randomized controlled trial.",
+                        statistical_support="p=0.41",
+                    ),
+                )
+            ],
+            user_language="en",
+        )
+
+        result = await save_extraction_to_graph(
+            db_session,
+            source_id=source.id,
+            request=request,
+            user_id=test_user.id,
+        )
+
+        assert result.relations_created == 1
+
+        revision_result = await db_session.execute(
+            select(RelationRevision).where(
+                RelationRevision.relation_id == result.created_relation_ids[0],
+                RelationRevision.is_current.is_(True),
+            )
+        )
+        revision = revision_result.scalar_one()
+        assert revision.direction == "contradicts"
+        assert revision.scope == {
+            "statement_kind": "finding",
+            "finding_polarity": "contradicts",
+            "evidence_strength": "strong",
+            "study_design": "randomized_controlled_trial",
+            "sample_size": 120,
+            "sample_size_text": "n=120",
+            "assertion_text": "Aspirin did not improve pain versus placebo.",
+            "methodology_text": "Randomized controlled trial.",
+            "statistical_support": "p=0.41",
+        }
+
     async def test_save_extraction_to_graph_applies_prefill_to_new_entities(
         self, db_session, test_user
     ):

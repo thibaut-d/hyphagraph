@@ -17,6 +17,17 @@ const naryRelation: ExtractedRelation = {
   text_span:
     "Duloxetine demonstrated modest improvements in pain among adolescents with juvenile fibromyalgia compared with placebo.",
   notes: "Reported as a modest improvement with adverse effects.",
+  study_context: {
+    statement_kind: "finding",
+    finding_polarity: "supports",
+    evidence_strength: "strong",
+    study_design: "randomized_controlled_trial",
+    sample_size: 120,
+    sample_size_text: "n=120",
+    assertion_text: "Duloxetine improved pain compared with placebo in adolescents with juvenile fibromyalgia.",
+    methodology_text: "Randomized placebo-controlled comparison.",
+    statistical_support: "p=0.01",
+  },
 };
 
 describe("ExtractedRelationsList", () => {
@@ -40,6 +51,21 @@ describe("ExtractedRelationsList", () => {
     expect(screen.getByText("pain-intensity")).toBeInTheDocument();
     expect(screen.getByText("control_group")).toBeInTheDocument();
     expect(screen.getByText("placebo")).toBeInTheDocument();
+    expect(screen.getByText("Finding")).toBeInTheDocument();
+    expect(screen.getByText("Supports")).toBeInTheDocument();
+    expect(screen.getByText("Evidence: strong")).toBeInTheDocument();
+    expect(screen.getByText("Randomized trial")).toBeInTheDocument();
+    expect(screen.getByText("n=120")).toBeInTheDocument();
+    expect(screen.getByText("Core statement")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Duloxetine improved pain compared with placebo in adolescents with juvenile fibromyalgia.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Method / applicability")).toBeInTheDocument();
+    expect(screen.getByText("Randomized placebo-controlled comparison.")).toBeInTheDocument();
+    expect(screen.getByText("Statistical support")).toBeInTheDocument();
+    expect(screen.getByText("p=0.01")).toBeInTheDocument();
     expect(
       screen.getByText(
         '"Duloxetine demonstrated modest improvements in pain among adolescents with juvenile fibromyalgia compared with placebo."',

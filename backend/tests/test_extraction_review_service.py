@@ -1038,6 +1038,67 @@ async def test_stage_relation_auto_verifies_and_materializes(
 
 
 @pytest.mark.asyncio
+async def test_stage_relation_materialization_persists_direction_and_scope(
+    review_service, sample_source, entity_slugs_in_db, high_confidence_validation
+):
+    from app.llm.schemas import ExtractedRelation, ExtractedRelationStudyContext, ExtractedRole
+    from app.models.relation_revision import RelationRevision
+    from sqlalchemy import select
+
+    relation = ExtractedRelation(
+        relation_type="treats",
+        roles=[
+            ExtractedRole(entity_slug="drug-agent", role_type="agent"),
+            ExtractedRole(entity_slug="pain-condition", role_type="target"),
+        ],
+        confidence="high",
+        text_span="In a randomized trial (n=84), the drug-agent did not reduce pain-condition severity.",
+        notes="Null effect in the randomized trial.",
+        study_context=ExtractedRelationStudyContext(
+            statement_kind="finding",
+            finding_polarity="contradicts",
+            evidence_strength="strong",
+            study_design="randomized_controlled_trial",
+            sample_size=84,
+            sample_size_text="n=84",
+            assertion_text="The drug-agent did not reduce pain-condition severity.",
+            methodology_text="Randomized trial.",
+            statistical_support="p=0.27",
+        ),
+    )
+
+    staged, relation_id = await review_service.stage_extraction(
+        extraction_type=ExtractionType.RELATION,
+        extraction_data=relation,
+        source_id=sample_source.id,
+        validation_result=high_confidence_validation,
+        auto_materialize=True,
+    )
+
+    assert staged.materialized_relation_id == relation_id
+
+    result = await review_service.db.execute(
+        select(RelationRevision).where(
+            RelationRevision.relation_id == relation_id,
+            RelationRevision.is_current.is_(True),
+        )
+    )
+    revision = result.scalar_one()
+    assert revision.direction == "contradicts"
+    assert revision.scope == {
+        "statement_kind": "finding",
+        "finding_polarity": "contradicts",
+        "evidence_strength": "strong",
+        "study_design": "randomized_controlled_trial",
+        "sample_size": 84,
+        "sample_size_text": "n=84",
+        "assertion_text": "The drug-agent did not reduce pain-condition severity.",
+        "methodology_text": "Randomized trial.",
+        "statistical_support": "p=0.27",
+    }
+
+
+@pytest.mark.asyncio
 async def test_stage_relation_without_matching_entities_raises(
     review_service, sample_source, high_confidence_validation
 ):

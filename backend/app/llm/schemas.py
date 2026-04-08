@@ -141,6 +141,13 @@ class ExtractedRelation(BaseModel):
         description="Important caveats, conditions, or context",
         max_length=500
     )
+    study_context: "ExtractedRelationStudyContext | None" = Field(
+        None,
+        description=(
+            "Structured study metadata describing whether this relation is a finding, "
+            "hypothesis, background statement, or methodology note, plus proof-level qualifiers"
+        ),
+    )
 
 
 class RelationExtractionResponse(BaseModel):
@@ -169,6 +176,95 @@ EvidenceStrength = Literal[
     "weak",        # Case reports, small studies
     "anecdotal"    # Individual experiences
 ]
+
+StatementKind = Literal[
+    "finding",
+    "background",
+    "hypothesis",
+    "methodology",
+]
+
+FindingPolarity = Literal[
+    "supports",
+    "contradicts",
+    "mixed",
+    "neutral",
+    "uncertain",
+]
+
+StudyDesign = Literal[
+    "meta_analysis",
+    "systematic_review",
+    "randomized_controlled_trial",
+    "nonrandomized_trial",
+    "cohort_study",
+    "case_control_study",
+    "cross_sectional_study",
+    "case_series",
+    "case_report",
+    "guideline",
+    "review",
+    "animal_study",
+    "in_vitro",
+    "background",
+    "unknown",
+]
+
+
+class ExtractedRelationStudyContext(BaseModel):
+    """Structured context describing the evidentiary status of an extracted relation."""
+
+    statement_kind: StatementKind = Field(
+        ...,
+        description=(
+            "Whether the relation is a concrete finding, a hypothesis/assumption, "
+            "background context, or methodology note"
+        ),
+    )
+    finding_polarity: FindingPolarity | None = Field(
+        None,
+        description=(
+            "Whether the source supports, contradicts, or presents mixed/uncertain evidence for the relation"
+        ),
+    )
+    evidence_strength: EvidenceStrength | None = Field(
+        None,
+        description="Conservative evidence strength for this relation when supported by the source",
+    )
+    study_design: StudyDesign | None = Field(
+        None,
+        description="Study design explicitly stated or directly signaled by the source text",
+    )
+    sample_size: int | None = Field(
+        None,
+        ge=1,
+        le=10000000,
+        description="Participant count when explicitly stated",
+    )
+    sample_size_text: str | None = Field(
+        None,
+        min_length=1,
+        max_length=100,
+        description="Exact source wording for the participant count or study size",
+    )
+    assertion_text: str | None = Field(
+        None,
+        min_length=5,
+        max_length=500,
+        description="Core source-bounded statement for this relation",
+    )
+    methodology_text: str | None = Field(
+        None,
+        min_length=5,
+        max_length=300,
+        description="Short note about methodology or applicability limits explicitly stated in the source",
+    )
+    statistical_support: str | None = Field(
+        None,
+        min_length=2,
+        max_length=200,
+        description="Statistical support snippet when the source provides one, such as p-values or effect sizes",
+    )
 
 
 class ExtractedClaim(BaseModel):
@@ -318,6 +414,9 @@ def validate_batch_extraction(data: JsonObject) -> BatchExtractionResponse:
                 ]
 
     return BatchExtractionResponse.model_validate(data)
+
+
+ExtractedRelation.model_rebuild()
 
 
 def validate_entity_linking(data: JsonObject) -> EntityLinkingResponse:

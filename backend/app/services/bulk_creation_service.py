@@ -25,6 +25,22 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 
+def _build_relation_scope(extracted: ExtractedRelation) -> dict[str, object] | None:
+    if not extracted.study_context:
+        return None
+    scope = extracted.study_context.model_dump(exclude_none=True)
+    return scope or None
+
+
+def _build_relation_direction(extracted: ExtractedRelation) -> str | None:
+    if not extracted.study_context:
+        return None
+    polarity = extracted.study_context.finding_polarity
+    if polarity in {"supports", "contradicts", "mixed", "neutral", "uncertain"}:
+        return polarity
+    return None
+
+
 class BulkCreationService:
     """
     Service for bulk creation of entities and relations from LLM extraction.
@@ -218,7 +234,9 @@ class BulkCreationService:
                     # Map extraction schema to database schema
                     revision_data = {
                         "kind": extracted.relation_type,  # "treats", "causes", etc.
+                        "direction": _build_relation_direction(extracted),
                         "confidence": CONFIDENCE_FLOAT.get(extracted.confidence, CONFIDENCE_FLOAT["low"]),
+                        "scope": _build_relation_scope(extracted),
                         "notes": {"en": extracted.notes} if extracted.notes else None,
                         "created_with_llm": settings.OPENAI_MODEL,
                         "created_by_user_id": user_id,

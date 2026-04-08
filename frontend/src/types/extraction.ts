@@ -50,9 +50,51 @@ export type RelationType =
   | "measures"
   | "other";
 
+export type StatementKind =
+  | "finding"
+  | "background"
+  | "hypothesis"
+  | "methodology";
+
+export type FindingPolarity =
+  | "supports"
+  | "contradicts"
+  | "mixed"
+  | "neutral"
+  | "uncertain";
+
+export type StudyDesign =
+  | "meta_analysis"
+  | "systematic_review"
+  | "randomized_controlled_trial"
+  | "nonrandomized_trial"
+  | "cohort_study"
+  | "case_control_study"
+  | "cross_sectional_study"
+  | "case_series"
+  | "case_report"
+  | "guideline"
+  | "review"
+  | "animal_study"
+  | "in_vitro"
+  | "background"
+  | "unknown";
+
 export interface ExtractedRole {
   entity_slug: string;
   role_type: string;
+}
+
+export interface ExtractedRelationStudyContext {
+  statement_kind: StatementKind;
+  finding_polarity?: FindingPolarity | null;
+  evidence_strength?: EvidenceStrength | null;
+  study_design?: StudyDesign | null;
+  sample_size?: number | null;
+  sample_size_text?: string | null;
+  assertion_text?: string | null;
+  methodology_text?: string | null;
+  statistical_support?: string | null;
 }
 
 export interface ExtractedRelation {
@@ -61,6 +103,7 @@ export interface ExtractedRelation {
   confidence: ConfidenceLevel;
   text_span: string;
   notes?: string | null;
+  study_context?: ExtractedRelationStudyContext | null;
 }
 
 // =============================================================================

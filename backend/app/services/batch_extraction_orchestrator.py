@@ -50,8 +50,8 @@ class BatchExtractionOrchestrator:
 
     def __init__(
         self,
-        temperature: float = 0.2,
-        max_tokens: int = 3000,
+        temperature: float = 0.0,
+        max_tokens: int = 4000,
         enable_validation: bool = True,
         validation_level: ValidationLevel = "moderate",
         db=None,  # For future prompt generation
@@ -241,7 +241,7 @@ class BatchExtractionOrchestrator:
             prompt=prompt,
             system_prompt=self.system_prompt,
             temperature=self.temperature,
-            max_tokens=min(self.max_tokens * 2, 4000),  # Double tokens for batch
+            max_tokens=min(self.max_tokens * 2, 6000),  # Extra headroom for richer structured extraction
         )
 
         # Validate response schema

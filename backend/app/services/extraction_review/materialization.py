@@ -17,6 +17,22 @@ from app.utils.revision_helpers import create_new_revision
 logger = logging.getLogger(__name__)
 
 
+def _relation_scope(relation_data: ExtractedRelation) -> dict[str, object] | None:
+    if not relation_data.study_context:
+        return None
+    scope = relation_data.study_context.model_dump(exclude_none=True)
+    return scope or None
+
+
+def _relation_direction(relation_data: ExtractedRelation) -> str | None:
+    if not relation_data.study_context:
+        return None
+    polarity = relation_data.study_context.finding_polarity
+    if polarity in {"supports", "contradicts", "mixed", "neutral", "uncertain"}:
+        return polarity
+    return None
+
+
 async def materialize_entity(
     db: AsyncSession,
     staged: StagedExtraction,
@@ -70,8 +86,12 @@ async def materialize_relation(
         parent_id=relation.id,
         revision_data={
             "kind": relation_data.relation_type,
+            "direction": _relation_direction(relation_data),
             "confidence": final_confidence,
-            "notes": {"en": relation_data.text_span} if relation_data.text_span else None,
+            "scope": _relation_scope(relation_data),
+            "notes": {"en": relation_data.notes or relation_data.text_span}
+            if relation_data.notes or relation_data.text_span
+            else None,
             "status": "draft",
             "created_with_llm": staged.llm_model,
             "created_by_user_id": user_id,

@@ -25,6 +25,10 @@ import type {
   ExtractedRelation,
   RelationType,
   ConfidenceLevel,
+  ExtractedRelationStudyContext,
+  StatementKind,
+  FindingPolarity,
+  StudyDesign,
 } from "../types/extraction";
 import {
   getRelationDisplayRoles,
@@ -74,6 +78,108 @@ const relationTypeIcons: Record<RelationType, React.ReactElement> = {
   measures: <ScienceIcon fontSize="small" />,
   other: <ScienceIcon fontSize="small" />,
 };
+
+const statementKindLabels: Record<StatementKind, string> = {
+  finding: "Finding",
+  background: "Background",
+  hypothesis: "Hypothesis",
+  methodology: "Methodology",
+};
+
+const findingPolarityLabels: Record<FindingPolarity, string> = {
+  supports: "Supports",
+  contradicts: "Contradicts",
+  mixed: "Mixed",
+  neutral: "Neutral",
+  uncertain: "Uncertain",
+};
+
+const studyDesignLabels: Record<StudyDesign, string> = {
+  meta_analysis: "Meta-analysis",
+  systematic_review: "Systematic review",
+  randomized_controlled_trial: "Randomized trial",
+  nonrandomized_trial: "Non-randomized trial",
+  cohort_study: "Cohort study",
+  case_control_study: "Case-control study",
+  cross_sectional_study: "Cross-sectional study",
+  case_series: "Case series",
+  case_report: "Case report",
+  guideline: "Guideline",
+  review: "Review",
+  animal_study: "Animal study",
+  in_vitro: "In vitro",
+  background: "Background",
+  unknown: "Unknown design",
+};
+
+function renderStudyContextChips(studyContext?: ExtractedRelationStudyContext | null) {
+  if (!studyContext) {
+    return null;
+  }
+
+  const chips: React.ReactElement[] = [
+    <Chip
+      key="statement-kind"
+      label={statementKindLabels[studyContext.statement_kind]}
+      size="small"
+      variant="outlined"
+      color={studyContext.statement_kind === "finding" ? "primary" : "default"}
+    />,
+  ];
+
+  if (studyContext.finding_polarity) {
+    chips.push(
+      <Chip
+        key="finding-polarity"
+        label={findingPolarityLabels[studyContext.finding_polarity]}
+        size="small"
+        variant="outlined"
+        color={
+          studyContext.finding_polarity === "supports"
+            ? "success"
+            : studyContext.finding_polarity === "contradicts"
+              ? "error"
+              : "warning"
+        }
+      />,
+    );
+  }
+
+  if (studyContext.evidence_strength) {
+    chips.push(
+      <Chip
+        key="evidence-strength"
+        label={`Evidence: ${studyContext.evidence_strength}`}
+        size="small"
+        variant="outlined"
+      />,
+    );
+  }
+
+  if (studyContext.study_design) {
+    chips.push(
+      <Chip
+        key="study-design"
+        label={studyDesignLabels[studyContext.study_design]}
+        size="small"
+        variant="outlined"
+      />,
+    );
+  }
+
+  if (studyContext.sample_size || studyContext.sample_size_text) {
+    chips.push(
+      <Chip
+        key="sample-size"
+        label={studyContext.sample_size_text || `n=${studyContext.sample_size}`}
+        size="small"
+        variant="outlined"
+      />,
+    );
+  }
+
+  return chips;
+}
 
 function RelationToken({
   role,
@@ -138,6 +244,7 @@ export const ExtractedRelationsList: React.FC<ExtractedRelationsListProps> = ({
         const relationKey = getRelationKey(relation);
         const isSelected = selectedRelations.has(relationKey);
         const roles = getRelationDisplayRoles(relation);
+        const contextChips = renderStudyContextChips(relation.study_context);
 
         return (
           <Card
@@ -196,6 +303,12 @@ export const ExtractedRelationsList: React.FC<ExtractedRelationsListProps> = ({
                       </Box>
                     </Box>
 
+                    {contextChips && contextChips.length > 0 && (
+                      <Box sx={{ mt: 1, display: "flex", gap: 1, flexWrap: "wrap" }}>
+                        {contextChips}
+                      </Box>
+                    )}
+
                     <Box sx={{ mt: 1, display: "flex", gap: 1, flexWrap: "wrap" }}>
                       {roles.map(({ role, value }) => (
                         <RelationToken
@@ -215,6 +328,39 @@ export const ExtractedRelationsList: React.FC<ExtractedRelationsListProps> = ({
                       >
                         Note: {relation.notes}
                       </Typography>
+                    )}
+
+                    {relation.study_context?.assertion_text && (
+                      <Box sx={{ mt: 1 }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                          Core statement
+                        </Typography>
+                        <Typography variant="body2" sx={{ overflowWrap: "anywhere" }}>
+                          {relation.study_context.assertion_text}
+                        </Typography>
+                      </Box>
+                    )}
+
+                    {relation.study_context?.methodology_text && (
+                      <Box sx={{ mt: 1 }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                          Method / applicability
+                        </Typography>
+                        <Typography variant="body2" sx={{ overflowWrap: "anywhere" }}>
+                          {relation.study_context.methodology_text}
+                        </Typography>
+                      </Box>
+                    )}
+
+                    {relation.study_context?.statistical_support && (
+                      <Box sx={{ mt: 1 }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                          Statistical support
+                        </Typography>
+                        <Typography variant="body2" sx={{ overflowWrap: "anywhere" }}>
+                          {relation.study_context.statistical_support}
+                        </Typography>
+                      </Box>
                     )}
                   </Box>
 
