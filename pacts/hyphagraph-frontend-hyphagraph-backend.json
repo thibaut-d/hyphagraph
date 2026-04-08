@@ -894,10 +894,13 @@
             "confidence": 0.8,
             "created_at": "2024-01-01T00:00:00",
             "created_with_llm": null,
-            "direction": "positive",
+            "direction": "supports",
             "id": "323e4567-e89b-42d3-a456-426614174000",
             "kind": "treats",
             "llm_review_status": null,
+            "notes": {
+              "en": "Aspirin reduced headache symptoms."
+            },
             "roles": [
               {
                 "disagreement": null,
@@ -907,6 +910,9 @@
                 "role_type": "drug"
               }
             ],
+            "scope": {
+              "population": "adults"
+            },
             "source_id": "223e4567-e89b-42d3-a456-426614174000",
             "status": "confirmed",
             "updated_at": "2024-01-01T00:00:00"
@@ -985,6 +991,14 @@
                 }
               ]
             },
+            "$.notes": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
             "$.roles": {
               "combine": "AND",
               "matchers": [
@@ -1027,6 +1041,14 @@
               ]
             },
             "$.roles[*].role_type": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.scope": {
               "combine": "AND",
               "matchers": [
                 {
@@ -1080,6 +1102,9 @@
       "response": {
         "body": {
           "content": {
+            "authors": [
+              "Author One"
+            ],
             "created_at": "2024-01-01T00:00:00",
             "created_by_user_id": null,
             "created_with_llm": null,
@@ -1089,10 +1114,18 @@
             "id": "223e4567-e89b-42d3-a456-426614174000",
             "kind": "study",
             "llm_review_status": null,
+            "origin": "PubMed",
+            "source_metadata": {
+              "doi": "10.1000/test"
+            },
             "status": "confirmed",
+            "summary": {
+              "en": "Trial summary"
+            },
             "title": "Test Study",
             "trust_level": 0.8,
-            "url": "https://example.com"
+            "url": "https://example.com",
+            "year": 2024
           },
           "contentType": "application/json",
           "encoded": false
@@ -1109,6 +1142,15 @@
               "matchers": [
                 {
                   "match": "type"
+                }
+              ]
+            },
+            "$.authors": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
                 }
               ]
             },
@@ -1184,7 +1226,31 @@
                 }
               ]
             },
+            "$.origin": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.source_metadata": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
             "$.status": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.summary": {
               "combine": "AND",
               "matchers": [
                 {
@@ -1215,6 +1281,14 @@
                   "match": "type"
                 }
               ]
+            },
+            "$.year": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
             }
           },
           "status": {}
@@ -1238,10 +1312,19 @@
       "response": {
         "body": {
           "content": {
+            "domains": [
+              "clinical"
+            ],
             "kinds": [
               "study"
             ],
-            "year_range": null
+            "roles": [
+              "pillar"
+            ],
+            "year_range": [
+              2000,
+              2024
+            ]
           },
           "contentType": "application/json",
           "encoded": false
@@ -1261,6 +1344,23 @@
                 }
               ]
             },
+            "$.domains": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.domains[*]": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
             "$.kinds": {
               "combine": "AND",
               "matchers": [
@@ -1271,6 +1371,23 @@
               ]
             },
             "$.kinds[*]": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.roles": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.roles[*]": {
               "combine": "AND",
               "matchers": [
                 {
@@ -1310,11 +1427,19 @@
           "content": {
             "items": [
               {
+                "consensus_level": "moderate",
                 "created_at": "2024-01-01T00:00:00",
+                "created_by_user_id": "123e4567-e89b-42d3-a456-426614174099",
+                "created_with_llm": null,
                 "id": "123e4567-e89b-42d3-a456-426614174000",
+                "llm_review_status": null,
                 "slug": "aspirin",
-                "summary": null,
-                "ui_category_id": null
+                "status": "confirmed",
+                "summary": {
+                  "en": "Pain reliever"
+                },
+                "ui_category_id": "123e4567-e89b-42d3-a456-426614174001",
+                "updated_at": "2024-01-02T00:00:00"
               }
             ],
             "limit": 50,
@@ -1348,7 +1473,31 @@
                 }
               ]
             },
+            "$.items[*].consensus_level": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
             "$.items[*].created_at": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.items[*].created_by_user_id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.items[*].created_with_llm": {
               "combine": "AND",
               "matchers": [
                 {
@@ -1364,7 +1513,23 @@
                 }
               ]
             },
+            "$.items[*].llm_review_status": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
             "$.items[*].slug": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.items[*].status": {
               "combine": "AND",
               "matchers": [
                 {
@@ -1381,6 +1546,14 @@
               ]
             },
             "$.items[*].ui_category_id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.items[*].updated_at": {
               "combine": "AND",
               "matchers": [
                 {
@@ -1436,15 +1609,34 @@
           "content": {
             "items": [
               {
+                "authors": [
+                  "Author One"
+                ],
                 "created_at": "2024-01-01T00:00:00",
+                "created_by_user_id": "223e4567-e89b-42d3-a456-426614174099",
+                "created_with_llm": null,
+                "document_extracted_at": null,
+                "document_file_name": null,
+                "document_format": null,
                 "id": "223e4567-e89b-42d3-a456-426614174000",
                 "kind": "study",
+                "llm_review_status": null,
+                "origin": "PubMed",
+                "source_metadata": {
+                  "doi": "10.1000/test"
+                },
+                "status": "confirmed",
+                "summary": {
+                  "en": "Trial summary"
+                },
                 "title": "Test Study",
                 "trust_level": 0.8,
-                "url": "https://example.com"
+                "url": "https://example.com",
+                "year": 2024
               }
             ],
             "limit": 50,
+            "offset": 0,
             "total": 1
           },
           "contentType": "application/json",
@@ -1474,7 +1666,56 @@
                 }
               ]
             },
+            "$.items[*].authors": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
             "$.items[*].created_at": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.items[*].created_by_user_id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.items[*].created_with_llm": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.items[*].document_extracted_at": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.items[*].document_file_name": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.items[*].document_format": {
               "combine": "AND",
               "matchers": [
                 {
@@ -1491,6 +1732,46 @@
               ]
             },
             "$.items[*].kind": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.items[*].llm_review_status": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.items[*].origin": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.items[*].source_metadata": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.items[*].status": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.items[*].summary": {
               "combine": "AND",
               "matchers": [
                 {
@@ -1522,7 +1803,23 @@
                 }
               ]
             },
+            "$.items[*].year": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
             "$.limit": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.offset": {
               "combine": "AND",
               "matchers": [
                 {
@@ -1942,16 +2239,33 @@
           "content": [
             {
               "confidence": 0.8,
-              "direction": "positive",
+              "created_at": "2024-01-01T00:00:00",
+              "created_with_llm": null,
+              "direction": "supports",
               "id": "323e4567-e89b-42d3-a456-426614174000",
               "kind": "treats",
+              "llm_review_status": null,
+              "notes": {
+                "en": "Aspirin reduced headache symptoms."
+              },
               "roles": [
                 {
+                  "coverage": null,
+                  "disagreement": null,
                   "entity_id": "123e4567-e89b-42d3-a456-426614174000",
-                  "role_type": "drug"
+                  "entity_slug": "aspirin",
+                  "id": "423e4567-e89b-42d3-a456-426614174000",
+                  "relation_revision_id": "523e4567-e89b-42d3-a456-426614174000",
+                  "role_type": "drug",
+                  "weight": null
                 }
               ],
-              "source_id": "223e4567-e89b-42d3-a456-426614174000"
+              "scope": {
+                "population": "adults"
+              },
+              "source_id": "223e4567-e89b-42d3-a456-426614174000",
+              "status": "confirmed",
+              "updated_at": "2024-01-02T00:00:00"
             }
           ],
           "contentType": "application/json",
@@ -1974,6 +2288,22 @@
               ]
             },
             "$[*].confidence": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$[*].created_at": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$[*].created_with_llm": {
               "combine": "AND",
               "matchers": [
                 {
@@ -2005,6 +2335,22 @@
                 }
               ]
             },
+            "$[*].llm_review_status": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$[*].notes": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
             "$[*].roles": {
               "combine": "AND",
               "matchers": [
@@ -2014,7 +2360,47 @@
                 }
               ]
             },
+            "$[*].roles[*].coverage": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$[*].roles[*].disagreement": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
             "$[*].roles[*].entity_id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$[*].roles[*].entity_slug": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$[*].roles[*].id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$[*].roles[*].relation_revision_id": {
               "combine": "AND",
               "matchers": [
                 {
@@ -2030,7 +2416,39 @@
                 }
               ]
             },
+            "$[*].roles[*].weight": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$[*].scope": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
             "$[*].source_id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$[*].status": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$[*].updated_at": {
               "combine": "AND",
               "matchers": [
                 {
@@ -2399,7 +2817,7 @@
         "body": {
           "content": {
             "confidence": 0.8,
-            "direction": "positive",
+            "direction": "supports",
             "kind": "treats",
             "roles": [
               {
@@ -2452,15 +2870,30 @@
       "response": {
         "body": {
           "content": {
+            "confidence": 0.8,
+            "created_at": "2024-01-01T00:00:00",
+            "created_with_llm": null,
+            "direction": "supports",
             "id": "323e4567-e89b-42d3-a456-426614174000",
             "kind": "treats",
+            "llm_review_status": null,
+            "notes": null,
             "roles": [
               {
+                "coverage": null,
+                "disagreement": null,
                 "entity_id": "123e4567-e89b-42d3-a456-426614174000",
-                "role_type": "drug"
+                "entity_slug": "aspirin",
+                "id": "423e4567-e89b-42d3-a456-426614174000",
+                "relation_revision_id": "523e4567-e89b-42d3-a456-426614174000",
+                "role_type": "drug",
+                "weight": null
               }
             ],
-            "source_id": "223e4567-e89b-42d3-a456-426614174000"
+            "scope": null,
+            "source_id": "223e4567-e89b-42d3-a456-426614174000",
+            "status": "confirmed",
+            "updated_at": "2024-01-01T00:00:00"
           },
           "contentType": "application/json",
           "encoded": false
@@ -2473,6 +2906,38 @@
         "matchingRules": {
           "body": {
             "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.confidence": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.created_at": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.created_with_llm": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.direction": {
               "combine": "AND",
               "matchers": [
                 {
@@ -2496,6 +2961,22 @@
                 }
               ]
             },
+            "$.llm_review_status": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.notes": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
             "$.roles": {
               "combine": "AND",
               "matchers": [
@@ -2505,7 +2986,47 @@
                 }
               ]
             },
+            "$.roles[*].coverage": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.roles[*].disagreement": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
             "$.roles[*].entity_id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.roles[*].entity_slug": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.roles[*].id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.roles[*].relation_revision_id": {
               "combine": "AND",
               "matchers": [
                 {
@@ -2521,7 +3042,39 @@
                 }
               ]
             },
+            "$.roles[*].weight": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.scope": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
             "$.source_id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.status": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.updated_at": {
               "combine": "AND",
               "matchers": [
                 {
@@ -2591,10 +3144,24 @@
       "response": {
         "body": {
           "content": {
+            "authors": null,
+            "created_at": "2024-01-01T00:00:00",
+            "created_by_user_id": null,
+            "created_with_llm": null,
+            "document_extracted_at": null,
+            "document_file_name": null,
+            "document_format": null,
             "id": "223e4567-e89b-42d3-a456-426614174000",
             "kind": "study",
+            "llm_review_status": null,
+            "origin": null,
+            "source_metadata": null,
+            "status": "confirmed",
+            "summary": null,
             "title": "New Study",
-            "url": "https://example.com/new"
+            "trust_level": 0.8,
+            "url": "https://example.com/new",
+            "year": null
           },
           "contentType": "application/json",
           "encoded": false
@@ -2607,6 +3174,62 @@
         "matchingRules": {
           "body": {
             "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.authors": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.created_at": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.created_by_user_id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.created_with_llm": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.document_extracted_at": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.document_file_name": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.document_format": {
               "combine": "AND",
               "matchers": [
                 {
@@ -2630,6 +3253,46 @@
                 }
               ]
             },
+            "$.llm_review_status": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.origin": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.source_metadata": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.status": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.summary": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
             "$.title": {
               "combine": "AND",
               "matchers": [
@@ -2638,7 +3301,23 @@
                 }
               ]
             },
+            "$.trust_level": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
             "$.url": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.year": {
               "combine": "AND",
               "matchers": [
                 {
@@ -2840,10 +3519,15 @@
         "body": {
           "content": {
             "created_at": "2024-01-01T00:00:00",
+            "created_by_user_id": null,
+            "created_with_llm": null,
             "id": "123e4567-e89b-42d3-a456-426614174000",
+            "llm_review_status": null,
             "slug": "new-entity",
+            "status": "confirmed",
             "summary": null,
-            "ui_category_id": null
+            "ui_category_id": null,
+            "updated_at": "2024-01-01T00:00:00"
           },
           "contentType": "application/json",
           "encoded": false
@@ -2871,6 +3555,22 @@
                 }
               ]
             },
+            "$.created_by_user_id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.created_with_llm": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
             "$.id": {
               "combine": "AND",
               "matchers": [
@@ -2879,7 +3579,23 @@
                 }
               ]
             },
+            "$.llm_review_status": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
             "$.slug": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.status": {
               "combine": "AND",
               "matchers": [
                 {
@@ -2896,6 +3612,14 @@
               ]
             },
             "$.ui_category_id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.updated_at": {
               "combine": "AND",
               "matchers": [
                 {
