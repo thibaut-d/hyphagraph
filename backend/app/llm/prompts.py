@@ -32,8 +32,8 @@ Guidelines:
 - Distinguish between established facts, hypotheses, and reported findings
 - Treat a study finding, a background statement, and a hypothesis as different statement kinds
 - Note uncertainty levels when present in the source
-- Preserve population, dosage, comparator, timeframe, and study conditions when present
-- Preserve proof-level details when present, including study design, sample size, and statistical support
+- Preserve relation applicability context when present, including population, dosage, comparator, timeframe, and study conditions
+- Preserve evidence-context details when present, including source type, study design, sample size, and statistical support
 - Never merge or reconcile conflicting statements into a single output item
 - Use standardized medical terminology only when it is already present in the text or is a direct surface-form normalization of the same mention
 - Preserve numerical values and dosages exactly as stated
@@ -58,7 +58,7 @@ SUMMARY RULES:
 - Do NOT add background medical facts that are not stated in the provided text
 - Do NOT expand the summary into a general encyclopedia definition
 - If the text gives only the entity name with no local description, use a minimal summary closely matching the mention
-- For contextual entities such as dosage, duration, timeframe, or study condition, prefer concrete source wording and measurable values over vague normalization
+- Do not create standalone entities for dosage, duration, timeframe, sample size, or study design metadata. Keep those as relation scope or evidence context instead.
 
 CRITICAL SLUG FORMAT REQUIREMENTS:
 - MUST start with a lowercase letter (a-z)
@@ -77,7 +77,7 @@ Categories:
 - biomarker: Measurable indicators (lab values, proteins, genes)
 - population: Patient groups, demographics (e.g., "adults over 65")
 - outcome: Clinical outcomes, endpoints (e.g., "mortality", "quality of life")
-- other: Source-stated context role fillers that can participate in relations, including comparator/control groups, dosages, durations, timeframes, study arms, and study conditions when they are explicitly mentioned
+- other: Source-stated entities that can participate in relations but do not fit another category, such as comparator/control groups, study arms, or named conditions explicitly mentioned in the source
 
 Text to analyze:
 {text}
@@ -108,13 +108,6 @@ Respond with a JSON object containing an "entities" key. Example format:
     "text_span": "irreversibly inhibiting cyclooxygenase (COX) enzymes"
   }},
   {{
-    "slug": "dose-325-650mg",
-    "summary": "A dose range explicitly stated in the source.",
-    "category": "other",
-    "confidence": "high",
-    "text_span": "325-650mg"
-  }},
-  {{
     "slug": "placebo",
     "summary": "The comparator group explicitly stated in the source.",
     "category": "other",
@@ -127,8 +120,8 @@ Respond with a JSON object containing an "entities" key. Example format:
 
 Only extract entities that are explicitly mentioned in the text.
 Do not create entities purely from implication, world knowledge, or inferred study context.
-If a contextual item will be used as a relation role, it MUST also appear in the entities array with a valid slug. Numeric context must be prefixed with a word, for example "dose-60mg-daily" or "duration-12-weeks", because slugs cannot start with numbers.
-Do NOT create vague contextual entities like "duration-short-term", "duration-long-term", "dose-high", or "dose-standard" when the source does not give a concrete measurable value. If the source only gives a vague qualifier, keep it in notes or methodology_text instead of turning it into an entity.
+Do NOT create contextual entities for dosage, duration, timeframe, sample size, or study design. Keep them in relation scope or evidence_context instead.
+Do NOT create vague contextual entities like "duration-short-term", "duration-long-term", "dose-high", or "dose-standard". If the source only gives a vague qualifier, keep it in notes or methodology_text instead of turning it into an entity.
 """
 
 
@@ -186,7 +179,8 @@ For each relation, provide:
 - confidence: Your confidence in this relation (high, medium, low)
 - text_span: The exact text that states this relation
 - notes: Any important caveats, conditions, or context
-- study_context: Structured metadata with:
+- scope: Applicability qualifiers when explicitly stated, such as population, dosage, duration, comparator, or condition
+- evidence_context: Structured metadata with:
   - statement_kind: one of finding, background, hypothesis, methodology
   - finding_polarity: one of supports, contradicts, mixed, neutral, uncertain
   - evidence_strength: one of strong, moderate, weak, anecdotal when support level is stated or directly signaled
@@ -200,16 +194,17 @@ For each relation, provide:
 RELATION EXTRACTION RULES:
 - Extract only relations that are explicitly stated in the text
 - Do not create a relation from background knowledge or weak implication alone
-- Preserve negation, uncertainty, study conditions, dosage, timeframe, comparator, and population in notes when relevant
+- Preserve negation, uncertainty, study conditions, dosage, timeframe, comparator, and population in scope or notes when relevant
 - Prefer one relation per explicit study statement or finding span
-- If the text says an intervention did not work, was inconclusive, or had mixed results, still extract the relation but set study_context.finding_polarity accordingly instead of rewriting it as a positive effect
-- If the text gives only a mechanistic assumption, background rationale, or methodology note, mark study_context.statement_kind accordingly
+- If the text says an intervention did not work, was inconclusive, or had mixed results, still extract the relation but set evidence_context.finding_polarity accordingly instead of rewriting it as a positive effect
+- For side-effect or safety findings where no significant difference is found versus a control or placebo, use "causes" with finding_polarity "contradicts" — do NOT use "other". Example: "no significant increase in nausea compared to placebo" → relation_type "causes", finding_polarity "contradicts". This captures that the study tested whether the drug causes the effect and found no evidence it does more than control.
+- If the text gives only a mechanistic assumption, background rationale, or methodology note, mark evidence_context.statement_kind accordingly
 - If the text presents competing or contradictory findings, output separate relations rather than merging them
-- HyphaGraph relations are hyperedges: when one source statement includes context such as population, comparator, outcome, dosage, duration, mechanism, or study condition, keep that context as additional roles in the SAME relation instead of decomposing the statement into multiple binary relations
+- HyphaGraph relations are hyperedges: when one source statement includes reusable semantic participants such as population, comparator, outcome, mechanism, or study condition, keep that context as additional roles in the SAME relation instead of decomposing the statement into multiple binary relations
 - Do not add contextual roles that are not explicitly stated in the same source span
+- Put dosage, duration, timeframe, study_design, sample_size, and statistical_support into scope or evidence_context instead of inventing standalone entities for them
 - Do not create duration or dosage roles from vague qualifiers alone. Prefer exact values like "12 weeks" or "60mg daily". If the source only says "short-term", "long-term", "high dose", or similar vague language, keep that in notes or methodology_text instead of a role entity.
 - Every role entity_slug used in a relation must be present in the identified entity list above
-- Numeric context slugs must be prefixed with a word, for example "dose-60mg-daily" or "duration-12-weeks"
 
 SEMANTIC ROLES (use these instead of subject/object):
 - agent: Entity performing action (drug, treatment)
@@ -221,8 +216,6 @@ SEMANTIC ROLES (use these instead of subject/object):
 - biomarker: Diagnostic marker (crp, mirna-223-3p)
 - measured_by: Assessment tool (vas, moca)
 - control_group: Comparison group (healthy-controls, placebo)
-- dosage: Dose (60mg-daily, 100mg-bid)
-- duration: Time period (12-weeks, 6-months)
 - location: Anatomical site (brain, joints)
 
 CRITICAL: relation_type MUST be EXACTLY one of these values (no variations):
@@ -246,7 +239,7 @@ Do NOT use types like: "has", "integrates_with", "diagnosed_by", "correlates_wit
 Example roles in output:
 - {{"entity_slug": "aspirin", "role_type": "agent"}}
 - {{"entity_slug": "migraine", "role_type": "target"}}
-- {{"entity_slug": "dose-325-650mg", "role_type": "dosage"}}
+- {{"entity_slug": "placebo", "role_type": "control_group"}}
 
 Respond with a JSON object containing a "relations" key:
 ```json
@@ -257,12 +250,15 @@ Respond with a JSON object containing a "relations" key:
     "roles": [
       {{"entity_slug": "aspirin", "role_type": "agent"}},
       {{"entity_slug": "migraine", "role_type": "target"}},
-      {{"entity_slug": "dose-325-650mg", "role_type": "dosage"}}
+      {{"entity_slug": "placebo", "role_type": "control_group"}}
     ],
     "confidence": "high",
     "text_span": "aspirin 325-650mg is effective for migraine pain relief",
     "notes": "Most effective when taken at onset of symptoms",
-    "study_context": {{
+    "scope": {{
+      "dosage": "325-650mg"
+    }},
+    "evidence_context": {{
       "statement_kind": "finding",
       "finding_polarity": "supports",
       "evidence_strength": "moderate",
@@ -275,13 +271,15 @@ Respond with a JSON object containing a "relations" key:
     "relation_type": "causes",
     "roles": [
       {{"entity_slug": "aspirin", "role_type": "agent"}},
-      {{"entity_slug": "stomach-irritation", "role_type": "target"}},
-      {{"entity_slug": "high-dose", "role_type": "condition"}}
+      {{"entity_slug": "stomach-irritation", "role_type": "target"}}
     ],
     "confidence": "high",
     "text_span": "aspirin commonly causes stomach irritation",
     "notes": "Risk increases with higher doses and prolonged use",
-    "study_context": {{
+    "scope": {{
+      "dosage": "higher doses"
+    }},
+    "evidence_context": {{
       "statement_kind": "finding",
       "finding_polarity": "supports",
       "evidence_strength": "moderate",
@@ -395,8 +393,8 @@ Extract:
    - category: drug, disease, symptom, biological_mechanism, treatment, biomarker, population, outcome, other
    - confidence: high, medium, low
    - summaries must stay source-bounded and must not add background facts not present in the text
-   - contextual role fillers such as explicitly stated comparator/control groups, dosages, durations, timeframes, study arms, and study conditions should be extracted as entities, usually with category "other", when they will participate in a relation
-   - numeric context slugs must be prefixed with a word, for example "dose-60mg-daily" or "duration-12-weeks"
+   - extract reusable relation participants as entities, including comparator/control groups, study arms, populations, outcomes, and explicitly named conditions
+   - do NOT create entities for dosage, duration, timeframe, sample size, or study design metadata; keep them in relation scope or evidence_context
 
 2. **Relations**: Relationships between entities
 
@@ -420,7 +418,7 @@ Extract:
 
    HYPERGRAPH ROLE RULE:
    - HyphaGraph relations are n-ary hyperedges, not only binary subject/object pairs.
-   - When a single source statement includes population, comparator, outcome, dosage, duration, mechanism, condition, or study context, include those explicitly stated items as additional roles in the SAME relation.
+   - When a single source statement includes population, comparator, outcome, mechanism, or condition, include those explicitly stated items as additional roles in the SAME relation.
    - Do not split one contextual statement into several binary relations when one n-ary relation can preserve the source context.
    - Do not add contextual roles that are not explicitly stated in the same source span.
 
@@ -441,12 +439,13 @@ Extract:
    - confidence: high, medium, low
    - extract only explicitly stated relations and preserve caveats in notes
    - every role entity_slug used in a relation MUST also appear in the entities array
-   - numeric context slugs must be prefixed with a word, for example "dose-60mg-daily" or "duration-12-weeks"
-   - include study_context for every relation
+   - include evidence_context for every relation
+   - use scope for applicability qualifiers such as dosage, duration, comparator, and condition when they are stated but do not deserve their own entity page
    - statement_kind should usually be "finding" for explicit study results and should only be "background", "hypothesis", or "methodology" when the text clearly frames it that way
    - finding_polarity should reflect whether the source supports, contradicts, or leaves the relation mixed/uncertain
+   - For side-effect or safety findings where no significant difference is found versus a control or placebo, use relation_type "causes" with finding_polarity "contradicts" — do NOT use "other". Example: "no significant increase in nausea vs placebo" → relation_type "causes", finding_polarity "contradicts".
    - study_design, sample_size, and statistical_support should only be included when the source text states them or directly signals them
-   - do not create vague duration or dosage role entities from labels like "short-term", "long-term", "high dose", or "standard dose" unless the source provides an exact measurable value
+   - do not create vague duration or dosage role entities from labels like "short-term", "long-term", "high dose", or "standard dose"
 
 3. **Claims**: Factual statements with evidence
 
@@ -501,13 +500,6 @@ Respond with JSON containing three arrays:
       "text_span": "adults"
     }},
     {{
-      "slug": "dose-60mg-daily",
-      "summary": "The daily 60mg dose explicitly stated in the source.",
-      "category": "other",
-      "confidence": "high",
-      "text_span": "60mg daily"
-    }},
-    {{
       "slug": "placebo",
       "summary": "The comparator group explicitly stated in the source.",
       "category": "other",
@@ -522,13 +514,15 @@ Respond with JSON containing three arrays:
         {{"entity_slug": "duloxetine", "role_type": "agent"}},
         {{"entity_slug": "fibromyalgia", "role_type": "target"}},
         {{"entity_slug": "adults", "role_type": "population"}},
-        {{"entity_slug": "dose-60mg-daily", "role_type": "dosage"}},
         {{"entity_slug": "placebo", "role_type": "control_group"}}
       ],
       "confidence": "high",
       "text_span": "duloxetine 60mg daily is effective for fibromyalgia in adults compared with placebo",
       "notes": "Context includes adult population, daily dose, and placebo comparator",
-      "study_context": {{
+      "scope": {{
+        "dosage": "60mg daily"
+      }},
+      "evidence_context": {{
         "statement_kind": "finding",
         "finding_polarity": "supports",
         "evidence_strength": "strong",
@@ -548,7 +542,7 @@ Respond with JSON containing three arrays:
       "confidence": "high",
       "text_span": "miRNA-223-3p levels correlate with pain severity in women with fibromyalgia",
       "notes": "Potential diagnostic biomarker",
-      "study_context": {{
+      "evidence_context": {{
         "statement_kind": "hypothesis",
         "finding_polarity": "uncertain",
         "evidence_strength": "weak",
@@ -565,11 +559,29 @@ Respond with JSON containing three arrays:
       "confidence": "high",
       "text_span": "duloxetine inhibits serotonin and norepinephrine reuptake",
       "notes": "SNRI mechanism of action",
-      "study_context": {{
+      "evidence_context": {{
         "statement_kind": "background",
         "finding_polarity": "neutral",
         "study_design": "background",
         "assertion_text": "Duloxetine inhibits serotonin and norepinephrine reuptake."
+      }}
+    }},
+    {{
+      "relation_type": "causes",
+      "roles": [
+        {{"entity_slug": "duloxetine", "role_type": "agent"}},
+        {{"entity_slug": "nausea", "role_type": "target"}},
+        {{"entity_slug": "placebo", "role_type": "control_group"}}
+      ],
+      "confidence": "medium",
+      "text_span": "no significant difference in nausea rates compared to placebo",
+      "notes": "Null finding: duloxetine did not cause significantly more nausea than placebo",
+      "evidence_context": {{
+        "statement_kind": "finding",
+        "finding_polarity": "contradicts",
+        "evidence_strength": "weak",
+        "study_design": "randomized_controlled_trial",
+        "assertion_text": "No significant difference in nausea rates was found between duloxetine and placebo."
       }}
     }}
   ],
