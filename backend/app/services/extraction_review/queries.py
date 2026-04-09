@@ -1,4 +1,3 @@
-from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy import and_, func, select
@@ -6,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.staged_extraction import ExtractionStatus, ExtractionType, StagedExtraction
 from app.schemas.staged_extraction import ReviewStats, StagedExtractionFilters
+from app.utils.datetime import utc_now_naive
 
 
 async def load_staged_extraction(
@@ -103,5 +103,5 @@ async def get_stats(db: AsyncSession) -> ReviewStats:
 def apply_review_metadata(staged: StagedExtraction, reviewer_id: UUID, notes: str | None, approved: bool) -> None:
     staged.status = ExtractionStatus.APPROVED if approved else ExtractionStatus.REJECTED
     staged.reviewed_by = reviewer_id
-    staged.reviewed_at = datetime.now(timezone.utc)
+    staged.reviewed_at = utc_now_naive()
     staged.review_notes = notes

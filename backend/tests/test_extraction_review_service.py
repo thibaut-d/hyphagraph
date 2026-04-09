@@ -405,6 +405,8 @@ async def test_reject_extraction_updates_status(
     updated = db_result.scalar_one()
     assert updated.status == ExtractionStatus.REJECTED
     assert updated.reviewed_by == sample_user.id
+    assert updated.reviewed_at is not None
+    assert updated.reviewed_at.tzinfo is None
     assert updated.review_notes == "Text span not found in source"
 
     # Entity still exists in the DB (soft-delete, not hard-delete)
@@ -441,6 +443,15 @@ async def test_can_approve_auto_verified_extraction(
 
     assert result.success is True
     assert result.error is None
+
+    from sqlalchemy import select
+
+    db_result = await review_service.db.execute(
+        select(StagedExtraction).where(StagedExtraction.id == staged.id)
+    )
+    updated = db_result.scalar_one()
+    assert updated.reviewed_at is not None
+    assert updated.reviewed_at.tzinfo is None
 
 
 @pytest.mark.asyncio
@@ -1252,6 +1263,8 @@ async def test_auto_commit_eligible_extractions_materializes_pending(
     updated = result.scalar_one()
     assert updated.status == ExtractionStatus.APPROVED
     assert updated.materialized_entity_id is not None
+    assert updated.reviewed_at is not None
+    assert updated.reviewed_at.tzinfo is None
 
 
 # === Test materialize_extraction Edge Cases ===

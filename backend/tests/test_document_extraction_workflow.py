@@ -624,6 +624,7 @@ class TestReconcileStagedExtractions:
         assert staged.materialized_entity_id == entity_id
         assert staged.reviewed_by == test_user.id
         assert staged.reviewed_at is not None
+        assert staged.reviewed_at.tzinfo is None
 
     async def test_rejects_entity_link_slug(self, db_session, test_user):
         source = await self._make_source(db_session)

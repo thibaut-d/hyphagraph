@@ -1,7 +1,6 @@
 """Auto-commit decision and execution helpers for extraction review."""
 
 import logging
-from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +9,7 @@ from app.models.staged_extraction import ExtractionStatus, ExtractionType, Stage
 from app.schemas.staged_extraction import AutoCommitResponse
 from app.services.extraction_review.materialization import materialize_claim, materialize_entity, materialize_relation
 from app.services.extraction_validation_service import ValidationResult
+from app.utils.datetime import utc_now_naive
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +83,7 @@ async def _materialize_approved(db: AsyncSession, staged: StagedExtraction) -> b
     try:
         staged.status = ExtractionStatus.APPROVED
         staged.auto_approved = True
-        staged.reviewed_at = datetime.now(timezone.utc)
+        staged.reviewed_at = utc_now_naive()
         staged.review_notes = "Auto-approved by system (high validation score)"
 
         if staged.extraction_type == ExtractionType.ENTITY:

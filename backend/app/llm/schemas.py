@@ -7,8 +7,9 @@ Defines structured schemas for:
 - Claim extraction
 - Entity linking
 """
+import re
 from typing import Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.schemas.common_types import JsonObject, JsonValue
 
@@ -30,6 +31,28 @@ EntityCategory = Literal[
 ]
 
 ConfidenceLevel = Literal["high", "medium", "low"]
+
+
+def _normalize_extracted_slug(value: object) -> object:
+    """
+    Normalize LLM-emitted slugs into the canonical lowercase hyphenated form.
+
+    The extraction prompt asks for stable slugs, but model outputs can still
+    include uppercase acronyms, punctuation, or leading digits such as
+    `5-hydroxytryptophan` or `30-percent-pain-relief`. Normalize those values
+    at the schema boundary so one malformed slug does not reject the whole batch.
+    """
+    if not isinstance(value, str):
+        return value
+
+    normalized = value.strip().lower()
+    normalized = re.sub(r"[^a-z0-9]+", "-", normalized)
+    normalized = re.sub(r"-{2,}", "-", normalized).strip("-")
+
+    if normalized and not normalized[0].isalpha():
+        normalized = f"item-{normalized}"
+
+    return normalized or value
 
 
 class ExtractedEntity(BaseModel):
@@ -66,6 +89,11 @@ class ExtractedEntity(BaseModel):
         min_length=1,
         max_length=500
     )
+
+    @field_validator("slug", mode="before")
+    @classmethod
+    def normalize_slug(cls, value: object) -> object:
+        return _normalize_extracted_slug(value)
 
 
 class EntityExtractionResponse(BaseModel):
@@ -109,6 +137,11 @@ class ExtractedRole(BaseModel):
         ...,
         description="Semantic role type (agent, target, population, mechanism, etc.)"
     )
+
+    @field_validator("entity_slug", mode="before")
+    @classmethod
+    def normalize_entity_slug(cls, value: object) -> object:
+        return _normalize_extracted_slug(value)
 
 
 class ExtractedRelation(BaseModel):
@@ -177,6 +210,40 @@ EvidenceStrength = Literal[
     "anecdotal"    # Individual experiences
 ]
 
+
+def _normalize_evidence_strength_alias(value: object) -> object:
+    """
+    Normalize common confidence-style aliases into the evidence-strength vocabulary.
+
+    Some model responses still emit `high`/`medium`/`low` even though the prompt
+    asks for `strong`/`moderate`/`weak`. Accepting those aliases keeps the
+    extraction pipeline robust without broadening the stored contract.
+    """
+    if not isinstance(value, str):
+        return value
+
+    normalized = value.strip().lower()
+    aliases = {
+        "high": "strong",
+        "medium": "moderate",
+        "low": "weak",
+    }
+    return aliases.get(normalized, normalized)
+
+
+def _normalize_sample_size(value: object) -> object:
+    """Extract an integer participant count from common free-text sample-size formats."""
+    if isinstance(value, int):
+        return value
+    if not isinstance(value, str):
+        return value
+
+    match = re.search(r"\d[\d,]*", value)
+    if not match:
+        return value
+
+    return int(match.group(0).replace(",", ""))
+
 StatementKind = Literal[
     "finding",
     "background",
@@ -213,6 +280,16 @@ StudyDesign = Literal[
 
 class ExtractedRelationStudyContext(BaseModel):
     """Structured context describing the evidentiary status of an extracted relation."""
+
+    @field_validator("evidence_strength", mode="before")
+    @classmethod
+    def normalize_evidence_strength(cls, value: object) -> object:
+        return _normalize_evidence_strength_alias(value)
+
+    @field_validator("sample_size", mode="before")
+    @classmethod
+    def normalize_sample_size(cls, value: object) -> object:
+        return _normalize_sample_size(value)
 
     statement_kind: StatementKind = Field(
         ...,
@@ -274,6 +351,18 @@ class ExtractedClaim(BaseModel):
     Represents a specific factual statement from the source with
     information about evidence quality and involved entities.
     """
+    @field_validator("evidence_strength", mode="before")
+    @classmethod
+    def normalize_evidence_strength(cls, value: object) -> object:
+        return _normalize_evidence_strength_alias(value)
+
+    @field_validator("entities_involved", mode="before")
+    @classmethod
+    def normalize_entities_involved(cls, value: object) -> object:
+        if not isinstance(value, list):
+            return value
+        return [_normalize_extracted_slug(item) for item in value]
+
     claim_text: str = Field(
         ...,
         description="The factual statement being made",

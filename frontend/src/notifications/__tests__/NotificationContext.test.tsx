@@ -1,6 +1,7 @@
 import { render, screen, waitFor, fireEvent, act } from "@testing-library/react";
 import { NotificationProvider, useNotification } from "../NotificationContext";
 import { describe, test, expect, vi, beforeEach } from "vitest";
+import { ErrorCode, ParsedAppError } from "../../utils/errorHandler";
 
 // Mock i18next
 vi.mock("react-i18next", () => ({
@@ -48,6 +49,20 @@ function TestComponent() {
         onClick={() => showError("Persistent", { autoDismiss: false })}
       >
         Show Persistent
+      </button>
+      <button
+        onClick={() =>
+          showError(
+            new ParsedAppError({
+              userMessage: "Structured extraction failure",
+              developerMessage: "Backend stack details",
+              code: ErrorCode.INTERNAL_SERVER_ERROR,
+            }),
+            { autoDismiss: false },
+          )
+        }
+      >
+        Show Structured Error
       </button>
       <button onClick={dismiss}>Dismiss</button>
     </div>
@@ -264,6 +279,24 @@ describe("NotificationContext", () => {
     await waitFor(() => {
       expect(screen.queryByText("Success message")).not.toBeInTheDocument();
     });
+  });
+
+  test("clicking notification content does not dismiss a persistent structured error", async () => {
+    render(
+      <NotificationProvider>
+        <TestComponent />
+      </NotificationProvider>,
+    );
+
+    fireEvent.click(screen.getByText("Show Structured Error"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Structured extraction failure")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText("Structured extraction failure"));
+
+    expect(screen.getByText("Structured extraction failure")).toBeInTheDocument();
   });
 
   test("queue management: shows notifications one at a time", async () => {

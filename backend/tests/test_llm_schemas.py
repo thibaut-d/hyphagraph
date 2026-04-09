@@ -1,0 +1,165 @@
+import pytest
+
+from app.api.document_extraction_dependencies import raise_internal_api_exception
+from app.llm.schemas import validate_batch_extraction
+from app.utils.errors import AppException, ErrorCode
+
+
+def test_validate_batch_extraction_normalizes_confidence_style_evidence_strength_aliases():
+    result = validate_batch_extraction(
+        {
+            "entities": [
+                {
+                    "slug": "duloxetine",
+                    "summary": "Duloxetine is an antidepressant evaluated in the source.",
+                    "category": "drug",
+                    "confidence": "high",
+                    "text_span": "duloxetine",
+                },
+                {
+                    "slug": "chronic-pain",
+                    "summary": "Chronic pain is the condition discussed in the source.",
+                    "category": "disease",
+                    "confidence": "high",
+                    "text_span": "chronic pain",
+                },
+            ],
+            "relations": [
+                {
+                    "relation_type": "treats",
+                    "roles": [
+                        {"entity_slug": "duloxetine", "role_type": "agent"},
+                        {"entity_slug": "chronic-pain", "role_type": "target"},
+                    ],
+                    "confidence": "medium",
+                    "text_span": "duloxetine improved chronic pain outcomes",
+                    "study_context": {
+                        "statement_kind": "finding",
+                        "finding_polarity": "supports",
+                        "evidence_strength": "low",
+                    },
+                }
+            ],
+            "claims": [
+                {
+                    "claim_text": "Duloxetine improved chronic pain outcomes in the reviewed studies.",
+                    "entities_involved": ["duloxetine", "chronic-pain"],
+                    "claim_type": "efficacy",
+                    "evidence_strength": "medium",
+                    "confidence": "medium",
+                    "text_span": "duloxetine improved chronic pain outcomes",
+                }
+            ],
+        }
+    )
+
+    assert result.relations[0].study_context is not None
+    assert result.relations[0].study_context.evidence_strength == "weak"
+    assert result.claims[0].evidence_strength == "moderate"
+
+
+def test_validate_batch_extraction_normalizes_slug_shapes_before_schema_validation():
+    result = validate_batch_extraction(
+        {
+            "entities": [
+                {
+                    "slug": "5-hydroxytryptophan",
+                    "summary": "5-HTP is discussed as a treatment option in the source.",
+                    "category": "drug",
+                    "confidence": "high",
+                    "text_span": "5-hydroxytryptophan",
+                },
+                {
+                    "slug": "GRADE",
+                    "summary": "GRADE is the evidence framework referenced by the review.",
+                    "category": "other",
+                    "confidence": "medium",
+                    "text_span": "GRADE",
+                },
+            ],
+            "relations": [
+                {
+                    "relation_type": "treats",
+                    "roles": [
+                        {"entity_slug": "5-hydroxytryptophan", "role_type": "agent"},
+                        {"entity_slug": "30-percent-pain-relief", "role_type": "target"},
+                    ],
+                    "confidence": "medium",
+                    "text_span": "5-hydroxytryptophan improved 30 percent pain relief",
+                }
+            ],
+            "claims": [
+                {
+                    "claim_text": "5-hydroxytryptophan improved 50 percent pain relief in one subgroup.",
+                    "entities_involved": ["5-hydroxytryptophan", "50-percent-pain-relief"],
+                    "claim_type": "efficacy",
+                    "evidence_strength": "weak",
+                    "confidence": "medium",
+                    "text_span": "5-hydroxytryptophan improved 50 percent pain relief",
+                }
+            ],
+        }
+    )
+
+    assert result.entities[0].slug == "item-5-hydroxytryptophan"
+    assert result.entities[1].slug == "grade"
+    assert result.relations[0].roles[0].entity_slug == "item-5-hydroxytryptophan"
+    assert result.relations[0].roles[1].entity_slug == "item-30-percent-pain-relief"
+    assert result.claims[0].entities_involved == [
+        "item-5-hydroxytryptophan",
+        "item-50-percent-pain-relief",
+    ]
+
+
+def test_validate_batch_extraction_normalizes_textual_sample_size_to_integer():
+    result = validate_batch_extraction(
+        {
+            "entities": [
+                {
+                    "slug": "duloxetine",
+                    "summary": "Duloxetine is the active treatment discussed in the source.",
+                    "category": "drug",
+                    "confidence": "high",
+                    "text_span": "duloxetine",
+                },
+                {
+                    "slug": "fibromyalgia",
+                    "summary": "Fibromyalgia is the target condition in the source.",
+                    "category": "disease",
+                    "confidence": "high",
+                    "text_span": "fibromyalgia",
+                },
+            ],
+            "relations": [
+                {
+                    "relation_type": "treats",
+                    "roles": [
+                        {"entity_slug": "duloxetine", "role_type": "agent"},
+                        {"entity_slug": "fibromyalgia", "role_type": "target"},
+                    ],
+                    "confidence": "medium",
+                    "text_span": "duloxetine improved fibromyalgia outcomes",
+                    "study_context": {
+                        "statement_kind": "finding",
+                        "sample_size": "1,474 participants",
+                    },
+                }
+            ],
+            "claims": [],
+        }
+    )
+
+    assert result.relations[0].study_context is not None
+    assert result.relations[0].study_context.sample_size == 1474
+
+
+def test_raise_internal_api_exception_uses_structured_app_exception():
+    with pytest.raises(AppException) as exc_info:
+        raise_internal_api_exception(
+            message="Failed to extract from URL",
+            context={"source_id": "source-123"},
+        )
+
+    assert exc_info.value.error_detail.code == ErrorCode.INTERNAL_SERVER_ERROR
+    assert exc_info.value.error_detail.message == "Failed to extract from URL"
+    assert exc_info.value.error_detail.context == {"source_id": "source-123"}

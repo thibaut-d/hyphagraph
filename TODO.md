@@ -53,6 +53,83 @@ explicit proof-level metadata.
 ### Status
 completed
 
+## Fix URL Extraction Evidence-Strength Alias Crash
+
+Prevent URL knowledge extraction from failing when the LLM emits confidence-style
+evidence labels (`low`, `medium`, `high`) in relation or claim study metadata,
+and ensure internal extraction failures still use the structured API error contract.
+
+### Objective
+Make `extract-from-url` resilient to known evidence-strength alias drift and stop
+frontend fallbacks from collapsing into opaque `object`-type errors.
+
+### Impacted modules
+- `backend/app/llm/schemas.py`
+- `backend/app/api/document_extraction_dependencies.py`
+- `backend/tests/test_llm_schemas.py`
+
+### Assumptions
+- The live crash is caused by schema validation rejecting `study_context.evidence_strength="low"`.
+- Mapping `high -> strong`, `medium -> moderate`, and `low -> weak` is semantically safe at the schema boundary.
+- Structured API errors are preferable to raw `HTTPException.detail` strings for extraction failures.
+
+### Plan
+1. Normalize evidence-strength aliases at the LLM schema boundary.
+2. Keep internal extraction failures inside the standard API error envelope.
+3. Add focused regression coverage for alias normalization.
+4. Re-run targeted validation and the real source reproduction.
+
+### Validation
+- Backend: focused pytest for the new schema regression
+- Backend: reproduce extraction for source `28932f7d-569d-4a55-b9b3-1e1010c4c42a`
+
+### Risks
+- Alias normalization could hide prompt drift if we broaden it too far.
+- Internal error messages must stay structured without leaking unnecessary implementation detail.
+
+### Status
+completed
+
+## Fix Save Extraction Reviewed-At Timestamp Crash
+
+Prevent `save-extraction` and related review flows from crashing on PostgreSQL
+when staged extraction review metadata writes a timezone-aware datetime into the
+naive `reviewed_at` column.
+
+### Objective
+Keep extraction save/review flows compatible with the current staged extraction
+schema by normalizing review timestamps to UTC-naive values at the write boundary.
+
+### Impacted modules
+- `backend/app/utils/datetime.py`
+- `backend/app/services/document_extraction_processing.py`
+- `backend/app/services/extraction_review/auto_commit.py`
+- `backend/app/services/extraction_review/queries.py`
+- `backend/tests/test_document_extraction_workflow.py`
+- `backend/tests/test_extraction_review_service.py`
+
+### Assumptions
+- `staged_extractions.reviewed_at` is intentionally stored as a naive UTC timestamp today.
+- The safest short-term fix is to normalize writes, not to change the database schema in this task.
+- The same timestamp bug can affect save reconciliation, manual review, and auto-commit flows.
+
+### Plan
+1. Add a small helper for UTC-naive timestamps.
+2. Use it on every `reviewed_at` write path.
+3. Add focused regression assertions in extraction workflow and review service tests.
+4. Re-run targeted backend validation and reproduce the original save flow.
+
+### Validation
+- Backend: focused pytest for extraction workflow and review service review paths
+- Backend: reproduce `POST /api/sources/920b8d18-8ee3-464d-aa83-15dd7c8463d9/save-extraction`
+
+### Risks
+- If other naive timestamp columns are written with aware datetimes elsewhere, they may still need separate cleanup.
+- This preserves the current schema contract; a future migration to timezone-aware review timestamps would need coordinated changes.
+
+### Status
+completed
+
 ## Open Findings
 
 If new defects are found, add them here as unchecked items with:

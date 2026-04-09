@@ -50,6 +50,7 @@ from app.services.extraction_validation_service import ValidationResult
 from app.services.pubmed_fetcher import PubMedArticle, PubMedFetcher
 from app.services.source_service import SourceService
 from app.services.url_fetcher import UrlFetcher, UrlFetchResult
+from app.utils.datetime import utc_now_naive
 from app.utils.errors import SourceNotFoundException, ValidationException
 from app.utils.revision_helpers import create_new_revision
 
@@ -694,7 +695,7 @@ async def reconcile_staged_extractions(
     if not staged_items:
         return []
 
-    now = datetime.datetime.now(datetime.UTC)
+    now = utc_now_naive()
 
     # Build relation key → (index, relation_id) map; first match wins for duplicates
     relation_key_to_idx: dict[tuple, int] = {}

@@ -5,6 +5,7 @@ import {
   useEffect,
   ReactNode,
   useCallback,
+  type SyntheticEvent,
 } from "react";
 import {
   Snackbar,
@@ -174,6 +175,18 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     setCurrent(null);
   }, []);
 
+  const handleClose = useCallback(
+    (_event?: Event | SyntheticEvent, reason?: string) => {
+      // Keep the notification open while the user interacts with its content,
+      // including the dev-details disclosure.
+      if (reason === "clickaway") {
+        return;
+      }
+      dismiss();
+    },
+    [dismiss],
+  );
+
   // Try to translate message, fall back to raw message if not found
   const displayMessage = current
     ? t(current.message, { defaultValue: current.message })
@@ -188,13 +201,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       {children}
       <Snackbar
         open={!!current}
-        onClose={dismiss}
+        onClose={handleClose}
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
         TransitionComponent={Slide}
       >
         <Alert
           severity={current?.severity}
-          onClose={dismiss}
+          onClose={handleClose}
           action={
             <IconButton
               size="small"
@@ -214,7 +227,11 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             <Box sx={{ mt: 0.5 }}>
               <Box
                 component="button"
-                onClick={() => setDevDetailsOpen((o) => !o)}
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setDevDetailsOpen((o) => !o);
+                }}
                 sx={{
                   background: "none",
                   border: "none",
