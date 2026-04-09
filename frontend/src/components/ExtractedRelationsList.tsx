@@ -25,7 +25,7 @@ import type {
   ExtractedRelation,
   RelationType,
   ConfidenceLevel,
-  ExtractedRelationStudyContext,
+  ExtractedRelationEvidenceContext,
   StatementKind,
   FindingPolarity,
   StudyDesign,
@@ -35,6 +35,7 @@ import {
   getRelationDisplayRoles,
   getRelationKey,
 } from "../utils/extractionRelation";
+import { getExtractedEntityDisplayLabel } from "../utils/entityDisplay";
 
 interface ExtractedRelationsListProps {
   relations: ExtractedRelation[];
@@ -114,32 +115,36 @@ const studyDesignLabels: Record<StudyDesign, string> = {
   unknown: "Unknown design",
 };
 
-function renderStudyContextChips(studyContext?: ExtractedRelationStudyContext | null) {
-  if (!studyContext) {
+function humanizeScopeKey(key: string) {
+  return key.replace(/[_-]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function renderEvidenceContextChips(evidenceContext?: ExtractedRelationEvidenceContext | null) {
+  if (!evidenceContext) {
     return null;
   }
 
   const chips: React.ReactElement[] = [
     <Chip
       key="statement-kind"
-      label={statementKindLabels[studyContext.statement_kind]}
+      label={statementKindLabels[evidenceContext.statement_kind]}
       size="small"
       variant="outlined"
-      color={studyContext.statement_kind === "finding" ? "primary" : "default"}
+      color={evidenceContext.statement_kind === "finding" ? "primary" : "default"}
     />,
   ];
 
-  if (studyContext.finding_polarity) {
+  if (evidenceContext.finding_polarity) {
     chips.push(
       <Chip
         key="finding-polarity"
-        label={findingPolarityLabels[studyContext.finding_polarity]}
+        label={findingPolarityLabels[evidenceContext.finding_polarity]}
         size="small"
         variant="outlined"
         color={
-          studyContext.finding_polarity === "supports"
+          evidenceContext.finding_polarity === "supports"
             ? "success"
-            : studyContext.finding_polarity === "contradicts"
+            : evidenceContext.finding_polarity === "contradicts"
               ? "error"
               : "warning"
         }
@@ -147,33 +152,33 @@ function renderStudyContextChips(studyContext?: ExtractedRelationStudyContext | 
     );
   }
 
-  if (studyContext.evidence_strength) {
+  if (evidenceContext.evidence_strength) {
     chips.push(
       <Chip
         key="evidence-strength"
-        label={`Evidence: ${studyContext.evidence_strength}`}
+        label={`Evidence: ${evidenceContext.evidence_strength}`}
         size="small"
         variant="outlined"
       />,
     );
   }
 
-  if (studyContext.study_design) {
+  if (evidenceContext.study_design) {
     chips.push(
       <Chip
         key="study-design"
-        label={studyDesignLabels[studyContext.study_design]}
+        label={studyDesignLabels[evidenceContext.study_design]}
         size="small"
         variant="outlined"
       />,
     );
   }
 
-  if (studyContext.sample_size || studyContext.sample_size_text) {
+  if (evidenceContext.sample_size || evidenceContext.sample_size_text) {
     chips.push(
       <Chip
         key="sample-size"
-        label={studyContext.sample_size_text || `n=${studyContext.sample_size}`}
+        label={evidenceContext.sample_size_text || `n=${evidenceContext.sample_size}`}
         size="small"
         variant="outlined"
       />,
@@ -181,6 +186,21 @@ function renderStudyContextChips(studyContext?: ExtractedRelationStudyContext | 
   }
 
   return chips;
+}
+
+function renderScopeChips(scope?: ExtractedRelation["scope"]) {
+  if (!scope) {
+    return null;
+  }
+
+  return Object.entries(scope).map(([key, value]) => (
+    <Chip
+      key={`scope-${key}`}
+      label={`${humanizeScopeKey(key)}: ${String(value)}`}
+      size="small"
+      variant="outlined"
+    />
+  ));
 }
 
 function RelationToken({
@@ -234,7 +254,7 @@ export const ExtractedRelationsList: React.FC<ExtractedRelationsListProps> = ({
   onToggle,
 }) => {
   const entityLabels = new Map(
-    entities.map((entity) => [entity.slug, entity.text_span || entity.slug] as const),
+    entities.map((entity) => [entity.slug, getExtractedEntityDisplayLabel(entity)] as const),
   );
 
   if (relations.length === 0) {
@@ -254,7 +274,9 @@ export const ExtractedRelationsList: React.FC<ExtractedRelationsListProps> = ({
           role,
           value: entityLabels.get(value) || value,
         }));
-        const contextChips = renderStudyContextChips(relation.study_context);
+        const evidenceContext = relation.evidence_context ?? relation.study_context;
+        const evidenceChips = renderEvidenceContextChips(evidenceContext);
+        const scopeChips = renderScopeChips(relation.scope);
 
         return (
           <Card
@@ -313,9 +335,10 @@ export const ExtractedRelationsList: React.FC<ExtractedRelationsListProps> = ({
                       </Box>
                     </Box>
 
-                    {contextChips && contextChips.length > 0 && (
+                    {((evidenceChips && evidenceChips.length > 0) || (scopeChips && scopeChips.length > 0)) && (
                       <Box sx={{ mt: 1, display: "flex", gap: 1, flexWrap: "wrap" }}>
-                        {contextChips}
+                        {scopeChips}
+                        {evidenceChips}
                       </Box>
                     )}
 
@@ -340,35 +363,35 @@ export const ExtractedRelationsList: React.FC<ExtractedRelationsListProps> = ({
                       </Typography>
                     )}
 
-                    {relation.study_context?.assertion_text && (
+                    {evidenceContext?.assertion_text && (
                       <Box sx={{ mt: 1 }}>
                         <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
                           Core statement
                         </Typography>
                         <Typography variant="body2" sx={{ overflowWrap: "anywhere" }}>
-                          {relation.study_context.assertion_text}
+                          {evidenceContext.assertion_text}
                         </Typography>
                       </Box>
                     )}
 
-                    {relation.study_context?.methodology_text && (
+                    {evidenceContext?.methodology_text && (
                       <Box sx={{ mt: 1 }}>
                         <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
-                          Method / applicability
+                          Evidence / methodology
                         </Typography>
                         <Typography variant="body2" sx={{ overflowWrap: "anywhere" }}>
-                          {relation.study_context.methodology_text}
+                          {evidenceContext.methodology_text}
                         </Typography>
                       </Box>
                     )}
 
-                    {relation.study_context?.statistical_support && (
+                    {evidenceContext?.statistical_support && (
                       <Box sx={{ mt: 1 }}>
                         <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
                           Statistical support
                         </Typography>
                         <Typography variant="body2" sx={{ overflowWrap: "anywhere" }}>
-                          {relation.study_context.statistical_support}
+                          {evidenceContext.statistical_support}
                         </Typography>
                       </Box>
                     )}

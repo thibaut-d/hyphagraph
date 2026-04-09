@@ -4,7 +4,12 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import select
 
-from app.llm.schemas import ExtractedEntity, ExtractedRelation, ExtractedRole
+from app.llm.schemas import (
+    ExtractedEntity,
+    ExtractedRelation,
+    ExtractedRelationEvidenceContext,
+    ExtractedRole,
+)
 from app.models.entity import Entity
 from app.models.entity_revision import EntityRevision
 from app.models.entity_term import EntityTerm
@@ -302,6 +307,115 @@ class TestReviewAndLinkWorkflow:
         assert preview.avg_validation_score == pytest.approx(0.8)
         assert preview.link_suggestions[0].match_type == "none"
 
+    async def test_build_extraction_preview_with_service_moves_contextual_pseudo_entities_into_scope_and_evidence_context(
+        self,
+        db_session,
+    ):
+        source_id = uuid4()
+        entities = [
+            build_extracted_entity("duloxetine"),
+            ExtractedEntity(
+                slug="fibromyalgia",
+                summary="Fibromyalgia mention",
+                category="disease",
+                confidence="high",
+                text_span="fibromyalgia",
+            ),
+            ExtractedEntity(
+                slug="participants-1474",
+                summary="Participant count mentioned in the source.",
+                category="other",
+                confidence="high",
+                text_span="1474 participants",
+            ),
+            ExtractedEntity(
+                slug="study-design-rct",
+                summary="Randomized trial wording mentioned in the source.",
+                category="other",
+                confidence="high",
+                text_span="randomized controlled trial",
+            ),
+            ExtractedEntity(
+                slug="duration-12-weeks",
+                summary="Duration wording mentioned in the source.",
+                category="other",
+                confidence="high",
+                text_span="12 weeks",
+            ),
+        ]
+        relations = [
+            ExtractedRelation(
+                relation_type="treats",
+                roles=[
+                    ExtractedRole(entity_slug="duloxetine", role_type="agent"),
+                    ExtractedRole(entity_slug="fibromyalgia", role_type="target"),
+                    ExtractedRole(entity_slug="participants-1474", role_type="sample_size"),
+                    ExtractedRole(entity_slug="study-design-rct", role_type="study_design"),
+                    ExtractedRole(entity_slug="duration-12-weeks", role_type="duration"),
+                ],
+                confidence="high",
+                text_span="In a randomized controlled trial of 1474 participants, duloxetine improved fibromyalgia symptoms over 12 weeks.",
+                evidence_context=ExtractedRelationEvidenceContext(
+                    statement_kind="finding",
+                    finding_polarity="supports",
+                ),
+            )
+        ]
+
+        class FakeExtractionService:
+            def __init__(self, db):
+                self.db = db
+
+            async def extract_batch_with_validation_results(self, text):
+                assert text == "source body"
+                return (
+                    entities,
+                    relations,
+                    [],
+                    [SimpleNamespace() for _ in entities],
+                    [SimpleNamespace()],
+                    [],
+                )
+
+        class FakeReviewService:
+            def __init__(self, **kwargs):
+                self.kwargs = kwargs
+
+            async def stage_batch(self, **kwargs):
+                staged_relations = [relation for relation, _ in kwargs["relations"]]
+                assert staged_relations[0].scope == {"duration": "12 weeks"}
+                assert staged_relations[0].evidence_context is not None
+                assert staged_relations[0].evidence_context.study_design == "randomized_controlled_trial"
+                assert staged_relations[0].evidence_context.sample_size == 1474
+                assert [role.entity_slug for role in staged_relations[0].roles] == ["duloxetine", "fibromyalgia"]
+                staged_entities = [entity for entity, _ in kwargs["entities"]]
+                assert [entity.slug for entity in staged_entities] == ["duloxetine", "fibromyalgia"]
+                return [SimpleNamespace(status="pending", validation_score=0.7)]
+
+        class FakeLinkingService:
+            def __init__(self, db):
+                self.db = db
+
+            async def find_entity_matches(self, requested_entities):
+                assert [entity.slug for entity in requested_entities] == ["duloxetine", "fibromyalgia"]
+                return []
+
+        preview = await build_extraction_preview_with_service(
+            db_session,
+            source_id=source_id,
+            text="source body",
+            extraction_service_factory=FakeExtractionService,
+            review_service_factory=FakeReviewService,
+            linking_service_factory=FakeLinkingService,
+        )
+
+        assert [entity.slug for entity in preview.entities] == ["duloxetine", "fibromyalgia"]
+        assert preview.relations[0].scope == {"duration": "12 weeks"}
+        assert preview.relations[0].evidence_context is not None
+        assert preview.relations[0].evidence_context.sample_size == 1474
+        assert preview.relations[0].evidence_context.study_design == "randomized_controlled_trial"
+        assert [role.entity_slug for role in preview.relations[0].roles] == ["duloxetine", "fibromyalgia"]
+
 
 @pytest.mark.asyncio
 class TestSaveExtractionToGraph:
@@ -373,7 +487,7 @@ class TestSaveExtractionToGraph:
         assert result.created_entity_ids == [created_entity_id]
         assert result.skipped_relations == []
 
-    async def test_save_extraction_to_graph_persists_relation_study_context_and_direction(
+    async def test_save_extraction_to_graph_persists_relation_evidence_context_and_direction(
         self, db_session, test_user
     ):
         source_service = SourceService(db_session)
@@ -398,8 +512,6 @@ class TestSaveExtractionToGraph:
         )
         await db_session.commit()
 
-        from app.llm.schemas import ExtractedRelationStudyContext
-
         request = SimpleNamespace(
             entities_to_create=[],
             entity_links={"aspirin": aspirin.id, "pain": pain.id},
@@ -413,7 +525,7 @@ class TestSaveExtractionToGraph:
                     confidence="high",
                     text_span="In a randomized controlled trial (n=120), aspirin did not improve pain versus placebo.",
                     notes="Null effect in the randomized comparison.",
-                    study_context=ExtractedRelationStudyContext(
+                    evidence_context=ExtractedRelationEvidenceContext(
                         statement_kind="finding",
                         finding_polarity="contradicts",
                         evidence_strength="strong",
@@ -447,15 +559,17 @@ class TestSaveExtractionToGraph:
         revision = revision_result.scalar_one()
         assert revision.direction == "contradicts"
         assert revision.scope == {
-            "statement_kind": "finding",
-            "finding_polarity": "contradicts",
-            "evidence_strength": "strong",
-            "study_design": "randomized_controlled_trial",
-            "sample_size": 120,
-            "sample_size_text": "n=120",
-            "assertion_text": "Aspirin did not improve pain versus placebo.",
-            "methodology_text": "Randomized controlled trial.",
-            "statistical_support": "p=0.41",
+            "evidence_context": {
+                "statement_kind": "finding",
+                "finding_polarity": "contradicts",
+                "evidence_strength": "strong",
+                "study_design": "randomized_controlled_trial",
+                "sample_size": 120,
+                "sample_size_text": "n=120",
+                "assertion_text": "Aspirin did not improve pain versus placebo.",
+                "methodology_text": "Randomized controlled trial.",
+                "statistical_support": "p=0.41",
+            }
         }
 
     async def test_save_extraction_to_graph_applies_prefill_to_new_entities(

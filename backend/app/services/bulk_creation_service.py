@@ -20,22 +20,28 @@ from app.schemas.common_types import SlugEntityMap
 from app.schemas.entity import EntityPrefillDraft
 from app.utils.revision_helpers import create_new_revision
 from app.utils.confidence import CONFIDENCE_FLOAT
+from app.utils.relation_context import build_relation_context_payload
 from app.config import settings
 
 logger = logging.getLogger(__name__)
 
 
 def _build_relation_scope(extracted: ExtractedRelation) -> dict[str, object] | None:
-    if not extracted.study_context:
-        return None
-    scope = extracted.study_context.model_dump(exclude_none=True)
-    return scope or None
+    evidence_context = (
+        extracted.evidence_context.model_dump(exclude_none=True)
+        if extracted.evidence_context
+        else None
+    )
+    return build_relation_context_payload(
+        scope=extracted.scope,
+        evidence_context=evidence_context,
+    )
 
 
 def _build_relation_direction(extracted: ExtractedRelation) -> str | None:
-    if not extracted.study_context:
+    if not extracted.evidence_context:
         return None
-    polarity = extracted.study_context.finding_polarity
+    polarity = extracted.evidence_context.finding_polarity
     if polarity in {"supports", "contradicts", "mixed", "neutral", "uncertain"}:
         return polarity
     return None

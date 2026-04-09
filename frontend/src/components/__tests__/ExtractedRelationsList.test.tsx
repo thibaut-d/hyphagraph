@@ -17,7 +17,10 @@ const naryRelation: ExtractedRelation = {
   text_span:
     "Duloxetine demonstrated modest improvements in pain among adolescents with juvenile fibromyalgia compared with placebo.",
   notes: "Reported as a modest improvement with adverse effects.",
-  study_context: {
+  scope: {
+    duration: "12 weeks",
+  },
+  evidence_context: {
     statement_kind: "finding",
     finding_polarity: "supports",
     evidence_strength: "strong",
@@ -43,7 +46,7 @@ const extractedEntities: ExtractedEntity[] = [
     summary: "Condition mention",
     category: "disease",
     confidence: "high",
-    text_span: "juvenile fibromyalgia",
+    text_span: "Fibromyalgia is a chronic widespread pain condition",
   },
   {
     slug: "adolescents",
@@ -83,7 +86,8 @@ describe("ExtractedRelationsList", () => {
     expect(screen.getByText("agent")).toBeInTheDocument();
     expect(screen.getByText("duloxetine")).toBeInTheDocument();
     expect(screen.getByText("target")).toBeInTheDocument();
-    expect(screen.getByText("juvenile fibromyalgia")).toBeInTheDocument();
+    expect(screen.getByText("Juvenile fibromyalgia")).toBeInTheDocument();
+    expect(screen.queryByText("Fibromyalgia is a chronic widespread pain condition")).not.toBeInTheDocument();
     expect(screen.getByText("population")).toBeInTheDocument();
     expect(screen.getByText("adolescents")).toBeInTheDocument();
     expect(screen.getByText("outcome")).toBeInTheDocument();
@@ -95,13 +99,14 @@ describe("ExtractedRelationsList", () => {
     expect(screen.getByText("Evidence: strong")).toBeInTheDocument();
     expect(screen.getByText("Randomized trial")).toBeInTheDocument();
     expect(screen.getByText("n=120")).toBeInTheDocument();
+    expect(screen.getByText("Duration: 12 weeks")).toBeInTheDocument();
     expect(screen.getByText("Core statement")).toBeInTheDocument();
     expect(
       screen.getByText(
         "Duloxetine improved pain compared with placebo in adolescents with juvenile fibromyalgia.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText("Method / applicability")).toBeInTheDocument();
+    expect(screen.getByText("Evidence / methodology")).toBeInTheDocument();
     expect(screen.getByText("Randomized placebo-controlled comparison.")).toBeInTheDocument();
     expect(screen.getByText("Statistical support")).toBeInTheDocument();
     expect(screen.getByText("p=0.01")).toBeInTheDocument();

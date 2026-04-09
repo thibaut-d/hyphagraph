@@ -9,7 +9,7 @@ Defines structured schemas for:
 """
 import re
 from typing import Literal
-from pydantic import BaseModel, Field, field_validator
+from pydantic import AliasChoices, BaseModel, Field, field_validator
 
 from app.schemas.common_types import JsonObject, JsonValue
 
@@ -174,13 +174,26 @@ class ExtractedRelation(BaseModel):
         description="Important caveats, conditions, or context",
         max_length=500
     )
-    study_context: "ExtractedRelationStudyContext | None" = Field(
+    scope: JsonObject | None = Field(
         None,
         description=(
-            "Structured study metadata describing whether this relation is a finding, "
+            "Applicability qualifiers for this relation, such as population, dosage, "
+            "duration, comparator, or condition"
+        ),
+    )
+    evidence_context: "ExtractedRelationEvidenceContext | None" = Field(
+        None,
+        validation_alias=AliasChoices("evidence_context", "study_context"),
+        description=(
+            "Structured evidence metadata describing whether this relation is a finding, "
             "hypothesis, background statement, or methodology note, plus proof-level qualifiers"
         ),
     )
+
+    @property
+    def study_context(self) -> "ExtractedRelationEvidenceContext | None":
+        """Backward-compatible alias for callers still using the old field name."""
+        return self.evidence_context
 
 
 class RelationExtractionResponse(BaseModel):
@@ -278,7 +291,7 @@ StudyDesign = Literal[
 ]
 
 
-class ExtractedRelationStudyContext(BaseModel):
+class ExtractedRelationEvidenceContext(BaseModel):
     """Structured context describing the evidentiary status of an extracted relation."""
 
     @field_validator("evidence_strength", mode="before")
@@ -342,6 +355,9 @@ class ExtractedRelationStudyContext(BaseModel):
         max_length=200,
         description="Statistical support snippet when the source provides one, such as p-values or effect sizes",
     )
+
+
+ExtractedRelationStudyContext = ExtractedRelationEvidenceContext
 
 
 class ExtractedClaim(BaseModel):

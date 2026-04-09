@@ -85,7 +85,7 @@ export interface ExtractedRole {
   role_type: string;
 }
 
-export interface ExtractedRelationStudyContext {
+export interface ExtractedRelationEvidenceContext {
   statement_kind: StatementKind;
   finding_polarity?: FindingPolarity | null;
   evidence_strength?: EvidenceStrength | null;
@@ -97,13 +97,17 @@ export interface ExtractedRelationStudyContext {
   statistical_support?: string | null;
 }
 
+export type RelationScopeValue = string | number | boolean | null;
+
 export interface ExtractedRelation {
   relation_type: RelationType;
   roles: ExtractedRole[];
   confidence: ConfidenceLevel;
   text_span: string;
   notes?: string | null;
-  study_context?: ExtractedRelationStudyContext | null;
+  scope?: Record<string, RelationScopeValue> | null;
+  evidence_context?: ExtractedRelationEvidenceContext | null;
+  study_context?: ExtractedRelationEvidenceContext | null;
 }
 
 // =============================================================================

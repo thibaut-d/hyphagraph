@@ -33,7 +33,7 @@ def test_validate_batch_extraction_normalizes_confidence_style_evidence_strength
                     ],
                     "confidence": "medium",
                     "text_span": "duloxetine improved chronic pain outcomes",
-                    "study_context": {
+                    "evidence_context": {
                         "statement_kind": "finding",
                         "finding_polarity": "supports",
                         "evidence_strength": "low",
@@ -53,8 +53,8 @@ def test_validate_batch_extraction_normalizes_confidence_style_evidence_strength
         }
     )
 
-    assert result.relations[0].study_context is not None
-    assert result.relations[0].study_context.evidence_strength == "weak"
+    assert result.relations[0].evidence_context is not None
+    assert result.relations[0].evidence_context.evidence_strength == "weak"
     assert result.claims[0].evidence_strength == "moderate"
 
 
@@ -149,8 +149,53 @@ def test_validate_batch_extraction_normalizes_textual_sample_size_to_integer():
         }
     )
 
-    assert result.relations[0].study_context is not None
-    assert result.relations[0].study_context.sample_size == 1474
+    assert result.relations[0].evidence_context is not None
+    assert result.relations[0].evidence_context.sample_size == 1474
+
+
+def test_validate_batch_extraction_accepts_legacy_study_context_but_serializes_evidence_context():
+    result = validate_batch_extraction(
+        {
+            "entities": [
+                {
+                    "slug": "aspirin",
+                    "summary": "Aspirin is the active treatment mentioned in the source.",
+                    "category": "drug",
+                    "confidence": "high",
+                    "text_span": "aspirin",
+                },
+                {
+                    "slug": "pain",
+                    "summary": "Pain is the target symptom discussed in the source.",
+                    "category": "symptom",
+                    "confidence": "high",
+                    "text_span": "pain",
+                },
+            ],
+            "relations": [
+                {
+                    "relation_type": "treats",
+                    "roles": [
+                        {"entity_slug": "aspirin", "role_type": "agent"},
+                        {"entity_slug": "pain", "role_type": "target"},
+                    ],
+                    "confidence": "high",
+                    "text_span": "aspirin reduced pain",
+                    "study_context": {
+                        "statement_kind": "finding",
+                        "evidence_strength": "strong",
+                    },
+                }
+            ],
+            "claims": [],
+        }
+    )
+
+    relation_dump = result.relations[0].model_dump()
+
+    assert result.relations[0].evidence_context is not None
+    assert relation_dump["evidence_context"]["statement_kind"] == "finding"
+    assert "study_context" not in relation_dump
 
 
 def test_raise_internal_api_exception_uses_structured_app_exception():

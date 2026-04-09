@@ -334,7 +334,7 @@ export function RelationDetailView() {
         </Stack>
       </Paper>
 
-      {(notesText || relation.scope || relation.created_at || relation.updated_at || llmProvenanceVisible) && (
+      {(notesText || relation.scope || relation.evidence_context || relation.created_at || relation.updated_at || llmProvenanceVisible) && (
         <Paper sx={{ p: 3 }}>
           <Stack spacing={2}>
             <Typography variant="h5">
@@ -385,6 +385,16 @@ export function RelationDetailView() {
                 </Typography>
                 <Typography variant="body2" component="pre" sx={{ m: 0, whiteSpace: "pre-wrap" }}>
                   {JSON.stringify(relation.scope, null, 2)}
+                </Typography>
+              </Box>
+            )}
+            {relation.evidence_context && (
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  {t("relation.evidence_context", "Evidence context")}
+                </Typography>
+                <Typography variant="body2" component="pre" sx={{ m: 0, whiteSpace: "pre-wrap" }}>
+                  {JSON.stringify(relation.evidence_context, null, 2)}
                 </Typography>
               </Box>
             )}

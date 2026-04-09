@@ -12,22 +12,28 @@ from app.models.relation_revision import RelationRevision
 from app.models.relation_role_revision import RelationRoleRevision
 from app.models.staged_extraction import StagedExtraction
 from app.utils.confidence import CONFIDENCE_FLOAT
+from app.utils.relation_context import build_relation_context_payload
 from app.utils.revision_helpers import create_new_revision
 
 logger = logging.getLogger(__name__)
 
 
 def _relation_scope(relation_data: ExtractedRelation) -> dict[str, object] | None:
-    if not relation_data.study_context:
-        return None
-    scope = relation_data.study_context.model_dump(exclude_none=True)
-    return scope or None
+    evidence_context = (
+        relation_data.evidence_context.model_dump(exclude_none=True)
+        if relation_data.evidence_context
+        else None
+    )
+    return build_relation_context_payload(
+        scope=relation_data.scope,
+        evidence_context=evidence_context,
+    )
 
 
 def _relation_direction(relation_data: ExtractedRelation) -> str | None:
-    if not relation_data.study_context:
+    if not relation_data.evidence_context:
         return None
-    polarity = relation_data.study_context.finding_polarity
+    polarity = relation_data.evidence_context.finding_polarity
     if polarity in {"supports", "contradicts", "mixed", "neutral", "uncertain"}:
         return polarity
     return None
