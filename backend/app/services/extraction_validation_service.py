@@ -116,3 +116,14 @@ class ExtractionValidationService:
             sum(1 for r in results if r.flags),
         )
         return validated_claims, results
+
+
+def validate_relation_structure(relation: ExtractedRelation) -> ValidationResult | None:
+    """
+    Validate only the structural semantics of a relation.
+
+    Returns a failing ValidationResult when required core roles are missing or
+    filled by contextual pseudo-entities. Returns None when the relation passes
+    structural checks and span validation should continue elsewhere.
+    """
+    return TextSpanValidator(validation_level="moderate")._validate_relation_structure(relation)

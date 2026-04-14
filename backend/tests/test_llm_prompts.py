@@ -13,6 +13,7 @@ def test_system_prompt_forbids_outside_knowledge_and_merging_conflicts():
     assert "Do not add outside medical knowledge" in MEDICAL_KNOWLEDGE_SYSTEM_PROMPT
     assert "Never merge or reconcile conflicting statements" in MEDICAL_KNOWLEDGE_SYSTEM_PROMPT
     assert "omit the item instead of guessing" in MEDICAL_KNOWLEDGE_SYSTEM_PROMPT
+    assert "Do not collapse combination therapy" in MEDICAL_KNOWLEDGE_SYSTEM_PROMPT
 
 
 def test_entity_prompt_requires_source_bounded_summaries_and_explicit_mentions():
@@ -39,6 +40,13 @@ def test_relation_prompt_requires_explicit_relations_and_separate_conflicts():
     assert "evidence_context" in RELATION_EXTRACTION_PROMPT
     assert '"entity_slug": "placebo"' in RELATION_EXTRACTION_PROMPT
     assert "dosage" in RELATION_EXTRACTION_PROMPT
+    assert "causes MUST include the thing causing the effect as agent" in RELATION_EXTRACTION_PROMPT
+    assert "control_group, population, and comparator context NEVER replace a missing core role" in RELATION_EXTRACTION_PROMPT
+    assert 'Wrong extraction: causes(target=nausea, control_group=placebo)' in RELATION_EXTRACTION_PROMPT
+    assert 'When a source reports combination therapy, adjunct therapy, co-administration, or "X with Y"' in RELATION_EXTRACTION_PROMPT
+    assert 'do NOT emit a single-agent treats relation for only X or only Y' in RELATION_EXTRACTION_PROMPT
+    assert "Correct extraction shape: treats(agent=pregabalin, agent=duloxetine, target=fibromyalgia, control_group=placebo)" in RELATION_EXTRACTION_PROMPT
+    assert "the finding is about the combination, not pregabalin alone" in RELATION_EXTRACTION_PROMPT
 
 
 def test_claim_prompt_requires_faithful_paraphrase_and_conservative_evidence():
@@ -70,3 +78,7 @@ def test_batch_prompt_carries_global_evidence_first_constraints():
     assert '"dosage": "60mg daily"' in prompt
     assert "placebo" in prompt
     assert '"entity_slug": "dose-60mg-daily"' not in prompt
+    assert "Do not flatten combination therapy, adjunct therapy, or co-administration findings into single-agent relations" in prompt
+    assert "include every explicitly named active intervention as agent roles in the SAME relation" in prompt
+    assert '"entity_slug": "pregabalin", "role_type": "agent"' in prompt
+    assert '"entity_slug": "duloxetine", "role_type": "agent"' in prompt

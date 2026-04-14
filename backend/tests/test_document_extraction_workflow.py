@@ -5,6 +5,7 @@ import pytest
 from sqlalchemy import select
 
 from app.llm.schemas import (
+    ExtractedClaim,
     ExtractedEntity,
     ExtractedRelation,
     ExtractedRelationEvidenceContext,
@@ -46,15 +47,15 @@ def build_extracted_entity(slug: str) -> ExtractedEntity:
     )
 
 
-def build_extracted_relation(subject_slug: str, object_slug: str) -> ExtractedRelation:
+def build_extracted_relation(agent_slug: str, target_slug: str) -> ExtractedRelation:
     return ExtractedRelation(
         relation_type="treats",
         roles=[
-            ExtractedRole(entity_slug=subject_slug, role_type="subject"),
-            ExtractedRole(entity_slug=object_slug, role_type="object"),
+            ExtractedRole(entity_slug=agent_slug, role_type="agent"),
+            ExtractedRole(entity_slug=target_slug, role_type="target"),
         ],
         confidence="medium",
-        text_span=f"{subject_slug} treats {object_slug}",
+        text_span=f"{agent_slug} treats {target_slug}",
     )
 
 
@@ -206,6 +207,43 @@ class TestReviewAndLinkWorkflow:
             auto_verified_count=2,
             avg_validation_score=pytest.approx(0.775),
         )
+
+    async def test_stage_review_batch_does_not_stage_claims_from_preview_workflow(self, db_session):
+        class FakeReviewService:
+            stage_batch_kwargs = None
+
+            def __init__(self, **kwargs):
+                self.kwargs = kwargs
+
+            async def stage_batch(self, **kwargs):
+                FakeReviewService.stage_batch_kwargs = kwargs
+                return []
+
+        claim = ExtractedClaim(
+            claim_text="Duloxetine reduced adverse-event severity in fibromyalgia participants.",
+            entities_involved=["duloxetine", "fibromyalgia"],
+            claim_type="safety",
+            evidence_strength="moderate",
+            confidence="medium",
+            text_span="Duloxetine reduced adverse-event severity in fibromyalgia participants.",
+        )
+
+        await stage_review_batch(
+            db_session,
+            source_id=uuid4(),
+            extracted_batch=ExtractedBatch(
+                entities=[build_extracted_entity("duloxetine")],
+                relations=[build_extracted_relation("duloxetine", "fibromyalgia")],
+                claims=[claim],
+                entity_results=[SimpleNamespace()],
+                relation_results=[SimpleNamespace()],
+                claim_results=[SimpleNamespace()],
+            ),
+            review_service_factory=FakeReviewService,
+        )
+
+        assert FakeReviewService.stage_batch_kwargs is not None
+        assert FakeReviewService.stage_batch_kwargs["claims"] == []
 
     async def test_build_link_suggestions_maps_match_payloads(self, db_session):
         match = SimpleNamespace(
@@ -415,6 +453,204 @@ class TestReviewAndLinkWorkflow:
         assert preview.relations[0].evidence_context.sample_size == 1474
         assert preview.relations[0].evidence_context.study_design == "randomized_controlled_trial"
         assert [role.entity_slug for role in preview.relations[0].roles] == ["duloxetine", "fibromyalgia"]
+
+    async def test_build_extraction_preview_with_service_infers_evidence_context_from_relation_text(
+        self,
+        db_session,
+    ):
+        source_id = uuid4()
+        entities = [
+            build_extracted_entity("fluoxetine"),
+            ExtractedEntity(
+                slug="fibromyalgia",
+                summary="Fibromyalgia mention",
+                category="disease",
+                confidence="high",
+                text_span="fibromyalgia",
+            ),
+            ExtractedEntity(
+                slug="adults",
+                summary="Adult population mention",
+                category="population",
+                confidence="high",
+                text_span="adults",
+            ),
+            ExtractedEntity(
+                slug="placebo",
+                summary="Comparator mention",
+                category="other",
+                confidence="high",
+                text_span="placebo",
+            ),
+        ]
+        relations = [
+            ExtractedRelation(
+                relation_type="treats",
+                roles=[
+                    ExtractedRole(entity_slug="fluoxetine", role_type="agent"),
+                    ExtractedRole(entity_slug="fibromyalgia", role_type="target"),
+                    ExtractedRole(entity_slug="adults", role_type="population"),
+                    ExtractedRole(entity_slug="placebo", role_type="control_group"),
+                ],
+                confidence="medium",
+                text_span="two combined amitriptyline with fluoxetine (89 participants) in a randomized trial",
+                notes="Combination therapy involving fluoxetine.",
+                evidence_context=ExtractedRelationEvidenceContext(
+                    statement_kind="finding",
+                    evidence_strength="weak",
+                ),
+            )
+        ]
+
+        class FakeExtractionService:
+            def __init__(self, db):
+                self.db = db
+
+            async def extract_batch_with_validation_results(self, text):
+                assert text == "source body"
+                return (
+                    entities,
+                    relations,
+                    [],
+                    [SimpleNamespace() for _ in entities],
+                    [SimpleNamespace()],
+                    [],
+                )
+
+        class FakeReviewService:
+            def __init__(self, **kwargs):
+                self.kwargs = kwargs
+
+            async def stage_batch(self, **kwargs):
+                staged_relations = [relation for relation, _ in kwargs["relations"]]
+                assert staged_relations[0].evidence_context is not None
+                assert staged_relations[0].evidence_context.sample_size == 89
+                assert staged_relations[0].evidence_context.sample_size_text == "89 participants"
+                assert staged_relations[0].evidence_context.study_design == "randomized_controlled_trial"
+                return [SimpleNamespace(status="pending", validation_score=0.7)]
+
+        class FakeLinkingService:
+            def __init__(self, db):
+                self.db = db
+
+            async def find_entity_matches(self, requested_entities):
+                return []
+
+        preview = await build_extraction_preview_with_service(
+            db_session,
+            source_id=source_id,
+            text="source body",
+            extraction_service_factory=FakeExtractionService,
+            review_service_factory=FakeReviewService,
+            linking_service_factory=FakeLinkingService,
+        )
+
+        assert preview.relations[0].evidence_context is not None
+        assert preview.relations[0].evidence_context.sample_size == 89
+        assert preview.relations[0].evidence_context.sample_size_text == "89 participants"
+        assert preview.relations[0].evidence_context.study_design == "randomized_controlled_trial"
+
+    async def test_build_extraction_preview_with_service_revalidates_relations_after_context_normalization(
+        self,
+        db_session,
+    ):
+        source_id = uuid4()
+        entities = [
+            ExtractedEntity(
+                slug="sample-size-41",
+                summary="Sample size mention",
+                category="other",
+                confidence="high",
+                text_span="41 participants",
+            ),
+            ExtractedEntity(
+                slug="nausea",
+                summary="Nausea mention",
+                category="symptom",
+                confidence="high",
+                text_span="nausea",
+            ),
+            ExtractedEntity(
+                slug="placebo",
+                summary="Placebo mention",
+                category="other",
+                confidence="high",
+                text_span="placebo",
+            ),
+        ]
+        relations = [
+            ExtractedRelation(
+                relation_type="causes",
+                roles=[
+                    ExtractedRole(entity_slug="sample-size-41", role_type="agent"),
+                    ExtractedRole(entity_slug="nausea", role_type="target"),
+                    ExtractedRole(entity_slug="placebo", role_type="control_group"),
+                ],
+                confidence="medium",
+                text_span="adverse events experienced by participants were not serious",
+                notes="Common adverse event reported.",
+            )
+        ]
+
+        class FakeExtractionService:
+            def __init__(self, db):
+                self.db = db
+
+            async def extract_batch_with_validation_results(self, text):
+                assert text == "adverse events experienced by participants were not serious"
+                return (
+                    entities,
+                    relations,
+                    [],
+                    [SimpleNamespace() for _ in entities],
+                    [
+                        SimpleNamespace(
+                            is_valid=True,
+                            confidence_adjustment=1.0,
+                            validation_score=1.0,
+                            flags=[],
+                            matched_span="adverse events experienced by participants were not serious",
+                        )
+                    ],
+                    [],
+                )
+
+        class FakeReviewService:
+            def __init__(self, **kwargs):
+                self.kwargs = kwargs
+
+            async def stage_batch(self, **kwargs):
+                staged_relation, validation_result = kwargs["relations"][0]
+                assert staged_relation.evidence_context is not None
+                assert staged_relation.evidence_context.sample_size == 41
+                assert validation_result.is_valid is False
+                assert validation_result.validation_score == 0.0
+                assert "invalid_contextual_core_role" in validation_result.flags
+                assert "invalid_contextual_core_role:agent:sample-size-41" in validation_result.flags
+                return [SimpleNamespace(status="pending", validation_score=validation_result.validation_score)]
+
+        class FakeLinkingService:
+            def __init__(self, db):
+                self.db = db
+
+            async def find_entity_matches(self, requested_entities):
+                return []
+
+        preview = await build_extraction_preview_with_service(
+            db_session,
+            source_id=source_id,
+            text="adverse events experienced by participants were not serious",
+            extraction_service_factory=FakeExtractionService,
+            review_service_factory=FakeReviewService,
+            linking_service_factory=FakeLinkingService,
+        )
+
+        assert preview.relations[0].roles == [
+            ExtractedRole(entity_slug="sample-size-41", role_type="agent"),
+            ExtractedRole(entity_slug="nausea", role_type="target"),
+            ExtractedRole(entity_slug="placebo", role_type="control_group"),
+        ]
+        assert preview.avg_validation_score == 0.0
 
 
 @pytest.mark.asyncio
@@ -813,8 +1049,8 @@ class TestReconcileStagedExtractions:
             extraction_data={
                 "relation_type": "treats",
                 "roles": [
-                    {"entity_slug": "aspirin", "role_type": "subject"},
-                    {"entity_slug": "pain", "role_type": "object"},
+                    {"entity_slug": "aspirin", "role_type": "agent"},
+                    {"entity_slug": "pain", "role_type": "target"},
                 ],
                 "confidence": "high",
                 "text_span": "aspirin treats pain",

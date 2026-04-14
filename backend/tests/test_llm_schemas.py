@@ -1,4 +1,5 @@
 import pytest
+from pydantic import ValidationError
 
 from app.api.document_extraction_dependencies import raise_internal_api_exception
 from app.llm.schemas import validate_batch_extraction
@@ -196,6 +197,44 @@ def test_validate_batch_extraction_accepts_legacy_study_context_but_serializes_e
     assert result.relations[0].evidence_context is not None
     assert relation_dump["evidence_context"]["statement_kind"] == "finding"
     assert "study_context" not in relation_dump
+
+
+def test_validate_batch_extraction_rejects_causes_relation_without_agent():
+    with pytest.raises(ValidationError) as exc_info:
+        validate_batch_extraction(
+            {
+                "entities": [
+                    {
+                        "slug": "nausea",
+                        "summary": "Nausea is the adverse event mentioned in the source.",
+                        "category": "symptom",
+                        "confidence": "high",
+                        "text_span": "nausea",
+                    },
+                    {
+                        "slug": "placebo",
+                        "summary": "Placebo is the comparator mentioned in the source.",
+                        "category": "other",
+                        "confidence": "high",
+                        "text_span": "placebo",
+                    },
+                ],
+                "relations": [
+                    {
+                        "relation_type": "causes",
+                        "roles": [
+                            {"entity_slug": "nausea", "role_type": "target"},
+                            {"entity_slug": "placebo", "role_type": "control_group"},
+                        ],
+                        "confidence": "medium",
+                        "text_span": "adverse events experienced by participants were not serious",
+                    }
+                ],
+                "claims": [],
+            }
+        )
+
+    assert "missing required core roles" in str(exc_info.value)
 
 
 def test_raise_internal_api_exception_uses_structured_app_exception():

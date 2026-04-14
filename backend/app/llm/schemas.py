@@ -9,7 +9,7 @@ Defines structured schemas for:
 """
 import re
 from typing import Literal
-from pydantic import AliasChoices, BaseModel, Field, field_validator
+from pydantic import AliasChoices, BaseModel, Field, field_validator, model_validator
 
 from app.schemas.common_types import JsonObject, JsonValue
 
@@ -124,6 +124,31 @@ RelationType = Literal[
     "other"
 ]
 
+_REQUIRED_RELATION_ROLE_GROUPS: dict[str, tuple[tuple[str, ...], ...]] = {
+    "treats": (("agent",), ("target",)),
+    "causes": (("agent",), ("target", "outcome")),
+    "prevents": (("agent",), ("target", "outcome")),
+    "increases_risk": (("agent", "condition"), ("target", "outcome")),
+    "decreases_risk": (("agent", "condition"), ("target", "outcome")),
+    "contraindicated": (("agent",), ("target", "condition")),
+    "metabolized_by": (("agent",), ("target", "mechanism")),
+    "biomarker_for": (("biomarker",), ("target", "condition")),
+    "measures": (("measured_by",), ("target", "outcome", "condition")),
+}
+
+
+def get_missing_required_relation_roles(
+    relation_type: str,
+    role_types: list[str],
+) -> list[tuple[str, ...]]:
+    normalized_roles = set(role_types)
+    required_groups = _REQUIRED_RELATION_ROLE_GROUPS.get(relation_type, ())
+    return [
+        role_group
+        for role_group in required_groups
+        if not any(role_type in normalized_roles for role_type in role_group)
+    ]
+
 
 class ExtractedRole(BaseModel):
     """Single role in a relation with semantic type."""
@@ -194,6 +219,23 @@ class ExtractedRelation(BaseModel):
     def study_context(self) -> "ExtractedRelationEvidenceContext | None":
         """Backward-compatible alias for callers still using the old field name."""
         return self.evidence_context
+
+    @model_validator(mode="after")
+    def validate_required_core_roles(self) -> "ExtractedRelation":
+        missing_role_groups = get_missing_required_relation_roles(
+            self.relation_type,
+            [role.role_type for role in self.roles],
+        )
+        if missing_role_groups:
+            missing_labels = [
+                " or ".join(role_group)
+                for role_group in missing_role_groups
+            ]
+            raise ValueError(
+                f"relation_type '{self.relation_type}' is missing required core roles: "
+                f"{', '.join(missing_labels)}"
+            )
+        return self
 
 
 class RelationExtractionResponse(BaseModel):

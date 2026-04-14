@@ -28,6 +28,7 @@ from app.llm.schemas import (
     ExtractedEntity,
     ExtractedRelation,
     ExtractedRelationEvidenceContext,
+    get_missing_required_relation_roles,
 )
 from app.models.entity import Entity
 from app.models.entity_revision import EntityRevision
@@ -52,7 +53,7 @@ from app.services.entity_linking_service import EntityLinkMatch as ExistingEntit
 from app.services.entity_prefill_service import EntityPrefillService
 from app.services.extraction_review_service import ExtractionReviewService
 from app.services.extraction_service import ExtractionService
-from app.services.extraction_validation_service import ValidationResult
+from app.services.extraction_validation_service import TextSpanValidator, ValidationResult
 from app.services.pubmed_fetcher import PubMedArticle, PubMedFetcher
 from app.services.source_service import SourceService
 from app.services.url_fetcher import UrlFetcher, UrlFetchResult
@@ -305,6 +306,18 @@ def _extract_sample_size_value(text: str) -> int | None:
     return int(match.group(0).replace(",", ""))
 
 
+def _extract_sample_size_text(text: str) -> str | None:
+    patterns = (
+        r"\bn\s*=\s*\d[\d,]*\b",
+        r"\b\d[\d,]*\s+(?:participants?|patients?|subjects?)\b",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, text, flags=re.IGNORECASE)
+        if match:
+            return match.group(0)
+    return None
+
+
 def _infer_study_design(text: str) -> str | None:
     normalized = text.replace("_", " ").replace("-", " ").strip().lower()
     for aliases, canonical in _STUDY_DESIGN_ALIASES:
@@ -324,6 +337,36 @@ def _normalized_evidence_context(
     payload.update(updates)
     payload.setdefault("statement_kind", "finding")
     return ExtractedRelationEvidenceContext.model_validate(payload)
+
+
+def _infer_evidence_context_from_relation_text(
+    relation: ExtractedRelation,
+    existing: ExtractedRelationEvidenceContext | None,
+) -> dict[str, object]:
+    updates: dict[str, object] = {}
+    candidate_text = " ".join(
+        value.strip()
+        for value in (relation.text_span, relation.notes or "")
+        if value and value.strip()
+    )
+
+    if not candidate_text:
+        return updates
+
+    if not (existing and existing.sample_size):
+        sample_size_text = _extract_sample_size_text(candidate_text)
+        if sample_size_text:
+            sample_size = _extract_sample_size_value(sample_size_text)
+            if sample_size is not None:
+                updates["sample_size"] = sample_size
+                updates["sample_size_text"] = sample_size_text
+
+    if not (existing and existing.study_design):
+        study_design = _infer_study_design(candidate_text)
+        if study_design:
+            updates["study_design"] = study_design
+
+    return updates
 
 
 def _normalize_relation_contextual_roles(
@@ -371,7 +414,21 @@ def _normalize_relation_contextual_roles(
     if len(retained_roles) < 2:
         return relation, set()
 
+    evidence_updates.update(
+        _infer_evidence_context_from_relation_text(relation, relation.evidence_context)
+    )
     evidence_context = _normalized_evidence_context(relation.evidence_context, evidence_updates)
+    if get_missing_required_relation_roles(
+        relation.relation_type,
+        [role.role_type for role in retained_roles],
+    ):
+        return relation.model_copy(
+            update={
+                "scope": scope or relation.scope or None,
+                "evidence_context": evidence_context,
+            }
+        ), set()
+
     return relation.model_copy(
         update={
             "roles": retained_roles,
@@ -416,6 +473,42 @@ def normalize_extracted_batch_context(extracted_batch: ExtractedBatch) -> Extrac
         relation_results=extracted_batch.relation_results,
         claim_results=extracted_batch.claim_results,
     )
+
+
+def _merge_validation_results(
+    original: ValidationResult | object,
+    updated: ValidationResult,
+) -> ValidationResult:
+    original_flags = list(getattr(original, "flags", []) or [])
+    return ValidationResult(
+        is_valid=bool(getattr(original, "is_valid", True)) and updated.is_valid,
+        confidence_adjustment=min(
+            float(getattr(original, "confidence_adjustment", updated.confidence_adjustment)),
+            updated.confidence_adjustment,
+        ),
+        validation_score=min(
+            float(getattr(original, "validation_score", updated.validation_score)),
+            updated.validation_score,
+        ),
+        flags=list(dict.fromkeys([*original_flags, *updated.flags])),
+        matched_span=updated.matched_span or getattr(original, "matched_span", None),
+    )
+
+
+def _revalidate_normalized_relation_results(
+    *,
+    relations: list[ExtractedRelation],
+    relation_results: list[ValidationResult],
+    source_text: str,
+) -> list[ValidationResult]:
+    validator = TextSpanValidator(validation_level="moderate")
+    refreshed_results: list[ValidationResult] = []
+
+    for relation, existing_result in zip(relations, relation_results):
+        normalized_result = validator.validate_relation(relation, source_text)
+        refreshed_results.append(_merge_validation_results(existing_result, normalized_result))
+
+    return refreshed_results
 
 
 def _build_default_entity_prefill_service(db: AsyncSession) -> EntityPrefillService:
@@ -535,6 +628,7 @@ async def stage_review_batch(
     *,
     source_id: UUID,
     extracted_batch: ExtractedBatch,
+    source_text: str | None = None,
     review_service_factory: ExtractionReviewServiceFactory = ExtractionReviewService,
 ) -> ReviewSummary:
     """
@@ -552,10 +646,24 @@ async def stage_review_batch(
         require_no_flags_for_auto_commit=True,
     )
 
+    relation_results = (
+        _revalidate_normalized_relation_results(
+            relations=extracted_batch.relations,
+            relation_results=extracted_batch.relation_results,
+            source_text=source_text,
+        )
+        if source_text is not None
+        else extracted_batch.relation_results
+    )
+
     staged_items = await review_service.stage_batch(
         entities=list(zip(extracted_batch.entities, extracted_batch.entity_results)),
-        relations=list(zip(extracted_batch.relations, extracted_batch.relation_results)),
-        claims=list(zip(extracted_batch.claims, extracted_batch.claim_results)),
+        relations=list(zip(extracted_batch.relations, relation_results)),
+        # Claims are intentionally excluded from the staged review queue here.
+        # The preview/save workflow exposes entities and relations for review,
+        # while standalone claims lack enough structural context to be audited
+        # safely in this queue and duplicate relation-like materialization paths.
+        claims=[],
         source_id=source_id,
         llm_model=settings.OPENAI_MODEL,
         llm_provider=settings.LLM_PROVIDER,
@@ -628,6 +736,7 @@ async def build_extraction_preview(
         db,
         source_id=source_id,
         extracted_batch=extracted_batch,
+        source_text=text,
         review_service_factory=review_service_factory,
     )
     link_suggestions = await build_link_suggestions(
@@ -694,6 +803,7 @@ async def build_extraction_preview_with_service(
         db,
         source_id=source_id,
         extracted_batch=extracted_batch,
+        source_text=text,
         review_service_factory=review_service_factory,
     )
     link_suggestions = await build_link_suggestions(

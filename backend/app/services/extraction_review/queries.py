@@ -16,7 +16,7 @@ async def load_staged_extraction(
 
 
 async def list_extractions(
-    db: AsyncSession, filters: StagedExtractionFilters
+    db: AsyncSession, filters: StagedExtractionFilters, *, include_claims: bool = True
 ) -> tuple[list[StagedExtraction], int]:
     query = select(StagedExtraction)
     conditions = []
@@ -41,6 +41,8 @@ async def list_extractions(
         conditions.append(StagedExtraction.auto_commit_eligible == filters.auto_commit_eligible)
     if filters.auto_approved is not None:
         conditions.append(StagedExtraction.auto_approved == filters.auto_approved)
+    if not include_claims:
+        conditions.append(StagedExtraction.extraction_type != ExtractionType.CLAIM)
 
     if conditions:
         query = query.where(and_(*conditions))
@@ -61,15 +63,23 @@ async def list_extractions(
     return list(result.scalars().all()), total
 
 
-async def get_stats(db: AsyncSession) -> ReviewStats:
+async def get_stats(db: AsyncSession, *, include_claims: bool = True) -> ReviewStats:
+    status_filter = (
+        StagedExtraction.extraction_type != ExtractionType.CLAIM
+        if not include_claims
+        else True
+    )
     status_counts = await db.execute(
-        select(StagedExtraction.status, func.count(StagedExtraction.id)).group_by(StagedExtraction.status)
+        select(StagedExtraction.status, func.count(StagedExtraction.id))
+        .where(status_filter)
+        .group_by(StagedExtraction.status)
     )
     status_map = {row[0]: row[1] for row in status_counts}
 
     type_counts = await db.execute(
         select(StagedExtraction.extraction_type, func.count(StagedExtraction.id))
         .where(StagedExtraction.status == ExtractionStatus.PENDING)
+        .where(status_filter)
         .group_by(StagedExtraction.extraction_type)
     )
     type_map = {row[0]: row[1] for row in type_counts}
@@ -82,7 +92,9 @@ async def get_stats(db: AsyncSession) -> ReviewStats:
                 func.count(StagedExtraction.id).filter(
                     func.json_array_length(StagedExtraction.validation_flags) > 0
                 ),
-            ).where(StagedExtraction.status == ExtractionStatus.PENDING)
+            )
+            .where(StagedExtraction.status == ExtractionStatus.PENDING)
+            .where(status_filter)
         )
     ).one()
 

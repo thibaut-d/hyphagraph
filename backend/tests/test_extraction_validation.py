@@ -12,7 +12,7 @@ from app.services.extraction_validation_service import (
     ValidationResult,
 )
 from app.services.batch_extraction_orchestrator import BatchExtractionOrchestrator
-from app.llm.schemas import ExtractedEntity, ExtractedRelation, ExtractedClaim
+from app.llm.schemas import ExtractedClaim, ExtractedEntity, ExtractedRelation, ExtractedRole
 
 
 # Sample source text for testing
@@ -184,6 +184,53 @@ class TestTextSpanValidator:
         # Assert
         assert result.is_valid is True
         assert result.validation_score == 1.0
+
+    def test_relation_validation_rejects_missing_required_core_roles(self):
+        """Relations missing their semantic core should be rejected before span validation."""
+        validator = TextSpanValidator(validation_level="moderate")
+        relation = ExtractedRelation.model_construct(
+            relation_type="causes",
+            roles=[
+                ExtractedRole(entity_slug="nausea", role_type="target"),
+                ExtractedRole(entity_slug="placebo", role_type="control_group"),
+            ],
+            confidence="medium",
+            text_span="adverse events experienced by participants were not serious",
+            notes="Common adverse event reported.",
+            scope=None,
+            evidence_context=None,
+        )
+
+        result = validator.validate_relation(relation, SAMPLE_SOURCE)
+
+        assert result.is_valid is False
+        assert result.confidence_adjustment == 0.0
+        assert "missing_required_relation_roles" in result.flags
+        assert "missing_core_role:agent" in result.flags
+
+    def test_relation_validation_rejects_contextual_entity_in_required_core_role(self):
+        """Contextual pseudo-entities must not satisfy required semantic core roles."""
+        validator = TextSpanValidator(validation_level="moderate")
+        relation = ExtractedRelation.model_construct(
+            relation_type="causes",
+            roles=[
+                ExtractedRole(entity_slug="sample-size-41", role_type="agent"),
+                ExtractedRole(entity_slug="nausea", role_type="target"),
+                ExtractedRole(entity_slug="placebo", role_type="control_group"),
+            ],
+            confidence="medium",
+            text_span="adverse events experienced by participants were not serious",
+            notes="Common adverse event reported.",
+            scope=None,
+            evidence_context=None,
+        )
+
+        result = validator.validate_relation(relation, SAMPLE_SOURCE)
+
+        assert result.is_valid is False
+        assert result.validation_score == 0.0
+        assert "invalid_contextual_core_role" in result.flags
+        assert "invalid_contextual_core_role:agent:sample-size-41" in result.flags
 
     def test_claim_validation_strictest(self):
         """Test that claims have strictest validation."""

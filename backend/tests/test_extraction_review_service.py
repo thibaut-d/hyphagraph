@@ -921,6 +921,90 @@ async def test_get_stats_after_reviews(
     assert stats.total_rejected == 1
 
 
+@pytest.mark.asyncio
+async def test_list_extractions_repairs_stale_structurally_invalid_relation(review_service, sample_source):
+    from app.schemas.staged_extraction import StagedExtractionFilters
+
+    staged = StagedExtraction(
+        extraction_type=ExtractionType.RELATION,
+        status=ExtractionStatus.PENDING,
+        source_id=sample_source.id,
+        extraction_data={
+            "relation_type": "causes",
+            "roles": [
+                {"entity_slug": "nausea", "role_type": "target"},
+                {"entity_slug": "placebo", "role_type": "control_group"},
+            ],
+            "confidence": "high",
+            "text_span": "adverse events experienced by participants were not serious",
+            "notes": "Common adverse event reported.",
+        },
+        validation_score=1.0,
+        confidence_adjustment=1.0,
+        validation_flags=[],
+        matched_span="adverse events experienced by participants were not serious",
+        llm_model="gpt-5.4",
+        llm_provider="openai",
+        auto_commit_eligible=True,
+        auto_commit_threshold=0.9,
+    )
+    review_service.db.add(staged)
+    await review_service.db.commit()
+
+    results, count = await review_service.list_extractions(
+        StagedExtractionFilters(extraction_type="relation", page_size=10)
+    )
+
+    assert count == 1
+    assert results[0].id == staged.id
+    assert results[0].validation_score == 0.0
+    assert results[0].confidence_adjustment == 0.0
+    assert "missing_required_relation_roles" in results[0].validation_flags
+    assert "missing_core_role:agent" in results[0].validation_flags
+    assert results[0].auto_commit_eligible is False
+
+
+@pytest.mark.asyncio
+async def test_get_stats_repairs_stale_auto_verified_invalid_relation(review_service, sample_source):
+    staged = StagedExtraction(
+        extraction_type=ExtractionType.RELATION,
+        status=ExtractionStatus.AUTO_VERIFIED,
+        source_id=sample_source.id,
+        extraction_data={
+            "relation_type": "causes",
+            "roles": [
+                {"entity_slug": "nausea", "role_type": "target"},
+                {"entity_slug": "placebo", "role_type": "control_group"},
+            ],
+            "confidence": "high",
+            "text_span": "adverse events experienced by participants were not serious",
+            "notes": "Common adverse event reported.",
+        },
+        validation_score=1.0,
+        confidence_adjustment=1.0,
+        validation_flags=[],
+        matched_span="adverse events experienced by participants were not serious",
+        llm_model="gpt-5.4",
+        llm_provider="openai",
+        auto_commit_eligible=True,
+        auto_commit_threshold=0.9,
+    )
+    review_service.db.add(staged)
+    await review_service.db.commit()
+
+    stats = await review_service.get_stats()
+    await review_service.db.refresh(staged)
+
+    assert staged.status == ExtractionStatus.PENDING
+    assert staged.validation_score == 0.0
+    assert staged.auto_commit_eligible is False
+    assert stats.total_pending == 1
+    assert stats.total_auto_verified == 0
+    assert stats.pending_relations == 1
+    assert stats.avg_validation_score == 0.0
+    assert stats.flagged_count == 1
+
+
 # === Pure Function Tests: check_auto_commit_eligible ===
 
 

@@ -13,9 +13,25 @@ import re
 from dataclasses import dataclass
 from typing import Literal
 
-from app.llm.schemas import ExtractedClaim, ExtractedEntity, ExtractedRelation
+from app.llm.schemas import (
+    ExtractedClaim,
+    ExtractedEntity,
+    ExtractedRelation,
+    get_missing_required_relation_roles,
+)
 
 ValidationLevel = Literal["strict", "moderate", "lenient"]
+
+_CONTEXTUAL_ENTITY_PREFIXES = (
+    "dose-",
+    "dosage-",
+    "duration-",
+    "timeframe-",
+    "participants-",
+    "participant-count-",
+    "sample-size-",
+    "study-design-",
+)
 
 
 @dataclass
@@ -123,6 +139,10 @@ class TextSpanValidator:
         Relations are held to higher standards than entities because they
         make factual claims about relationships.
         """
+        structural_result = self._validate_relation_structure(relation)
+        if structural_result is not None:
+            return structural_result
+
         if not relation.text_span or len(relation.text_span.strip()) < self.min_exact_match_length:
             return ValidationResult(
                 is_valid=False,
@@ -168,6 +188,63 @@ class TextSpanValidator:
             flags=["relation_text_span_not_found", "high_confidence_degradation"],
             matched_span=None,
         )
+
+    def _validate_relation_structure(self, relation: ExtractedRelation) -> ValidationResult | None:
+        missing_role_groups = get_missing_required_relation_roles(
+            relation.relation_type,
+            [role.role_type for role in relation.roles],
+        )
+        contextual_core_role_flags = self._find_contextual_core_role_flags(relation)
+        if missing_role_groups:
+            missing_flags = [
+                f"missing_core_role:{'|'.join(role_group)}"
+                for role_group in missing_role_groups
+            ]
+            return ValidationResult(
+                is_valid=False,
+                confidence_adjustment=0.0,
+                validation_score=0.0,
+                flags=["missing_required_relation_roles", *missing_flags, *contextual_core_role_flags],
+                matched_span=None,
+            )
+
+        if contextual_core_role_flags:
+            return ValidationResult(
+                is_valid=False,
+                confidence_adjustment=0.0,
+                validation_score=0.0,
+                flags=["invalid_contextual_core_role", *contextual_core_role_flags],
+                matched_span=None,
+            )
+
+        return None
+
+    def _find_contextual_core_role_flags(self, relation: ExtractedRelation) -> list[str]:
+        invalid_flags: list[str] = []
+        missing_role_groups = get_missing_required_relation_roles(
+            relation.relation_type,
+            [role.role_type for role in relation.roles],
+        )
+        missing_roles = {role_type for role_group in missing_role_groups for role_type in role_group}
+
+        required_role_types = {
+            role_type
+            for role_group in get_missing_required_relation_roles(
+                relation.relation_type,
+                [],
+            )
+            for role_type in role_group
+        }
+
+        for role in relation.roles:
+            if role.role_type not in required_role_types or role.role_type in missing_roles:
+                continue
+            if role.entity_slug.startswith(_CONTEXTUAL_ENTITY_PREFIXES):
+                invalid_flags.append(
+                    f"invalid_contextual_core_role:{role.role_type}:{role.entity_slug}"
+                )
+
+        return invalid_flags
 
     def validate_claim(self, claim: ExtractedClaim, source_text: str) -> ValidationResult:
         """

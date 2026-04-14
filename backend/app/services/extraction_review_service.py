@@ -12,9 +12,10 @@ Handles:
 import logging
 from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.llm.schemas import ExtractedClaim, ExtractedEntity, ExtractedRelation
+from app.llm.schemas import ExtractedClaim, ExtractedEntity, ExtractedRelation, ExtractedRole
 from app.models.entity import Entity
 from app.models.relation import Relation
 from app.models.staged_extraction import ExtractionStatus, ExtractionType, StagedExtraction
@@ -25,7 +26,7 @@ from app.schemas.staged_extraction import (
     ReviewStats,
     MaterializationResult,
 )
-from app.services.extraction_validation_service import ValidationResult
+from app.services.extraction_validation_service import ValidationResult, validate_relation_structure
 from app.services.extraction_review.auto_commit import check_auto_commit_eligible, run_auto_commit
 from app.services.extraction_review.materialization import (
     materialize_claim,
@@ -386,14 +387,19 @@ class ExtractionReviewService:
     # =========================================================================
 
     async def list_extractions(
-        self, filters: StagedExtractionFilters
+        self, filters: StagedExtractionFilters, *, include_claims: bool = True
     ) -> tuple[list[StagedExtraction], int]:
         """List staged extractions with filtering and pagination."""
-        return await list_review_extractions(self.db, filters)
+        await self._refresh_structural_validation_for_unreviewed_relations(
+            source_id=filters.source_id,
+            include_relations=filters.extraction_type in (None, ExtractionType.RELATION),
+        )
+        return await list_review_extractions(self.db, filters, include_claims=include_claims)
 
-    async def get_stats(self) -> ReviewStats:
+    async def get_stats(self, *, include_claims: bool = True) -> ReviewStats:
         """Get review statistics."""
-        return await get_review_stats(self.db)
+        await self._refresh_structural_validation_for_unreviewed_relations()
+        return await get_review_stats(self.db, include_claims=include_claims)
 
     # =========================================================================
     # Auto-Commit
@@ -406,6 +412,93 @@ class ExtractionReviewService:
             self.auto_commit_threshold,
             self.require_no_flags_for_auto_commit,
         )
+
+    async def _refresh_structural_validation_for_unreviewed_relations(
+        self,
+        *,
+        source_id: UUID | None = None,
+        include_relations: bool = True,
+    ) -> None:
+        if not include_relations:
+            return
+
+        stmt = select(StagedExtraction).where(
+            StagedExtraction.extraction_type == ExtractionType.RELATION,
+            StagedExtraction.status.in_([ExtractionStatus.PENDING, ExtractionStatus.AUTO_VERIFIED]),
+        )
+        if source_id is not None:
+            stmt = stmt.where(StagedExtraction.source_id == source_id)
+
+        result = await self.db.execute(stmt)
+        staged_relations = list(result.scalars().all())
+        changed = False
+
+        for staged in staged_relations:
+            structural_result = self._get_structural_validation_result(staged.extraction_data)
+            if structural_result is None:
+                continue
+
+            merged_flags = list(dict.fromkeys([*(staged.validation_flags or []), *structural_result.flags]))
+            next_status = (
+                ExtractionStatus.PENDING
+                if staged.status == ExtractionStatus.AUTO_VERIFIED
+                else staged.status
+            )
+
+            if (
+                staged.validation_score == structural_result.validation_score
+                and staged.confidence_adjustment == structural_result.confidence_adjustment
+                and staged.validation_flags == merged_flags
+                and staged.auto_commit_eligible is False
+                and staged.status == next_status
+            ):
+                continue
+
+            staged.validation_score = structural_result.validation_score
+            staged.confidence_adjustment = structural_result.confidence_adjustment
+            staged.validation_flags = merged_flags
+            staged.auto_commit_eligible = False
+            staged.status = next_status
+            changed = True
+
+        if changed:
+            await self.db.commit()
+
+    def _get_structural_validation_result(
+        self,
+        extraction_data: dict[str, object] | None,
+    ) -> ValidationResult | None:
+        if not isinstance(extraction_data, dict):
+            return None
+
+        relation_type = extraction_data.get("relation_type")
+        roles_payload = extraction_data.get("roles")
+        text_span = extraction_data.get("text_span")
+        notes = extraction_data.get("notes")
+
+        if not isinstance(relation_type, str) or not isinstance(roles_payload, list):
+            return None
+
+        roles: list[ExtractedRole] = []
+        for role_payload in roles_payload:
+            if not isinstance(role_payload, dict):
+                continue
+            entity_slug = role_payload.get("entity_slug")
+            role_type = role_payload.get("role_type")
+            if not isinstance(entity_slug, str) or not isinstance(role_type, str):
+                continue
+            roles.append(ExtractedRole.model_construct(entity_slug=entity_slug, role_type=role_type))
+
+        relation = ExtractedRelation.model_construct(
+            relation_type=relation_type,
+            roles=roles,
+            confidence="medium",
+            text_span=text_span if isinstance(text_span, str) else "",
+            notes=notes if isinstance(notes, str) else None,
+            scope=None,
+            evidence_context=None,
+        )
+        return validate_relation_structure(relation)
 
     async def auto_commit_eligible_extractions(self) -> AutoCommitResponse:
         """Automatically commit all eligible pending extractions."""

@@ -125,6 +125,17 @@ describe("LlmDraftsPanel", () => {
     });
   });
 
+  it("renders summary and metadata rows for clarity", async () => {
+    renderPanel();
+    await waitFor(() => {
+      expect(screen.getByText("llm_drafts.summary_entity")).toBeInTheDocument();
+      expect(screen.getByText("review_queue.pending_review")).toBeInTheDocument();
+      expect(screen.getByText("llm_drafts.meta_model")).toBeInTheDocument();
+      expect(screen.getByText("llm_drafts.meta_date")).toBeInTheDocument();
+      expect(screen.getByText("llm_drafts.meta_id")).toBeInTheDocument();
+    });
+  });
+
   it("renders confirm and discard buttons", async () => {
     renderPanel();
     await waitFor(() => {

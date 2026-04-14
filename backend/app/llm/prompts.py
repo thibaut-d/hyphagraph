@@ -29,6 +29,7 @@ Guidelines:
 - Extract only what is explicitly supported by the provided text.
 - If support is missing or ambiguous, omit the item instead of guessing.
 - Be precise and conservative in extraction
+- Do not collapse combination therapy, adjunct therapy, or co-administration language into a single-agent finding unless the source explicitly attributes the effect to one component
 - Distinguish between established facts, hypotheses, and reported findings
 - Treat a study finding, a background statement, and a hypothesis as different statement kinds
 - Note uncertainty levels when present in the source
@@ -201,10 +202,22 @@ RELATION EXTRACTION RULES:
 - If the text gives only a mechanistic assumption, background rationale, or methodology note, mark evidence_context.statement_kind accordingly
 - If the text presents competing or contradictory findings, output separate relations rather than merging them
 - HyphaGraph relations are hyperedges: when one source statement includes reusable semantic participants such as population, comparator, outcome, mechanism, or study condition, keep that context as additional roles in the SAME relation instead of decomposing the statement into multiple binary relations
+- When a source reports combination therapy, adjunct therapy, co-administration, or "X with Y", include every explicitly named active intervention in the SAME relation as separate agent roles if the finding applies to the combination
 - Do not add contextual roles that are not explicitly stated in the same source span
 - Put dosage, duration, timeframe, study_design, sample_size, and statistical_support into scope or evidence_context instead of inventing standalone entities for them
 - Do not create duration or dosage roles from vague qualifiers alone. Prefer exact values like "12 weeks" or "60mg daily". If the source only says "short-term", "long-term", "high dose", or similar vague language, keep that in notes or methodology_text instead of a role entity.
 - Every role entity_slug used in a relation must be present in the identified entity list above
+- Core role requirements:
+  - treats MUST include agent and target
+  - causes MUST include the thing causing the effect as agent, plus the adverse event/effect as target or outcome
+  - prevents MUST include agent and target or outcome
+  - biomarker_for MUST include biomarker and target or condition
+  - measures MUST include measured_by and target or outcome
+- control_group, population, and comparator context NEVER replace a missing core role
+- If the source mentions an adverse event like nausea but does not explicitly identify what caused it in the same source span, omit the relation instead of guessing
+- If the source only says adverse events were similar to placebo or not serious, do not invent a causes relation unless the active intervention and the adverse event are both explicit in the same span
+- If the source says "combined X with Y", "X plus Y", "adjunctive Y", or similar combination language, do NOT emit a single-agent treats relation for only X or only Y unless the text explicitly attributes the effect to that one component
+- For combination findings, comparator/control groups are not active agents; include named active interventions as agent roles and keep placebo only as control_group
 
 SEMANTIC ROLES (use these instead of subject/object):
 - agent: Entity performing action (drug, treatment)
@@ -292,6 +305,17 @@ Respond with a JSON object containing a "relations" key:
 }}
 ```
 
+Invalid example to OMIT:
+- Text span: "adverse events experienced by participants were not serious"
+- Wrong extraction: causes(target=nausea, control_group=placebo)
+- Reason: the span does not explicitly identify what causes nausea, so the relation is structurally incomplete and should not be emitted
+
+Combination-therapy example:
+- Text span: "pregabalin combined with duloxetine improved fibromyalgia symptoms compared with placebo"
+- Correct extraction shape: treats(agent=pregabalin, agent=duloxetine, target=fibromyalgia, control_group=placebo)
+- Wrong extraction to avoid: treats(agent=pregabalin, target=fibromyalgia, control_group=placebo)
+- Reason: the finding is about the combination, not pregabalin alone
+
 Only extract relations that are explicitly stated in the text.
 Be conservative - avoid inferring relations that are not clearly supported.
 """
@@ -378,6 +402,7 @@ GLOBAL RULES:
 - Keep study findings separate from background statements, hypotheses, and methodology notes
 - If an item is not clearly supported, omit it instead of guessing
 - Prefer precise measurable context. Do not create vague duration/dosage/timeframe entities such as "duration-short-term" when the source does not state an exact value.
+- Do not flatten combination therapy, adjunct therapy, or co-administration findings into single-agent relations unless the text explicitly attributes the effect to one component
 
 Extract:
 1. **Entities**: All drugs, diseases, symptoms, treatments, biomarkers, and other relevant entities
@@ -419,6 +444,7 @@ Extract:
    HYPERGRAPH ROLE RULE:
    - HyphaGraph relations are n-ary hyperedges, not only binary subject/object pairs.
    - When a single source statement includes population, comparator, outcome, mechanism, or condition, include those explicitly stated items as additional roles in the SAME relation.
+   - When a single source statement reports combination therapy or co-administration, include every explicitly named active intervention as agent roles in the SAME relation if the finding applies to the combination.
    - Do not split one contextual statement into several binary relations when one n-ary relation can preserve the source context.
    - Do not add contextual roles that are not explicitly stated in the same source span.
 
@@ -446,6 +472,8 @@ Extract:
    - For side-effect or safety findings where no significant difference is found versus a control or placebo, use relation_type "causes" with finding_polarity "contradicts" — do NOT use "other". Example: "no significant increase in nausea vs placebo" → relation_type "causes", finding_polarity "contradicts".
    - study_design, sample_size, and statistical_support should only be included when the source text states them or directly signals them
    - do not create vague duration or dosage role entities from labels like "short-term", "long-term", "high dose", or "standard dose"
+   - If the text says "combined X with Y", "X plus Y", "co-administered", or similar combination language, do NOT emit a clean single-agent treats relation for only one component unless the text explicitly isolates that component's effect
+   - For combination findings, placebo or other comparison arms stay as control_group; they never replace named active intervention agents
 
 3. **Claims**: Factual statements with evidence
 
@@ -582,6 +610,25 @@ Respond with JSON containing three arrays:
         "evidence_strength": "weak",
         "study_design": "randomized_controlled_trial",
         "assertion_text": "No significant difference in nausea rates was found between duloxetine and placebo."
+      }}
+    }},
+    {{
+      "relation_type": "treats",
+      "roles": [
+        {{"entity_slug": "pregabalin", "role_type": "agent"}},
+        {{"entity_slug": "duloxetine", "role_type": "agent"}},
+        {{"entity_slug": "fibromyalgia", "role_type": "target"}},
+        {{"entity_slug": "placebo", "role_type": "control_group"}}
+      ],
+      "confidence": "medium",
+      "text_span": "pregabalin combined with duloxetine improved fibromyalgia symptoms compared with placebo",
+      "notes": "Combination finding; effect is attributed to the combined regimen rather than a single component.",
+      "evidence_context": {{
+        "statement_kind": "finding",
+        "finding_polarity": "supports",
+        "evidence_strength": "weak",
+        "study_design": "unknown",
+        "assertion_text": "The combination of pregabalin and duloxetine was reported to improve fibromyalgia symptoms compared with placebo."
       }}
     }}
   ],

@@ -118,6 +118,13 @@ describe("ReviewQueueView", () => {
     expect(screen.getByRole("heading", { name: "Queue items" })).toBeInTheDocument();
   });
 
+  it("does not offer claim filtering in the staged review queue", async () => {
+    renderView();
+
+    expect(await screen.findByRole("tab", { name: "Staged Extraction Review" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Claim" })).not.toBeInTheDocument();
+  });
+
   it("shows staged queue stats and extraction items", async () => {
     renderView();
 

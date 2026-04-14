@@ -46,7 +46,7 @@ async def list_pending_extractions(
     """
     pending_filters = filters.model_copy(update={"status": "pending"})
 
-    extractions, total = await service.list_extractions(pending_filters)
+    extractions, total = await service.list_extractions(pending_filters, include_claims=False)
 
     return StagedExtractionListResponse(
         extractions=[StagedExtractionRead.model_validate(e) for e in extractions],
@@ -67,7 +67,7 @@ async def get_review_stats(
 
     Includes counts by status, type, and quality metrics.
     """
-    return await service.get_stats()
+    return await service.get_stats(include_claims=False)
 
 
 @router.get("/all", response_model=StagedExtractionListResponse)

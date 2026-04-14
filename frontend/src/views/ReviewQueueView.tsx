@@ -121,7 +121,7 @@ export function ReviewQueueView() {
   const stagedIdentityTitle = t("review_queue.queue_staged_title", "Staged extraction review");
   const stagedIdentityDescription = t(
     "review_queue.queue_staged_description",
-    "This queue holds staged entity, relation, and claim extractions that need human review before they are materialized into the graph."
+    "This queue holds staged entity and relation extractions that need human review before they are materialized into the graph."
   );
   const draftIdentityTitle = t("review_queue.queue_drafts_title", "LLM draft revision review");
   const draftIdentityDescription = t(
@@ -285,7 +285,6 @@ export function ReviewQueueView() {
                   <ToggleButton value="all">{t("review_queue.type_all", "All staged items")}</ToggleButton>
                   <ToggleButton value="entity">{t("review_queue.type_entity")}</ToggleButton>
                   <ToggleButton value="relation">{t("review_queue.type_relation")}</ToggleButton>
-                  <ToggleButton value="claim">{t("review_queue.type_claim")}</ToggleButton>
                 </ToggleButtonGroup>
               </Stack>
             </Paper>
