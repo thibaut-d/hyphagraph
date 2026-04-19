@@ -53,7 +53,7 @@ class Settings(BaseSettings):
 
     # LLM Configuration
     OPENAI_API_KEY: str | None = None  # OpenAI API key for ChatGPT
-    OPENAI_MODEL: str = "gpt-4o-mini"  # OpenAI model to use (gpt-4o-mini, gpt-4o, gpt-4-turbo)
+    OPENAI_MODEL: str = "gpt-5.4"  # OpenAI model to use (gpt-5.4, gpt-4o, gpt-4o-mini)
     LLM_PROVIDER: str = "openai"  # LLM provider identifier stored in provenance (e.g., "openai", "anthropic")
     OPENAI_TEMPERATURE: float = 0.3  # Temperature for LLM responses (0.0-1.0, lower = more deterministic)
 

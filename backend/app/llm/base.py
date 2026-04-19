@@ -111,6 +111,6 @@ class LLMProvider(ABC):
         Get the name/identifier of the model being used.
 
         Returns:
-            Model name (e.g., "gpt-4o-mini", "claude-3-sonnet")
+            Model name (e.g., "gpt-5.4", "claude-3-sonnet")
         """
         pass
