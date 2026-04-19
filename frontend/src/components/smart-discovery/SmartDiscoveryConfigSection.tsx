@@ -53,7 +53,7 @@ export function SmartDiscoveryConfigSection({
           <Typography variant="subtitle2" gutterBottom>
             {t("smart_discovery.databases_label")}
           </Typography>
-          <Stack direction="row" spacing={2}>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             <FormControlLabel
               control={
                 <Checkbox
