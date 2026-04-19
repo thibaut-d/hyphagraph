@@ -3,6 +3,7 @@ from typing import Literal, Optional
 from datetime import datetime
 from pydantic import Field, field_validator
 from app.schemas.base import Schema
+from app.llm.schemas import _normalize_extracted_slug
 
 
 class EntityWrite(Schema):
@@ -96,6 +97,12 @@ class EntityPrefillAlias(Schema):
 
 class EntityPrefillDraft(Schema):
     """Non-authoritative draft values for the create-entity form."""
+
+    @field_validator("slug", mode="before")
+    @classmethod
+    def normalize_slug(cls, value: object) -> object:
+        return _normalize_extracted_slug(value)
+
     slug: str = Field(..., pattern=r"^[a-z][a-z0-9-]*$", min_length=3, max_length=100)
     display_names: dict[str, str] = Field(default_factory=dict)
     summary: dict[str, str] = Field(default_factory=dict)
