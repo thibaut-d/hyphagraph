@@ -88,10 +88,10 @@ See `E2E_TEST_FIXES_SUMMARY.md` and `E2E_TEST_ANALYSIS.md` for detailed technica
   - ✅ Auto-verification for high-confidence extractions
   - ✅ Visibility strategy: show all, flag uncertain
   - ✅ Integration with document extraction pipeline: stage_review_batch uses auto_materialize=False; save_extraction_to_graph calls reconcile_staged_extractions to link staged records to materialized IDs and mark APPROVED/REJECTED
-  - ✅ Unit tests for review service (47 tests: auto-commit logic, relation/claim staging, materialization edge cases, filters, pagination, batch ops)
+  - ✅ Unit tests for review service (47 tests: auto-commit logic, relation staging, materialization edge cases, filters, pagination, batch ops)
   - ✅ Frontend UI (review queue, badges, type/score/flag filters, batch approve/reject, View Entity/Relation links, 32 tests)
 - ✅ Track LLM model version and provider (stored in staged_extractions)
-- ✅ Claim extraction to Relations (auto-materialization): claims materialize as relations with kind=claim_type, notes=claim_text, scope=evidence_strength, participant roles
+- ✅ Legacy extraction normalization to relations (auto-materialization): extracted assertions materialize as relations with source-bounded notes, scope, and participant roles
 
 #### Batch Operations
 - ✅ Bulk entity import (CSV, JSON) — preview + commit workflow, 500-row limit

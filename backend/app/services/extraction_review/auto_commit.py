@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.staged_extraction import ExtractionStatus, ExtractionType, StagedExtraction
 from app.schemas.staged_extraction import AutoCommitResponse
-from app.services.extraction_review.materialization import materialize_claim, materialize_entity, materialize_relation
+from app.services.extraction_review.materialization import materialize_entity, materialize_relation
 from app.services.extraction_validation_service import ValidationResult
 from app.utils.datetime import utc_now_naive
 
@@ -93,11 +93,6 @@ async def _materialize_approved(db: AsyncSession, staged: StagedExtraction) -> b
             return True
         elif staged.extraction_type == ExtractionType.RELATION:
             relation_id = await materialize_relation(db, staged, llm_review_status="auto_verified")
-            staged.materialized_relation_id = relation_id
-            await db.commit()
-            return True
-        elif staged.extraction_type == ExtractionType.CLAIM:
-            relation_id = await materialize_claim(db, staged, llm_review_status="auto_verified")
             staged.materialized_relation_id = relation_id
             await db.commit()
             return True

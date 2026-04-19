@@ -35,7 +35,6 @@ describe('Extraction Review API — consumer contract', () => {
             total_auto_verified: like(0),
             pending_entities: like(1),
             pending_relations: like(0),
-            pending_claims: like(0),
             avg_validation_score: like(0.9),
             high_confidence_count: like(0),
             flagged_count: like(0),

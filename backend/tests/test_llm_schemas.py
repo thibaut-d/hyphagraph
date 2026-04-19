@@ -41,22 +41,11 @@ def test_validate_batch_extraction_normalizes_confidence_style_evidence_strength
                     },
                 }
             ],
-            "claims": [
-                {
-                    "claim_text": "Duloxetine improved chronic pain outcomes in the reviewed studies.",
-                    "entities_involved": ["duloxetine", "chronic-pain"],
-                    "claim_type": "efficacy",
-                    "evidence_strength": "medium",
-                    "confidence": "medium",
-                    "text_span": "duloxetine improved chronic pain outcomes",
-                }
-            ],
         }
     )
 
     assert result.relations[0].evidence_context is not None
     assert result.relations[0].evidence_context.evidence_strength == "weak"
-    assert result.claims[0].evidence_strength == "moderate"
 
 
 def test_validate_batch_extraction_normalizes_slug_shapes_before_schema_validation():
@@ -89,16 +78,6 @@ def test_validate_batch_extraction_normalizes_slug_shapes_before_schema_validati
                     "text_span": "5-hydroxytryptophan improved 30 percent pain relief",
                 }
             ],
-            "claims": [
-                {
-                    "claim_text": "5-hydroxytryptophan improved 50 percent pain relief in one subgroup.",
-                    "entities_involved": ["5-hydroxytryptophan", "50-percent-pain-relief"],
-                    "claim_type": "efficacy",
-                    "evidence_strength": "weak",
-                    "confidence": "medium",
-                    "text_span": "5-hydroxytryptophan improved 50 percent pain relief",
-                }
-            ],
         }
     )
 
@@ -106,10 +85,6 @@ def test_validate_batch_extraction_normalizes_slug_shapes_before_schema_validati
     assert result.entities[1].slug == "grade"
     assert result.relations[0].roles[0].entity_slug == "item-5-hydroxytryptophan"
     assert result.relations[0].roles[1].entity_slug == "item-30-percent-pain-relief"
-    assert result.claims[0].entities_involved == [
-        "item-5-hydroxytryptophan",
-        "item-50-percent-pain-relief",
-    ]
 
 
 def test_validate_batch_extraction_normalizes_textual_sample_size_to_integer():
@@ -146,7 +121,6 @@ def test_validate_batch_extraction_normalizes_textual_sample_size_to_integer():
                     },
                 }
             ],
-            "claims": [],
         }
     )
 
@@ -188,7 +162,6 @@ def test_validate_batch_extraction_accepts_legacy_study_context_but_serializes_e
                     },
                 }
             ],
-            "claims": [],
         }
     )
 
@@ -230,7 +203,6 @@ def test_validate_batch_extraction_rejects_causes_relation_without_agent():
                         "text_span": "adverse events experienced by participants were not serious",
                     }
                 ],
-                "claims": [],
             }
         )
 

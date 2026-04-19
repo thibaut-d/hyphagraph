@@ -156,13 +156,6 @@ async def seed_review_queue(db: AsyncSession = Depends(get_db)) -> ReviewQueueSe
                 extraction_data={"kind": "inhibits", "confidence": 0.9},
                 validation_score=0.78,
             ),
-            StagedExtraction(
-                extraction_type="claim",
-                status="pending",
-                source_id=source.id,
-                extraction_data={"text": "Aspirin reduces inflammation", "confidence": 0.92},
-                validation_score=0.92,
-            ),
         ]
         for ex in extractions:
             db.add(ex)

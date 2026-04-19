@@ -5,7 +5,6 @@ import pytest
 from sqlalchemy import select
 
 from app.llm.schemas import (
-    ExtractedClaim,
     ExtractedEntity,
     ExtractedRelation,
     ExtractedRelationEvidenceContext,
@@ -194,10 +193,8 @@ class TestReviewAndLinkWorkflow:
             extracted_batch=ExtractedBatch(
                 entities=[build_extracted_entity("aspirin")],
                 relations=[build_extracted_relation("aspirin", "pain")],
-                claims=[],
                 entity_results=[SimpleNamespace()],
                 relation_results=[SimpleNamespace()],
-                claim_results=[],
             ),
             review_service_factory=FakeReviewService,
         )
@@ -208,7 +205,7 @@ class TestReviewAndLinkWorkflow:
             avg_validation_score=pytest.approx(0.775),
         )
 
-    async def test_stage_review_batch_does_not_stage_claims_from_preview_workflow(self, db_session):
+    async def test_stage_review_batch_only_passes_entities_and_relations(self, db_session):
         class FakeReviewService:
             stage_batch_kwargs = None
 
@@ -219,31 +216,28 @@ class TestReviewAndLinkWorkflow:
                 FakeReviewService.stage_batch_kwargs = kwargs
                 return []
 
-        claim = ExtractedClaim(
-            claim_text="Duloxetine reduced adverse-event severity in fibromyalgia participants.",
-            entities_involved=["duloxetine", "fibromyalgia"],
-            claim_type="safety",
-            evidence_strength="moderate",
-            confidence="medium",
-            text_span="Duloxetine reduced adverse-event severity in fibromyalgia participants.",
-        )
-
         await stage_review_batch(
             db_session,
             source_id=uuid4(),
             extracted_batch=ExtractedBatch(
                 entities=[build_extracted_entity("duloxetine")],
                 relations=[build_extracted_relation("duloxetine", "fibromyalgia")],
-                claims=[claim],
                 entity_results=[SimpleNamespace()],
                 relation_results=[SimpleNamespace()],
-                claim_results=[SimpleNamespace()],
             ),
             review_service_factory=FakeReviewService,
         )
 
         assert FakeReviewService.stage_batch_kwargs is not None
-        assert FakeReviewService.stage_batch_kwargs["claims"] == []
+        assert set(FakeReviewService.stage_batch_kwargs) == {
+            "entities",
+            "relations",
+            "source_id",
+            "llm_model",
+            "llm_provider",
+            "auto_materialize",
+            "commit",
+        }
 
     async def test_build_link_suggestions_maps_match_payloads(self, db_session):
         match = SimpleNamespace(
@@ -293,10 +287,8 @@ class TestReviewAndLinkWorkflow:
                 return (
                     entities,
                     relations,
-                    [],
                     [SimpleNamespace()],
                     [SimpleNamespace()],
-                    [],
                 )
 
         class FakeReviewService:
@@ -409,10 +401,8 @@ class TestReviewAndLinkWorkflow:
                 return (
                     entities,
                     relations,
-                    [],
                     [SimpleNamespace() for _ in entities],
                     [SimpleNamespace()],
-                    [],
                 )
 
         class FakeReviewService:
@@ -511,10 +501,8 @@ class TestReviewAndLinkWorkflow:
                 return (
                     entities,
                     relations,
-                    [],
                     [SimpleNamespace() for _ in entities],
                     [SimpleNamespace()],
-                    [],
                 )
 
         class FakeReviewService:
@@ -601,7 +589,6 @@ class TestReviewAndLinkWorkflow:
                 return (
                     entities,
                     relations,
-                    [],
                     [SimpleNamespace() for _ in entities],
                     [
                         SimpleNamespace(
@@ -612,7 +599,6 @@ class TestReviewAndLinkWorkflow:
                             matched_span="adverse events experienced by participants were not serious",
                         )
                     ],
-                    [],
                 )
 
         class FakeReviewService:
@@ -876,8 +862,10 @@ class TestSaveExtractionToGraph:
             "fr": "Un anti-inflammatoire non stéroïdien.",
         }
         assert revision.ui_category_id == category.id
-        assert revision.status == "draft"
-        assert revision.llm_review_status == "pending_review"
+        assert revision.status == "confirmed"
+        assert revision.llm_review_status == "confirmed"
+        assert revision.confirmed_by_user_id == test_user.id
+        assert revision.confirmed_at is not None
 
         terms_result = await db_session.execute(
             select(EntityTerm)
@@ -1074,38 +1062,6 @@ class TestReconcileStagedExtractions:
         assert staged.status == ExtractionStatus.APPROVED
         assert staged.materialized_relation_id == relation_id
         assert staged.reviewed_by == test_user.id
-
-    async def test_claim_stays_pending(self, db_session, test_user):
-        source = await self._make_source(db_session)
-        aspirin_id = await self._make_entity_id(db_session, "aspirin-claim-test")
-
-        staged = await self._make_staged(
-            db_session,
-            source_id=source.id,
-            extraction_type=ExtractionType.CLAIM,
-            extraction_data={
-                "claim_type": "efficacy",
-                "claim_text": "aspirin reduces fever",
-                "entities_involved": ["aspirin-claim-test"],
-                "evidence_strength": "moderate",
-                "confidence": "medium",
-                "text_span": "aspirin reduces fever",
-            },
-        )
-
-        await reconcile_staged_extractions(
-            db_session,
-            source_id=source.id,
-            approved_entity_slugs_to_id={"aspirin-claim-test": aspirin_id},
-            rejected_entity_slugs=set(),
-            approved_relations=[],
-            approved_relation_ids=[],
-            user_id=test_user.id,
-        )
-        await db_session.commit()
-        await db_session.refresh(staged)
-
-        assert staged.status == ExtractionStatus.PENDING
 
     async def test_no_staged_items_is_noop(self, db_session, test_user):
         source = await self._make_source(db_session)

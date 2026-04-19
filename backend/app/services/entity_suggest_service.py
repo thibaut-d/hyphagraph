@@ -54,7 +54,7 @@ class EntitySuggestService:
             "- Each term should name a distinct, well-defined concept (substance, condition, intervention, organism, etc.).\n"
             "- Prefer terms at the right level of specificity for a scientific knowledge graph — not too broad, not too narrow.\n"
             "- Do not repeat the same concept under different names.\n"
-            "- Do not include relation claims, efficacy claims, or any other text — only the entity names.\n"
+            "- Do not include relation statements, efficacy statements, or any other text — only the entity names.\n"
             f"- Return exactly {count} terms.\n"
         )
         try:

@@ -18,7 +18,7 @@ import type { RelationKindSummaryRead } from "../../types/inference";
 import type { RelationRead } from "../../types/relation";
 import {
   formatDirectionLabel,
-  formatRelationClaim,
+  formatRelationStatement,
   formatRelationContext,
 } from "../../utils/relationPresentation";
 
@@ -157,7 +157,7 @@ export function SynthesisRelationsSection({
                     return (
                       <ListItem key={relation.id} disablePadding sx={{ py: 0.5 }}>
                         <ListItemText
-                          primary={formatRelationClaim(relation, summary.kind)}
+                          primary={formatRelationStatement(relation, summary.kind)}
                           secondary={secondaryParts.join(" • ")}
                         />
                       </ListItem>

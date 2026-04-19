@@ -2,7 +2,7 @@
  * TypeScript types for knowledge extraction from documents.
  *
  * Matches backend schemas from:
- * - app/llm/schemas.py (ExtractedEntity, ExtractedRelation, ExtractedClaim)
+ * - app/llm/schemas.py (ExtractedEntity, ExtractedRelation)
  * - app/schemas/source.py (DocumentExtractionPreview, EntityLinkMatch)
  */
 
@@ -110,31 +110,11 @@ export interface ExtractedRelation {
   study_context?: ExtractedRelationEvidenceContext | null;
 }
 
-// =============================================================================
-// Claim Extraction
-// =============================================================================
-
-export type ClaimType =
-  | "efficacy"
-  | "safety"
-  | "mechanism"
-  | "epidemiology"
-  | "other";
-
 export type EvidenceStrength =
   | "strong"      // RCTs, meta-analyses
   | "moderate"    // Observational studies
   | "weak"        // Case reports, small studies
   | "anecdotal";  // Individual experiences
-
-export interface ExtractedClaim {
-  claim_text: string;
-  entities_involved: string[];
-  claim_type: ClaimType;
-  evidence_strength: EvidenceStrength;
-  confidence: ConfidenceLevel;
-  text_span: string;
-}
 
 // =============================================================================
 // Entity Linking
@@ -210,7 +190,6 @@ export interface SaveExtractionResult {
 export interface BatchExtractionResponse {
   entities: ExtractedEntity[];
   relations: ExtractedRelation[];
-  claims: ExtractedClaim[];
 }
 
 // =============================================================================
@@ -233,5 +212,4 @@ export interface ExtractionWorkflowState {
   preview: DocumentExtractionPreview;
   entity_decisions: Record<string, EntityLinkingDecision>;  // slug -> decision
   selected_relations: Set<string>;  // slugs of relations to create
-  selected_claims: Set<string>;  // claim_text of claims to create
 }

@@ -70,16 +70,16 @@
     "filter_aria": "Filtrer les résultats par type",
     "filter_entities": "Entités",
     "filter_sources": "Publications et documents",
-    "filter_relations": "Affirmations probantes",
+    "filter_relations": "Relations probantes",
     "results_found": "{{count}} résultat(s) trouvé(s)",
     "results_filtered_by": "affichage de {{kinds}}",
     "kind_entity": "Entité",
     "kind_source": "Publication",
-    "kind_relation": "Affirmation probante",
+    "kind_relation": "Relation probante",
     "match_score": "Correspondance : {{pct}}%",
     "match_score_title": "Force de correspondance textuelle — ne représente pas la confiance ou la qualité",
     "open_relation_detail": "Détails de la relation",
-    "empty_state": "Entrez un terme de recherche pour trouver des entités, publications et affirmations probantes."
+    "empty_state": "Entrez un terme de recherche pour trouver des entités, publications et relations probantes."
   },
   "entities": {
     "title": "Entités",
@@ -225,7 +225,7 @@
   },
   "create_source": {
     "title": "Créer une source",
-    "description": "Créer une nouvelle source pour le graphe de connaissances. Les sources sont des références qui fournissent les fondations pour les relations et les affirmations.",
+    "description": "Créer une nouvelle source pour le graphe de connaissances. Les sources sont des références qui ancrent les relations et les preuves.",
     "kind": "Type",
     "kind_article": "Article",
     "kind_book": "Livre",
@@ -279,7 +279,7 @@
   },
   "edit_source": {
     "title": "Modifier la source",
-    "description": "Mettre à jour les informations de la source. Les sources fournissent les fondations pour les relations et les affirmations.",
+    "description": "Mettre à jour les informations de la source. Les sources ancrent les relations et les preuves.",
     "save": "Enregistrer les modifications",
     "saving": "Enregistrement...",
     "error": "Échec de la mise à jour de la source"
@@ -388,8 +388,8 @@
   },
   "home": {
     "title": "{{brand}}",
-    "subtitle": "Retracez les affirmations, évaluez la qualité des preuves et identifiez les contradictions",
-    "description": "{{brand}} agrège les preuves de plusieurs sources et calcule la confiance sur l'ensemble des relations. Inspectez quelles sources soutiennent ou contredisent chaque affirmation, suivez la piste des preuves et comprenez où l'accord se rompt.",
+    "subtitle": "Retracez les preuves, évaluez leur qualité et identifiez les contradictions",
+    "description": "{{brand}} agrège les preuves de plusieurs sources et calcule la confiance sur l'ensemble des relations. Inspectez quelles sources soutiennent ou contredisent chaque relation, suivez la piste des preuves et comprenez où l'accord se rompt.",
     "cta_explore_evidence": "Explorer les preuves",
     "cta_search": "Rechercher dans la base de connaissances",
     "data_heading": "Données",
@@ -397,7 +397,7 @@
     "entities": "Entités",
     "sources": "Sources",
     "relations": "Relations",
-    "relationsDesc": "Inspectez les affirmations fondées sur des sources liant des entités. Suivez les pistes de preuves de la relation au document original.",
+    "relationsDesc": "Inspectez les relations fondées sur des sources liant des entités. Suivez les pistes de preuves de la relation au document original.",
     "inferences": "Inférences",
     "inferencesDesc": "Examinez les preuves agrégées par entité. Visualisez les niveaux de confiance, les contradictions et la qualité des sources en un coup d'œil.",
     "createEntity": "Créer",
@@ -407,10 +407,10 @@
     "exploreInferences": "Explorer les inférences",
     "workflowTitle": "Workflow d'analyse des preuves",
     "step1Title": "1. Examiner les preuves extraites",
-    "step1Desc": "Consultez la file d'attente de révision pour les relations nouvellement extraites. Approuvez, rejetez ou marquez chaque affirmation avant qu'elle n'affecte les inférences.",
+    "step1Desc": "Consultez la file d'attente de révision pour les relations nouvellement extraites. Approuvez, rejetez ou marquez chaque relation avant qu'elle n'affecte les inférences.",
     "step2Title": "2. Inspecter les désaccords",
     "step2Desc": "Accédez à la vue désaccords de toute entité pour voir où les sources entrent en conflit. Les contradictions sont conservées — pas résolues — afin que vous puissiez les évaluer directement.",
-    "step3Title": "3. Retracer les affirmations jusqu'à leur source",
+    "step3Title": "3. Retracer les preuves jusqu'à leur source",
     "step3Desc": "Ouvrez toute explication d'inférence pour voir quelles publications ont contribué, leurs poids de confiance et le passage ou la relation exact dont chacune provient.",
     "step4Title": "4. Ajouter ou importer de nouvelles sources",
     "step4Desc": "Étendez la couverture en ajoutant des publications via URL, PubMed ID ou import en masse. Les nouvelles sources déclenchent une extraction automatique de relations pour révision."
@@ -457,7 +457,7 @@
     "computed_reading_title": "Lecture calculée des preuves",
     "computed_reading_description": "Cette section résume la façon dont les preuves actuelles se lisent pour chaque rôle. Il s'agit d'une interprétation calculée de la base de preuves, pas d'une conclusion incontestable.",
     "source_evidence_title": "Preuves issues des sources",
-    "source_evidence_description": "Ces relations appuyées par des sources constituent les preuves sur lesquelles repose la lecture calculée. Utilisez-les pour examiner les affirmations exactes, leur direction et leur contexte."
+    "source_evidence_description": "Ces relations appuyées par des sources constituent les preuves sur lesquelles repose la lecture calculée. Utilisez-les pour examiner les énoncés exacts, leur direction et leur contexte."
   },
   "filters": {
     "title": "Filtres",
@@ -556,13 +556,8 @@
     "type_all": "Tous",
     "type_entity": "Entité",
     "type_relation": "Relation",
-    "type_claim": "Affirmation",
-    "tab_staged": "Révision des extractions étagées",
-    "tab_drafts": "Révision des brouillons IA",
     "queue_staged_title": "Révision des extractions étagées",
     "queue_staged_description": "Cette file contient les extractions d'entités et de relations qui nécessitent une révision humaine avant d'être matérialisées dans le graphe.",
-    "queue_drafts_title": "Révision des brouillons de révision IA",
-    "queue_drafts_description": "Cette file contient les révisions d'entités, relations et sources rédigées avec l'aide d'un LLM. Chaque brouillon doit être confirmé ou rejeté explicitement.",
     "summary_title": "Métriques récapitulatives",
     "filters_title": "Filtres",
     "filters_description": "Réduisez la file d'extractions étagées par score de validation, statut signalé ou type d'extraction.",
@@ -575,8 +570,6 @@
     "no_notes": "Aucune note",
     "validation_score": "Score : {{score}} %",
     "validation_issues": "Problèmes de validation :",
-    "entities_involved": "Entités liées :",
-    "claim_type": "Type d'affirmation : {{claimType}}",
     "evidence_strength": "Niveau de preuve : {{evidenceStrength}}",
     "relation_type": "Type de relation : {{relationType}}",
     "linked_roles": "Rôles capturés :",

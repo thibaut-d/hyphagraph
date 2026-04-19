@@ -12,9 +12,9 @@ from app.services.source_service import SourceService
 from app.services.inference.detail_views import build_inference_detail_read
 from app.services.inference.math import (
     aggregate_evidence as aggregate_evidence_metric,
-    compute_claim_score as compute_claim_score_metric,
     compute_confidence as compute_confidence_metric,
     compute_disagreement as compute_disagreement_metric,
+    compute_relation_score as compute_relation_score_metric,
     compute_role_contribution as compute_role_contribution_metric,
 )
 from app.services.inference.evidence_views import RoleEvidenceRead, build_role_evidence_views
@@ -142,9 +142,9 @@ class InferenceService:
     # Based on COMPUTED_RELATIONS.md
     # ============================================================
 
-    def compute_claim_score(self, polarity: int, intensity: float) -> float:
+    def compute_relation_score(self, polarity: int, intensity: float) -> float:
         """
-        Compute claim-level score.
+        Compute relation-level score.
 
         Formula: x(c) = p(c) × i(c)
 
@@ -155,21 +155,21 @@ class InferenceService:
         Returns:
             Score in [-1, 1]
         """
-        return compute_claim_score_metric(polarity, intensity)
+        return compute_relation_score_metric(polarity, intensity)
 
-    def compute_role_contribution(self, claims: list[float]) -> Optional[float]:
+    def compute_role_contribution(self, relation_scores: list[float]) -> Optional[float]:
         """
         Compute role contribution within a relation.
 
         Formula: x(h, r) = sum(x(c)) / sum(|x(c)|)
 
         Args:
-            claims: List of claim scores for this role
+            relation_scores: List of signed relation scores for this role
 
         Returns:
-            Contribution in [-1, 1], or None if no claims
+            Contribution in [-1, 1], or None if no relation scores
         """
-        return compute_role_contribution_metric(claims)
+        return compute_role_contribution_metric(relation_scores)
 
     def aggregate_evidence(
         self,

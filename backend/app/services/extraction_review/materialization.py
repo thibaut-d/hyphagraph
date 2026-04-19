@@ -1,10 +1,11 @@
 import logging
+from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.llm.schemas import ExtractedClaim, ExtractedEntity, ExtractedRelation
+from app.llm.schemas import ExtractedEntity, ExtractedRelation
 from app.models.entity import Entity
 from app.models.entity_revision import EntityRevision
 from app.models.relation import Relation
@@ -44,6 +45,9 @@ async def materialize_entity(
     staged: StagedExtraction,
     user_id: UUID | None = None,
     llm_review_status: str = "pending_review",
+    status: str = "confirmed",
+    confirmed_by_user_id: UUID | None = None,
+    confirmed_at: datetime | None = None,
 ) -> UUID:
     entity_data = ExtractedEntity(**staged.extraction_data)
 
@@ -59,10 +63,12 @@ async def materialize_entity(
         revision_data={
             "slug": entity_data.slug,
             "summary": {"en": entity_data.summary} if entity_data.summary else None,
-            "status": "draft",
+            "status": status,
             "created_with_llm": staged.llm_model,
             "created_by_user_id": user_id,
             "llm_review_status": llm_review_status,
+            "confirmed_by_user_id": confirmed_by_user_id,
+            "confirmed_at": confirmed_at,
         },
         set_as_current=True,
     )
@@ -76,6 +82,9 @@ async def materialize_relation(
     staged: StagedExtraction,
     user_id: UUID | None = None,
     llm_review_status: str = "pending_review",
+    status: str = "confirmed",
+    confirmed_by_user_id: UUID | None = None,
+    confirmed_at: datetime | None = None,
 ) -> UUID:
     relation_data = ExtractedRelation(**staged.extraction_data)
 
@@ -98,10 +107,12 @@ async def materialize_relation(
             "notes": {"en": relation_data.notes or relation_data.text_span}
             if relation_data.notes or relation_data.text_span
             else None,
-            "status": "draft",
+            "status": status,
             "created_with_llm": staged.llm_model,
             "created_by_user_id": user_id,
             "llm_review_status": llm_review_status,
+            "confirmed_by_user_id": confirmed_by_user_id,
+            "confirmed_at": confirmed_at,
         },
         set_as_current=True,
     )
@@ -131,74 +142,4 @@ async def materialize_relation(
 
     await db.flush()
     logger.info("Materialized relation %s from staged extraction %s", relation.id, staged.id)
-    return relation.id
-
-
-async def materialize_claim(
-    db: AsyncSession,
-    staged: StagedExtraction,
-    user_id: UUID | None = None,
-    llm_review_status: str = "pending_review",
-) -> UUID:
-    """Materialize a claim as a relation in the knowledge graph.
-
-    Claims become relations where:
-    - claim_type → relation kind
-    - claim_text → notes (i18n)
-    - evidence_strength → scope metadata
-    - entities_involved → participant roles
-
-    Raises ValueError if any entity slug in entities_involved cannot be resolved.
-    """
-    claim_data = ExtractedClaim(**staged.extraction_data)
-
-    relation = Relation(source_id=staged.source_id)
-    db.add(relation)
-    await db.flush()
-
-    final_confidence = CONFIDENCE_FLOAT.get(claim_data.confidence, CONFIDENCE_FLOAT["medium"]) * staged.confidence_adjustment
-
-    revision = await create_new_revision(
-        db=db,
-        revision_class=RelationRevision,
-        parent_id_field="relation_id",
-        parent_id=relation.id,
-        revision_data={
-            "kind": claim_data.claim_type,
-            "confidence": final_confidence,
-            "notes": {"en": claim_data.claim_text},
-            "scope": {"evidence_strength": claim_data.evidence_strength},
-            "status": "draft",
-            "created_with_llm": staged.llm_model,
-            "created_by_user_id": user_id,
-            "llm_review_status": llm_review_status,
-        },
-        set_as_current=True,
-    )
-
-    for slug in claim_data.entities_involved:
-        entity_result = await db.execute(
-            select(EntityRevision)
-            .where(EntityRevision.slug == slug)
-            .where(EntityRevision.is_current == True)  # noqa: E712
-            .limit(1)
-        )
-        entity_revision = entity_result.scalar_one_or_none()
-
-        if not entity_revision:
-            raise ValueError(
-                f"Entity with slug '{slug}' not found; "
-                f"cannot materialize claim {relation.id}"
-            )
-
-        db.add(
-            RelationRoleRevision(
-                relation_revision_id=revision.id,
-                entity_id=entity_revision.entity_id,
-                role_type="participant",
-            )
-        )
-
-    await db.flush()
-    logger.info("Materialized claim %s as relation %s from staged extraction %s", claim_data.claim_type, relation.id, staged.id)
     return relation.id

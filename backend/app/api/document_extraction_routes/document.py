@@ -54,11 +54,15 @@ async def extract_from_document(
         return preview
     except (AppException, SourceNotFoundException, ValidationException):
         raise
-    except Exception:
+    except Exception as exc:
         logger.exception("Document extraction failed for source %s", source_id)
         raise_internal_api_exception(
             message="Failed to extract from document",
-            context={"source_id": str(source_id)},
+            details=str(exc) or type(exc).__name__,
+            context={
+                "source_id": str(source_id),
+                "exception_type": type(exc).__name__,
+            },
         )
 
 
@@ -96,11 +100,15 @@ async def save_extraction(
         return result
     except (AppException, SourceNotFoundException, ValidationException):
         raise
-    except Exception:
+    except Exception as exc:
         logger.exception("Save extraction failed for source %s", source_id)
         raise_internal_api_exception(
             message="Failed to save extraction",
-            context={"source_id": str(source_id)},
+            details=str(exc) or type(exc).__name__,
+            context={
+                "source_id": str(source_id),
+                "exception_type": type(exc).__name__,
+            },
         )
 
 
@@ -148,12 +156,16 @@ async def upload_and_extract(
     except (AppException, SourceNotFoundException, ValidationException):
         await db.rollback()
         raise
-    except Exception:
+    except Exception as exc:
         await db.rollback()
         logger.exception("Upload and extract failed for source %s", source_id)
         raise_internal_api_exception(
             message="Failed to upload and extract",
-            context={"source_id": str(source_id)},
+            details=str(exc) or type(exc).__name__,
+            context={
+                "source_id": str(source_id),
+                "exception_type": type(exc).__name__,
+            },
         )
 
 
@@ -205,10 +217,15 @@ async def extract_from_url(
     except (AppException, SourceNotFoundException, ValidationException):
         await db.rollback()
         raise
-    except Exception:
+    except Exception as exc:
         await db.rollback()
         logger.exception("URL extraction failed for source %s", source_id)
         raise_internal_api_exception(
             message="Failed to extract from URL",
-            context={"source_id": str(source_id), "url": request.url},
+            details=str(exc) or type(exc).__name__,
+            context={
+                "source_id": str(source_id),
+                "url": request.url,
+                "exception_type": type(exc).__name__,
+            },
         )

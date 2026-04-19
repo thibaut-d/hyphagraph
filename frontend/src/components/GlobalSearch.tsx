@@ -185,7 +185,7 @@ export function GlobalSearch() {
                   ? t("search.kind_entity", "Entity")
                   : option.type === "source"
                     ? t("search.kind_source", "Publication")
-                    : t("search.kind_relation", "Evidence claim")
+                    : t("search.kind_relation", "Evidence relation")
               }
               size="small"
               color={option.type === "entity" ? "primary" : option.type === "source" ? "secondary" : "warning"}

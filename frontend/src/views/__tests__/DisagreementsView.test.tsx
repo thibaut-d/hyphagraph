@@ -234,7 +234,7 @@ describe("DisagreementsView", () => {
       ).toBeInTheDocument();
     });
 
-    it("shows claim wording and context inside the side-by-side comparison tables", async () => {
+    it("shows relation wording and context inside the side-by-side comparison tables", async () => {
       vi.spyOn(entitiesApi, "getEntity").mockResolvedValue(mockEntity);
       vi.spyOn(inferencesApi, "getInferenceDetailForEntity").mockResolvedValue(
         createMockInference()
@@ -247,7 +247,7 @@ describe("DisagreementsView", () => {
       );
 
       await waitFor(() => {
-        expect(screen.getAllByText("Claim").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("Relation").length).toBeGreaterThan(0);
         expect(screen.getAllByText("Context").length).toBeGreaterThan(0);
         expect(screen.getAllByText("paracetamol therapeutic_use fever").length).toBeGreaterThan(0);
         expect(screen.getAllByText(/Population: adults/i).length).toBeGreaterThan(0);

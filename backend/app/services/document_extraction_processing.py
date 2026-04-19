@@ -24,7 +24,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.llm.client import get_llm_provider
 from app.llm.schemas import (
-    ExtractedClaim,
     ExtractedEntity,
     ExtractedRelation,
     ExtractedRelationEvidenceContext,
@@ -89,8 +88,6 @@ _STUDY_DESIGN_ALIASES: tuple[tuple[tuple[str, ...], str], ...] = (
 ExtractedBatchResult: TypeAlias = tuple[
     list[ExtractedEntity],
     list[ExtractedRelation],
-    list[ExtractedClaim],
-    list[ValidationResult],
     list[ValidationResult],
     list[ValidationResult],
 ]
@@ -121,7 +118,6 @@ class BatchExtractionOrchestratorProtocol(Protocol):
         *,
         text: str,
         min_confidence: str | None = None,
-        min_evidence_strength: str | None = None,
     ) -> ExtractedBatchResult: ...
 
 
@@ -154,7 +150,6 @@ class ExtractionReviewServiceProtocol(Protocol):
         *,
         entities: list[tuple[ExtractedEntity, ValidationResult]],
         relations: list[tuple[ExtractedRelation, ValidationResult]],
-        claims: list[tuple[ExtractedClaim, ValidationResult]],
         source_id: UUID,
         llm_model: str | None = None,
         llm_provider: str | None = None,
@@ -255,10 +250,8 @@ class UrlFetcherFactory(Protocol):
 class ExtractedBatch:
     entities: list[ExtractedEntity]
     relations: list[ExtractedRelation]
-    claims: list[ExtractedClaim]
     entity_results: list[ValidationResult]
     relation_results: list[ValidationResult]
-    claim_results: list[ValidationResult]
 
 
 @dataclass
@@ -468,10 +461,8 @@ def normalize_extracted_batch_context(extracted_batch: ExtractedBatch) -> Extrac
     return ExtractedBatch(
         entities=filtered_entities,
         relations=normalized_relations,
-        claims=extracted_batch.claims,
         entity_results=filtered_entity_results,
         relation_results=extracted_batch.relation_results,
-        claim_results=extracted_batch.claim_results,
     )
 
 
@@ -605,10 +596,8 @@ async def run_validated_extraction(
     (
         entities,
         relations,
-        claims,
         entity_results,
         relation_results,
-        claim_results,
     ) = await orchestrator.extract_batch_with_validation_results(
         text=text,
         min_confidence="medium",
@@ -616,10 +605,8 @@ async def run_validated_extraction(
     return ExtractedBatch(
         entities=entities,
         relations=relations,
-        claims=claims,
         entity_results=entity_results,
         relation_results=relation_results,
-        claim_results=claim_results,
     )
 
 
@@ -659,11 +646,6 @@ async def stage_review_batch(
     staged_items = await review_service.stage_batch(
         entities=list(zip(extracted_batch.entities, extracted_batch.entity_results)),
         relations=list(zip(extracted_batch.relations, relation_results)),
-        # Claims are intentionally excluded from the staged review queue here.
-        # The preview/save workflow exposes entities and relations for review,
-        # while standalone claims lack enough structural context to be audited
-        # safely in this queue and duplicate relation-like materialization paths.
-        claims=[],
         source_id=source_id,
         llm_model=settings.OPENAI_MODEL,
         llm_provider=settings.LLM_PROVIDER,
@@ -784,19 +766,15 @@ async def build_extraction_preview_with_service(
     (
         entities,
         relations,
-        claims,
         entity_results,
         relation_results,
-        claim_results,
     ) = await extraction_service.extract_batch_with_validation_results(text)
 
     extracted_batch = ExtractedBatch(
         entities=entities,
         relations=relations,
-        claims=claims,
         entity_results=entity_results,
         relation_results=relation_results,
-        claim_results=claim_results,
     )
     extracted_batch = normalize_extracted_batch_context(extracted_batch)
     review_summary = await stage_review_batch(
@@ -950,7 +928,7 @@ async def reconcile_staged_extractions(
       → REJECTED (user linked to an existing entity instead)
     - RELATION staged extractions matched by (relation_type, roles)
       → APPROVED + materialized_relation_id set
-    - Claims and unmatched items remain PENDING for the human review queue.
+    - Unmatched staged items remain PENDING for the human review queue.
 
     This is a no-op when no staged extractions exist for the source (e.g. direct
     API calls that bypass the document extraction preview).
@@ -1156,7 +1134,6 @@ async def save_extraction_to_graph(
         ExtractedBatch(
             entities=request.entities_to_create,
             relations=request.relations_to_create,
-            claims=[],
             entity_results=[
                 ValidationResult(
                     is_valid=True,
@@ -1175,7 +1152,6 @@ async def save_extraction_to_graph(
                 )
                 for _ in request.relations_to_create
             ],
-            claim_results=[],
         )
     )
     entities_to_create = normalized_request_batch.entities

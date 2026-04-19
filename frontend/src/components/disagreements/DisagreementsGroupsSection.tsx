@@ -27,7 +27,7 @@ import ThumbUpIcon from "@mui/icons-material/ThumbUp";
 import type { DisagreementGroupRead } from "../../types/inference";
 import type { RelationRead } from "../../types/relation";
 import {
-  formatRelationClaim,
+  formatRelationStatement,
   formatRelationContext,
   formatScopeFilterLabel,
 } from "../../utils/relationPresentation";
@@ -71,7 +71,7 @@ function EvidenceTable({
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell>{t("disagreements.table.claim", "Claim")}</TableCell>
+                  <TableCell>{t("disagreements.table.relation", "Relation")}</TableCell>
                   <TableCell>{t("disagreements.table.context", "Context")}</TableCell>
                   <TableCell>{t("disagreements.table.confidence", "Confidence")}</TableCell>
                   <TableCell>{t("disagreements.table.source", "Source")}</TableCell>
@@ -91,7 +91,7 @@ function EvidenceTable({
                     <TableRow key={relation.id}>
                       <TableCell sx={{ minWidth: 220 }}>
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {formatRelationClaim(relation, fallbackKind)}
+                          {formatRelationStatement(relation, fallbackKind)}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
                           {relation.kind || fallbackKind}
@@ -156,7 +156,7 @@ export function DisagreementsGroupsSection({
       <Typography variant="body2" color="text.secondary" paragraph>
         {t(
           "disagreements.groups.description",
-          "Each section shows supporting evidence versus contradicting evidence side by side, with the actual claim wording and context kept visible."
+          "Each section shows supporting evidence versus contradicting evidence side by side, with the exact relation wording and context kept visible."
         )}
       </Typography>
 

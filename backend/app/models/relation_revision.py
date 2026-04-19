@@ -9,7 +9,7 @@ from app.models.base import Base, UUIDMixin
 
 class RelationRevision(Base, UUIDMixin):
     """
-    Represents a specific revision of a relation (claim/hyper-edge).
+    Represents a specific revision of a relation (hyper-edge assertion).
 
     Each relation can have multiple revisions over time.
     Only one revision per relation should have is_current=True.

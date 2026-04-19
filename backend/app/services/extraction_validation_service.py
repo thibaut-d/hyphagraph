@@ -2,11 +2,11 @@
 Extraction validation service for LLM-extracted knowledge.
 
 Prevents hallucinations by verifying that extracted entities, relations,
-and claims are genuinely grounded in the source document.
+and relations are genuinely grounded in the source document.
 """
 import logging
 
-from app.llm.schemas import ExtractedClaim, ExtractedEntity, ExtractedRelation
+from app.llm.schemas import ExtractedEntity, ExtractedRelation
 from app.services.extraction_text_span_validator import (
     TextSpanValidator,
     ValidationLevel,
@@ -23,7 +23,7 @@ class ExtractionValidationService:
     """
     High-level service for validating batches of extractions.
 
-    Orchestrates validation of entities, relations, and claims,
+    Orchestrates validation of entities and relations,
     and provides aggregated validation reports.
     """
 
@@ -89,34 +89,6 @@ class ExtractionValidationService:
             sum(1 for r in results if r.flags),
         )
         return validated_relations, results
-
-    async def validate_claims(
-        self,
-        claims: list[ExtractedClaim],
-        source_text: str,
-    ) -> tuple[list[ExtractedClaim], list[ValidationResult]]:
-        """
-        Validate a batch of extracted claims.
-
-        Returns (validated_claims, validation_results).
-        """
-        results = []
-        validated_claims = []
-
-        for claim in claims:
-            result = self.validator.validate_claim(claim, source_text)
-            results.append(result)
-            if result.is_valid or not self.auto_reject_invalid:
-                validated_claims.append(claim)
-
-        logger.info(
-            "Claim validation: %d/%d valid, %d flagged",
-            len(validated_claims),
-            len(claims),
-            sum(1 for r in results if r.flags),
-        )
-        return validated_claims, results
-
 
 def validate_relation_structure(relation: ExtractedRelation) -> ValidationResult | None:
     """

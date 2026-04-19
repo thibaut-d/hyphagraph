@@ -70,16 +70,16 @@
     "filter_aria": "Filter search results by kind",
     "filter_entities": "Entities",
     "filter_sources": "Publications & documents",
-    "filter_relations": "Evidence claims",
+    "filter_relations": "Evidence relations",
     "results_found": "{{count}} result(s) found",
     "results_filtered_by": "showing {{kinds}}",
     "kind_entity": "Entity",
     "kind_source": "Publication",
-    "kind_relation": "Evidence claim",
+    "kind_relation": "Evidence relation",
     "match_score": "Match: {{pct}}%",
     "match_score_title": "Text match strength — not a confidence or quality indicator",
     "open_relation_detail": "Relation details",
-    "empty_state": "Enter a search term to find entities, publications, and evidence claims."
+    "empty_state": "Enter a search term to find entities, publications, and evidence relations."
   },
   "entities": {
     "title": "Entities",
@@ -225,7 +225,7 @@
   },
   "create_source": {
     "title": "Create Source",
-    "description": "Create a new source for the knowledge graph. Sources are references that provide the foundation for relations and claims.",
+    "description": "Create a new source for the knowledge graph. Sources are references that ground relations and evidence.",
     "kind": "Kind",
     "kind_article": "Article",
     "kind_book": "Book",
@@ -279,7 +279,7 @@
   },
   "edit_source": {
     "title": "Edit Source",
-    "description": "Update the source information. Sources provide the foundation for relations and claims.",
+    "description": "Update the source information. Sources ground relations and evidence.",
     "save": "Save Changes",
     "saving": "Saving...",
     "error": "Failed to update source"
@@ -388,8 +388,8 @@
   },
   "home": {
     "title": "{{brand}}",
-    "subtitle": "Trace claims, assess evidence quality, and surface contradictions",
-    "description": "{{brand}} aggregates evidence from multiple sources and computes confidence across relations. Inspect which sources support or contradict each claim, follow the evidence trail, and understand where agreement breaks down.",
+    "subtitle": "Trace evidence, assess quality, and surface contradictions",
+    "description": "{{brand}} aggregates evidence from multiple sources and computes confidence across relations. Inspect which sources support or contradict each relation, follow the evidence trail, and understand where agreement breaks down.",
     "cta_explore_evidence": "Explore evidence",
     "cta_search": "Search the knowledge base",
     "data_heading": "Data",
@@ -397,7 +397,7 @@
     "entities": "Entities",
     "sources": "Sources",
     "relations": "Relations",
-    "relationsDesc": "Inspect source-grounded claims linking entities. Follow evidence trails from relation to original document.",
+    "relationsDesc": "Inspect source-grounded relations linking entities. Follow evidence trails from relation to original document.",
     "inferences": "Inferences",
     "inferencesDesc": "Review aggregated evidence per entity. See confidence levels, contradictions, and source quality at a glance.",
     "createEntity": "Create",
@@ -407,10 +407,10 @@
     "exploreInferences": "Explore inferences",
     "workflowTitle": "Evidence analysis workflow",
     "step1Title": "1. Review extracted evidence",
-    "step1Desc": "Check the review queue for newly extracted relations. Approve, reject, or flag each claim before it affects inferences.",
+    "step1Desc": "Check the review queue for newly extracted relations. Approve, reject, or flag each relation before it affects inferences.",
     "step2Title": "2. Inspect disagreements",
     "step2Desc": "Navigate to any entity's disagreement view to see where sources conflict. Contradictions are preserved — not resolved — so you can assess them directly.",
-    "step3Title": "3. Trace claims to their source",
+    "step3Title": "3. Trace evidence to its source",
     "step3Desc": "Open any inference explanation to see which publications contributed, their confidence weights, and the exact passage or relation each came from.",
     "step4Title": "4. Add or import new sources",
     "step4Desc": "Extend coverage by adding publications via URL, PubMed ID, or bulk import. New sources trigger automatic relation extraction for review."
@@ -457,7 +457,7 @@
     "computed_reading_title": "Computed Reading of the Evidence",
     "computed_reading_description": "This section summarizes how the current evidence reads for each role. It is a computed interpretation of the evidence base, not an unquestionable conclusion.",
     "source_evidence_title": "Source Evidence",
-    "source_evidence_description": "These source-backed relations are the evidence the computed reading is built from. Use them to inspect the exact claims, their direction, and their context."
+    "source_evidence_description": "These source-backed relations are the evidence the computed reading is built from. Use them to inspect the exact relation statements, their direction, and their context."
   },
   "evidence_trace": {
     "empty": "No source evidence available.",
@@ -574,13 +574,8 @@
     "type_all": "All",
     "type_entity": "Entity",
     "type_relation": "Relation",
-    "type_claim": "Claim",
-    "tab_staged": "Staged Extraction Review",
-    "tab_drafts": "LLM Draft Review",
     "queue_staged_title": "Staged extraction review",
     "queue_staged_description": "This queue holds staged entity and relation extractions that need human review before they are materialized into the graph.",
-    "queue_drafts_title": "LLM draft revision review",
-    "queue_drafts_description": "This queue holds draft entity, relation, and source revisions authored with LLM assistance. Each draft must be confirmed or discarded explicitly.",
     "summary_title": "Summary metrics",
     "filters_title": "Filters",
     "filters_description": "Narrow the staged extraction queue by validation score, flagged status, or extraction type.",
@@ -593,8 +588,6 @@
     "no_notes": "No notes",
     "validation_score": "Score: {{score}}%",
     "validation_issues": "Validation issues:",
-    "entities_involved": "Linked entities:",
-    "claim_type": "Claim type: {{claimType}}",
     "evidence_strength": "Evidence: {{evidenceStrength}}",
     "relation_type": "Relation type: {{relationType}}",
     "linked_roles": "Captured roles:",

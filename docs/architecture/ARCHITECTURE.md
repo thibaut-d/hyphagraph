@@ -91,7 +91,7 @@ It intentionally avoids:
 
 The architecture ensures that:
 
-- document-grounded claims are the only source of facts
+- document-grounded relations are the only source of facts
 - contradictions are preserved, not hidden
 - syntheses are always computable and explainable
 - AI components are constrained and replaceable
@@ -112,7 +112,7 @@ The system favors **clarity, auditability, and determinism** over cleverness.
        ▼
 ┌────────────────────┐
 │ Ingestion &        │
-│ Claim Extraction   │◄── Human or LLM
+│ Relation Extraction│◄── Human or LLM
 └─────────┬──────────┘
           │
           ▼
@@ -165,19 +165,19 @@ FastAPI does **not**: perform inference implicitly, store syntheses as facts, em
 
 All **reasoning and aggregation logic**:
 - Deterministic, side-effect free, recomputable, testable in isolation
-- Services never mutate base claims
+- Services never mutate base relations
 
 ### 3.4 LLM Integration
 
 Integrated as **stateless, non-authoritative workers**:
-- Allowed: document parsing, claim extraction, terminology normalization, explanation formatting
+- Allowed: document parsing, relation extraction, terminology normalization, explanation formatting
 - Disallowed: reasoning, consensus building, contradiction resolution, fact storage
 - LLMs never write directly to the database
 
 ### 3.5 Frontend (React)
 
 A **presentation and editing layer**:
-- Document ingestion, claim review, visualization of computed outputs, evidence traceability
+- Document ingestion, relation review, visualization of computed outputs, evidence traceability
 - Cannot override backend logic, hide uncertainty, or introduce implicit conclusions
 
 ---
@@ -187,14 +187,14 @@ A **presentation and editing layer**:
 ### 4.1 Ingestion
 
 1. A document is registered
-2. Claims are extracted (human or LLM-assisted)
-3. Claims are validated against invariants
-4. Claims are stored immutably
+2. Relations are extracted (human or LLM-assisted)
+3. Relations are validated against invariants
+4. Relations are stored immutably
 
 ### 4.2 Inference
 
 1. A query defines a scope
-2. Matching claims are retrieved
+2. Matching relations are retrieved
 3. Aggregation and inference rules are applied
 4. Results are produced (optionally cached)
 
@@ -203,7 +203,7 @@ All inferred outputs must be recomputable.
 ### 4.3 Explanation
 
 For any computed output, the system can expose:
-- contributing claims
+- contributing relations
 - weights and rules applied
 - uncertainty and contradictions
 
@@ -217,7 +217,7 @@ These constraints must always hold:
 
 - No human-written synthesis is stored
 - No LLM-generated output is authoritative
-- Claims are immutable in meaning
+- Relations are immutable in meaning
 - All conclusions must be explainable
 - Hidden certainty is considered a bug
 

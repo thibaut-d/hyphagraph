@@ -81,7 +81,7 @@ describe("InferenceBlock", () => {
     expect(screen.getByText("12% disagreement")).toBeInTheDocument();
   });
 
-  it("renders source evidence as readable claims with context and source links", () => {
+  it("renders source evidence as readable relation statements with context and source links", () => {
     const mockInference = {
       entity_id: "entity-123",
       role_inferences: [

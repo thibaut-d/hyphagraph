@@ -1,13 +1,13 @@
 /**
  * DisagreementsView
  *
- * Dedicated view for exploring contradictions and conflicting claims
+ * Dedicated view for exploring contradictions and conflicting evidence statements
  * about an entity. Upholds scientific honesty by never hiding contradictions.
  *
  * Purpose (from UX.md & VIBE.md):
  * - Show all contradictory evidence side-by-side
  * - Never hide contradictions (fundamental principle)
- * - Enable scientific audit of conflicting claims
+ * - Enable scientific audit of conflicting evidence statements
  * - Provide clear source attribution for each side
  * - Help users understand WHY sources disagree
  *
@@ -45,7 +45,7 @@ import { entityPath, entitySubpath } from "../utils/entityPath";
  * Shows contradictions in a structured, scientific manner:
  * - Group contradictions by role type
  * - Side-by-side comparison of supporting vs contradicting evidence
- * - Source attribution for each claim
+ * - Source attribution for each relation statement
  * - Confidence metrics
  * - Links to full evidence details
  *

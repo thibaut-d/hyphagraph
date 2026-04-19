@@ -42,7 +42,7 @@ class ExtractionType(str, enum.Enum):
     """Type of extraction."""
     ENTITY = "entity"
     RELATION = "relation"
-    CLAIM = "claim"
+    CLAIM = "claim"  # Legacy value kept only so old rows can be repaired in-place
 
 
 class StagedExtraction(Base, UUIDMixin, TimestampMixin):
@@ -77,11 +77,11 @@ class StagedExtraction(Base, UUIDMixin, TimestampMixin):
         index=True
     )
 
-    # LLM extraction data (serialized ExtractedEntity/Relation/Claim)
+    # LLM extraction data (serialized ExtractedEntity/Relation)
     extraction_data: Mapped[dict[str, Any]] = mapped_column(
         JSON,
         nullable=False,
-        comment="Original LLM extraction (ExtractedEntity/Relation/Claim schema)"
+        comment="Original LLM extraction (ExtractedEntity/Relation schema)"
     )
 
     # Validation metadata

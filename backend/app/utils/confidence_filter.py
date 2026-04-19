@@ -1,7 +1,7 @@
 """
 Utility for filtering items by confidence level.
 
-Provides type-safe confidence filtering for extracted entities, relations, and claims.
+Provides type-safe confidence filtering for extracted entities and relations.
 """
 from typing import TypeVar, Protocol, Literal
 

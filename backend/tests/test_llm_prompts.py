@@ -1,6 +1,5 @@
 from app.llm.prompts import (
     BATCH_EXTRACTION_PROMPT,
-    CLAIM_EXTRACTION_PROMPT,
     ENTITY_EXTRACTION_PROMPT,
     ENTITY_LINKING_PROMPT,
     MEDICAL_KNOWLEDGE_SYSTEM_PROMPT,
@@ -11,16 +10,33 @@ from app.llm.prompts import (
 
 def test_system_prompt_forbids_outside_knowledge_and_merging_conflicts():
     assert "Do not add outside medical knowledge" in MEDICAL_KNOWLEDGE_SYSTEM_PROMPT
+    assert "for entity summaries only" in MEDICAL_KNOWLEDGE_SYSTEM_PROMPT
     assert "Never merge or reconcile conflicting statements" in MEDICAL_KNOWLEDGE_SYSTEM_PROMPT
     assert "omit the item instead of guessing" in MEDICAL_KNOWLEDGE_SYSTEM_PROMPT
+    assert "Work sentence-by-sentence or claim-span-by-claim-span" in MEDICAL_KNOWLEDGE_SYSTEM_PROMPT
+    assert "do one silent second pass over the text" in MEDICAL_KNOWLEDGE_SYSTEM_PROMPT
+    assert "anchor it to a short local supporting span" in MEDICAL_KNOWLEDGE_SYSTEM_PROMPT
     assert "Do not collapse combination therapy" in MEDICAL_KNOWLEDGE_SYSTEM_PROMPT
+    assert "Keep entity summaries minimal when the source gives only a bare mention" in MEDICAL_KNOWLEDGE_SYSTEM_PROMPT
+    assert "null findings, no-difference findings, and contradictory findings" in MEDICAL_KNOWLEDGE_SYSTEM_PROMPT
+    assert "Prefer relation-bearing biomedical entities" in MEDICAL_KNOWLEDGE_SYSTEM_PROMPT
+    assert 'Treat modal or hedged language such as "may", "might", "could", "suggests", "potential", or' in MEDICAL_KNOWLEDGE_SYSTEM_PROMPT
+    assert "Keep normalized identity separate from source wording" in MEDICAL_KNOWLEDGE_SYSTEM_PROMPT
 
 
-def test_entity_prompt_requires_source_bounded_summaries_and_explicit_mentions():
-    assert "Do NOT add background medical facts" in ENTITY_EXTRACTION_PROMPT
+def test_entity_prompt_requires_neutral_global_summaries_and_explicit_mentions():
+    assert "brief general biomedical knowledge" in ENTITY_EXTRACTION_PROMPT
+    assert "do not add source-specific efficacy, safety, recommendation, or evidence claims" in ENTITY_EXTRACTION_PROMPT.lower()
     assert "Only extract entities that are explicitly mentioned" in ENTITY_EXTRACTION_PROMPT
     assert "Do not create entities purely from implication" in ENTITY_EXTRACTION_PROMPT
     assert 'Do NOT create vague contextual entities like "duration-short-term"' in ENTITY_EXTRACTION_PROMPT
+    assert "Prefer a generic definitional summary" in ENTITY_EXTRACTION_PROMPT
+    assert "do not turn a sparse mention into a source-specific use statement" in ENTITY_EXTRACTION_PROMPT.lower()
+    assert "Emit each real-world entity only once per extraction batch" in ENTITY_EXTRACTION_PROMPT
+    assert "text_span should be the shortest exact mention" in ENTITY_EXTRACTION_PROMPT
+    assert "Prefer entities that participate in an explicit relation" in ENTITY_EXTRACTION_PROMPT
+    assert "Omit generic document nouns or paper artifacts" in ENTITY_EXTRACTION_PROMPT
+    assert "text_span must remain the exact shortest source phrase" in ENTITY_EXTRACTION_PROMPT
 
 
 def test_relation_prompt_requires_explicit_relations_and_separate_conflicts():
@@ -29,9 +45,12 @@ def test_relation_prompt_requires_explicit_relations_and_separate_conflicts():
     )
     assert "output separate relations" in RELATION_EXTRACTION_PROMPT
     assert "Do not create a relation from background knowledge" in RELATION_EXTRACTION_PROMPT
+    assert "First identify the minimal claim-bearing sentence or local span" in RELATION_EXTRACTION_PROMPT
+    assert "text_span should usually be 1-3 sentences" in RELATION_EXTRACTION_PROMPT
     assert "HyphaGraph relations are hyperedges" in RELATION_EXTRACTION_PROMPT
     assert "additional roles in the SAME relation" in RELATION_EXTRACTION_PROMPT
     assert "Every role entity_slug used in a relation must be present" in RELATION_EXTRACTION_PROMPT
+    assert "assertion_text should be a faithful, source-bounded paraphrase" in RELATION_EXTRACTION_PROMPT
     assert "statement_kind" in RELATION_EXTRACTION_PROMPT
     assert "finding_polarity" in RELATION_EXTRACTION_PROMPT
     assert "study_design" in RELATION_EXTRACTION_PROMPT
@@ -47,13 +66,9 @@ def test_relation_prompt_requires_explicit_relations_and_separate_conflicts():
     assert 'do NOT emit a single-agent treats relation for only X or only Y' in RELATION_EXTRACTION_PROMPT
     assert "Correct extraction shape: treats(agent=pregabalin, agent=duloxetine, target=fibromyalgia, control_group=placebo)" in RELATION_EXTRACTION_PROMPT
     assert "the finding is about the combination, not pregabalin alone" in RELATION_EXTRACTION_PROMPT
-
-
-def test_claim_prompt_requires_faithful_paraphrase_and_conservative_evidence():
-    assert "faithful source-bounded paraphrase" in CLAIM_EXTRACTION_PROMPT
-    assert "Do not collapse multiple competing claims" in CLAIM_EXTRACTION_PROMPT
-    assert "Assign evidence_strength conservatively" in CLAIM_EXTRACTION_PROMPT
-    assert "Only extract claims that are explicitly stated" in CLAIM_EXTRACTION_PROMPT
+    assert "silent completeness audit over the text" in RELATION_EXTRACTION_PROMPT
+    assert "Keep source wording separate from normalized fields" in RELATION_EXTRACTION_PROMPT
+    assert 'prefer evidence_context.statement_kind "hypothesis" or' in RELATION_EXTRACTION_PROMPT
 
 
 def test_entity_linking_prompt_requires_conservative_matching():
@@ -65,16 +80,24 @@ def test_batch_prompt_carries_global_evidence_first_constraints():
     prompt = format_batch_extraction_prompt("Example source text.")
 
     assert "Extract only information explicitly supported by the provided text" in prompt
+    assert "Work locally: first identify claim-bearing spans" in prompt
+    assert "A relation is valid only if you can point to a short local text span" in prompt
     assert "Do not reconcile contradictions or competing findings" in prompt
-    assert "claim_text must remain a faithful source-bounded paraphrase" in prompt
     assert "Only extract information that is clearly and explicitly stated" in prompt
+    assert "do one silent second pass to catch missed claim-bearing spans" in prompt
     assert "HyphaGraph relations are n-ary hyperedges" in prompt
     assert "include those explicitly stated items as additional roles in the SAME relation" in prompt
     assert "Keep study findings separate from background statements, hypotheses, and methodology notes" in prompt
+    assert "emit each real-world entity only once per batch" in prompt
+    assert "relation text_span should usually be 1-3 sentences" in prompt
+    assert "null findings and no-difference findings should still be extracted" in prompt
+    assert "assertion_text should be a faithful, source-bounded paraphrase" in prompt
     assert "include evidence_context for every relation" in prompt
     assert "participant count" in prompt
     assert 'Do not create vague duration/dosage/timeframe entities such as "duration-short-term"' in prompt
     assert "do NOT create entities for dosage, duration, timeframe, sample size, or study design metadata" in prompt
+    assert "brief general biomedical knowledge is allowed for entity summaries only" in prompt
+    assert "keep the summary short, generic, and non-interpretive" in prompt
     assert '"dosage": "60mg daily"' in prompt
     assert "placebo" in prompt
     assert '"entity_slug": "dose-60mg-daily"' not in prompt
@@ -82,3 +105,8 @@ def test_batch_prompt_carries_global_evidence_first_constraints():
     assert "include every explicitly named active intervention as agent roles in the SAME relation" in prompt
     assert '"entity_slug": "pregabalin", "role_type": "agent"' in prompt
     assert '"entity_slug": "duloxetine", "role_type": "agent"' in prompt
+    assert "Prefer relation-bearing biomedical entities" in prompt
+    assert "omit generic document nouns or paper artifacts" in prompt
+    assert "text_span, sample_size_text, and statistical_support should copy or minimally trim the source wording" in prompt
+    assert 'prefer statement_kind "hypothesis" or finding_polarity "uncertain"' in prompt
+    assert '"relations"' in prompt

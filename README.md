@@ -20,7 +20,7 @@ No prior knowledge of graphs, databases, or formal logic is required.
 
 ## Key Features
 
-- **Document-grounded claims** — Knowledge is extracted from sources, never invented
+- **Document-grounded relations** — Knowledge is extracted from sources, never invented
 - **Hypergraph structure** — Relations connect multiple entities with explicit roles
 - **Contradiction handling** — Disagreements are preserved and surfaced, not hidden
 - **Computed syntheses** — All conclusions are derived algorithmically, never authored
@@ -202,6 +202,7 @@ docker compose -f docker-compose.prod.yml logs -f
 | [Remote Dev Access](docs/development/REMOTE_DEV_ACCESS.md) | Connect to the remote dev server with VS Code, Termius, or plain SSH |
 | [SSH Config Sync](docs/development/SSH_CONFIG_SYNC.md) | Keep the same OpenSSH aliases across machines safely |
 | [E2E Testing](docs/development/E2E_TESTING_GUIDE.md) | Playwright E2E testing guide |
+| [Hypergraph RAG Papers](docs/research/HYPERGRAPH_RAG_PAPERS.md) | Curated survey of hypergraph RAG, evidence-centric, and claim-centric systems relevant to HyphaGraph |
 | [UX Design Brief](docs/product/UX.md) | UX principles and design constraints |
 | [AI Agent Guide](AGENTS.md) | Canonical AI-agent entrypoint and workflow |
 | [Roadmap](docs/product/ROADMAP.md) | Project status and upcoming work |

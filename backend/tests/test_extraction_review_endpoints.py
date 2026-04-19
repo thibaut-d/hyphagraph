@@ -25,7 +25,6 @@ def review_service():
         "total_auto_verified": 0,
         "pending_entities": 0,
         "pending_relations": 0,
-        "pending_claims": 0,
         "avg_validation_score": 0.0,
         "high_confidence_count": 0,
         "flagged_count": 0,
@@ -196,7 +195,6 @@ class TestExtractionReviewPendingFilters:
 
         filters = review_service.list_extractions.await_args.args[0]
         assert isinstance(filters, StagedExtractionFilters)
-        assert review_service.list_extractions.await_args.kwargs["include_claims"] is False
         assert filters.status == "pending"
         assert filters.extraction_type == "entity"
         assert filters.min_validation_score == 0.2
@@ -286,7 +284,7 @@ class TestExtractionReviewPendingFilters:
         assert body["has_more"] is False
 
     @pytest.mark.asyncio
-    async def test_stats_excludes_claims_from_review_queue_metrics(self, review_service, superuser):
+    async def test_stats_returns_relation_only_review_queue_metrics(self, review_service, superuser):
         async def override_superuser():
             return superuser
 
@@ -297,4 +295,4 @@ class TestExtractionReviewPendingFilters:
             response = await client.get("/api/extraction-review/stats")
 
         assert response.status_code == status.HTTP_200_OK
-        assert review_service.get_stats.await_args.kwargs["include_claims"] is False
+        review_service.get_stats.assert_awaited_once()

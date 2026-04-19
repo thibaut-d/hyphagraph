@@ -319,7 +319,7 @@ Enable **scientific audit**.
 
 #### Expected Content
 - Table or list of evidence items
-- Readable claim
+- Readable relation statement
 - Direction (support / contradict)
 - Conditions
 - Associated source
@@ -380,7 +380,7 @@ The design is considered successful if:
 - A physician understands within **30 seconds**:
   - what an entity is
   - whether consensus is strong or weak
-- Any claim’s source can be reached in **two clicks or fewer**
+- Any relation’s source can be reached in **two clicks or fewer**
 - Narrative summaries cannot be confused with scientific conclusions
 - Knowledge limitations are clearly perceived
 

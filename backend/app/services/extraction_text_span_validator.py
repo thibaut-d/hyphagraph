@@ -1,7 +1,7 @@
 """
 Text span validator for LLM-extracted knowledge.
 
-Verifies that extracted entities, relations, and claims are genuinely
+Verifies that extracted entities and relations are genuinely
 grounded in the source document, preventing hallucinations.
 
 Validation strategies:
@@ -14,7 +14,6 @@ from dataclasses import dataclass
 from typing import Literal
 
 from app.llm.schemas import (
-    ExtractedClaim,
     ExtractedEntity,
     ExtractedRelation,
     get_missing_required_relation_roles,
@@ -137,7 +136,7 @@ class TextSpanValidator:
         Validate that an extracted relation's text span exists in source.
 
         Relations are held to higher standards than entities because they
-        make factual claims about relationships.
+        make factual statements about relationships.
         """
         structural_result = self._validate_relation_structure(relation)
         if structural_result is not None:
@@ -245,58 +244,6 @@ class TextSpanValidator:
                 )
 
         return invalid_flags
-
-    def validate_claim(self, claim: ExtractedClaim, source_text: str) -> ValidationResult:
-        """
-        Validate that an extracted claim's text span exists in source.
-
-        Claims are the most critical extractions and require strict validation.
-        """
-        if not claim.text_span or len(claim.text_span.strip()) < self.min_exact_match_length:
-            return ValidationResult(
-                is_valid=False,
-                confidence_adjustment=0.0,
-                validation_score=0.0,
-                flags=["claim_text_span_too_short"],
-                matched_span=None,
-            )
-
-        exact_match = self._find_exact_match(claim.text_span, source_text)
-        if exact_match:
-            return ValidationResult(
-                is_valid=True,
-                confidence_adjustment=1.0,
-                validation_score=1.0,
-                flags=[],
-                matched_span=exact_match,
-            )
-
-        if self.allow_fuzzy_match:
-            fuzzy_match, similarity = self._find_fuzzy_match(claim.text_span, source_text)
-            if fuzzy_match and similarity >= 0.9:
-                return ValidationResult(
-                    is_valid=True,
-                    confidence_adjustment=0.95 * similarity,
-                    validation_score=similarity,
-                    flags=["fuzzy_match"],
-                    matched_span=fuzzy_match,
-                )
-
-        if self.validation_level == "lenient":
-            return ValidationResult(
-                is_valid=True,
-                confidence_adjustment=0.4,
-                validation_score=0.3,
-                flags=["claim_text_span_not_found", "severe_confidence_degradation"],
-                matched_span=None,
-            )
-        return ValidationResult(
-            is_valid=False,
-            confidence_adjustment=0.0,
-            validation_score=0.0,
-            flags=["claim_text_span_not_found", "possible_hallucination"],
-            matched_span=None,
-        )
 
     # -------------------------------------------------------------------------
     # Internal matching helpers

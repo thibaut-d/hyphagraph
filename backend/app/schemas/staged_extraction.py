@@ -23,7 +23,7 @@ from app.schemas.common_types import JsonObject, JsonScalar
 # =============================================================================
 
 ExtractionStatusLiteral = Literal["auto_verified", "pending", "approved", "rejected"]
-ExtractionTypeLiteral = Literal["entity", "relation", "claim"]
+ExtractionTypeLiteral = Literal["entity", "relation"]
 
 
 # =============================================================================
@@ -88,17 +88,6 @@ class StagedExtractedRelationRead(Schema):
         return self.evidence_context
 
 
-class StagedExtractedClaimRead(Schema):
-    model_config = ConfigDict(extra="allow")
-
-    claim_text: str | None = None
-    entities_involved: list[str] = Field(default_factory=list)
-    claim_type: str | None = None
-    evidence_strength: str | None = None
-    confidence: str | None = None
-    text_span: str | None = None
-
-
 class StagedExtractionRead(Schema):
     """
     Public read schema for a staged extraction.
@@ -145,7 +134,6 @@ class StagedExtractionRead(Schema):
     extraction_data: (
         StagedExtractedEntityRead
         | StagedExtractedRelationRead
-        | StagedExtractedClaimRead
         | dict[str, JsonScalar | list[object] | dict[str, object] | None]
     )
 
@@ -200,7 +188,6 @@ class ReviewStats(Schema):
     # Breakdown by type
     pending_entities: int
     pending_relations: int
-    pending_claims: int
 
     # Quality metrics
     avg_validation_score: float = Field(

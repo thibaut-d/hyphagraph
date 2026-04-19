@@ -333,7 +333,7 @@ export function HomeView() {
                       <Typography variant="body2" color="text.secondary" mt={0.5}>
                         {t(
                           "home.relationsDesc",
-                          "Inspect source-grounded claims linking entities. Follow evidence trails from relation to original document."
+                          "Inspect source-grounded relations linking entities. Follow evidence trails from relation to original document."
                         )}
                       </Typography>
                     </Box>
@@ -381,7 +381,7 @@ export function HomeView() {
                       <Typography variant="body2" color="text.secondary" mt={0.5}>
                         {t(
                           "home.review_queue_desc",
-                          "Triage newly extracted entities, relations, and claims before they change the visible graph."
+                          "Triage newly extracted entities and relations before they change the visible graph."
                         )}
                       </Typography>
                     </Box>
@@ -447,7 +447,7 @@ export function HomeView() {
                 <Typography variant="body2" color="text.secondary">
                   {t(
                     "home.step1Desc",
-                    "Check the review queue for newly extracted relations. Approve, reject, or flag each claim before it affects inferences."
+                    "Check the review queue for newly extracted relations. Approve, reject, or flag each relation before it affects inferences."
                   )}
                 </Typography>
               </Box>
@@ -464,7 +464,7 @@ export function HomeView() {
               </Box>
               <Box>
                 <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                  {t("home.step3Title", "3. Trace claims to their source")}
+                  {t("home.step3Title", "3. Trace evidence to its source")}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   {t(

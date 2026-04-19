@@ -1,7 +1,7 @@
 import { Link as RouterLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { StagedExtractionRead } from "../../api/extractionReview";
-import type { ExtractedEntity, ExtractedRelation, ExtractedClaim } from "../../types/extraction";
+import type { ExtractedEntity, ExtractedRelation } from "../../types/extraction";
 import {
   getRelationDisplayRoles,
   getRelationObject,
@@ -29,12 +29,6 @@ interface ExtractionCardProps {
   onToggleSelect: () => void;
   onApprove: () => void;
   onReject: () => void;
-}
-
-function isClaimExtraction(extraction: StagedExtractionRead): extraction is StagedExtractionRead & {
-  extraction_data: ExtractedClaim;
-} {
-  return extraction.extraction_type === "claim";
 }
 
 function isRelationExtraction(extraction: StagedExtractionRead): extraction is StagedExtractionRead & {
@@ -140,7 +134,6 @@ function getExtractionTitle(extraction: StagedExtractionRead): string {
   switch (extraction.extraction_type) {
     case "entity": return (extraction.extraction_data as ExtractedEntity).slug;
     case "relation": return formatRelationSentence(extraction.extraction_data as ExtractedRelation);
-    case "claim": return (extraction.extraction_data as ExtractedClaim).claim_text;
   }
 }
 
@@ -189,7 +182,6 @@ export function ExtractionCard({
       case "entity": return (extraction.extraction_data as ExtractedEntity).summary ?? "";
       case "relation":
         return relationData?.notes?.trim() || t("extraction_card.relation_summary_help");
-      case "claim": return (extraction.extraction_data as ExtractedClaim).claim_text;
     }
   })();
 
@@ -308,42 +300,6 @@ export function ExtractionCard({
                       ))}
                     </Box>
                   )}
-                </Stack>
-              )}
-              {isClaimExtraction(extraction) && (
-                <Stack spacing={1} component="span">
-                  {extraction.extraction_data.entities_involved.length > 0 && (
-                    <Box component="span">
-                      <Typography variant="caption" color="text.secondary" component="span">
-                        {t("extraction_card.entities_involved")}
-                      </Typography>
-                      {extraction.extraction_data.entities_involved.map((entity) => (
-                        <Chip
-                          key={entity}
-                          label={entity}
-                          size="small"
-                          variant="outlined"
-                          sx={{ ml: 0.5, mt: 0.5 }}
-                        />
-                      ))}
-                    </Box>
-                  )}
-                  <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" component="span">
-                    <Chip
-                      label={t("extraction_card.claim_type", {
-                        claimType: extraction.extraction_data.claim_type,
-                      })}
-                      size="small"
-                      variant="outlined"
-                    />
-                    <Chip
-                      label={t("extraction_card.evidence_strength", {
-                        evidenceStrength: extraction.extraction_data.evidence_strength,
-                      })}
-                      size="small"
-                      variant="outlined"
-                    />
-                  </Stack>
                 </Stack>
               )}
               {extraction.validation_flags.length > 0 && (

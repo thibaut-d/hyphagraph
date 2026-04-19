@@ -48,7 +48,7 @@ export function formatDirectionLabel(direction?: string | null): string {
   return DIRECTION_LABELS[direction || "neutral"] || humanizeToken(direction || "neutral");
 }
 
-export function formatRelationClaim(relation: RelationRead, fallbackKind: string): string {
+export function formatRelationStatement(relation: RelationRead, fallbackKind: string): string {
   const sortedRoles = sortRolesForDisplay(relation.roles);
   const subject = sortedRoles.find((role) => role.role_type === "subject");
   const object = sortedRoles.find((role) => role.role_type === "object");

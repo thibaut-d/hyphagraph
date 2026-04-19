@@ -10,7 +10,7 @@ class Relation(Base, UUIDMixin):
     Base relation table - immutable, contains only ID, source reference, and creation timestamp.
 
     All mutable data lives in RelationRevision.
-    This allows full audit trail of all changes to claims.
+    This allows full audit trail of all changes to source-grounded relations.
     """
     __tablename__ = "relations"
 

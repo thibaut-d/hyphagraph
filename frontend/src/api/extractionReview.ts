@@ -10,16 +10,12 @@ import {
   buildQueryString,
   createSearchParams,
 } from "./queryString";
-import type {
-  ExtractedClaim,
-  ExtractedEntity,
-  ExtractedRelation,
-} from "../types/extraction";
+import type { ExtractedEntity, ExtractedRelation } from "../types/extraction";
 
 export type ReviewDecision = "approve" | "reject";
 export type ExtractionStatus = "auto_verified" | "pending" | "approved" | "rejected";
-export type ExtractionType = "entity" | "relation" | "claim";
-export type StagedExtractionData = ExtractedEntity | ExtractedRelation | ExtractedClaim;
+export type ExtractionType = "entity" | "relation";
+export type StagedExtractionData = ExtractedEntity | ExtractedRelation;
 
 export interface StagedExtractionRead {
   id: string;
@@ -59,7 +55,6 @@ export interface ReviewStats {
   total_auto_verified: number;
   pending_entities: number;
   pending_relations: number;
-  pending_claims: number;
   avg_validation_score: number;
   high_confidence_count: number;
   flagged_count: number;

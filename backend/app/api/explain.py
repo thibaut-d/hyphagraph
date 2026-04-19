@@ -39,7 +39,7 @@ async def explain_inference(
 
     Shows:
     - Natural language summary of the inference
-    - Source chain (inference → claims → sources)
+    - Source chain (inference → relations → sources)
     - Confidence breakdown (why confidence is X%)
     - Contradiction details (which sources disagree)
 

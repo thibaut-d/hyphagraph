@@ -28,16 +28,6 @@ class AggregationResult(TypedDict):
 CANONICAL_DIRECTIONS = {"supports", "contradicts", "neutral"}
 
 
-class RelationEvidence(TypedDict):
-    weight: float
-    roles: dict[str, float | None]
-
-
-class AggregationResult(TypedDict):
-    score: float | None
-    coverage: float
-
-
 def normalize_direction(direction: str | None) -> str:
     """
     Normalise legacy direction values to canonical form.
@@ -57,23 +47,23 @@ def normalize_direction(direction: str | None) -> str:
     return "neutral"
 
 
-def compute_claim_score(polarity: int, intensity: float) -> float:
-    """Return a signed score by multiplying polarity (+1/-1) with intensity (0-1)."""
+def compute_relation_score(polarity: int, intensity: float) -> float:
+    """Return a signed relation score by multiplying polarity (+1/-1) with intensity (0-1)."""
     return polarity * intensity
 
 
-def compute_role_contribution(claims: list[float]) -> Optional[float]:
+def compute_role_contribution(relation_scores: list[float]) -> Optional[float]:
     """
-    Aggregate a list of signed claim scores into a single role contribution.
+    Aggregate a list of signed relation scores into a single role contribution.
 
     Returns the ratio of signed sum to absolute sum, clamped to [-1, 1].
-    Returns None if the claims list is empty.
+    Returns None if the input list is empty.
     """
-    if not claims:
+    if not relation_scores:
         return None
 
-    numerator = sum(claims)
-    denominator = sum(abs(claim) for claim in claims)
+    numerator = sum(relation_scores)
+    denominator = sum(abs(score) for score in relation_scores)
     if denominator == 0:
         return 0
 

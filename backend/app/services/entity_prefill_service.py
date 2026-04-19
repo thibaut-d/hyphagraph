@@ -47,7 +47,12 @@ class EntityPrefillService:
         self.db = db
         self.llm_provider = llm_provider
 
-    async def generate_draft(self, term: str, user_language: str) -> EntityPrefillDraft:
+    async def generate_draft(
+        self,
+        term: str,
+        user_language: str,
+        category_hint: str | None = None,
+    ) -> EntityPrefillDraft:
         normalized_term = term.strip()
         normalized_language = user_language.strip().lower()
         if not normalized_term:
@@ -62,6 +67,7 @@ class EntityPrefillService:
             normalized_language,
             category_prompt,
             language_prompt,
+            category_hint=category_hint,
         )
         return self._validate_response(response_data, allowed_category_ids)
 
@@ -72,12 +78,13 @@ class EntityPrefillService:
     ) -> EntityPrefillDraft:
         """Build a create-entity draft for an LLM-extracted candidate.
 
-        This intentionally reuses the same prompt and validation path as the
-        create-entity form so extraction-created entities get the same
-        canonicalization, category, display-name, and alias handling.
+        Uses the canonical slug name (not the raw text span) as the primary term
+        so the description is about the entity itself rather than how a specific
+        document mentions it. Passes the extraction category so the LLM can write
+        a description appropriate to the entity type (drug, disease, etc.).
         """
-        term = entity.text_span.strip() or entity.slug.replace("-", " ")
-        return await self.generate_draft(term, user_language)
+        term = entity.slug.replace("-", " ")
+        return await self.generate_draft(term, user_language, category_hint=entity.category)
 
     async def _build_category_prompt(self) -> tuple[str, set[UUID]]:
         result = await self.db.execute(select(UiCategory).order_by(UiCategory.order, UiCategory.id))
@@ -105,16 +112,23 @@ class EntityPrefillService:
         user_language: str,
         category_prompt: str,
         language_prompt: str,
+        category_hint: str | None = None,
     ) -> dict[str, object]:
         system_prompt = (
             "You draft editable metadata for a knowledge-graph entity creation form. "
-            "The draft is not authoritative. Do not invent factual claims. "
-            "Summaries must be neutral, short descriptions of the entity itself, not evidence claims. "
+            "The draft is not authoritative. "
+            "Summaries must be neutral, short descriptions of the entity itself — "
+            "use your general biomedical knowledge to write accurate, informative summaries; "
+            "do not restrict the summary to what any particular source document says about the entity. "
+            "Do not make treatment efficacy or evidence statements. "
             "Return only JSON matching the requested shape."
         )
         user_language_label = self._language_label(user_language)
+        category_hint_line = (
+            f"\nEntity category from extraction: {category_hint}" if category_hint else ""
+        )
         prompt = f"""
-Draft values for a new entity from this user term: {term}
+Draft values for a new entity from this user term: {term}{category_hint_line}
 User interface language: {user_language} ({user_language_label})
 
 {category_prompt}
@@ -124,13 +138,13 @@ User interface language: {user_language} ({user_language_label})
 Return a JSON object with exactly these fields:
 - slug: lowercase URL slug, 3-100 chars, matching ^[a-z][a-z0-9-]*$, based on the canonical English or internationally used entity name
 - display_names: object mapping every available form language code to the preferred display name in that language
-- summary: object mapping every available form language code to short neutral summary text in that language
+- summary: object mapping every available form language code to a short, accurate description of the entity drawn from general biomedical knowledge — not from any specific document
 - aliases: array of objects with term, language, and term_kind; language may be null for international/no language; term_kind is alias, abbreviation, or brand
 - ui_category_id: one allowed category id string or null
 
 Rules:
 - Include all available form language codes in display_names.
-- Include all available form language codes in summary when a neutral description can be stated.
+- Include all available form language codes in summary when a neutral description can be stated. Write a concise, accurate description of what the entity is, based on general biomedical knowledge — not what any particular source document says about it.
 - Canonicalize slug to the internationally recognized or English entity name, not the user's input language; for example, use fibromyalgia for French Fibromyalgie.
 - For medicines, prefer the generic or international nonproprietary name for slug and display_names; do not use a brand name as slug or display name when a generic name is known.
 - If the user term is a medicine brand, use the generic or international nonproprietary name in display_names and return the brand only in aliases with term_kind "brand".
@@ -148,8 +162,8 @@ Rules:
 - Do not create abbreviations by taking initials from longer alias variants; include an abbreviation only if it is independently common for the entity itself.
 - Do not include dosage- or strength-specific brand variants when the base brand name is already included.
 - Do not duplicate any display_names value in aliases, even under another language.
-- Do not include speculative aliases, obscure brand names, or relation-like claims.
-- Do not include relation claims, treatment claims, efficacy claims, or confidence language.
+- Do not include speculative aliases, obscure brand names, or relation-like statements.
+- Do not include relation statements, treatment statements, efficacy statements, or confidence language.
 """
         try:
             return await self.llm_provider.generate_json(

@@ -7,7 +7,7 @@
  * Purpose (from UX.md):
  * - Enable scientific audit
  * - Show table of evidence items
- * - Display readable claims with direction indicators
+ * - Display readable relation statements with direction indicators
  * - Show conditions and associated sources
  * - Allow filtering and sorting
  *
@@ -54,7 +54,7 @@ function resolveRelationNotes(
  *
  * Displays all evidence items (relations/hyperedges) for an entity:
  * - Filterable/sortable table of evidence
- * - Readable claims (relation kind)
+ * - Readable relation statements (relation kind)
  * - Direction indicators (supports/contradicts/neutral)
  * - Confidence scores
  * - Associated sources with links

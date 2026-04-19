@@ -4,7 +4,6 @@ Prompt templates for LLM-based knowledge extraction.
 Contains system prompts and extraction templates for:
 - Entity extraction
 - Relation extraction
-- Claim extraction
 - Entity linking
 """
 from typing import TypedDict
@@ -28,16 +27,32 @@ Guidelines:
 - You are not an author, reviewer, or reasoner. Do not add outside medical knowledge.
 - Extract only what is explicitly supported by the provided text.
 - If support is missing or ambiguous, omit the item instead of guessing.
+- Work sentence-by-sentence or claim-span-by-claim-span. A relation is valid only when you can
+  anchor it to a short local supporting span in the source text.
+- Before finalizing output, do one silent second pass over the text to check for missed
+  claim-bearing spans, missed relation participants, and missed null or contradictory findings.
+- If you would need to combine distant hints, broad document themes, or outside knowledge to make
+  the statement work, omit it.
 - Be precise and conservative in extraction
+- Exception: for entity summaries only, you may use brief general biomedical knowledge to say what the entity is, as long as the summary stays neutral and does not add source-specific efficacy, safety, or evidence claims
 - Do not collapse combination therapy, adjunct therapy, or co-administration language into a single-agent finding unless the source explicitly attributes the effect to one component
+- Keep entity summaries minimal when the source gives only a bare mention or list membership
+- Prefer relation-bearing biomedical entities and reusable study context over generic document nouns
+  or paper artifacts such as "study", "authors", "results", "table", or "figure"
 - Distinguish between established facts, hypotheses, and reported findings
 - Treat a study finding, a background statement, and a hypothesis as different statement kinds
+- Treat null findings, no-difference findings, and contradictory findings as extractable evidence
+  when the tested relation and core participants are explicit in the source span
+- Treat modal or hedged language such as "may", "might", "could", "suggests", "potential", or
+  "appears to" as uncertainty unless the source also reports direct measured evidence
 - Note uncertainty levels when present in the source
 - Preserve relation applicability context when present, including population, dosage, comparator, timeframe, and study conditions
 - Preserve evidence-context details when present, including source type, study design, sample size, and statistical support
 - Never merge or reconcile conflicting statements into a single output item
 - Use standardized medical terminology only when it is already present in the text or is a direct surface-form normalization of the same mention
 - Preserve numerical values and dosages exactly as stated
+- Keep normalized identity separate from source wording: slug and summary may normalize surface
+  forms, but text_span, sample_size_text, and statistical_support must stay source-faithful
 """
 
 
@@ -49,17 +64,29 @@ ENTITY_EXTRACTION_PROMPT = """Extract all relevant biomedical entities from the 
 
 For each entity, provide:
 - slug: A unique identifier following STRICT format rules (see below)
-- summary: A brief source-bounded description in English (prefer a short phrase or single sentence)
+- summary: A brief neutral description in English of what the entity is (prefer a short phrase or single sentence)
 - category: The entity type (drug, disease, symptom, biological_mechanism, treatment, biomarker, population, outcome, other)
 - confidence: Your confidence in this extraction (high, medium, low)
 - text_span: The exact text from the source that mentions this entity
 
 SUMMARY RULES:
-- Keep the summary grounded in the source mention and its immediate local context
-- Do NOT add background medical facts that are not stated in the provided text
-- Do NOT expand the summary into a general encyclopedia definition
-- If the text gives only the entity name with no local description, use a minimal summary closely matching the mention
+- Summaries should describe the entity itself, not what this specific source claims about it
+- You may use brief general biomedical knowledge to say what the entity is
+- Do NOT add source-specific efficacy, safety, recommendation, or evidence claims unless they are part of the entity's core definition
+- Do NOT turn a sparse mention into a source-specific use statement
+- Prefer a generic definitional summary like "Nonsteroidal anti-inflammatory drug class." over a context-bound summary like "Used in combination therapies for fibromyalgia."
+- Keep the summary short and neutral; do not expand it into a long encyclopedia entry
 - Do not create standalone entities for dosage, duration, timeframe, sample size, or study design metadata. Keep those as relation scope or evidence context instead.
+- Emit each real-world entity only once per extraction batch. Merge repeated mentions under one canonical slug instead of duplicating near-identical entities.
+- text_span should be the shortest exact mention that identifies the entity in the source text.
+- Prefer entities that participate in an explicit relation or provide reusable study context such as
+  population, comparator, control group, biomarker, condition, or outcome.
+- Omit generic document nouns or paper artifacts unless the source clearly uses them as real
+  biomedical participants in a relation. Usually omit items like "study", "trial", "authors",
+  "results", "table", "figure", "intervention group", or "control group" when they do not denote
+  a reusable entity page.
+- Keep normalized identity separate from source wording: slug may normalize the mention, but
+  text_span must remain the exact shortest source phrase.
 
 CRITICAL SLUG FORMAT REQUIREMENTS:
 - MUST start with a lowercase letter (a-z)
@@ -89,28 +116,28 @@ Respond with a JSON object containing an "entities" key. Example format:
   "entities": [
   {{
     "slug": "aspirin",
-    "summary": "Aspirin (acetylsalicylic acid), as named in the source text.",
+    "summary": "Nonsteroidal anti-inflammatory drug and antiplatelet medicine.",
     "category": "drug",
     "confidence": "high",
     "text_span": "aspirin (acetylsalicylic acid)"
   }},
   {{
     "slug": "migraine-headache",
-    "summary": "Migraine headaches mentioned as the treated condition.",
+    "summary": "Neurological headache disorder.",
     "category": "disease",
     "confidence": "high",
     "text_span": "migraine headaches"
   }},
   {{
     "slug": "cox-enzyme-inhibition",
-    "summary": "Cyclooxygenase (COX) enzyme inhibition described in the source.",
+    "summary": "Biological process involving inhibition of cyclooxygenase enzymes.",
     "category": "biological_mechanism",
     "confidence": "high",
     "text_span": "irreversibly inhibiting cyclooxygenase (COX) enzymes"
   }},
   {{
     "slug": "placebo",
-    "summary": "The comparator group explicitly stated in the source.",
+    "summary": "Inactive comparator or control intervention.",
     "category": "other",
     "confidence": "high",
     "text_span": "placebo"
@@ -195,8 +222,16 @@ For each relation, provide:
 RELATION EXTRACTION RULES:
 - Extract only relations that are explicitly stated in the text
 - Do not create a relation from background knowledge or weak implication alone
+- First identify the minimal claim-bearing sentence or local span that states the relation, then extract from that span only.
+- Each relation text_span should usually be 1-3 sentences and should be sufficient on its own to justify the relation.
+- Do not build one relation by stitching together separate hints from distant paragraphs unless one local span explicitly states the relation.
+- Before returning JSON, do a silent completeness audit over the text and check whether each
+  claim-bearing span with extracted entities was either captured as a relation or intentionally
+  omitted because the source span lacks the required core roles.
 - Preserve negation, uncertainty, study conditions, dosage, timeframe, comparator, and population in scope or notes when relevant
 - Prefer one relation per explicit study statement or finding span
+- If the same entities appear in multiple source spans with different polarity, certainty, population, comparator, or outcome, emit separate relations rather than one merged relation.
+- If one source span reports two distinct outcomes or claims, emit separate relations when that preserves the source meaning more faithfully.
 - If the text says an intervention did not work, was inconclusive, or had mixed results, still extract the relation but set evidence_context.finding_polarity accordingly instead of rewriting it as a positive effect
 - For side-effect or safety findings where no significant difference is found versus a control or placebo, use "causes" with finding_polarity "contradicts" — do NOT use "other". Example: "no significant increase in nausea compared to placebo" → relation_type "causes", finding_polarity "contradicts". This captures that the study tested whether the drug causes the effect and found no evidence it does more than control.
 - If the text gives only a mechanistic assumption, background rationale, or methodology note, mark evidence_context.statement_kind accordingly
@@ -207,6 +242,13 @@ RELATION EXTRACTION RULES:
 - Put dosage, duration, timeframe, study_design, sample_size, and statistical_support into scope or evidence_context instead of inventing standalone entities for them
 - Do not create duration or dosage roles from vague qualifiers alone. Prefer exact values like "12 weeks" or "60mg daily". If the source only says "short-term", "long-term", "high dose", or similar vague language, keep that in notes or methodology_text instead of a role entity.
 - Every role entity_slug used in a relation must be present in the identified entity list above
+- assertion_text should be a faithful, source-bounded paraphrase of the local finding. Do not strengthen certainty, magnitude, or clinical importance beyond what the text states.
+- Keep source wording separate from normalized fields: text_span, sample_size_text, and
+  statistical_support should copy or minimally trim the source wording, while assertion_text may
+  paraphrase conservatively.
+- If the source uses modal or hedged language such as "may", "might", "could", "suggests",
+  "potential", or "appears to", prefer evidence_context.statement_kind "hypothesis" or
+  finding_polarity "uncertain" unless the same span reports direct measured findings.
 - Core role requirements:
   - treats MUST include agent and target
   - causes MUST include the thing causing the effect as agent, plus the adverse event/effect as target or outcome
@@ -322,69 +364,6 @@ Be conservative - avoid inferring relations that are not clearly supported.
 
 
 # =============================================================================
-# Claim Extraction Prompts
-# =============================================================================
-
-CLAIM_EXTRACTION_PROMPT = """Extract factual claims from the following scientific text.
-
-Text to analyze:
-{text}
-
-For each claim, provide:
-- claim_text: The statement being reported, written as a faithful source-bounded paraphrase
-- entities_involved: List of entity slugs mentioned in the claim
-- claim_type: Type of claim (efficacy, safety, mechanism, epidemiology, other)
-- evidence_strength: Strength of evidence (strong, moderate, weak, anecdotal)
-- confidence: Your confidence in extracting this claim (high, medium, low)
-- text_span: The exact text supporting this claim
-
-CLAIM RULES:
-- Preserve uncertainty, negation, modality, and qualifiers from the source
-- Keep claim_text close to the source; do not strengthen or generalize it
-- Do not collapse multiple competing claims into one synthesized claim
-- Assign evidence_strength conservatively based on what the text explicitly indicates about study design or evidence quality
-- If evidence quality is unclear, prefer a lower evidence_strength rather than upgrading it
-
-Claim types:
-- efficacy: Claims about treatment effectiveness
-- safety: Claims about safety, side effects, risks
-- mechanism: Claims about biological mechanisms
-- epidemiology: Claims about disease prevalence, risk factors
-- other: Other factual claims
-
-Evidence strength indicators:
-- strong: Randomized controlled trials, meta-analyses, systematic reviews
-- moderate: Observational studies, case-control studies
-- weak: Case reports, small studies, expert opinion
-- anecdotal: Individual experiences, isolated reports
-
-Respond with a JSON object containing a "claims" key:
-```json
-{{
-  "claims": [
-  {{
-    "claim_text": "Aspirin reduces the risk of heart attack in adults with cardiovascular disease",
-    "entities_involved": ["drug-aspirin", "outcome-heart-attack", "population-cvd-adults"],
-    "claim_type": "efficacy",
-    "evidence_strength": "strong",
-    "confidence": "high",
-    "text_span": "In adults with cardiovascular disease, daily aspirin therapy reduced the risk of myocardial infarction by 25% (RR 0.75, 95% CI 0.68-0.82)"
-  }}
-  ]
-}}
-```
-
-Focus on:
-- Quantifiable results (percentages, odds ratios, p-values)
-- Population specifics (who the claim applies to)
-- Conditions and caveats
-- Statistical significance when mentioned
-
-Only extract claims that are explicitly stated in the text.
-"""
-
-
-# =============================================================================
 # Batch Extraction Prompt (All-in-One)
 # =============================================================================
 
@@ -396,13 +375,22 @@ Text to analyze:
 GLOBAL RULES:
 - Extract only information explicitly supported by the provided text
 - Do not use outside medical knowledge
+- Work locally: first identify claim-bearing spans, then extract only from those spans
+- A relation is valid only if you can point to a short local text span that is sufficient to justify it
+- Do not synthesize one relation from scattered hints across the document unless the source itself states that relation in one local span
 - Do not reconcile contradictions or competing findings; keep them as separate items
+- Before finalizing JSON, do one silent second pass to catch missed claim-bearing spans, missed
+  relation participants, and missed null/contradictory findings
 - Preserve uncertainty, negation, dosage, population, comparator, timeframe, and study conditions
 - Preserve proof-level details when explicitly stated, including study design, participant count, and statistical support
 - Keep study findings separate from background statements, hypotheses, and methodology notes
 - If an item is not clearly supported, omit it instead of guessing
 - Prefer precise measurable context. Do not create vague duration/dosage/timeframe entities such as "duration-short-term" when the source does not state an exact value.
 - Do not flatten combination therapy, adjunct therapy, or co-administration findings into single-agent relations unless the text explicitly attributes the effect to one component
+- Prefer relation-bearing biomedical entities and reusable study context over generic document nouns
+  or paper artifacts such as "study", "authors", "results", "table", or "figure"
+- Keep normalized identity separate from source wording: slug and summary may normalize surface
+  forms, but text_span, sample_size_text, and statistical_support must stay source-faithful
 
 Extract:
 1. **Entities**: All drugs, diseases, symptoms, treatments, biomarkers, and other relevant entities
@@ -417,9 +405,16 @@ Extract:
 
    - category: drug, disease, symptom, biological_mechanism, treatment, biomarker, population, outcome, other
    - confidence: high, medium, low
-   - summaries must stay source-bounded and must not add background facts not present in the text
+   - summaries should describe what the entity is, not what this source claims about it
+   - brief general biomedical knowledge is allowed for entity summaries only
+   - do not add source-specific efficacy, safety, or recommendation claims to entity summaries
+   - if an entity is only named in a list or sparse mention, keep the summary short, generic, and non-interpretive
    - extract reusable relation participants as entities, including comparator/control groups, study arms, populations, outcomes, and explicitly named conditions
+   - prefer entities that participate in an explicit relation or provide reusable study context such as population, comparator, control_group, biomarker, condition, or outcome
+   - omit generic document nouns or paper artifacts unless the source clearly uses them as real biomedical participants in a relation
    - do NOT create entities for dosage, duration, timeframe, sample size, or study design metadata; keep them in relation scope or evidence_context
+   - emit each real-world entity only once per batch; merge repeated mentions into one canonical entity record
+   - text_span should be the shortest exact source mention for that entity
 
 2. **Relations**: Relationships between entities
 
@@ -464,72 +459,59 @@ Extract:
 
    - confidence: high, medium, low
    - extract only explicitly stated relations and preserve caveats in notes
+   - first identify the local claim-bearing span; relation extraction should stay anchored to that span
+   - relation text_span should usually be 1-3 sentences and should be sufficient on its own to justify the relation
    - every role entity_slug used in a relation MUST also appear in the entities array
    - include evidence_context for every relation
    - use scope for applicability qualifiers such as dosage, duration, comparator, and condition when they are stated but do not deserve their own entity page
    - statement_kind should usually be "finding" for explicit study results and should only be "background", "hypothesis", or "methodology" when the text clearly frames it that way
    - finding_polarity should reflect whether the source supports, contradicts, or leaves the relation mixed/uncertain
+   - null findings and no-difference findings should still be extracted when the tested relation and core participants are explicit
+   - if the same entities appear in multiple contradictory or differently qualified spans, emit separate relations instead of merging them
+   - if the source uses modal or hedged language such as "may", "might", "could", "suggests", "potential", or "appears to", prefer statement_kind "hypothesis" or finding_polarity "uncertain" unless the same span reports direct measured findings
    - For side-effect or safety findings where no significant difference is found versus a control or placebo, use relation_type "causes" with finding_polarity "contradicts" — do NOT use "other". Example: "no significant increase in nausea vs placebo" → relation_type "causes", finding_polarity "contradicts".
    - study_design, sample_size, and statistical_support should only be included when the source text states them or directly signals them
    - do not create vague duration or dosage role entities from labels like "short-term", "long-term", "high dose", or "standard dose"
+   - assertion_text should be a faithful, source-bounded paraphrase; do not upgrade certainty, magnitude, or recommendation strength
+   - text_span, sample_size_text, and statistical_support should copy or minimally trim the source wording; assertion_text may paraphrase conservatively
    - If the text says "combined X with Y", "X plus Y", "co-administered", or similar combination language, do NOT emit a clean single-agent treats relation for only one component unless the text explicitly isolates that component's effect
    - For combination findings, placebo or other comparison arms stay as control_group; they never replace named active intervention agents
 
-3. **Claims**: Factual statements with evidence
-
-   CRITICAL: claim_type MUST be EXACTLY one of these values (no variations allowed):
-   - efficacy
-   - safety
-   - mechanism
-   - epidemiology
-   - other
-
-   Do NOT use types like "outcome" - use "efficacy" for outcome claims or "other" if unclear.
-
-   CRITICAL: evidence_strength MUST be EXACTLY one of these values:
-   - strong
-   - moderate
-   - weak
-   - anecdotal
-
-   - confidence: high, medium, low
-   - claim_text must remain a faithful source-bounded paraphrase, not a stronger synthesis
-
-Respond with JSON containing three arrays:
+Respond with JSON containing two arrays:
 ```json
 {{
   "entities": [
     {{
       "slug": "aspirin",
-      "summary": "Aspirin is a nonsteroidal anti-inflammatory drug...",
+      "summary": "Nonsteroidal anti-inflammatory drug and antiplatelet medicine.",
       "category": "drug",
       "confidence": "high",
       "text_span": "aspirin"
     }},
     {{
       "slug": "duloxetine",
-      "summary": "Duloxetine is an SNRI antidepressant used for depression and pain conditions",
+      "summary": "Serotonin-norepinephrine reuptake inhibitor antidepressant.",
       "category": "drug",
       "confidence": "high",
       "text_span": "duloxetine"
     }},
     {{
       "slug": "fibromyalgia",
-      "summary": "Fibromyalgia is a chronic pain disorder characterized by widespread musculoskeletal pain",
+      "summary": "Chronic pain disorder characterized by widespread pain and related symptoms.",
       "category": "disease",
       "confidence": "high",
       "text_span": "fibromyalgia"
     }},
     {{
       "slug": "adults",
-      "summary": "The adult population explicitly stated in the source.",
+      "summary": "Adult population.",
       "category": "population",
       "confidence": "high",
       "text_span": "adults"
     }},
     {{
       "slug": "placebo",
-      "summary": "The comparator group explicitly stated in the source.",
+      "summary": "Inactive comparator or control intervention.",
       "category": "other",
       "confidence": "high",
       "text_span": "placebo"
@@ -631,24 +613,6 @@ Respond with JSON containing three arrays:
         "assertion_text": "The combination of pregabalin and duloxetine was reported to improve fibromyalgia symptoms compared with placebo."
       }}
     }}
-  ],
-  "claims": [
-    {{
-      "claim_text": "Duloxetine significantly reduced pain scores in fibromyalgia patients compared to placebo",
-      "entities_involved": ["duloxetine", "fibromyalgia"],
-      "claim_type": "efficacy",
-      "evidence_strength": "strong",
-      "confidence": "high",
-      "text_span": "In randomized controlled trials, duloxetine significantly reduced pain scores in fibromyalgia patients compared to placebo (p<0.001)"
-    }},
-    {{
-      "claim_text": "Daily aspirin therapy reduces myocardial infarction risk by 25% in adults with coronary artery disease",
-      "entities_involved": ["aspirin", "myocardial-infarction", "coronary-artery-disease"],
-      "claim_type": "efficacy",
-      "evidence_strength": "strong",
-      "confidence": "high",
-      "text_span": "Clinical studies have shown that daily aspirin therapy reduces the risk of myocardial infarction by approximately 25% in adults with coronary artery disease"
-    }}
   ]
 }}
 ```
@@ -656,7 +620,6 @@ Respond with JSON containing three arrays:
 CRITICAL REMINDERS:
 - Entity slugs: Must start with letter, only lowercase letters/numbers/hyphens, minimum 3 chars
 - Relation types: ONLY use the exact 13 types listed above (use "other" if unsure)
-- Claim types: ONLY use efficacy, safety, mechanism, epidemiology, or other
 - Evidence strength: ONLY use strong, moderate, weak, or anecdotal
 
 Be thorough but conservative. Only extract information that is clearly and explicitly stated in the text.
@@ -694,11 +657,6 @@ def format_relation_extraction_prompt(
         for e in entities
     ])
     return RELATION_EXTRACTION_PROMPT.format(text=text, entities=entities_str)
-
-
-def format_claim_extraction_prompt(text: str) -> str:
-    """Format the claim extraction prompt with the given text."""
-    return CLAIM_EXTRACTION_PROMPT.format(text=text)
 
 
 def format_batch_extraction_prompt(text: str) -> str:

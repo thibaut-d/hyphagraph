@@ -125,7 +125,7 @@ export function EvidenceTableSection({
           <TableRow>
             <TableCell>
               <TableSortLabel active={sortField === "kind"} direction={sortField === "kind" ? sortOrder : "asc"} onClick={() => onSort("kind")}>
-                <strong>{t("evidence.table.claim", "Claim / Relation Kind")}</strong>
+                <strong>{t("evidence.table.relation", "Relation Statement / Kind")}</strong>
               </TableSortLabel>
             </TableCell>
             <TableCell>

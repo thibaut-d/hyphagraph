@@ -140,26 +140,31 @@ describe("ExtractionCard", () => {
     expect(screen.getByText("extraction_card.missing_required_roles")).toBeInTheDocument();
   });
 
-  it("renders claim context with linked entities, evidence metadata, and source link", () => {
+  it("renders relation evidence context and source link for relation-only review items", () => {
     renderCard(
       makeExtraction({
-        extraction_type: "claim",
+        extraction_type: "relation",
         extraction_data: {
-          claim_text: "Adverse events experienced by participants were not serious.",
-          entities_involved: ["duloxetine", "fibromyalgia"],
-          claim_type: "safety",
-          evidence_strength: "moderate",
+          relation_type: "other",
+          roles: [
+            { entity_slug: "duloxetine", role_type: "participant" },
+            { entity_slug: "fibromyalgia", role_type: "participant" },
+          ],
           confidence: "low",
+          notes: "Adverse events experienced by participants were not serious.",
           text_span: "",
+          evidence_context: {
+            statement_kind: "finding",
+            evidence_strength: "moderate",
+            assertion_text: "Adverse events experienced by participants were not serious.",
+          },
         } as unknown as StagedExtractionRead["extraction_data"],
         validation_flags: ["claim_text_span_not_found", "possible_hallucination"],
       })
     );
 
-    expect(screen.getByText("duloxetine")).toBeInTheDocument();
-    expect(screen.getByText("fibromyalgia")).toBeInTheDocument();
-    expect(screen.getByText("extraction_card.claim_type")).toBeInTheDocument();
-    expect(screen.getByText("extraction_card.evidence_strength")).toBeInTheDocument();
+    expect(screen.getByText("duloxetine other fibromyalgia")).toBeInTheDocument();
+    expect(screen.getByText("Adverse events experienced by participants were not serious.")).toBeInTheDocument();
     expect(screen.getByText("extraction_card.no_exact_source_quote")).toBeInTheDocument();
     const link = screen.getByText("extraction_card.view_source");
     expect(link.closest("a")).toHaveAttribute("href", "/sources/src-1");

@@ -16,7 +16,7 @@ async def load_staged_extraction(
 
 
 async def list_extractions(
-    db: AsyncSession, filters: StagedExtractionFilters, *, include_claims: bool = True
+    db: AsyncSession, filters: StagedExtractionFilters
 ) -> tuple[list[StagedExtraction], int]:
     query = select(StagedExtraction)
     conditions = []
@@ -41,9 +41,6 @@ async def list_extractions(
         conditions.append(StagedExtraction.auto_commit_eligible == filters.auto_commit_eligible)
     if filters.auto_approved is not None:
         conditions.append(StagedExtraction.auto_approved == filters.auto_approved)
-    if not include_claims:
-        conditions.append(StagedExtraction.extraction_type != ExtractionType.CLAIM)
-
     if conditions:
         query = query.where(and_(*conditions))
 
@@ -63,12 +60,8 @@ async def list_extractions(
     return list(result.scalars().all()), total
 
 
-async def get_stats(db: AsyncSession, *, include_claims: bool = True) -> ReviewStats:
-    status_filter = (
-        StagedExtraction.extraction_type != ExtractionType.CLAIM
-        if not include_claims
-        else True
-    )
+async def get_stats(db: AsyncSession) -> ReviewStats:
+    status_filter = True
     status_counts = await db.execute(
         select(StagedExtraction.status, func.count(StagedExtraction.id))
         .where(status_filter)
@@ -105,7 +98,6 @@ async def get_stats(db: AsyncSession, *, include_claims: bool = True) -> ReviewS
         total_auto_verified=status_map.get(ExtractionStatus.AUTO_VERIFIED, 0),
         pending_entities=type_map.get(ExtractionType.ENTITY, 0),
         pending_relations=type_map.get(ExtractionType.RELATION, 0),
-        pending_claims=type_map.get(ExtractionType.CLAIM, 0),
         avg_validation_score=float(quality_row[0] or 0.0),
         high_confidence_count=int(quality_row[1] or 0),
         flagged_count=int(quality_row[2] or 0),

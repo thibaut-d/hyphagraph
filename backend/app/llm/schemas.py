@@ -4,7 +4,6 @@ Pydantic schemas for LLM extraction responses.
 Defines structured schemas for:
 - Entity extraction
 - Relation extraction
-- Claim extraction
 - Entity linking
 """
 import re
@@ -246,18 +245,6 @@ class RelationExtractionResponse(BaseModel):
     )
 
 
-# =============================================================================
-# Claim Extraction Schemas
-# =============================================================================
-
-ClaimType = Literal[
-    "efficacy",
-    "safety",
-    "mechanism",
-    "epidemiology",
-    "other"
-]
-
 EvidenceStrength = Literal[
     "strong",      # RCTs, meta-analyses
     "moderate",    # Observational studies
@@ -401,65 +388,6 @@ class ExtractedRelationEvidenceContext(BaseModel):
 
 ExtractedRelationStudyContext = ExtractedRelationEvidenceContext
 
-
-class ExtractedClaim(BaseModel):
-    """
-    Schema for an extracted factual claim.
-
-    Represents a specific factual statement from the source with
-    information about evidence quality and involved entities.
-    """
-    @field_validator("evidence_strength", mode="before")
-    @classmethod
-    def normalize_evidence_strength(cls, value: object) -> object:
-        return _normalize_evidence_strength_alias(value)
-
-    @field_validator("entities_involved", mode="before")
-    @classmethod
-    def normalize_entities_involved(cls, value: object) -> object:
-        if not isinstance(value, list):
-            return value
-        return [_normalize_extracted_slug(item) for item in value]
-
-    claim_text: str = Field(
-        ...,
-        description="The factual statement being made",
-        min_length=10,
-        max_length=1000
-    )
-    entities_involved: list[str] = Field(
-        ...,
-        description="List of entity slugs mentioned in the claim",
-        min_length=1
-    )
-    claim_type: ClaimType = Field(
-        ...,
-        description="Type of claim"
-    )
-    evidence_strength: EvidenceStrength = Field(
-        ...,
-        description="Strength of evidence supporting the claim"
-    )
-    confidence: ConfidenceLevel = Field(
-        ...,
-        description="Confidence in extracting this claim"
-    )
-    text_span: str = Field(
-        ...,
-        description="Exact text supporting this claim",
-        min_length=1,
-        max_length=2000
-    )
-
-
-class ClaimExtractionResponse(BaseModel):
-    """Response schema for claim extraction."""
-    claims: list[ExtractedClaim] = Field(
-        default_factory=list,
-        description="List of extracted claims"
-    )
-
-
 # =============================================================================
 # Batch Extraction Schema (All-in-One)
 # =============================================================================
@@ -468,7 +396,7 @@ class BatchExtractionResponse(BaseModel):
     """
     Response schema for batch extraction of all knowledge.
 
-    Contains entities, relations, and claims extracted from
+    Contains entities and relations extracted from
     a single piece of text in one pass.
     """
     entities: list[ExtractedEntity] = Field(
@@ -478,10 +406,6 @@ class BatchExtractionResponse(BaseModel):
     relations: list[ExtractedRelation] = Field(
         default_factory=list,
         description="Extracted relations"
-    )
-    claims: list[ExtractedClaim] = Field(
-        default_factory=list,
-        description="Extracted claims"
     )
 
 
@@ -525,11 +449,6 @@ def validate_entity_extraction(data: JsonObject) -> EntityExtractionResponse:
 def validate_relation_extraction(data: JsonObject) -> RelationExtractionResponse:
     """Validate and parse relation extraction response from LLM."""
     return RelationExtractionResponse.model_validate(data)
-
-
-def validate_claim_extraction(data: JsonObject) -> ClaimExtractionResponse:
-    """Validate and parse claim extraction response from LLM."""
-    return ClaimExtractionResponse.model_validate(data)
 
 
 def validate_batch_extraction(data: JsonObject) -> BatchExtractionResponse:

@@ -1,6 +1,6 @@
 """Add display-name flag to entity terms
 
-Revision ID: 020_add_entity_term_display_name_flag
+Revision ID: 020_entity_term_display_flag
 Revises: 019_add_trgm_indexes
 Create Date: 2026-04-06
 """
@@ -9,7 +9,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = "020_add_entity_term_display_name_flag"
+revision = "020_entity_term_display_flag"
 down_revision = "019_add_trgm_indexes"
 branch_labels = None
 depends_on = None

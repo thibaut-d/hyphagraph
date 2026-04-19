@@ -5,6 +5,7 @@ Handles batch creation from LLM extraction results, with transaction safety
 and error handling for duplicate entities.
 """
 import logging
+from datetime import datetime, timezone
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
@@ -113,9 +114,12 @@ class BulkCreationService:
                         "ui_category_id": ui_category_id,
                         "created_with_llm": settings.OPENAI_MODEL,  # Track LLM provenance
                         "created_by_user_id": user_id,
-                        # LLM-created revisions start as drafts pending human review
-                        "status": "draft",
-                        "llm_review_status": "pending_review",
+                        # Extraction save is explicit human approval, so the
+                        # resulting revision is authoritative immediately.
+                        "status": "confirmed",
+                        "llm_review_status": "confirmed",
+                        "confirmed_by_user_id": user_id,
+                        "confirmed_at": datetime.now(timezone.utc),
                     }
 
                     # Create first revision
@@ -246,9 +250,12 @@ class BulkCreationService:
                         "notes": {"en": extracted.notes} if extracted.notes else None,
                         "created_with_llm": settings.OPENAI_MODEL,
                         "created_by_user_id": user_id,
-                        # LLM-created revisions start as drafts pending human review
-                        "status": "draft",
-                        "llm_review_status": "pending_review",
+                        # Extraction save is explicit human approval, so the
+                        # resulting revision is authoritative immediately.
+                        "status": "confirmed",
+                        "llm_review_status": "confirmed",
+                        "confirmed_by_user_id": user_id,
+                        "confirmed_at": datetime.now(timezone.utc),
                     }
 
                     # Create first revision

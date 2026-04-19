@@ -12,7 +12,7 @@ from app.services.extraction_validation_service import (
     ValidationResult,
 )
 from app.services.batch_extraction_orchestrator import BatchExtractionOrchestrator
-from app.llm.schemas import ExtractedClaim, ExtractedEntity, ExtractedRelation, ExtractedRole
+from app.llm.schemas import ExtractedEntity, ExtractedRelation, ExtractedRole
 
 
 # Sample source text for testing
@@ -232,49 +232,6 @@ class TestTextSpanValidator:
         assert "invalid_contextual_core_role" in result.flags
         assert "invalid_contextual_core_role:agent:sample-size-41" in result.flags
 
-    def test_claim_validation_strictest(self):
-        """Test that claims have strictest validation."""
-        # Arrange
-        validator = TextSpanValidator(validation_level="moderate")
-
-        # Valid claim
-        valid_claim = ExtractedClaim(
-            claim_text="Duloxetine showed significant improvement compared to placebo",
-            entities_involved=["duloxetine"],
-            claim_type="efficacy",
-            evidence_strength="strong",
-            confidence="high",
-            text_span="Clinical trials showed significant improvement in pain scores compared to placebo"
-        )
-
-        # Act
-        valid_result = validator.validate_claim(valid_claim, SAMPLE_SOURCE)
-
-        # Assert
-        assert valid_result.is_valid is True
-        assert valid_result.validation_score == 1.0
-
-    def test_claim_without_span_rejected_in_moderate_mode(self):
-        """Test that claims without valid spans are rejected in moderate mode."""
-        # Arrange
-        validator = TextSpanValidator(validation_level="moderate")
-        claim = ExtractedClaim(
-            claim_text="This claim is not supported by the text",
-            entities_involved=["duloxetine"],
-            claim_type="efficacy",
-            evidence_strength="weak",
-            confidence="low",
-            text_span="Duloxetine cures everything instantly"  # Hallucinated
-        )
-
-        # Act
-        result = validator.validate_claim(claim, SAMPLE_SOURCE)
-
-        # Assert
-        assert result.is_valid is False  # Claims are strict in moderate mode
-        assert "claim_text_span_not_found" in result.flags
-
-
 @pytest.mark.asyncio
 class TestExtractionValidationService:
     """Test batch validation service."""
@@ -378,30 +335,6 @@ class TestExtractionValidationService:
         # Assert
         assert len(validated) == 2
         assert all(r.is_valid for r in results)
-
-    async def test_validate_claims_batch(self):
-        """Test validating a batch of claims."""
-        # Arrange
-        service = ExtractionValidationService(validation_level="moderate")
-        claims = [
-            ExtractedClaim(
-                claim_text="Duloxetine improves pain in fibromyalgia patients",
-                entities_involved=["duloxetine", "fibromyalgia"],
-                claim_type="efficacy",
-                evidence_strength="strong",
-                confidence="high",
-                text_span="Clinical trials showed significant improvement in pain scores compared to placebo"
-            ),
-        ]
-
-        # Act
-        validated, results = await service.validate_claims(claims, SAMPLE_SOURCE)
-
-        # Assert
-        assert len(validated) == 1
-        assert results[0].is_valid is True
-        assert results[0].validation_score >= 0.9
-
 
 class TestEdgeCases:
     """Test edge cases and boundary conditions."""
@@ -513,38 +446,23 @@ def _make_relation(*slugs: str) -> ExtractedRelation:
     )
 
 
-def _make_claim(*slugs: str) -> ExtractedClaim:
-    return ExtractedClaim(
-        claim_text="Some claim text for testing purposes",
-        entities_involved=list(slugs),
-        claim_type="efficacy",
-        evidence_strength="moderate",
-        confidence="medium",
-        text_span="Some claim text span for testing",
-    )
-
-
 class TestEntitySlugCoherence:
     """Unit tests for _check_entity_slug_coherence (DF-EXT-M6)."""
 
     def test_all_known_slugs_pass_unchanged(self):
-        """Relations/claims whose slugs all exist in extracted entities are untouched."""
+        """Relations whose slugs all exist in extracted entities are untouched."""
         orch = _make_orchestrator()
         entities = _make_entities("drug-a", "disease-b")
         relation = _make_relation("drug-a", "disease-b")
-        claim = _make_claim("drug-a", "disease-b")
         rel_result = _dummy_result()
-        clm_result = _dummy_result()
 
-        rels, rel_results, clms, clm_results = orch._check_entity_slug_coherence(
-            entities, [relation], [rel_result], [claim], [clm_result]
+        rels, rel_results = orch._check_entity_slug_coherence(
+            entities, [relation], [rel_result]
         )
 
         assert len(rels) == 1
         assert rel_results[0].flags == []
         assert rel_results[0].confidence_adjustment == 1.0
-        assert len(clms) == 1
-        assert clm_results[0].flags == []
 
     def test_unknown_relation_slug_flagged_in_moderate_mode(self):
         """Relation with an unknown entity slug is flagged and confidence halved (moderate)."""
@@ -553,8 +471,8 @@ class TestEntitySlugCoherence:
         relation = _make_relation("drug-a", "ghost-entity")
         rel_result = _dummy_result()
 
-        rels, rel_results, clms, clm_results = orch._check_entity_slug_coherence(
-            entities, [relation], [rel_result], [], []
+        rels, rel_results = orch._check_entity_slug_coherence(
+            entities, [relation], [rel_result]
         )
 
         assert len(rels) == 1  # Still kept in moderate mode
@@ -570,40 +488,12 @@ class TestEntitySlugCoherence:
         relation = _make_relation("drug-a", "ghost-entity")
         rel_result = _dummy_result()
 
-        rels, rel_results, clms, clm_results = orch._check_entity_slug_coherence(
-            entities, [relation], [rel_result], [], []
+        rels, rel_results = orch._check_entity_slug_coherence(
+            entities, [relation], [rel_result]
         )
 
         assert len(rels) == 0  # Removed in strict mode
         assert len(rel_results) == 0
-
-    def test_unknown_claim_slug_flagged_in_moderate_mode(self):
-        """Claim with unknown entity slug is flagged and confidence halved (moderate)."""
-        orch = _make_orchestrator(strict=False)
-        entities = _make_entities("drug-a")
-        claim = _make_claim("drug-a", "phantom")
-        clm_result = _dummy_result()
-
-        rels, rel_results, clms, clm_results = orch._check_entity_slug_coherence(
-            entities, [], [], [claim], [clm_result]
-        )
-
-        assert len(clms) == 1
-        assert any("unknown_entity_slug" in f for f in clm_results[0].flags)
-        assert clm_results[0].confidence_adjustment == pytest.approx(0.5)
-
-    def test_unknown_claim_slug_rejected_in_strict_mode(self):
-        """Claim with all-unknown entity slugs is removed in strict mode."""
-        orch = _make_orchestrator(strict=True)
-        entities = _make_entities("drug-a")
-        claim = _make_claim("phantom-1", "phantom-2")
-        clm_result = _dummy_result()
-
-        rels, rel_results, clms, clm_results = orch._check_entity_slug_coherence(
-            entities, [], [], [claim], [clm_result]
-        )
-
-        assert len(clms) == 0
 
     def test_empty_entity_list_flags_all_relations(self):
         """When no entities are extracted, all relation slugs are unknown."""
@@ -611,8 +501,8 @@ class TestEntitySlugCoherence:
         relation = _make_relation("drug-a", "disease-b")
         rel_result = _dummy_result()
 
-        rels, rel_results, clms, clm_results = orch._check_entity_slug_coherence(
-            [], [relation], [rel_result], [], []
+        rels, rel_results = orch._check_entity_slug_coherence(
+            [], [relation], [rel_result]
         )
 
         assert len(rels) == 1  # Kept in moderate mode
@@ -637,8 +527,8 @@ class TestEntitySlugCoherence:
             text_span="Some relation text span for testing",
         )
 
-        rels, rel_results, clms, clm_results = orch._check_entity_slug_coherence(
-            entities, [relation], [rel_result], [], []
+        rels, rel_results = orch._check_entity_slug_coherence(
+            entities, [relation], [rel_result]
         )
 
         flag = rel_results[0].flags[0]
@@ -660,10 +550,9 @@ async def test_orchestrator_validation_flags_missing_relation_text_span():
         text_span="This relation text does not appear in the source",
     )
 
-    _, relations, _, _, relation_results, _ = await orch._validate_extractions_with_results(
+    _, relations, _, relation_results = await orch._validate_extractions_with_results(
         entities,
         [relation],
-        [],
         SAMPLE_SOURCE,
     )
 
