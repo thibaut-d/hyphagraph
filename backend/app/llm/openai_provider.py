@@ -54,6 +54,17 @@ class OpenAIProvider(LLMProvider):
         """Get the configured model name."""
         return self.model
 
+    def _get_token_limit_param_name(self) -> str:
+        """
+        Return the token-limit parameter accepted by the configured model.
+
+        GPT-5 chat-completions models reject `max_tokens` and require
+        `max_completion_tokens`. Keep the provider interface stable and translate
+        here so upstream extraction code does not need model-specific branching.
+        """
+        normalized_model = (self.model or "").strip().lower()
+        return "max_completion_tokens" if normalized_model.startswith("gpt-5") else "max_tokens"
+
     async def generate(
         self,
         prompt: str,
@@ -93,12 +104,18 @@ class OpenAIProvider(LLMProvider):
         try:
             logger.info(f"Calling OpenAI API with model={self.model}, temp={temp}")
 
+            request_kwargs = dict(kwargs)
+            if (
+                "max_tokens" not in request_kwargs
+                and "max_completion_tokens" not in request_kwargs
+            ):
+                request_kwargs[self._get_token_limit_param_name()] = max_tokens
+
             response = await self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
                 temperature=temp,
-                max_tokens=max_tokens,
-                **kwargs,
+                **request_kwargs,
             )
 
             # Extract content
