@@ -67,6 +67,9 @@ For each entity, provide:
 - summary: A brief neutral description in English of what the entity is (prefer a short phrase or single sentence)
 - category: The entity type (drug, disease, symptom, biological_mechanism, treatment, biomarker, population, outcome, other)
 - confidence: Your confidence in this extraction (high, medium, low)
+  high   → the entity is explicitly and unambiguously named in the source span with no interpretation needed
+  medium → the entity requires minor surface-form normalization or is named with light qualification
+  low    → the entity is heavily implied, named only indirectly, or requires meaningful inference
 - text_span: The exact text from the source that mentions this entity
 
 SUMMARY RULES:
@@ -166,21 +169,33 @@ For each mention, determine:
 2. If yes, which entity ID does it link to?
 3. If no, is it a new entity?
 
-Respond with JSON mapping each mention to either an existing entity_id or "NEW":
+Respond with a JSON object with a "links" key mapping each mention to either an existing entity_id or "NEW":
 ```json
 {{
-  "aspirin": "entity-uuid-123",
-  "acetylsalicylic acid": "entity-uuid-123",
-  "ibuprofen": "NEW",
-  "NSAIDs": "NEW"
+  "links": {{
+    "aspirin": "entity-uuid-123",
+    "acetylsalicylic acid": "entity-uuid-123",
+    "ibuprofen": "NEW",
+    "NSAIDs": "NEW"
+  }}
 }}
 ```
 
 Consider:
 - Synonyms (aspirin = acetylsalicylic acid)
 - Abbreviations (NSAID = nonsteroidal anti-inflammatory drug)
-- Generic vs brand names
+- Generic vs brand names (Tylenol → acetaminophen if the existing entity summary confirms the generic)
 - Spelling variations
+
+Hard cases — worked examples:
+- Abbreviation to full name: "NSAID" matches an existing "nonsteroidal-anti-inflammatory-drug" entity only if
+  the existing entity summary confirms it is the same concept. If the summary is absent or ambiguous, return "NEW".
+- Brand to generic: "Tylenol" matches "acetaminophen" if the existing entity summary identifies acetaminophen
+  as the active ingredient or generic. If uncertain, return "NEW".
+- Class membership is NOT a match: "antibiotic" does NOT match "amoxicillin" even if amoxicillin is an
+  antibiotic. Do not merge a class-level mention to a specific drug or disease entity.
+- Partial acronym ambiguity: "MS" does NOT match "multiple-sclerosis" or "metabolic-syndrome" unless one
+  existing entity clearly and uniquely corresponds to the acronym in this clinical context.
 
 Be conservative:
 - If the match is uncertain, return "NEW"
@@ -205,13 +220,31 @@ For each relation, provide:
 - relation_type: The type of relation (MUST be from the exact list below)
 - roles: Array of entities with their semantic roles (CRITICAL - see semantic roles below)
 - confidence: Your confidence in this relation (high, medium, low)
+  high   → the relation is explicitly and unambiguously stated in the source span with no interpretation needed
+  medium → the relation requires minor interpretation, is stated with light hedging, or involves a surface-form normalization
+  low    → the relation is heavily hedged, implicit, or requires meaningful inference to extract
 - text_span: The exact text that states this relation
 - notes: Any important caveats, conditions, or context
-- scope: Applicability qualifiers when explicitly stated, such as population, dosage, duration, comparator, or condition
+- scope: Applicability qualifiers when explicitly stated. Use only these keys:
+  dosage        → exact dose as stated (e.g. "60mg daily", "325-650mg")
+  duration      → treatment or observation period (e.g. "12 weeks", "6 months")
+  route         → administration route when stated (e.g. "oral", "intravenous")
+  frequency     → dosing frequency when stated (e.g. "twice daily", "once weekly")
+  comparator    → named comparator arm (e.g. "placebo", "standard care") when not already a role
+  condition     → qualifying clinical context (e.g. "refractory cases", "acute phase")
+  timeframe     → measurement or follow-up window (e.g. "at week 12", "after 3 months")
+  Only include a scope key when the source span states its value explicitly.
+  Do not invent or infer scope values. Do not use vague labels like "short-term" or "high dose".
 - evidence_context: Structured metadata with:
   - statement_kind: one of finding, background, hypothesis, methodology
   - finding_polarity: one of supports, contradicts, mixed, neutral, uncertain
   - evidence_strength: one of strong, moderate, weak, anecdotal when support level is stated or directly signaled
+    Assignment rule — use the strongest level warranted by the source, never inflate it:
+    strong   → meta-analysis or systematic review with clear outcomes, or RCT with significant result
+    moderate → non-randomized trial, cohort study, case-control study, or cross-sectional study
+    weak     → case series, small pilot study, animal study, or in-vitro finding
+    anecdotal → single case report or expert opinion without measured data
+    Omit evidence_strength entirely when the source does not state or directly signal the study type.
   - study_design: one of meta_analysis, systematic_review, randomized_controlled_trial, nonrandomized_trial, cohort_study, case_control_study, cross_sectional_study, case_series, case_report, guideline, review, animal_study, in_vitro, background, unknown
   - sample_size: integer when the source gives a participant count
   - sample_size_text: exact participant-count wording when present
@@ -290,6 +323,9 @@ CRITICAL: relation_type MUST be EXACTLY one of these values (no variations):
 
 IMPORTANT: Do NOT create new relation types. If a relationship doesn't fit the above categories, use "other".
 Do NOT use types like: "has", "integrates_with", "diagnosed_by", "correlates_with", "associated_with", etc.
+"other" is appropriate only when the core participants and their direction are clear but the type genuinely
+does not map to any named type above. Do NOT use "other" as a catch-all for vague or under-specified spans:
+if the source span is too ambiguous to identify clear core roles, omit the relation entirely instead.
 
 Example roles in output:
 - {{"entity_slug": "aspirin", "role_type": "agent"}}
@@ -405,6 +441,9 @@ Extract:
 
    - category: drug, disease, symptom, biological_mechanism, treatment, biomarker, population, outcome, other
    - confidence: high, medium, low
+     high   → explicitly and unambiguously named in the source span with no interpretation needed
+     medium → minor surface-form normalization required, or named with light qualification
+     low    → heavily implied, named only indirectly, or requires meaningful inference
    - summaries should describe what the entity is, not what this source claims about it
    - brief general biomedical knowledge is allowed for entity summaries only
    - do not add source-specific efficacy, safety, or recommendation claims to entity summaries
@@ -435,6 +474,9 @@ Extract:
 
    IMPORTANT: If the relationship doesn't clearly fit one of the specific types above, use "other".
    Do NOT invent new relation types like "has", "integrates_with", "diagnosed_by", "negatively-correlates-with", etc.
+   "other" is appropriate only when the core participants and their direction are clear but the type genuinely
+   does not map to any named type. Do NOT use "other" as a catch-all for vague spans: if the source span is
+   too ambiguous to identify clear core roles, omit the relation entirely instead.
 
    HYPERGRAPH ROLE RULE:
    - HyphaGraph relations are n-ary hyperedges, not only binary subject/object pairs.
@@ -458,18 +500,30 @@ Extract:
      Example: "vas measures pain" (NOT "pain measures vas")
 
    - confidence: high, medium, low
+     high   → explicitly and unambiguously stated in the source span with no interpretation needed
+     medium → requires minor interpretation, stated with light hedging, or involves surface-form normalization
+     low    → heavily hedged, implicit, or requires meaningful inference to extract
    - extract only explicitly stated relations and preserve caveats in notes
    - first identify the local claim-bearing span; relation extraction should stay anchored to that span
    - relation text_span should usually be 1-3 sentences and should be sufficient on its own to justify the relation
    - every role entity_slug used in a relation MUST also appear in the entities array
    - include evidence_context for every relation
-   - use scope for applicability qualifiers such as dosage, duration, comparator, and condition when they are stated but do not deserve their own entity page
+   - use scope for applicability qualifiers that are stated but do not deserve their own entity page;
+     valid scope keys: dosage, duration, route, frequency, comparator, condition, timeframe;
+     only include a scope key when the source span states its value explicitly;
+     do not use vague labels like "short-term", "long-term", "high dose", or "standard dose" as scope values
    - statement_kind should usually be "finding" for explicit study results and should only be "background", "hypothesis", or "methodology" when the text clearly frames it that way
    - finding_polarity should reflect whether the source supports, contradicts, or leaves the relation mixed/uncertain
    - null findings and no-difference findings should still be extracted when the tested relation and core participants are explicit
    - if the same entities appear in multiple contradictory or differently qualified spans, emit separate relations instead of merging them
    - if the source uses modal or hedged language such as "may", "might", "could", "suggests", "potential", or "appears to", prefer statement_kind "hypothesis" or finding_polarity "uncertain" unless the same span reports direct measured findings
    - For side-effect or safety findings where no significant difference is found versus a control or placebo, use relation_type "causes" with finding_polarity "contradicts" — do NOT use "other". Example: "no significant increase in nausea vs placebo" → relation_type "causes", finding_polarity "contradicts".
+   - evidence_strength assignment — use the strongest level warranted by the source, never inflate it:
+     strong   → meta-analysis or systematic review with clear outcomes, or RCT with significant result
+     moderate → non-randomized trial, cohort study, case-control study, or cross-sectional study
+     weak     → case series, small pilot study, animal study, or in-vitro finding
+     anecdotal → single case report or expert opinion without measured data
+     Omit evidence_strength entirely when the source does not state or directly signal the study type.
    - study_design, sample_size, and statistical_support should only be included when the source text states them or directly signals them
    - do not create vague duration or dosage role entities from labels like "short-term", "long-term", "high dose", or "standard dose"
    - assertion_text should be a faithful, source-bounded paraphrase; do not upgrade certainty, magnitude, or recommendation strength
@@ -574,6 +628,23 @@ Respond with JSON containing two arrays:
         "finding_polarity": "neutral",
         "study_design": "background",
         "assertion_text": "Duloxetine inhibits serotonin and norepinephrine reuptake."
+      }}
+    }},
+    {{
+      "relation_type": "measures",
+      "roles": [
+        {{"entity_slug": "vas", "role_type": "measured_by"}},
+        {{"entity_slug": "pain-intensity", "role_type": "outcome"}}
+      ],
+      "confidence": "high",
+      "text_span": "Pain intensity was assessed using a visual analogue scale (VAS) at baseline and week 12",
+      "notes": "Assessment tool used to measure the primary endpoint",
+      "evidence_context": {{
+        "statement_kind": "methodology",
+        "finding_polarity": "neutral",
+        "study_design": "unknown",
+        "assertion_text": "VAS was used to measure pain intensity at baseline and week 12.",
+        "methodology_text": "Assessment conducted at baseline and week 12."
       }}
     }},
     {{
