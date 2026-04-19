@@ -22,7 +22,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.llm.client import get_llm_provider
+from app.llm.client import get_llm_provider, get_prefill_llm_provider
 from app.llm.schemas import (
     ExtractedEntity,
     ExtractedRelation,
@@ -489,21 +489,27 @@ def _merge_validation_results(
 def _revalidate_normalized_relation_results(
     *,
     relations: list[ExtractedRelation],
+    entities: list[ExtractedEntity],
     relation_results: list[ValidationResult],
     source_text: str,
 ) -> list[ValidationResult]:
     validator = TextSpanValidator(validation_level="moderate")
     refreshed_results: list[ValidationResult] = []
+    entity_lookup = {entity.slug: entity for entity in entities}
 
     for relation, existing_result in zip(relations, relation_results):
-        normalized_result = validator.validate_relation(relation, source_text)
+        normalized_result = validator.validate_relation(
+            relation,
+            source_text,
+            entity_lookup=entity_lookup,
+        )
         refreshed_results.append(_merge_validation_results(existing_result, normalized_result))
 
     return refreshed_results
 
 
 def _build_default_entity_prefill_service(db: AsyncSession) -> EntityPrefillService:
-    return EntityPrefillService(db=db, llm_provider=get_llm_provider())
+    return EntityPrefillService(db=db, llm_provider=get_prefill_llm_provider())
 
 
 async def load_source_document_text(db: AsyncSession, source_id: UUID) -> str:
@@ -636,6 +642,7 @@ async def stage_review_batch(
     relation_results = (
         _revalidate_normalized_relation_results(
             relations=extracted_batch.relations,
+            entities=extracted_batch.entities,
             relation_results=extracted_batch.relation_results,
             source_text=source_text,
         )

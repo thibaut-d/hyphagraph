@@ -4,7 +4,7 @@ from typing import Optional, List
 
 from app.api.service_dependencies import get_entity_service
 from app.database import get_db
-from app.llm.client import get_llm_provider, is_llm_available
+from app.llm.client import get_prefill_llm_provider, is_llm_available
 from app.schemas.entity import (
     EntityPrefillDraft,
     EntityPrefillRequest,
@@ -73,7 +73,7 @@ async def prefill_entity(
         raise LLMServiceUnavailableException(
             details="LLM service is not configured. Please set OPENAI_API_KEY."
         )
-    service = EntityPrefillService(db=db, llm_provider=get_llm_provider())
+    service = EntityPrefillService(db=db, llm_provider=get_prefill_llm_provider())
     return await service.generate_draft(payload.term, payload.user_language)
 
 
@@ -97,7 +97,7 @@ async def smart_suggest_entities(
         raise LLMServiceUnavailableException(
             details="LLM service is not configured. Please set OPENAI_API_KEY."
         )
-    service = EntitySuggestService(llm_provider=get_llm_provider())
+    service = EntitySuggestService(llm_provider=get_prefill_llm_provider())
     terms = await service.suggest_entity_terms(
         payload.query, payload.count, payload.user_language
     )
