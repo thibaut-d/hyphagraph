@@ -113,7 +113,7 @@ provenance, contradiction visibility, or source-bounded validation.
   https://github.com/iMoonLab/Hyper-RAG/blob/main/hyperrag/operate.py
 
 ### Status
-planned
+completed
 
 ## Collapse Review Into One Extraction Queue
 
@@ -385,6 +385,358 @@ types, and UI concepts.
 
 ### Status
 completed
+
+## Add Role-Level Source Mentions To Extraction
+
+Improve extraction fidelity by capturing the exact local mention for each relation
+participant, then using those mentions during validation so abbreviation-heavy and
+alias-heavy study text grounds more reliably.
+
+### Objective
+Make automatic extraction more precise by requiring or strongly preferring each
+relation role to carry a short exact source mention from the relation span, while
+keeping the contract backward-compatible for older staged rows and saved previews.
+
+### Impacted modules
+- `backend/app/llm/prompts.py`
+- `backend/app/llm/schemas.py`
+- `backend/app/services/extraction_text_span_validator.py`
+- `backend/tests/test_llm_prompts.py`
+- `backend/tests/test_llm_schemas.py`
+- `backend/tests/test_extraction_validation.py`
+- `frontend/src/types/extraction.ts`
+
+### Assumptions
+- The extraction contract can safely grow with an optional role mention field without
+  breaking existing previews or staged extraction rows.
+- Role-level mentions will improve grounding for abbreviations and aliases more
+  effectively than trying to infer every variant from the entity summary alone.
+- The prompt should strongly prefer exact shortest mentions, but the validator must
+  still support older payloads that do not include them.
+
+### Plan
+1. Extend extracted relation roles with an optional exact local source mention field.
+2. Update relation and batch prompts to require or strongly prefer per-role mentions.
+3. Improve local grounding to use role mentions first, then fallback mention variants derived from entity text spans and slugs.
+4. Add focused regression tests for abbreviation grounding and backward-compatible schema handling.
+5. Run targeted backend pytest coverage for prompts, schemas, and extraction validation.
+
+### Validation
+- Backend: `cd backend && uv run pytest tests/test_llm_prompts.py tests/test_llm_schemas.py tests/test_extraction_validation.py -q`
+
+### Risks
+- Prompt strictness could reduce recall if the model skips a relation when it cannot
+  easily emit every role mention.
+- Some valid spans use pronouns or shorthand that still require fallback grounding
+  beyond the explicit role mention field.
+- Frontend extraction types must remain backward-compatible because older API
+  responses will not include the new field.
+
+### Status
+completed
+
+## Tighten Relation Semantic Validation In Extraction
+
+Strengthen extraction-time relation validation so bad semantic shapes are rejected
+before preview/save, especially around collapsed multi-outcome findings, comparator
+hitchhiking, and polarity values that do not map cleanly into inference.
+
+### Objective
+Improve extraction quality by validating not just that a relation span exists, but
+that the relation type, role mix, role participants, and stored polarity are
+semantically coherent with the claimed source span and with downstream inference.
+
+### Impacted modules
+- `backend/app/services/extraction_text_span_validator.py`
+- `backend/app/services/extraction_validation_service.py`
+- `backend/app/services/document_extraction_processing.py`
+- `backend/app/llm/schemas.py`
+- `backend/app/services/bulk_creation_service.py`
+- focused backend extraction workflow and validation tests
+
+### Assumptions
+- The highest-value next step is stricter validation, not another prompt rewrite.
+- Relation-local participant grounding can be implemented conservatively by checking
+  that core and contextual role participants are justified by the relation span or a
+  tightly matched local excerpt, rather than anywhere in the document.
+- Inference should continue to use canonical stored directions
+  `supports` / `contradicts` / `neutral`; richer extraction polarity can remain in
+  `evidence_context`.
+
+### Plan
+1. Trace the current structural validation path and define the smallest new semantic checks that belong there.
+2. Add relation-local participant grounding checks so comparator, population, and target roles cannot hitchhike from unrelated spans.
+3. Tighten relation-shape rules for core finding types so collapsed multi-target findings are flagged and split upstream instead of passing validation.
+4. Normalize extracted polarity to canonical stored direction values while preserving rich `finding_polarity` in `evidence_context`.
+5. Add focused regression tests using real bad-shape examples from study extraction failures.
+6. Run targeted backend pytest coverage for validation, extraction preview, and save/materialization paths.
+
+### Validation
+- Backend: `cd backend && uv run pytest tests/test_extraction_validation.py tests/test_document_extraction_workflow.py tests/test_extraction_review_service.py -q`
+- Backend: add/update focused tests for relation-local participant grounding and direction normalization
+
+### Risks
+- Over-strict local grounding may reject valid relations when the source uses pronouns,
+  abbreviations, or nearby shorthand instead of repeating every participant name.
+- Shape constraints must still allow legitimate combination-therapy relations with
+  multiple agent roles.
+- Direction normalization must not hide `mixed` or `uncertain` extraction context in
+  the saved relation scope payload.
+
+### Status
+completed
+
+## Verify Gleaning Loop Runs on Document Extraction Path
+
+Investigate whether the multi-turn gleaning loop is actually executed during
+document/URL extraction, or only on some paths. The fibromyalgia SSRI meta-analysis
+extraction missed a statistically significant QOL finding (SMD -0.30, p=0.02,
+5 RCTs, n=301) that a genuine second pass should have surfaced.
+
+### Objective
+Confirm the gleaning loop fires for document extraction and that its second-pass
+prompt is specific enough to recover missed statistical findings.
+
+### Impacted modules
+- `backend/app/services/batch_extraction_orchestrator.py`
+- `backend/app/services/document_extraction_processing.py`
+
+### Assumptions
+- The gleaning loop task was marked completed but may not be wired into the
+  document extraction path, only into a different extraction entry point.
+- If it is wired in, the follow-up prompt may not be specific enough to recover
+  missed outcome findings.
+
+### Plan
+1. Trace the document extraction call path end-to-end and confirm whether the
+   orchestrator invokes a second LLM pass.
+2. If the loop is missing from this path, wire it in.
+3. If it is present but ineffective, tighten the follow-up prompt to explicitly
+   ask for missed outcome findings and missed statistical results.
+4. Add a regression test with a dense multi-outcome abstract to verify recovery.
+
+### Validation
+- Backend: trace logs or add a temporary probe to confirm second-pass invocation
+- Backend: focused pytest for orchestrator gleaning path
+
+### Risks
+- Adding a second pass to document extraction increases latency and cost.
+- An overly broad follow-up prompt can introduce noise rather than recovering
+  genuine misses.
+
+### Status
+pending
+
+---
+
+## Prune Orphan Entities After Extraction
+
+Remove extracted entities that participate in zero extracted relations before
+the preview/save step. Entities with no relation participation add noise to the
+review queue and pollute the knowledge graph with unanchored concepts.
+
+Observed in practice: `fatigue` and `cognitive-difficulties` extracted from a
+fibromyalgia meta-analysis as background-mention entities with no relations.
+
+### Objective
+Keep the extraction result set clean by dropping entities that are provably
+unused after the full extraction pass, without discarding entities that would
+be valid if a missed relation were later recovered.
+
+### Impacted modules
+- `backend/app/services/batch_extraction_orchestrator.py`
+- `backend/app/services/document_extraction_processing.py`
+- `backend/tests/test_document_extraction_workflow.py`
+
+### Assumptions
+- An entity is orphaned if no extracted relation references its slug in any role.
+- Pruning should happen after all extraction passes (including gleaning) so
+  entities recovered by a second pass are not incorrectly removed.
+- The `fibromyalgia` entity matched an existing KB entity and should never be
+  pruned even if no new relation was extracted for it in this batch.
+- Linked entities (matched to existing KB records) should be exempt from pruning
+  since they may already participate in stored relations.
+
+### Plan
+1. After the final extraction pass, collect the set of entity slugs referenced
+   by at least one relation role.
+2. Remove from the entity list any entity whose slug is not in that set and which
+   is not a linked/existing-KB entity.
+3. Log pruned entity slugs for debugging.
+4. Add focused regression tests: orphan pruning removes background-mention
+   entities, linked entities are exempt, entities used in gleaned relations
+   are retained.
+
+### Validation
+- Backend: focused pytest for document extraction orchestration
+
+### Risks
+- If the gleaning loop has not run yet, orphan pruning may discard entities that
+  the second pass would have linked. Always prune after all passes.
+- Linked entities must be exempt because their KB participation is not visible
+  in the current extraction batch.
+
+### Status
+pending
+
+---
+
+## Propagate Document-Level Study Type to All Extracted Relations
+
+When a document title or abstract identifies it as a meta-analysis, systematic
+review, or guideline, all extracted relations should inherit that study type as
+their `study_design` instead of each relation independently re-inferring it.
+
+Observed failure: a meta-analysis of 9 RCTs had its main relation labelled
+`randomized_controlled_trial`, corrupting downstream evidence weighting.
+
+### Objective
+Eliminate the class of errors where individual relation study_design fields
+contradict the document's own declared methodology.
+
+### Impacted modules
+- `backend/app/llm/prompts.py`
+- `backend/app/services/batch_extraction_orchestrator.py`
+- `backend/app/services/document_extraction_processing.py`
+- `backend/tests/test_llm_prompts.py`
+- `backend/tests/test_document_extraction_workflow.py`
+
+### Assumptions
+- Document-level study type can be reliably inferred from the title/abstract
+  using a short classification step before the main extraction prompt.
+- Injecting the inferred study type as a constraint into the relation extraction
+  prompt is safer than a post-processing override, because it lets the model
+  preserve per-relation nuance (e.g. one background statement inside a
+  meta-analysis may still be `background`).
+- The classification step should be a lightweight prompt or heuristic, not a
+  full extraction pass.
+
+### Plan
+1. Add a short pre-classification step in the orchestrator that reads the
+   document title and first 300–500 characters of abstract and returns a
+   `study_design` label.
+2. Inject the classified study type into the batch extraction prompt as a
+   document-level constraint: "This document is a meta-analysis. Prefer
+   study_design=meta_analysis for primary findings unless a span clearly
+   indicates a different design."
+3. Add a focused test: meta-analysis document produces `meta_analysis`
+   study_design on primary finding relations.
+
+### Validation
+- Backend: focused pytest for document extraction orchestration and prompts
+
+### Risks
+- Pre-classification can mis-classify mixed-design documents (e.g. an RCT paper
+  that includes a mini meta-analysis in the discussion).
+- Injecting a document-level constraint may suppress legitimate per-relation
+  design variation.
+
+### Status
+pending
+
+---
+
+## Propagate Author-Stated Evidence Quality to Evidence Strength
+
+When a source explicitly states that evidence quality is low or very low
+(e.g. GRADE assessment, author conclusion), that caveat should prevent
+`evidence_strength` from being assigned `strong` or `moderate` based solely
+on statistical significance.
+
+Observed failure: a meta-analysis explicitly concluding "overall evidence quality
+was very low to low due to heterogeneity and risk of bias" had its main relation
+assigned `evidence_strength: strong`.
+
+### Objective
+Make `evidence_strength` reflect the author's own methodological assessment,
+not just the presence of a p-value.
+
+### Impacted modules
+- `backend/app/llm/prompts.py`
+- `backend/tests/test_llm_prompts.py`
+
+### Assumptions
+- The author-stated quality assessment is usually in the conclusion or
+  limitations section and is extractable as a short span.
+- The safest prompt fix is an explicit rule: if the source states low or very
+  low evidence quality, cap `evidence_strength` at `weak` regardless of the
+  statistical result.
+- This is a prompt-only change; no schema migration is needed.
+
+### Plan
+1. Add a rule to the relation extraction and batch prompts: if the source
+   explicitly states that evidence quality is low, very low, or insufficient
+   (e.g. GRADE low/very low, high risk of bias, heterogeneity concerns), cap
+   evidence_strength at weak even if the statistical result is significant.
+2. Add a focused prompt regression test: a passage with a significant p-value
+   but explicit quality caveat should produce evidence_strength=weak.
+
+### Validation
+- Backend: `cd backend && uv run pytest tests/test_llm_prompts.py -q`
+
+### Risks
+- Authors sometimes over-state quality concerns in conclusions while the
+  individual studies are genuinely robust. The rule should apply only when
+  the caveat is explicit and document-level.
+- Adding this rule may reduce strength assignment on borderline papers that
+  use hedged language without a formal quality rating.
+
+### Status
+pending
+
+---
+
+## Enforce Named Comparator Entity Extraction
+
+When a relation span explicitly names a comparator or control group participant,
+require that entity to be extracted. Currently named comparators are left out if
+the entity list is incomplete, producing structurally incomplete relations.
+
+Observed failure: a relation referencing "acupuncture and aerobic exercise" as
+comparators had no corresponding entities extracted, leaving the control_group
+role unresolvable.
+
+### Objective
+Ensure that every named participant in an extracted relation — including
+comparators and control groups — has a corresponding entity in the extraction
+result, so relations are structurally complete before preview/save.
+
+### Impacted modules
+- `backend/app/services/extraction_validation_service.py`
+- `backend/app/services/extraction_text_span_validator.py`
+- `backend/app/llm/prompts.py`
+- `backend/tests/test_extraction_validation.py`
+
+### Assumptions
+- A named comparator that appears in a relation's `text_span` but has no
+  matching entity in the extraction batch is a structural defect, not a
+  valid extraction.
+- The fix has two parts: a prompt reminder and a validation check.
+- Validation should reject or flag relations where a named role participant
+  has no corresponding entity record.
+
+### Plan
+1. Add a prompt rule: if a relation span names a comparator or control group
+   (e.g. "compared to acupuncture", "versus aerobic exercise"), that entity
+   MUST appear in the entities array; do not emit the relation without it.
+2. Add a validation check: for each relation role slug, verify a matching
+   entity exists in the batch or in the existing KB; flag relations with
+   unresolvable named roles as incomplete.
+3. Add focused regression tests for named-comparator resolution and the
+   unresolvable-role flag.
+
+### Validation
+- Backend: `cd backend && uv run pytest tests/test_extraction_validation.py -q`
+
+### Risks
+- Strict enforcement may cause the model to omit relations it cannot fully
+  ground, reducing recall on comparison-heavy study designs.
+- Existing-KB lookup adds a round-trip; consider caching slug presence checks.
+
+### Status
+pending
+
+---
 
 ## Open Findings
 
