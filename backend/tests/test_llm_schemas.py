@@ -172,6 +172,51 @@ def test_validate_batch_extraction_accepts_legacy_study_context_but_serializes_e
     assert "study_context" not in relation_dump
 
 
+def test_validate_batch_extraction_preserves_optional_role_source_mentions():
+    result = validate_batch_extraction(
+        {
+            "entities": [
+                {
+                    "slug": "selective-serotonin-reuptake-inhibitors",
+                    "summary": "Selective serotonin reuptake inhibitor drug class.",
+                    "category": "drug",
+                    "confidence": "high",
+                    "text_span": "selective serotonin reuptake inhibitors (SSRIs)",
+                },
+                {
+                    "slug": "pain",
+                    "summary": "Pain outcome discussed in the source.",
+                    "category": "outcome",
+                    "confidence": "high",
+                    "text_span": "pain",
+                },
+            ],
+            "relations": [
+                {
+                    "relation_type": "treats",
+                    "roles": [
+                        {
+                            "entity_slug": "selective-serotonin-reuptake-inhibitors",
+                            "role_type": "agent",
+                            "source_mention": "SSRIs",
+                        },
+                        {
+                            "entity_slug": "pain",
+                            "role_type": "target",
+                            "source_mention": "pain",
+                        },
+                    ],
+                    "confidence": "high",
+                    "text_span": "SSRIs reduced pain compared with placebo.",
+                }
+            ],
+        }
+    )
+
+    assert result.relations[0].roles[0].source_mention == "SSRIs"
+    assert result.relations[0].roles[1].source_mention == "pain"
+
+
 def test_validate_batch_extraction_rejects_causes_relation_without_agent():
     with pytest.raises(ValidationError) as exc_info:
         validate_batch_extraction(
@@ -207,6 +252,81 @@ def test_validate_batch_extraction_rejects_causes_relation_without_agent():
         )
 
     assert "missing required core roles" in str(exc_info.value)
+
+
+def test_validate_batch_extraction_normalizes_verbose_study_design_phrases():
+    """LLMs often return prose like 'systematic review and meta-analysis of RCTs'
+    instead of a single enum token.  The normalizer must map the highest-specificity
+    keyword it finds to the correct enum value."""
+    result = validate_batch_extraction(
+        {
+            "entities": [
+                {
+                    "slug": "duloxetine",
+                    "summary": "Duloxetine is the active treatment discussed in the source.",
+                    "category": "drug",
+                    "confidence": "high",
+                    "text_span": "duloxetine",
+                },
+                {
+                    "slug": "fibromyalgia",
+                    "summary": "Fibromyalgia is the target condition in the source.",
+                    "category": "disease",
+                    "confidence": "high",
+                    "text_span": "fibromyalgia",
+                },
+            ],
+            "relations": [
+                {
+                    "relation_type": "treats",
+                    "roles": [
+                        {"entity_slug": "duloxetine", "role_type": "agent"},
+                        {"entity_slug": "fibromyalgia", "role_type": "target"},
+                    ],
+                    "confidence": "high",
+                    "text_span": "duloxetine for fibromyalgia in a systematic review and meta-analysis of randomized controlled trials",
+                    "evidence_context": {
+                        "statement_kind": "finding",
+                        "study_design": "systematic review and meta-analysis of randomized controlled trials",
+                    },
+                },
+                {
+                    "relation_type": "treats",
+                    "roles": [
+                        {"entity_slug": "duloxetine", "role_type": "agent"},
+                        {"entity_slug": "fibromyalgia", "role_type": "target"},
+                    ],
+                    "confidence": "medium",
+                    "text_span": "a systematic review of observational data",
+                    "evidence_context": {
+                        "statement_kind": "finding",
+                        "study_design": "systematic review of observational data",
+                    },
+                },
+                {
+                    "relation_type": "treats",
+                    "roles": [
+                        {"entity_slug": "duloxetine", "role_type": "agent"},
+                        {"entity_slug": "fibromyalgia", "role_type": "target"},
+                    ],
+                    "confidence": "medium",
+                    "text_span": "a randomized controlled trial",
+                    "evidence_context": {
+                        "statement_kind": "finding",
+                        "study_design": "randomized controlled trial",
+                    },
+                },
+            ],
+        }
+    )
+
+    assert result.relations[0].evidence_context is not None
+    # meta-analysis wins over systematic_review because it has higher priority
+    assert result.relations[0].evidence_context.study_design == "meta_analysis"
+    assert result.relations[1].evidence_context is not None
+    assert result.relations[1].evidence_context.study_design == "systematic_review"
+    assert result.relations[2].evidence_context is not None
+    assert result.relations[2].evidence_context.study_design == "randomized_controlled_trial"
 
 
 def test_raise_internal_api_exception_uses_structured_app_exception():

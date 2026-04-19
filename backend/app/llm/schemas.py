@@ -161,6 +161,14 @@ class ExtractedRole(BaseModel):
         ...,
         description="Semantic role type (agent, target, population, mechanism, etc.)"
     )
+    source_mention: str | None = Field(
+        None,
+        description=(
+            "Shortest exact local source mention for this role participant inside the relation text span"
+        ),
+        min_length=1,
+        max_length=200,
+    )
 
     @field_validator("entity_slug", mode="before")
     @classmethod
@@ -273,6 +281,70 @@ def _normalize_evidence_strength_alias(value: object) -> object:
     return aliases.get(normalized, normalized)
 
 
+def _normalize_study_design(value: object) -> object:
+    """
+    Map free-text study-design descriptions to enum values.
+
+    LLMs frequently return verbose phrases like "systematic review and
+    meta-analysis of randomized controlled trials" instead of a single
+    enum token. This function normalises the most common patterns so
+    Pydantic validation does not reject valid extractions.
+
+    Priority order when the text matches multiple keywords: meta_analysis >
+    systematic_review > randomized_controlled_trial > nonrandomized_trial >
+    cohort_study > case_control_study > cross_sectional_study > case_series >
+    case_report > guideline > review > animal_study > in_vitro > background.
+    """
+    if not isinstance(value, str):
+        return value
+
+    v = value.strip().lower()
+
+    # Already a valid enum token — pass through unchanged.
+    _valid = {
+        "meta_analysis", "systematic_review", "randomized_controlled_trial",
+        "nonrandomized_trial", "cohort_study", "case_control_study",
+        "cross_sectional_study", "case_series", "case_report", "guideline",
+        "review", "animal_study", "in_vitro", "background", "unknown",
+    }
+    if v in _valid:
+        return v
+
+    # Keyword-based heuristics (highest-specificity first).
+    if "meta-analysis" in v or "meta analysis" in v or "meta_analysis" in v:
+        return "meta_analysis"
+    if "systematic review" in v or "systematic_review" in v:
+        return "systematic_review"
+    if "randomized controlled trial" in v or "randomised controlled trial" in v or "rct" == v:
+        return "randomized_controlled_trial"
+    if "nonrandomized" in v or "non-randomized" in v or "non randomized" in v:
+        return "nonrandomized_trial"
+    if "cohort" in v:
+        return "cohort_study"
+    if "case-control" in v or "case control" in v:
+        return "case_control_study"
+    if "cross-sectional" in v or "cross sectional" in v:
+        return "cross_sectional_study"
+    if "case series" in v or "case_series" in v:
+        return "case_series"
+    if "case report" in v or "case_report" in v:
+        return "case_report"
+    if "guideline" in v:
+        return "guideline"
+    if "animal" in v:
+        return "animal_study"
+    if "in vitro" in v or "in_vitro" in v:
+        return "in_vitro"
+    if "review" in v:
+        return "review"
+    if "background" in v:
+        return "background"
+
+    # Cannot map — return original value so Pydantic emits the validation
+    # error with the actual bad input rather than a silent None.
+    return value
+
+
 def _normalize_sample_size(value: object) -> object:
     """Extract an integer participant count from common free-text sample-size formats."""
     if isinstance(value, int):
@@ -322,6 +394,11 @@ StudyDesign = Literal[
 
 class ExtractedRelationEvidenceContext(BaseModel):
     """Structured context describing the evidentiary status of an extracted relation."""
+
+    @field_validator("study_design", mode="before")
+    @classmethod
+    def normalize_study_design(cls, value: object) -> object:
+        return _normalize_study_design(value)
 
     @field_validator("evidence_strength", mode="before")
     @classmethod
