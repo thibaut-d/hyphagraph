@@ -42,7 +42,7 @@ class BatchExtractionOrchestrator:
     def __init__(
         self,
         temperature: float = 0.0,
-        max_tokens: int = 4000,
+        max_tokens: int = 8000,
         enable_validation: bool = True,
         validation_level: ValidationLevel = "moderate",
         max_gleaning_passes: int = 1,
@@ -170,7 +170,7 @@ class BatchExtractionOrchestrator:
             prompt=prompt,
             system_prompt=self.system_prompt,
             temperature=self.temperature,
-            max_tokens=min(self.max_tokens * 2, 6000),
+            max_tokens=min(self.max_tokens * 2, 16000),
         )
         merged_response = self.semantic_normalizer.normalize_batch_response(
             validate_batch_extraction(response_data)
@@ -278,7 +278,7 @@ class BatchExtractionOrchestrator:
             prompt=glean_prompt,
             system_prompt=self.system_prompt,
             temperature=self.temperature,
-            max_tokens=min(self.max_tokens * 2, 6000),
+            max_tokens=min(self.max_tokens * 2, 16000),
         )
         gleaned_response = self.semantic_normalizer.normalize_batch_response(
             validate_batch_extraction(response_data)

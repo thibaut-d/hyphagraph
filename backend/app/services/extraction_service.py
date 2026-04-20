@@ -64,7 +64,7 @@ class ExtractionService:
     def __init__(
         self,
         temperature: float = 0.0,
-        max_tokens: int = 4000,
+        max_tokens: int = 8000,
         db=None,
         enable_validation: bool = True,
         validation_level: ValidationLevel = "moderate",
