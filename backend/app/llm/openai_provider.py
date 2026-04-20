@@ -217,18 +217,26 @@ class OpenAIProvider(LLMProvider):
         )
 
         # Parse JSON — strip markdown code fences that some models wrap around JSON
+        finish_reason = response.metadata.get("finish_reason", "unknown")
         content = _strip_markdown_json(response.content)
         try:
             result = json.loads(content)
             if not isinstance(result, dict):
-                raise LLMError("Invalid JSON in response: expected a JSON object")
-            logger.info(f"Successfully parsed JSON response from OpenAI")
+                raise LLMError("Invalid JSON in response: expected a JSON object", finish_reason=finish_reason)
+            logger.info("Successfully parsed JSON response from OpenAI")
             return result
         except json.JSONDecodeError as e:
-            finish_reason = response.metadata.get("finish_reason", "unknown")
             logger.error(
                 "Failed to parse JSON from OpenAI response — finish_reason=%s, content=%r",
                 finish_reason,
                 content[:1000],
             )
-            raise LLMError("LLM response could not be parsed as JSON") from e
+            if finish_reason == "length":
+                raise LLMError(
+                    "LLM response was truncated before JSON was complete — increase max_tokens",
+                    finish_reason=finish_reason,
+                ) from e
+            raise LLMError(
+                "LLM response could not be parsed as JSON",
+                finish_reason=finish_reason,
+            ) from e

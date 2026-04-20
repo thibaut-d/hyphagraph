@@ -24,12 +24,36 @@ from app.services.document_extraction_processing import (
     store_document_in_source,
 )
 from app.services.document_service import DocumentService
-from app.utils.errors import AppException, SourceNotFoundException, ValidationException
+from app.llm.base import LLMError
+from app.utils.errors import AppException, ErrorCode, SourceNotFoundException, ValidationException
 
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["document-extraction"])
+
+
+def _llm_error_to_app_exception(exc: LLMError, context: dict) -> AppException:
+    """Convert an LLMError to a structured AppException with a human-readable message."""
+    finish_reason = getattr(exc, "finish_reason", None)
+    if finish_reason == "length":
+        message = "Extraction failed: the document is too long for the current token limit"
+        details = "The LLM response was truncated before the JSON output was complete. Try a shorter document or increase max_tokens."
+    elif finish_reason == "content_filter":
+        message = "Extraction failed: the content was blocked by the LLM safety filter"
+        details = "The document or its content triggered the provider's content policy."
+    else:
+        message = "Extraction failed: LLM did not return a valid response"
+        details = str(exc)
+    if finish_reason:
+        context = {**context, "finish_reason": finish_reason}
+    return AppException(
+        status_code=503,
+        error_code=ErrorCode.LLM_API_ERROR,
+        message=message,
+        details=details,
+        context=context,
+    )
 
 @router.post(
     "/sources/{source_id}/extract-from-document",
@@ -54,6 +78,9 @@ async def extract_from_document(
         return preview
     except (AppException, SourceNotFoundException, ValidationException):
         raise
+    except LLMError as exc:
+        logger.exception("LLM error during document extraction for source %s", source_id)
+        raise _llm_error_to_app_exception(exc, {"source_id": str(source_id)}) from exc
     except Exception as exc:
         logger.exception("Document extraction failed for source %s", source_id)
         raise_internal_api_exception(
@@ -156,6 +183,10 @@ async def upload_and_extract(
     except (AppException, SourceNotFoundException, ValidationException):
         await db.rollback()
         raise
+    except LLMError as exc:
+        await db.rollback()
+        logger.exception("LLM error during upload-and-extract for source %s", source_id)
+        raise _llm_error_to_app_exception(exc, {"source_id": str(source_id)}) from exc
     except Exception as exc:
         await db.rollback()
         logger.exception("Upload and extract failed for source %s", source_id)
@@ -217,6 +248,10 @@ async def extract_from_url(
     except (AppException, SourceNotFoundException, ValidationException):
         await db.rollback()
         raise
+    except LLMError as exc:
+        await db.rollback()
+        logger.exception("LLM error during URL extraction for source %s", source_id)
+        raise _llm_error_to_app_exception(exc, {"source_id": str(source_id), "url": request.url}) from exc
     except Exception as exc:
         await db.rollback()
         logger.exception("URL extraction failed for source %s", source_id)
