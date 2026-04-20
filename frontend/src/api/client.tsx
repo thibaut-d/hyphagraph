@@ -181,9 +181,16 @@ async function apiRequest<T>(
   }
 
   // Handle 401 Unauthorized - attempt token refresh
-  if (res.status === 401 && token) {
-    // Don't retry for auth endpoints (login, register, refresh, logout)
-    if (path.startsWith("/auth/")) {
+  if (res.status === 401) {
+    // No token stored — session already cleared (e.g. after a failed refresh).
+    // Dispatch session-expired immediately instead of falling through to the
+    // generic error handler which can't parse FastAPI's {"detail": "..."} body.
+    if (!token || path.startsWith("/auth/")) {
+      if (!path.startsWith("/auth/")) {
+        clearStoredAuthTokens();
+        dispatchAuthSessionExpired();
+        throw new AuthExpiredError();
+      }
       const parsedAppError = await parseFailureResponse(
         res,
         "Authentication failed",

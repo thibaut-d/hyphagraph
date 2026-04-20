@@ -313,6 +313,16 @@ export function parseError(
       };
     }
 
+    // Handle FastAPI-style {"detail": "..."} error bodies
+    if (typeof error.detail === "string") {
+      return {
+        userMessage: error.detail,
+        developerMessage: error.detail,
+        code: ErrorCode.UNKNOWN_ERROR,
+        originalError: error,
+      };
+    }
+
     if (typeof error.message === "string") {
       return {
         userMessage: error.message,
