@@ -440,7 +440,7 @@ class ExtractedRelationEvidenceContext(BaseModel):
     sample_size_text: str | None = Field(
         None,
         min_length=1,
-        max_length=100,
+        max_length=300,
         description="Exact source wording for the participant count or study size",
     )
     assertion_text: str | None = Field(
