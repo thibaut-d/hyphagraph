@@ -29,6 +29,8 @@ interface SourceExtractionSectionProps {
   urlExtracting: boolean;
   uploadedFileName: string | null;
   saveResult: SaveExtractionResult | null;
+  extractionError: string | null;
+  onClearExtractionError: () => void;
   onClearSaveResult: () => void;
   onAutoExtract: () => void;
   onFileUpload: (event: ChangeEvent<HTMLInputElement>) => void;
@@ -47,6 +49,8 @@ export function SourceExtractionSection({
   urlExtracting,
   uploadedFileName,
   saveResult,
+  extractionError,
+  onClearExtractionError,
   onClearSaveResult,
   onAutoExtract,
   onFileUpload,
@@ -149,6 +153,14 @@ export function SourceExtractionSection({
           </Alert>
         )}
 
+
+        {extractionError && (
+          <Alert severity="error" onClose={onClearExtractionError}>
+            <strong>{t("sources.extraction_failed", "Extraction failed")}</strong>
+            {" — "}
+            {extractionError}
+          </Alert>
+        )}
 
         {hasUrl && (
           <Box>
