@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useNotification } from "../notifications/NotificationContext";
-import { parseError } from "../utils/errorHandler";
 
 import {
   Alert,
@@ -53,7 +52,6 @@ export function SourceDetailView() {
   const [extractionPreview, setExtractionPreview] = useState<DocumentExtractionPreview | null>(null);
   const [saveResult, setSaveResult] = useState<SaveExtractionResult | null>(null);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
-  const [extractionError, setExtractionError] = useState<string | null>(null);
   const lastScrolledRelationIdRef = useRef<string | null>(null);
   const extractionPreviewRef = useRef<HTMLDivElement | null>(null);
 
@@ -164,7 +162,6 @@ export function SourceDetailView() {
 
     setAutoExtracting(true);
     setSaveResult(null);
-    setExtractionError(null);
 
     try {
       // Smart detection: use source URL for extraction
@@ -176,9 +173,7 @@ export function SourceDetailView() {
         setUrlDialogOpen(true);
       }
     } catch (error) {
-      const parsed = parseError(error, "Extraction failed");
-      setExtractionError(parsed.userMessage);
-      showError(error);
+      showError(error, { autoDismiss: false });
     } finally {
       setAutoExtracting(false);
     }
@@ -190,16 +185,13 @@ export function SourceDetailView() {
 
     setUploading(true);
     setSaveResult(null);
-    setExtractionError(null);
     setUploadedFileName(file.name);
 
     try {
       const preview = await uploadAndExtract(id, file);
       setExtractionPreview(preview);
     } catch (error) {
-      const parsed = parseError(error, "Extraction failed");
-      setExtractionError(parsed.userMessage);
-      showError(error);
+      showError(error, { autoDismiss: false });
       setUploadedFileName(null);
     } finally {
       setUploading(false);
@@ -225,16 +217,13 @@ export function SourceDetailView() {
 
     setUrlExtracting(true);
     setSaveResult(null);
-    setExtractionError(null);
 
     try {
       const preview = await extractFromUrl(id, url);
       setExtractionPreview(preview);
       setUrlDialogOpen(false);
     } catch (error) {
-      const parsed = parseError(error, "Extraction failed");
-      setExtractionError(parsed.userMessage);
-      showError(error);
+      showError(error, { autoDismiss: false });
       throw error; // Re-throw to let dialog handle error display
     } finally {
       setUrlExtracting(false);
@@ -310,8 +299,6 @@ export function SourceDetailView() {
         urlExtracting={urlExtracting}
         uploadedFileName={uploadedFileName}
         saveResult={saveResult}
-        extractionError={extractionError}
-        onClearExtractionError={() => setExtractionError(null)}
         onClearSaveResult={() => setSaveResult(null)}
         onAutoExtract={() => void handleAutoExtract()}
         onFileUpload={handleFileUpload}
