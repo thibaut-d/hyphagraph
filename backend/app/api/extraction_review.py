@@ -6,6 +6,7 @@ Provides human-in-the-loop review interface for staged LLM extractions.
 import logging
 from fastapi import APIRouter, Depends, Query, status
 from uuid import UUID
+from pydantic import BaseModel
 
 from app.api.service_dependencies import get_extraction_review_service
 from app.dependencies.auth import get_current_active_superuser
@@ -124,6 +125,47 @@ async def get_extraction(
             context={"extraction_id": str(extraction_id)}
         )
 
+    return StagedExtractionRead.model_validate(extraction)
+
+
+class RelationTypeCorrectionRequest(BaseModel):
+    relation_type: str
+
+
+@router.patch("/{extraction_id}/relation-type", response_model=StagedExtractionRead)
+async def correct_relation_type(
+    extraction_id: UUID,
+    request: RelationTypeCorrectionRequest,
+    service: ExtractionReviewService = Depends(get_extraction_review_service),
+    current_user: User = Depends(get_current_active_superuser),
+):
+    """
+    Correct the relation_type of a pending staged relation extraction.
+
+    Updates extraction_data.relation_type in-place. Intended for curators
+    who want to reassign an 'other' relation (or a model-invented type) to
+    an existing controlled-vocabulary type before approving.
+    """
+    extraction = await service.get_extraction(extraction_id)
+    if not extraction:
+        raise AppException(
+            status_code=404,
+            error_code=ErrorCode.NOT_FOUND,
+            message="Staged extraction not found",
+            context={"extraction_id": str(extraction_id)},
+        )
+    if extraction.extraction_type != "relation":
+        raise AppException(
+            status_code=400,
+            error_code=ErrorCode.VALIDATION_ERROR,
+            message="relation_type correction only applies to relation extractions",
+        )
+
+    data = dict(extraction.extraction_data or {})
+    data["relation_type"] = request.relation_type
+    extraction.extraction_data = data
+    await service.db.commit()
+    await service.db.refresh(extraction)
     return StagedExtractionRead.model_validate(extraction)
 
 

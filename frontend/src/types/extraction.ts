@@ -48,7 +48,27 @@ export type RelationType =
   | "biomarker_for"
   | "affects_population"
   | "measures"
+  | "diagnoses"
+  | "predicts"
   | "other";
+
+export const ALL_RELATION_TYPES: RelationType[] = [
+  "treats",
+  "causes",
+  "prevents",
+  "increases_risk",
+  "decreases_risk",
+  "mechanism",
+  "contraindicated",
+  "interacts_with",
+  "metabolized_by",
+  "biomarker_for",
+  "affects_population",
+  "measures",
+  "diagnoses",
+  "predicts",
+  "other",
+];
 
 export type StatementKind =
   | "finding"
@@ -102,6 +122,8 @@ export type RelationScopeValue = string | number | boolean | null;
 
 export interface ExtractedRelation {
   relation_type: RelationType;
+  /** Set by the backend when the model proposed an unknown type that was coerced to "other". */
+  model_proposed_type?: string | null;
   roles: ExtractedRole[];
   confidence: ConfidenceLevel;
   text_span: string;

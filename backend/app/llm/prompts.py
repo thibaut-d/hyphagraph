@@ -351,11 +351,14 @@ CRITICAL: relation_type MUST be EXACTLY one of these values (no variations):
 - biomarker_for: Biomarker indicates disease/condition
 - affects_population: condition is the disease/condition, population is the patient group
   Example: "hypertension affects_population older-adults" (NOT "older-adults affects_population hypertension")
-- measures: Assessment tool/test measures condition/symptom (e.g., "VAS measures pain", "MoCA measures cognition")
+- measures: Assessment tool/test QUANTIFIES a value (e.g., "VAS measures pain", "MoCA measures cognition") — yields a score or magnitude, not a yes/no decision
+- diagnoses: Test/tool confirms presence or absence of a condition (binary clinical decision, e.g., "PCR diagnoses COVID-19", "biopsy diagnoses lymphoma") — use this, NOT measures, when the output is a clinical verdict
+- predicts: Variable/score/biomarker forecasts a FUTURE clinical outcome or prognosis (e.g., "BRCA1-mutation predicts breast-cancer-recurrence", "APACHE-score predicts ICU-mortality") — distinct from biomarker_for (which identifies disease presence) and measures (which quantifies)
 - other: Any other type of relationship
 
 IMPORTANT: Do NOT create new relation types. If a relationship doesn't fit the above categories, use "other".
-Do NOT use types like: "has", "integrates_with", "diagnosed_by", "correlates_with", "associated_with", etc.
+Do NOT use types like: "has", "integrates_with", "coexists_with", "correlates_with", "associated_with", "regulates", "inhibits", "activates" — these are not in the vocabulary.
+"coexists_with" / "associated_with" / "correlates_with" express co-occurrence without mechanism; capture them as "other" with a clear assertion_text, or use affects_population if it is an epidemiological prevalence claim.
 "other" is appropriate only when the core participants and their direction are clear but the type genuinely
 does not map to any named type above. Do NOT use "other" as a catch-all for vague or under-specified spans:
 if the source span is too ambiguous to identify clear core roles, omit the relation entirely instead.
@@ -505,11 +508,14 @@ Extract:
    - metabolized_by
    - biomarker_for
    - affects_population
-   - measures
+   - measures      ← QUANTIFIES a value (score, magnitude); output is a number or level
+   - diagnoses     ← Confirms presence/absence of a condition (binary yes/no clinical verdict, e.g. "PCR diagnoses COVID-19")
+   - predicts      ← Forecasts a FUTURE outcome or prognosis (e.g. "BRCA1-mutation predicts recurrence")
    - other
 
    IMPORTANT: If the relationship doesn't clearly fit one of the specific types above, use "other".
-   Do NOT invent new relation types like "has", "integrates_with", "diagnosed_by", "negatively-correlates-with", etc.
+   Do NOT invent new relation types like "has", "coexists_with", "correlates_with", "associated_with", "regulates", "inhibits", "activates", "diagnosed_by", etc.
+   "coexists_with" / "associated_with" / "correlates_with" express co-occurrence without mechanism — use "other" or affects_population.
    "other" is appropriate only when the core participants and their direction are clear but the type genuinely
    does not map to any named type. Do NOT use "other" as a catch-all for vague spans: if the source span is
    too ambiguous to identify clear core roles, omit the relation entirely instead.
@@ -555,8 +561,14 @@ Extract:
      Example: "type-2-diabetes affects_population adults-over-65" (NOT "adults-over-65 affects_population type-2-diabetes")
      SPECIAL CASE: "healthy controls" are NOT affected by the disease - they are comparison groups
      Do NOT create: "disease affects healthy-controls" - this is illogical
-   - measures: measured_by is the assessment tool, target/outcome is what it measures
+   - measures: measured_by is the assessment tool, target/outcome is what it measures (yields a score/value)
      Example: "mmse measures cognitive-function" (NOT "cognitive-function measures mmse")
+   - diagnoses: measured_by is the test/procedure, target/condition is the diagnosed condition (binary verdict)
+     Example: "pcr diagnoses covid-19" (NOT "covid-19 diagnoses pcr")
+     Use diagnoses when the source says the test CONFIRMS or IDENTIFIES the condition, not merely quantifies it.
+   - predicts: agent/biomarker is the predictor, target/outcome is the future event being forecast
+     Example: "brca1-mutation predicts breast-cancer-recurrence" (NOT "breast-cancer-recurrence predicts brca1-mutation")
+     Use predicts for PROGNOSTIC findings; use biomarker_for for DIAGNOSTIC associations.
 
    - confidence: high, medium, low
      high   → explicitly and unambiguously stated in the source span with no interpretation needed

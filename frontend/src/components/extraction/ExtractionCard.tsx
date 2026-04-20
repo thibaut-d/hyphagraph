@@ -1,7 +1,8 @@
 import { Link as RouterLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { StagedExtractionRead } from "../../api/extractionReview";
-import type { ExtractedEntity, ExtractedRelation } from "../../types/extraction";
+import type { ExtractedEntity, ExtractedRelation, RelationType } from "../../types/extraction";
+import { ALL_RELATION_TYPES } from "../../types/extraction";
 import {
   getRelationDisplayRoles,
   getRelationObject,
@@ -12,16 +13,22 @@ import {
   Button,
   Checkbox,
   Chip,
+  FormControl,
+  InputLabel,
   ListItem,
   ListItemText,
+  MenuItem,
   Paper,
+  Select,
   Stack,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import WarningIcon from "@mui/icons-material/Warning";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 
 interface ExtractionCardProps {
   extraction: StagedExtractionRead;
@@ -29,6 +36,7 @@ interface ExtractionCardProps {
   onToggleSelect: () => void;
   onApprove: () => void;
   onReject: () => void;
+  onChangeRelationType?: (extractionId: string, newType: RelationType) => void;
 }
 
 function isRelationExtraction(extraction: StagedExtractionRead): extraction is StagedExtractionRead & {
@@ -77,6 +85,8 @@ const REQUIRED_RELATION_ROLE_GROUPS: Record<string, string[][]> = {
   metabolized_by: [["agent"], ["target", "mechanism"]],
   biomarker_for: [["biomarker"], ["target", "condition"]],
   measures: [["measured_by"], ["target", "outcome", "condition"]],
+  diagnoses: [["measured_by"], ["target", "condition"]],
+  predicts: [["agent", "biomarker"], ["target", "outcome"]],
 };
 
 const CONTEXTUAL_ENTITY_PREFIXES = [
@@ -163,6 +173,7 @@ export function ExtractionCard({
   onToggleSelect,
   onApprove,
   onReject,
+  onChangeRelationType,
 }: ExtractionCardProps) {
   const { t } = useTranslation();
 
@@ -234,13 +245,64 @@ export function ExtractionCard({
               {isRelationExtraction(extraction) && (
                 <Stack spacing={1} component="span">
                   <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" component="span">
-                    <Chip
-                      label={t("extraction_card.relation_type", {
-                        relationType: humanizeToken(extraction.extraction_data.relation_type),
-                      })}
-                      size="small"
-                      variant="outlined"
-                    />
+                    {(() => {
+                      const rel = extraction.extraction_data as ExtractedRelation;
+                      const proposedType = rel.model_proposed_type;
+                      const isOther = rel.relation_type === "other";
+                      const showProposed = isOther && proposedType;
+                      return (
+                        <Stack direction="row" spacing={0.5} alignItems="center" component="span">
+                          {onChangeRelationType && isOther ? (
+                            <FormControl size="small" sx={{ minWidth: 140 }}>
+                              <InputLabel id={`rel-type-label-${extraction.id}`} sx={{ fontSize: "0.75rem" }}>
+                                {t("extraction_card.relation_type_label", "Type")}
+                              </InputLabel>
+                              <Select
+                                labelId={`rel-type-label-${extraction.id}`}
+                                value={rel.relation_type}
+                                label={t("extraction_card.relation_type_label", "Type")}
+                                onChange={(e) => onChangeRelationType(extraction.id, e.target.value as RelationType)}
+                                sx={{ fontSize: "0.75rem" }}
+                              >
+                                {ALL_RELATION_TYPES.map((rt) => (
+                                  <MenuItem key={rt} value={rt} sx={{ fontSize: "0.75rem" }}>
+                                    {humanizeToken(rt)}
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                          ) : (
+                            <Chip
+                              label={t("extraction_card.relation_type", {
+                                relationType: humanizeToken(rel.relation_type),
+                              })}
+                              size="small"
+                              variant="outlined"
+                            />
+                          )}
+                          {showProposed && (
+                            <Tooltip
+                              title={t(
+                                "extraction_card.proposed_type_tooltip",
+                                "Model proposed \"{{type}}\" — not in the controlled vocabulary. Reassign above or propose it as a new type.",
+                                { type: proposedType }
+                              )}
+                            >
+                              <Chip
+                                icon={<HelpOutlineIcon />}
+                                label={t("extraction_card.proposed_type", "proposed: {{type}}", { type: proposedType })}
+                                size="small"
+                                color="warning"
+                                variant="outlined"
+                                component={RouterLink}
+                                to={`/relation-types/propose?name=${encodeURIComponent(proposedType)}`}
+                                clickable
+                              />
+                            </Tooltip>
+                          )}
+                        </Stack>
+                      );
+                    })()}
                     {relationEvidenceContext?.study_design && (
                       <Chip
                         label={t("extraction_card.study_design", {

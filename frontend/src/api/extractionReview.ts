@@ -168,6 +168,24 @@ export async function reviewExtraction(
 }
 
 /**
+ * Correct the relation_type of a pending staged relation extraction.
+ *
+ * PATCH /api/extraction-review/{id}/relation-type
+ */
+export async function correctRelationType(
+  extractionId: string,
+  relationType: string,
+): Promise<StagedExtractionRead> {
+  return apiFetch<StagedExtractionRead>(
+    `/extraction-review/${extractionId}/relation-type`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ relation_type: relationType }),
+    }
+  );
+}
+
+/**
  * Batch review multiple extractions.
  *
  * POST /api/extraction-review/batch-review

@@ -122,7 +122,9 @@ RelationType = Literal[
     "metabolized_by",
     "biomarker_for",
     "affects_population",
-    "measures",  # For diagnostic tools, assessments, biomarkers
+    "measures",    # Quantifies a value (e.g. MMSE measures cognitive function)
+    "diagnoses",   # Confirms presence/absence of a condition (binary clinical decision)
+    "predicts",    # Forecasts a future clinical outcome (prognosis)
     "other"
 ]
 
@@ -136,6 +138,8 @@ _REQUIRED_RELATION_ROLE_GROUPS: dict[str, tuple[tuple[str, ...], ...]] = {
     "metabolized_by": (("agent",), ("target", "mechanism")),
     "biomarker_for": (("biomarker",), ("target", "condition")),
     "measures": (("measured_by",), ("target", "outcome", "condition")),
+    "diagnoses": (("measured_by",), ("target", "condition")),
+    "predicts": (("agent", "biomarker"), ("target", "outcome")),
 }
 
 
@@ -189,14 +193,36 @@ class ExtractedRelation(BaseModel):
     Represents a hypergraph edge connecting multiple entities with explicit roles.
     """
 
+    # Stores the type name the model originally proposed when it was not in the
+    # controlled vocabulary. Populated automatically by coerce_relation_type.
+    # Preserved in extraction_data JSON so the review UI can display it and
+    # offer a "Propose as new type" path.
+    model_proposed_type: str | None = Field(
+        None,
+        description="Relation type originally proposed by the model when it was not in the controlled vocabulary",
+    )
+
     @field_validator("relation_type", mode="before")
     @classmethod
     def coerce_relation_type(cls, value: object) -> object:
-        """Silently map unknown relation types to 'other' rather than hard-failing."""
+        """Map unknown relation types to 'other'; the original value is captured in model_proposed_type."""
         if isinstance(value, str) and value not in _VALID_RELATION_TYPES:
             logger.warning("Unknown relation_type %r — coercing to 'other'", value)
+            # Store the original value in model_proposed_type via model_validator below
             return "other"
         return value
+
+    @model_validator(mode="before")
+    @classmethod
+    def capture_proposed_type(cls, data: object) -> object:
+        """Before field validation: if relation_type is unknown, save it to model_proposed_type."""
+        if not isinstance(data, dict):
+            return data
+        rt = data.get("relation_type")
+        if isinstance(rt, str) and rt not in _VALID_RELATION_TYPES:
+            data = dict(data)
+            data.setdefault("model_proposed_type", rt)
+        return data
 
     relation_type: RelationType = Field(
         ...,

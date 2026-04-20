@@ -63,6 +63,8 @@ const relationTypeLabels: Record<RelationType, string> = {
   biomarker_for: "Biomarker For",
   affects_population: "Affects Population",
   measures: "Measures",
+  diagnoses: "Diagnoses",
+  predicts: "Predicts",
   other: "Other",
 };
 
@@ -79,6 +81,8 @@ const relationTypeIcons: Record<RelationType, React.ReactElement> = {
   biomarker_for: <ScienceIcon fontSize="small" />,
   affects_population: <ScienceIcon fontSize="small" />,
   measures: <ScienceIcon fontSize="small" />,
+  diagnoses: <ScienceIcon fontSize="small" />,
+  predicts: <ScienceIcon fontSize="small" />,
   other: <ScienceIcon fontSize="small" />,
 };
 

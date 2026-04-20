@@ -28,10 +28,13 @@ import SelectAllIcon from "@mui/icons-material/SelectAll";
 import WarningIcon from "@mui/icons-material/Warning";
 
 import type { ExtractionType } from "../api/extractionReview";
+import { correctRelationType } from "../api/extractionReview";
 import { ExtractionCard } from "../components/extraction/ExtractionCard";
 import { useReviewDialog } from "../hooks/useReviewDialog";
 import { useReviewQueue } from "../hooks/useReviewQueue";
 import { useSelection } from "../hooks/useSelection";
+import { useNotification } from "../notifications/NotificationContext";
+import type { RelationType } from "../types/extraction";
 
 const PAGE_SIZE = 20;
 
@@ -68,6 +71,17 @@ export function ReviewQueueView() {
   });
 
   const { selectedIds, toggleSelection, selectAll, clearSelection, selectedCount } = useSelection();
+  const { showError, showSuccess } = useNotification();
+
+  const handleChangeRelationType = async (extractionId: string, newType: RelationType) => {
+    try {
+      await correctRelationType(extractionId, newType);
+      showSuccess(t("review_queue.relation_type_updated", "Relation type updated"));
+      refresh();
+    } catch (error) {
+      showError(error);
+    }
+  };
   const visibleExtractionIds = extractions.map((extraction) => extraction.id).join("|");
 
   // Clear selection whenever the visible extraction set changes due to a filter or tab switch (UX31-M1)
@@ -350,6 +364,7 @@ export function ReviewQueueView() {
                     onToggleSelect={() => toggleSelection(extraction.id)}
                     onApprove={() => handleSingleReview(extraction.id, "approve")}
                     onReject={() => handleSingleReview(extraction.id, "reject")}
+                    onChangeRelationType={handleChangeRelationType}
                   />
                 ))}
               </List>
