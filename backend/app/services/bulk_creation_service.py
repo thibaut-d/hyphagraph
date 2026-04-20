@@ -22,6 +22,7 @@ from app.schemas.entity import EntityPrefillDraft
 from app.utils.revision_helpers import create_new_revision
 from app.utils.confidence import CONFIDENCE_FLOAT
 from app.utils.relation_context import build_relation_context_payload
+from app.utils.relation_direction import canonicalize_finding_polarity
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -42,10 +43,7 @@ def _build_relation_scope(extracted: ExtractedRelation) -> dict[str, object] | N
 def _build_relation_direction(extracted: ExtractedRelation) -> str | None:
     if not extracted.evidence_context:
         return None
-    polarity = extracted.evidence_context.finding_polarity
-    if polarity in {"supports", "contradicts", "mixed", "neutral", "uncertain"}:
-        return polarity
-    return None
+    return canonicalize_finding_polarity(extracted.evidence_context.finding_polarity)
 
 
 class BulkCreationService:

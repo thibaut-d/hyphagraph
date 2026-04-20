@@ -14,6 +14,7 @@ from app.models.relation_role_revision import RelationRoleRevision
 from app.models.staged_extraction import StagedExtraction
 from app.utils.confidence import CONFIDENCE_FLOAT
 from app.utils.relation_context import build_relation_context_payload
+from app.utils.relation_direction import canonicalize_finding_polarity
 from app.utils.revision_helpers import create_new_revision
 
 logger = logging.getLogger(__name__)
@@ -34,10 +35,7 @@ def _relation_scope(relation_data: ExtractedRelation) -> dict[str, object] | Non
 def _relation_direction(relation_data: ExtractedRelation) -> str | None:
     if not relation_data.evidence_context:
         return None
-    polarity = relation_data.evidence_context.finding_polarity
-    if polarity in {"supports", "contradicts", "mixed", "neutral", "uncertain"}:
-        return polarity
-    return None
+    return canonicalize_finding_polarity(relation_data.evidence_context.finding_polarity)
 
 
 async def materialize_entity(

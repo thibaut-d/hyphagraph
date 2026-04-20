@@ -6,6 +6,7 @@ Contains system prompts and extraction templates for:
 - Relation extraction
 - Entity linking
 """
+import json
 from typing import TypedDict
 
 from app.schemas.common_types import I18nText
@@ -88,6 +89,9 @@ SUMMARY RULES:
   biomedical participants in a relation. Usually omit items like "study", "trial", "authors",
   "results", "table", "figure", "intervention group", or "control group" when they do not denote
   a reusable entity page.
+- Do not create intervention-arm wrapper entities like "SSRI groups", "treatment arm", or
+  "duloxetine group" when the reusable entity is the intervention itself. Extract the underlying
+  intervention entity and keep the arm/group wording only in relation text_span or source_mention.
 - Keep normalized identity separate from source wording: slug may normalize the mention, but
   text_span must remain the exact shortest source phrase.
 
@@ -219,6 +223,10 @@ Text to analyze:
 For each relation, provide:
 - relation_type: The type of relation (MUST be from the exact list below)
 - roles: Array of entities with their semantic roles (CRITICAL - see semantic roles below)
+  For each role include:
+  - entity_slug: normalized entity slug
+  - role_type: semantic role type
+  - source_mention: shortest exact mention for that participant inside this relation's text_span
 - confidence: Your confidence in this relation (high, medium, low)
   high   → the relation is explicitly and unambiguously stated in the source span with no interpretation needed
   medium → the relation requires minor interpretation, is stated with light hedging, or involves a surface-form normalization
@@ -266,7 +274,13 @@ RELATION EXTRACTION RULES:
 - If the same entities appear in multiple source spans with different polarity, certainty, population, comparator, or outcome, emit separate relations rather than one merged relation.
 - If one source span reports two distinct outcomes or claims, emit separate relations when that preserves the source meaning more faithfully.
 - If the text says an intervention did not work, was inconclusive, or had mixed results, still extract the relation but set evidence_context.finding_polarity accordingly instead of rewriting it as a positive effect
+- For null efficacy findings such as "did not significantly improve", "no significant difference",
+  or "similar to placebo", use finding_polarity "neutral" unless the span explicitly reports worse
+  outcomes than the comparator. Do not mark those therapeutic no-difference findings as
+  "contradicts".
 - For side-effect or safety findings where no significant difference is found versus a control or placebo, use "causes" with finding_polarity "contradicts" — do NOT use "other". Example: "no significant increase in nausea compared to placebo" → relation_type "causes", finding_polarity "contradicts". This captures that the study tested whether the drug causes the effect and found no evidence it does more than control.
+- Do NOT use relation_type "other" for ordinary efficacy findings or adverse-event findings when
+  the span already makes "treats" or "causes" explicit.
 - If the text gives only a mechanistic assumption, background rationale, or methodology note, mark evidence_context.statement_kind accordingly
 - If the text presents competing or contradictory findings, output separate relations rather than merging them
 - HyphaGraph relations are hyperedges: when one source statement includes reusable semantic participants such as population, comparator, outcome, mechanism, or study condition, keep that context as additional roles in the SAME relation instead of decomposing the statement into multiple binary relations
@@ -275,6 +289,8 @@ RELATION EXTRACTION RULES:
 - Put dosage, duration, timeframe, study_design, sample_size, and statistical_support into scope or evidence_context instead of inventing standalone entities for them
 - Do not create duration or dosage roles from vague qualifiers alone. Prefer exact values like "12 weeks" or "60mg daily". If the source only says "short-term", "long-term", "high dose", or similar vague language, keep that in notes or methodology_text instead of a role entity.
 - Every role entity_slug used in a relation must be present in the identified entity list above
+- Every role should include source_mention when the participant is explicitly named in the relation span.
+- source_mention must be copied exactly from the local relation text_span, not normalized or paraphrased.
 - assertion_text should be a faithful, source-bounded paraphrase of the local finding. Do not strengthen certainty, magnitude, or clinical importance beyond what the text states.
 - Keep source wording separate from normalized fields: text_span, sample_size_text, and
   statistical_support should copy or minimally trim the source wording, while assertion_text may
@@ -289,6 +305,9 @@ RELATION EXTRACTION RULES:
   - biomarker_for MUST include biomarker and target or condition
   - measures MUST include measured_by and target or outcome
 - control_group, population, and comparator context NEVER replace a missing core role
+- In therapeutic findings, a measured clinical outcome like "depression", "pain", or
+  "quality of life" should usually be the relation's target, even if the sentence also frames it
+  as an outcome or endpoint.
 - If the source mentions an adverse event like nausea but does not explicitly identify what caused it in the same source span, omit the relation instead of guessing
 - If the source only says adverse events were similar to placebo or not serious, do not invent a causes relation unless the active intervention and the adverse event are both explicit in the same span
 - If the source says "combined X with Y", "X plus Y", "adjunctive Y", or similar combination language, do NOT emit a single-agent treats relation for only X or only Y unless the text explicitly attributes the effect to that one component
@@ -328,9 +347,9 @@ does not map to any named type above. Do NOT use "other" as a catch-all for vagu
 if the source span is too ambiguous to identify clear core roles, omit the relation entirely instead.
 
 Example roles in output:
-- {{"entity_slug": "aspirin", "role_type": "agent"}}
-- {{"entity_slug": "migraine", "role_type": "target"}}
-- {{"entity_slug": "placebo", "role_type": "control_group"}}
+- {{"entity_slug": "aspirin", "role_type": "agent", "source_mention": "aspirin"}}
+- {{"entity_slug": "migraine", "role_type": "target", "source_mention": "migraine"}}
+- {{"entity_slug": "placebo", "role_type": "control_group", "source_mention": "placebo"}}
 
 Respond with a JSON object containing a "relations" key:
 ```json
@@ -339,9 +358,9 @@ Respond with a JSON object containing a "relations" key:
   {{
     "relation_type": "treats",
     "roles": [
-      {{"entity_slug": "aspirin", "role_type": "agent"}},
-      {{"entity_slug": "migraine", "role_type": "target"}},
-      {{"entity_slug": "placebo", "role_type": "control_group"}}
+      {{"entity_slug": "aspirin", "role_type": "agent", "source_mention": "aspirin"}},
+      {{"entity_slug": "migraine", "role_type": "target", "source_mention": "migraine"}},
+      {{"entity_slug": "placebo", "role_type": "control_group", "source_mention": "placebo"}}
     ],
     "confidence": "high",
     "text_span": "aspirin 325-650mg is effective for migraine pain relief",
@@ -361,8 +380,8 @@ Respond with a JSON object containing a "relations" key:
   {{
     "relation_type": "causes",
     "roles": [
-      {{"entity_slug": "aspirin", "role_type": "agent"}},
-      {{"entity_slug": "stomach-irritation", "role_type": "target"}}
+      {{"entity_slug": "aspirin", "role_type": "agent", "source_mention": "aspirin"}},
+      {{"entity_slug": "stomach-irritation", "role_type": "target", "source_mention": "stomach irritation"}}
     ],
     "confidence": "high",
     "text_span": "aspirin commonly causes stomach irritation",
@@ -453,6 +472,7 @@ Extract:
    - omit generic document nouns or paper artifacts unless the source clearly uses them as real biomedical participants in a relation
    - do NOT create entities for dosage, duration, timeframe, sample size, or study design metadata; keep them in relation scope or evidence_context
    - emit each real-world entity only once per batch; merge repeated mentions into one canonical entity record
+   - do not create intervention-arm wrapper entities like "SSRI groups" or "duloxetine arm" when the reusable entity is the intervention itself; use the underlying intervention entity and keep the arm/group wording only in source_mention if needed
    - text_span should be the shortest exact source mention for that entity
 
 2. **Relations**: Relationships between entities
@@ -507,6 +527,8 @@ Extract:
    - first identify the local claim-bearing span; relation extraction should stay anchored to that span
    - relation text_span should usually be 1-3 sentences and should be sufficient on its own to justify the relation
    - every role entity_slug used in a relation MUST also appear in the entities array
+   - each role should include source_mention as the shortest exact local phrase for that participant inside text_span whenever the participant is explicitly named
+   - source_mention must stay source-faithful; do not paraphrase or normalize it
    - include evidence_context for every relation
    - use scope for applicability qualifiers that are stated but do not deserve their own entity page;
      valid scope keys: dosage, duration, route, frequency, comparator, condition, timeframe;
@@ -515,9 +537,12 @@ Extract:
    - statement_kind should usually be "finding" for explicit study results and should only be "background", "hypothesis", or "methodology" when the text clearly frames it that way
    - finding_polarity should reflect whether the source supports, contradicts, or leaves the relation mixed/uncertain
    - null findings and no-difference findings should still be extracted when the tested relation and core participants are explicit
+   - for null efficacy findings such as "did not significantly improve" or "no significant difference", use finding_polarity "neutral" unless the source explicitly says the intervention performed worse than the comparator
    - if the same entities appear in multiple contradictory or differently qualified spans, emit separate relations instead of merging them
    - if the source uses modal or hedged language such as "may", "might", "could", "suggests", "potential", or "appears to", prefer statement_kind "hypothesis" or finding_polarity "uncertain" unless the same span reports direct measured findings
    - For side-effect or safety findings where no significant difference is found versus a control or placebo, use relation_type "causes" with finding_polarity "contradicts" — do NOT use "other". Example: "no significant increase in nausea vs placebo" → relation_type "causes", finding_polarity "contradicts".
+   - do NOT use relation_type "other" for ordinary efficacy findings or adverse-event findings when the span already makes "treats" or "causes" explicit
+   - in therapeutic findings, a measured clinical outcome like pain, depression, or quality of life should usually be the relation target even if the sentence also frames it as an endpoint or outcome
    - evidence_strength assignment — use the strongest level warranted by the source, never inflate it:
      strong   → meta-analysis or systematic review with clear outcomes, or RCT with significant result
      moderate → non-randomized trial, cohort study, case-control study, or cross-sectional study
@@ -575,10 +600,10 @@ Respond with JSON containing two arrays:
     {{
       "relation_type": "treats",
       "roles": [
-        {{"entity_slug": "duloxetine", "role_type": "agent"}},
-        {{"entity_slug": "fibromyalgia", "role_type": "target"}},
-        {{"entity_slug": "adults", "role_type": "population"}},
-        {{"entity_slug": "placebo", "role_type": "control_group"}}
+        {{"entity_slug": "duloxetine", "role_type": "agent", "source_mention": "duloxetine"}},
+        {{"entity_slug": "fibromyalgia", "role_type": "target", "source_mention": "fibromyalgia"}},
+        {{"entity_slug": "adults", "role_type": "population", "source_mention": "adults"}},
+        {{"entity_slug": "placebo", "role_type": "control_group", "source_mention": "placebo"}}
       ],
       "confidence": "high",
       "text_span": "duloxetine 60mg daily is effective for fibromyalgia in adults compared with placebo",
@@ -599,9 +624,9 @@ Respond with JSON containing two arrays:
     {{
       "relation_type": "biomarker_for",
       "roles": [
-        {{"entity_slug": "mirna-223-3p", "role_type": "biomarker"}},
-        {{"entity_slug": "fibromyalgia", "role_type": "target"}},
-        {{"entity_slug": "women", "role_type": "population"}}
+        {{"entity_slug": "mirna-223-3p", "role_type": "biomarker", "source_mention": "miRNA-223-3p"}},
+        {{"entity_slug": "fibromyalgia", "role_type": "target", "source_mention": "fibromyalgia"}},
+        {{"entity_slug": "women", "role_type": "population", "source_mention": "women"}}
       ],
       "confidence": "high",
       "text_span": "miRNA-223-3p levels correlate with pain severity in women with fibromyalgia",
@@ -617,8 +642,8 @@ Respond with JSON containing two arrays:
     {{
       "relation_type": "mechanism",
       "roles": [
-        {{"entity_slug": "duloxetine", "role_type": "agent"}},
-        {{"entity_slug": "serotonin-reuptake-inhibition", "role_type": "mechanism"}}
+        {{"entity_slug": "duloxetine", "role_type": "agent", "source_mention": "duloxetine"}},
+        {{"entity_slug": "serotonin-reuptake-inhibition", "role_type": "mechanism", "source_mention": "serotonin and norepinephrine reuptake"}}
       ],
       "confidence": "high",
       "text_span": "duloxetine inhibits serotonin and norepinephrine reuptake",
@@ -633,8 +658,8 @@ Respond with JSON containing two arrays:
     {{
       "relation_type": "measures",
       "roles": [
-        {{"entity_slug": "vas", "role_type": "measured_by"}},
-        {{"entity_slug": "pain-intensity", "role_type": "outcome"}}
+        {{"entity_slug": "vas", "role_type": "measured_by", "source_mention": "visual analogue scale (VAS)"}},
+        {{"entity_slug": "pain-intensity", "role_type": "outcome", "source_mention": "Pain intensity"}}
       ],
       "confidence": "high",
       "text_span": "Pain intensity was assessed using a visual analogue scale (VAS) at baseline and week 12",
@@ -650,9 +675,9 @@ Respond with JSON containing two arrays:
     {{
       "relation_type": "causes",
       "roles": [
-        {{"entity_slug": "duloxetine", "role_type": "agent"}},
-        {{"entity_slug": "nausea", "role_type": "target"}},
-        {{"entity_slug": "placebo", "role_type": "control_group"}}
+        {{"entity_slug": "duloxetine", "role_type": "agent", "source_mention": "duloxetine"}},
+        {{"entity_slug": "nausea", "role_type": "target", "source_mention": "nausea"}},
+        {{"entity_slug": "placebo", "role_type": "control_group", "source_mention": "placebo"}}
       ],
       "confidence": "medium",
       "text_span": "no significant difference in nausea rates compared to placebo",
@@ -668,10 +693,10 @@ Respond with JSON containing two arrays:
     {{
       "relation_type": "treats",
       "roles": [
-        {{"entity_slug": "pregabalin", "role_type": "agent"}},
-        {{"entity_slug": "duloxetine", "role_type": "agent"}},
-        {{"entity_slug": "fibromyalgia", "role_type": "target"}},
-        {{"entity_slug": "placebo", "role_type": "control_group"}}
+        {{"entity_slug": "pregabalin", "role_type": "agent", "source_mention": "pregabalin"}},
+        {{"entity_slug": "duloxetine", "role_type": "agent", "source_mention": "duloxetine"}},
+        {{"entity_slug": "fibromyalgia", "role_type": "target", "source_mention": "fibromyalgia"}},
+        {{"entity_slug": "placebo", "role_type": "control_group", "source_mention": "placebo"}}
       ],
       "confidence": "medium",
       "text_span": "pregabalin combined with duloxetine improved fibromyalgia symptoms compared with placebo",
@@ -694,6 +719,46 @@ CRITICAL REMINDERS:
 - Evidence strength: ONLY use strong, moderate, weak, or anecdotal
 
 Be thorough but conservative. Only extract information that is clearly and explicitly stated in the text.
+"""
+
+
+BATCH_EXTRACTION_GLEANING_PROMPT = """Review the biomedical source text and the existing extraction JSON below.
+
+Your task is append-only quality recovery:
+- Return ONLY entities and relations that were genuinely missed in the existing extraction
+- Do NOT repeat existing items
+- Do NOT rewrite, "improve", rename, merge, split, or correct existing items
+- If an existing item looks imperfect, leave it alone and only add clearly missing items
+- If nothing important is missing, return empty arrays for both "entities" and "relations"
+
+Focus on missed:
+- claim-bearing spans
+- relation participants needed by an explicit relation
+- null findings, no-difference findings, and contradictory findings
+- comparator, population, outcome, and condition entities explicitly needed by a new relation
+
+Follow the same extraction rules as the main batch prompt:
+- Extract only information explicitly supported by the text
+- Keep findings, background, hypotheses, and methodology separate
+- Keep relation scope and evidence context source-faithful
+- Every relation role entity_slug must already exist in the prior extraction or be included as a NEW entity in this response
+- Keep output append-only; never modify prior extraction content
+
+Original text:
+{text}
+
+Existing extraction JSON:
+```json
+{existing_extraction_json}
+```
+
+Return JSON with exactly this shape:
+```json
+{{
+  "entities": [],
+  "relations": []
+}}
+```
 """
 
 
@@ -733,6 +798,23 @@ def format_relation_extraction_prompt(
 def format_batch_extraction_prompt(text: str) -> str:
     """Format the batch extraction prompt with the given text."""
     return BATCH_EXTRACTION_PROMPT.format(text=text)
+
+
+def format_batch_gleaning_prompt(
+    text: str,
+    existing_extraction: dict[str, object],
+) -> str:
+    """Format the append-only gleaning prompt with the given text and prior extraction."""
+    existing_extraction_json = json.dumps(
+        existing_extraction,
+        indent=2,
+        sort_keys=True,
+        ensure_ascii=True,
+    )
+    return BATCH_EXTRACTION_GLEANING_PROMPT.format(
+        text=text,
+        existing_extraction_json=existing_extraction_json,
+    )
 
 
 def format_entity_linking_prompt(

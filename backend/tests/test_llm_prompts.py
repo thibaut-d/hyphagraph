@@ -1,10 +1,12 @@
 from app.llm.prompts import (
     BATCH_EXTRACTION_PROMPT,
+    BATCH_EXTRACTION_GLEANING_PROMPT,
     ENTITY_EXTRACTION_PROMPT,
     ENTITY_LINKING_PROMPT,
     MEDICAL_KNOWLEDGE_SYSTEM_PROMPT,
     RELATION_EXTRACTION_PROMPT,
     format_batch_extraction_prompt,
+    format_batch_gleaning_prompt,
 )
 
 
@@ -36,6 +38,7 @@ def test_entity_prompt_requires_neutral_global_summaries_and_explicit_mentions()
     assert "text_span should be the shortest exact mention" in ENTITY_EXTRACTION_PROMPT
     assert "Prefer entities that participate in an explicit relation" in ENTITY_EXTRACTION_PROMPT
     assert "Omit generic document nouns or paper artifacts" in ENTITY_EXTRACTION_PROMPT
+    assert 'Do not create intervention-arm wrapper entities like "SSRI groups"' in ENTITY_EXTRACTION_PROMPT
     assert "text_span must remain the exact shortest source phrase" in ENTITY_EXTRACTION_PROMPT
 
 
@@ -50,6 +53,8 @@ def test_relation_prompt_requires_explicit_relations_and_separate_conflicts():
     assert "HyphaGraph relations are hyperedges" in RELATION_EXTRACTION_PROMPT
     assert "additional roles in the SAME relation" in RELATION_EXTRACTION_PROMPT
     assert "Every role entity_slug used in a relation must be present" in RELATION_EXTRACTION_PROMPT
+    assert "source_mention" in RELATION_EXTRACTION_PROMPT
+    assert "shortest exact mention for that participant" in RELATION_EXTRACTION_PROMPT
     assert "assertion_text should be a faithful, source-bounded paraphrase" in RELATION_EXTRACTION_PROMPT
     assert "statement_kind" in RELATION_EXTRACTION_PROMPT
     assert "finding_polarity" in RELATION_EXTRACTION_PROMPT
@@ -61,6 +66,9 @@ def test_relation_prompt_requires_explicit_relations_and_separate_conflicts():
     assert "dosage" in RELATION_EXTRACTION_PROMPT
     assert "causes MUST include the thing causing the effect as agent" in RELATION_EXTRACTION_PROMPT
     assert "control_group, population, and comparator context NEVER replace a missing core role" in RELATION_EXTRACTION_PROMPT
+    assert 'For null efficacy findings such as "did not significantly improve"' in RELATION_EXTRACTION_PROMPT
+    assert 'Do NOT use relation_type "other" for ordinary efficacy findings' in RELATION_EXTRACTION_PROMPT
+    assert 'a measured clinical outcome like "depression", "pain", or' in RELATION_EXTRACTION_PROMPT
     assert 'Wrong extraction: causes(target=nausea, control_group=placebo)' in RELATION_EXTRACTION_PROMPT
     assert 'When a source reports combination therapy, adjunct therapy, co-administration, or "X with Y"' in RELATION_EXTRACTION_PROMPT
     assert 'do NOT emit a single-agent treats relation for only X or only Y' in RELATION_EXTRACTION_PROMPT
@@ -91,8 +99,10 @@ def test_batch_prompt_carries_global_evidence_first_constraints():
     assert "emit each real-world entity only once per batch" in prompt
     assert "relation text_span should usually be 1-3 sentences" in prompt
     assert "null findings and no-difference findings should still be extracted" in prompt
+    assert 'for null efficacy findings such as "did not significantly improve" or "no significant' in prompt
     assert "assertion_text should be a faithful, source-bounded paraphrase" in prompt
     assert "include evidence_context for every relation" in prompt
+    assert "each role should include source_mention" in prompt
     assert "participant count" in prompt
     assert 'Do not create vague duration/dosage/timeframe entities such as "duration-short-term"' in prompt
     assert "do NOT create entities for dosage, duration, timeframe, sample size, or study design metadata" in prompt
@@ -105,8 +115,32 @@ def test_batch_prompt_carries_global_evidence_first_constraints():
     assert "include every explicitly named active intervention as agent roles in the SAME relation" in prompt
     assert '"entity_slug": "pregabalin", "role_type": "agent"' in prompt
     assert '"entity_slug": "duloxetine", "role_type": "agent"' in prompt
+    assert '"source_mention": "duloxetine"' in prompt
     assert "Prefer relation-bearing biomedical entities" in prompt
     assert "omit generic document nouns or paper artifacts" in prompt
+    assert 'do not create intervention-arm wrapper entities like "SSRI groups"' in prompt
+    assert 'do NOT use relation_type "other" for ordinary efficacy findings or adverse-event findings' in prompt
     assert "text_span, sample_size_text, and statistical_support should copy or minimally trim the source wording" in prompt
     assert 'prefer statement_kind "hypothesis" or finding_polarity "uncertain"' in prompt
     assert '"relations"' in prompt
+
+
+def test_batch_gleaning_prompt_requires_append_only_missed_items():
+    prompt = format_batch_gleaning_prompt(
+        "Example source text.",
+        {
+            "entities": [{"slug": "aspirin"}],
+            "relations": [],
+        },
+    )
+
+    assert "Return ONLY entities and relations that were genuinely missed" in (
+        BATCH_EXTRACTION_GLEANING_PROMPT
+    )
+    assert "Do NOT rewrite" in BATCH_EXTRACTION_GLEANING_PROMPT
+    assert "If nothing important is missing, return empty arrays" in BATCH_EXTRACTION_GLEANING_PROMPT
+    assert "Every relation role entity_slug must already exist in the prior extraction" in (
+        BATCH_EXTRACTION_GLEANING_PROMPT
+    )
+    assert '"entities": []' in prompt
+    assert '"slug": "aspirin"' in prompt

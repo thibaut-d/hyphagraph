@@ -67,17 +67,23 @@ class ExtractionValidationService:
         self,
         relations: list[ExtractedRelation],
         source_text: str,
+        entities: list[ExtractedEntity] | None = None,
     ) -> tuple[list[ExtractedRelation], list[ValidationResult]]:
         """
         Validate a batch of extracted relations.
 
         Returns (validated_relations, validation_results).
         """
+        entity_lookup = {entity.slug: entity for entity in entities or []}
         results = []
         validated_relations = []
 
         for relation in relations:
-            result = self.validator.validate_relation(relation, source_text)
+            result = self.validator.validate_relation(
+                relation,
+                source_text,
+                entity_lookup=entity_lookup,
+            )
             results.append(result)
             if result.is_valid or not self.auto_reject_invalid:
                 validated_relations.append(relation)

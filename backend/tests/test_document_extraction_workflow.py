@@ -638,6 +638,100 @@ class TestReviewAndLinkWorkflow:
         ]
         assert preview.avg_validation_score == 0.0
 
+    async def test_build_extraction_preview_with_service_revalidates_locally_ungrounded_roles(
+        self,
+        db_session,
+    ):
+        source_id = uuid4()
+        entities = [
+            ExtractedEntity(
+                slug="duloxetine",
+                summary="Duloxetine mention",
+                category="drug",
+                confidence="high",
+                text_span="Duloxetine",
+            ),
+            ExtractedEntity(
+                slug="nausea",
+                summary="Nausea mention",
+                category="symptom",
+                confidence="high",
+                text_span="nausea",
+            ),
+            ExtractedEntity(
+                slug="placebo",
+                summary="Placebo mention",
+                category="other",
+                confidence="high",
+                text_span="placebo",
+            ),
+        ]
+        relations = [
+            ExtractedRelation(
+                relation_type="causes",
+                roles=[
+                    ExtractedRole(entity_slug="duloxetine", role_type="agent"),
+                    ExtractedRole(entity_slug="nausea", role_type="target"),
+                    ExtractedRole(entity_slug="placebo", role_type="control_group"),
+                ],
+                confidence="medium",
+                text_span="Duloxetine caused nausea in treated participants.",
+                notes="Comparator role was incorrectly attached.",
+            )
+        ]
+
+        class FakeExtractionService:
+            def __init__(self, db):
+                self.db = db
+
+            async def extract_batch_with_validation_results(self, text):
+                assert text == "Duloxetine caused nausea in treated participants."
+                return (
+                    entities,
+                    relations,
+                    [SimpleNamespace() for _ in entities],
+                    [
+                        SimpleNamespace(
+                            is_valid=True,
+                            confidence_adjustment=1.0,
+                            validation_score=1.0,
+                            flags=[],
+                            matched_span="Duloxetine caused nausea in treated participants.",
+                        )
+                    ],
+                )
+
+        class FakeReviewService:
+            def __init__(self, **kwargs):
+                self.kwargs = kwargs
+
+            async def stage_batch(self, **kwargs):
+                staged_relation, validation_result = kwargs["relations"][0]
+                assert staged_relation.roles == relations[0].roles
+                assert validation_result.is_valid is False
+                assert validation_result.validation_score == 0.0
+                assert "relation_role_not_grounded_locally" in validation_result.flags
+                assert "ungrounded_relation_role:control_group:placebo" in validation_result.flags
+                return [SimpleNamespace(status="pending", validation_score=validation_result.validation_score)]
+
+        class FakeLinkingService:
+            def __init__(self, db):
+                self.db = db
+
+            async def find_entity_matches(self, requested_entities):
+                return []
+
+        preview = await build_extraction_preview_with_service(
+            db_session,
+            source_id=source_id,
+            text="Duloxetine caused nausea in treated participants.",
+            extraction_service_factory=FakeExtractionService,
+            review_service_factory=FakeReviewService,
+            linking_service_factory=FakeLinkingService,
+        )
+
+        assert preview.avg_validation_score == 0.0
+
 
 @pytest.mark.asyncio
 class TestSaveExtractionToGraph:
@@ -791,6 +885,81 @@ class TestSaveExtractionToGraph:
                 "assertion_text": "Aspirin did not improve pain versus placebo.",
                 "methodology_text": "Randomized controlled trial.",
                 "statistical_support": "p=0.41",
+            }
+        }
+
+    async def test_save_extraction_to_graph_normalizes_mixed_polarity_to_neutral_direction(
+        self, db_session, test_user
+    ):
+        source_service = SourceService(db_session)
+        source = await source_service.create(
+            SourceWrite(
+                kind="study",
+                title="Mixed Polarity Extraction Source",
+                url="https://example.com/mixed-polarity-extraction",
+            ),
+            user_id=test_user.id,
+        )
+
+        aspirin = Entity()
+        pain = Entity()
+        db_session.add_all([aspirin, pain])
+        await db_session.flush()
+        db_session.add_all(
+            [
+                EntityRevision(entity_id=aspirin.id, slug="aspirin", is_current=True),
+                EntityRevision(entity_id=pain.id, slug="pain", is_current=True),
+            ]
+        )
+        await db_session.commit()
+
+        request = SimpleNamespace(
+            entities_to_create=[],
+            entity_links={"aspirin": aspirin.id, "pain": pain.id},
+            relations_to_create=[
+                ExtractedRelation(
+                    relation_type="treats",
+                    roles=[
+                        ExtractedRole(entity_slug="aspirin", role_type="agent"),
+                        ExtractedRole(entity_slug="pain", role_type="target"),
+                    ],
+                    confidence="high",
+                    text_span="Aspirin showed mixed effects on pain across outcomes.",
+                    notes="Mixed finding in the extracted evidence.",
+                    evidence_context=ExtractedRelationEvidenceContext(
+                        statement_kind="finding",
+                        finding_polarity="mixed",
+                        evidence_strength="moderate",
+                        study_design="systematic_review",
+                        assertion_text="Aspirin showed mixed effects on pain across outcomes.",
+                    ),
+                )
+            ],
+            user_language="en",
+        )
+
+        result = await save_extraction_to_graph(
+            db_session,
+            source_id=source.id,
+            request=request,
+            user_id=test_user.id,
+        )
+
+        revision_result = await db_session.execute(
+            select(RelationRevision).where(
+                RelationRevision.relation_id == result.created_relation_ids[0],
+                RelationRevision.is_current.is_(True),
+            )
+        )
+        revision = revision_result.scalar_one()
+        assert revision.direction == "neutral"
+        assert revision.scope == {
+            "evidence_context": {
+                "statement_kind": "finding",
+                "finding_polarity": "mixed",
+                "evidence_strength": "moderate",
+                "study_design": "systematic_review",
+                "assertion_text": "Aspirin showed mixed effects on pain across outcomes.",
             }
         }
 

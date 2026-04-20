@@ -16,6 +16,7 @@ from typing import Literal
 from app.llm.schemas import (
     ExtractedEntity,
     ExtractedRelation,
+    ExtractedRole,
     get_missing_required_relation_roles,
 )
 
@@ -31,6 +32,17 @@ _CONTEXTUAL_ENTITY_PREFIXES = (
     "sample-size-",
     "study-design-",
 )
+
+_SINGLE_MEMBER_ROLE_GROUP_LIMITS: dict[str, tuple[tuple[str, ...], ...]] = {
+    "treats": (("target",),),
+    "causes": (("target", "outcome"),),
+    "prevents": (("target", "outcome"),),
+    "increases_risk": (("target", "outcome"),),
+    "decreases_risk": (("target", "outcome"),),
+    "biomarker_for": (("target", "condition"),),
+    "measures": (("target", "outcome", "condition"),),
+    "affects_population": (("population",), ("condition", "target")),
+}
 
 
 @dataclass
@@ -130,7 +142,11 @@ class TextSpanValidator:
             )
 
     def validate_relation(
-        self, relation: ExtractedRelation, source_text: str
+        self,
+        relation: ExtractedRelation,
+        source_text: str,
+        *,
+        entity_lookup: dict[str, ExtractedEntity] | None = None,
     ) -> ValidationResult:
         """
         Validate that an extracted relation's text span exists in source.
@@ -153,6 +169,13 @@ class TextSpanValidator:
 
         exact_match = self._find_exact_match(relation.text_span, source_text)
         if exact_match:
+            grounding_result = self._validate_relation_role_grounding(
+                relation,
+                exact_match,
+                entity_lookup or {},
+            )
+            if grounding_result is not None:
+                return grounding_result
             return ValidationResult(
                 is_valid=True,
                 confidence_adjustment=1.0,
@@ -164,6 +187,13 @@ class TextSpanValidator:
         if self.allow_fuzzy_match:
             fuzzy_match, similarity = self._find_fuzzy_match(relation.text_span, source_text)
             if fuzzy_match and similarity >= max(self.fuzzy_threshold, 0.85):
+                grounding_result = self._validate_relation_role_grounding(
+                    relation,
+                    fuzzy_match,
+                    entity_lookup or {},
+                )
+                if grounding_result is not None:
+                    return grounding_result
                 return ValidationResult(
                     is_valid=True,
                     confidence_adjustment=0.9 * similarity,
@@ -194,6 +224,7 @@ class TextSpanValidator:
             [role.role_type for role in relation.roles],
         )
         contextual_core_role_flags = self._find_contextual_core_role_flags(relation)
+        cardinality_flags = self._find_invalid_role_group_cardinality_flags(relation)
         if missing_role_groups:
             missing_flags = [
                 f"missing_core_role:{'|'.join(role_group)}"
@@ -207,6 +238,15 @@ class TextSpanValidator:
                 matched_span=None,
             )
 
+        if cardinality_flags:
+            return ValidationResult(
+                is_valid=False,
+                confidence_adjustment=0.0,
+                validation_score=0.0,
+                flags=["invalid_relation_shape", *cardinality_flags],
+                matched_span=None,
+            )
+
         if contextual_core_role_flags:
             return ValidationResult(
                 is_valid=False,
@@ -217,6 +257,31 @@ class TextSpanValidator:
             )
 
         return None
+
+    def _validate_relation_role_grounding(
+        self,
+        relation: ExtractedRelation,
+        local_span: str,
+        entity_lookup: dict[str, ExtractedEntity],
+    ) -> ValidationResult | None:
+        if not entity_lookup:
+            return None
+
+        ungrounded_flags = self._find_ungrounded_role_flags(
+            relation,
+            local_span,
+            entity_lookup,
+        )
+        if not ungrounded_flags:
+            return None
+
+        return ValidationResult(
+            is_valid=False,
+            confidence_adjustment=0.0,
+            validation_score=0.0,
+            flags=["relation_role_not_grounded_locally", *ungrounded_flags],
+            matched_span=local_span,
+        )
 
     def _find_contextual_core_role_flags(self, relation: ExtractedRelation) -> list[str]:
         invalid_flags: list[str] = []
@@ -244,6 +309,93 @@ class TextSpanValidator:
                 )
 
         return invalid_flags
+
+    def _find_invalid_role_group_cardinality_flags(
+        self,
+        relation: ExtractedRelation,
+    ) -> list[str]:
+        invalid_flags: list[str] = []
+        limited_groups = _SINGLE_MEMBER_ROLE_GROUP_LIMITS.get(relation.relation_type, ())
+
+        for role_group in limited_groups:
+            member_count = sum(
+                1 for role in relation.roles if role.role_type in role_group
+            )
+            if member_count > 1:
+                invalid_flags.append(
+                    f"too_many_role_group_members:{'|'.join(role_group)}:{member_count}"
+                )
+
+        return invalid_flags
+
+    def _find_ungrounded_role_flags(
+        self,
+        relation: ExtractedRelation,
+        local_span: str,
+        entity_lookup: dict[str, ExtractedEntity],
+    ) -> list[str]:
+        invalid_flags: list[str] = []
+
+        for role in relation.roles:
+            entity = entity_lookup.get(role.entity_slug)
+            candidate_mentions = self._candidate_mentions_for_role(role, entity)
+
+            if any(
+                self._span_mentions_candidate(local_span, candidate)
+                for candidate in candidate_mentions
+                if candidate
+            ):
+                continue
+
+            invalid_flags.append(
+                f"ungrounded_relation_role:{role.role_type}:{role.entity_slug}"
+            )
+
+        return invalid_flags
+
+    def _candidate_mentions_for_role(
+        self,
+        role: ExtractedRole,
+        entity: ExtractedEntity | None,
+    ) -> list[str]:
+        candidates: list[str] = []
+
+        if role.source_mention and role.source_mention.strip():
+            candidates.append(role.source_mention.strip())
+
+        if entity and entity.text_span.strip():
+            text_span = entity.text_span.strip()
+            candidates.append(text_span)
+
+            stripped_parenthetical = re.sub(r"\s*\([^)]*\)", "", text_span).strip()
+            if stripped_parenthetical and stripped_parenthetical != text_span:
+                candidates.append(stripped_parenthetical)
+
+            for match in re.finditer(r"\(([^)]+)\)", text_span):
+                inner = match.group(1).strip()
+                if inner:
+                    candidates.append(inner)
+
+        candidates.append(role.entity_slug.replace("-", " "))
+
+        deduped: list[str] = []
+        seen: set[str] = set()
+        for candidate in candidates:
+            normalized = candidate.strip().lower()
+            if not normalized or normalized in seen:
+                continue
+            seen.add(normalized)
+            deduped.append(candidate.strip())
+
+        return deduped
+
+    def _span_mentions_candidate(self, local_span: str, candidate: str) -> bool:
+        exact_match = self._find_exact_match(candidate, local_span)
+        if exact_match:
+            return True
+
+        fuzzy_match, similarity = self._find_fuzzy_match(candidate, local_span)
+        return bool(fuzzy_match and similarity >= self.fuzzy_threshold)
 
     # -------------------------------------------------------------------------
     # Internal matching helpers

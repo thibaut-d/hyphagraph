@@ -2,6 +2,112 @@
 
 **Last updated**: 2026-04-19
 
+## Tighten Benchmark-Driven Extraction Normalization
+
+Use the new gold benchmark to improve automatic extraction quality at the
+semantic-normalization layer instead of relying only on prompt wording.
+
+### Objective
+Reduce the benchmark's remaining relation failures by normalizing three common
+LLM error modes before validation and staging:
+- `other` relations that are actually typed findings
+- null efficacy findings mislabeled as `contradicts` instead of `neutral`
+- intervention-arm/group noun drift such as `ssri-groups` instead of `ssris`
+
+### Impacted modules
+- `backend/app/services/extraction_semantic_normalizer.py`
+- `backend/app/services/batch_extraction_orchestrator.py`
+- `backend/app/llm/prompts.py`
+- `backend/tests/test_batch_extraction_orchestrator.py`
+- `backend/tests/test_extraction_evaluation.py`
+- `backend/tests/test_document_extraction_workflow.py`
+
+### Assumptions
+- The best place for these fixes is one bounded semantic-normalization pass
+  after schema validation but before text-span validation.
+- The normalization rules must stay conservative and source-local; if a span is
+  too ambiguous, it should remain unchanged and let validation reject it.
+- Prompt improvements are still useful, but they should reinforce the same
+  semantics as the normalizer rather than compensate for missing backend logic.
+
+### Plan
+1. Add a semantic normalizer for extracted entities and relations.
+2. Normalize narrow, justified cases:
+   relation `other` -> `treats` or `causes` when roles and span language make the type explicit
+   `comparator` -> `control_group`
+   null efficacy wording -> `finding_polarity=neutral`
+   intervention group/arm entities -> canonical intervention slugs when locally obvious
+3. Tighten prompt wording to bias GPT-5 toward the same normalized shapes.
+4. Add focused regressions around the benchmark failure modes and the extraction workflow path.
+5. Re-run targeted tests and the live extraction benchmark.
+
+### Validation
+- Backend: `cd backend && uv run pytest tests/test_batch_extraction_orchestrator.py tests/test_extraction_evaluation.py tests/test_document_extraction_workflow.py -q`
+- Backend: `cd backend && uv run python scripts/run_extraction_eval.py --json`
+
+### Risks
+- Over-aggressive normalization could silently change source meaning if the
+  span is not explicit enough.
+- Relation upgrades from `other` to typed relations must not bypass required
+  role semantics or local grounding.
+- Group/arm alias cleanup must not collapse genuinely distinct study arms into a
+  single intervention entity when the source keeps them distinct.
+
+### Status
+completed
+
+## Add Gold Extraction Benchmark And Metrics Runner
+
+Create a persistent, source-grounded extraction benchmark so prompt, validator,
+and model changes can be measured against the same hard scientific cases instead
+of judged by anecdotal spot checks.
+
+### Objective
+Establish an auditable gold benchmark for entity and relation extraction that
+measures precision, recall, and relation-semantic validity against curated
+study snippets.
+
+### Impacted modules
+- `backend/app/services/extraction_evaluation.py`
+- `backend/scripts/run_extraction_eval.py`
+- `backend/tests/test_extraction_evaluation.py`
+- `TODO.md`
+
+### Assumptions
+- The benchmark should reuse the runtime extraction schemas and validation
+  logic instead of inventing a separate scoring contract.
+- A small gold set that targets known failure modes is more useful now than a
+  larger but loosely curated benchmark.
+- Relation scoring should be semantic: compare relation type, role assignment,
+  comparator/context roles that materially change meaning, and finding polarity,
+  while ignoring prose fields like notes.
+
+### Plan
+1. Add a curated benchmark dataset with compact scientific snippets and
+   expected entities/relations for known hard cases.
+2. Implement deterministic scoring utilities for:
+   entity precision / recall / F1
+   relation precision / recall / F1
+   relation semantic-validity rate against the current validator
+3. Add a small CLI runner that executes the current batch extractor on the gold
+   cases and prints a case-by-case plus aggregate report.
+4. Add focused tests that prove the scorer catches the known failure modes and
+   rewards semantically correct outputs.
+
+### Validation
+- Backend: `cd backend && uv run pytest tests/test_extraction_evaluation.py`
+
+### Risks
+- A benchmark that is too strict about optional context roles could penalize
+  valid extractions that are semantically equivalent.
+- A benchmark that is too loose about polarity or comparator roles would fail
+  to catch the exact extraction mistakes we most care about.
+- Once introduced, benchmark cases need active maintenance when the extraction
+  contract evolves.
+
+### Status
+completed
+
 ## Tighten LLM Extraction Prompts From Literature Comparison
 
 Use the prompt-process patterns from the closest literature-review implementations
@@ -382,6 +488,50 @@ types, and UI concepts.
 ### Risks
 - Legacy staged rows using the removed third extraction-type value are now migrated into relation-shaped staged rows; single-entity legacy rows will materialize as duplicated-role `other` relations if a reviewer approves them.
 - Existing production data outside staged extractions was not schema-migrated in this task because those records were already materialized as relations.
+
+### Status
+completed
+
+## Add Bounded Chunked Extraction For Long Documents
+
+Improve automatic extraction coverage on long papers and dense web pages by running
+bounded chunk-level extraction and merging the results deterministically instead of
+relying on one large prompt over the entire truncated document body.
+
+### Objective
+Increase recall on long sources without weakening provenance or flooding the graph
+with duplicate entities and relations. Long documents should be processed in
+chunk-sized passes with overlap and stable merge rules.
+
+### Impacted modules
+- `backend/app/services/batch_extraction_orchestrator.py`
+- `backend/app/services/extraction_service.py`
+- `backend/tests/test_batch_extraction_orchestrator.py`
+- focused extraction workflow tests if orchestrator behavior changes at integration boundaries
+
+### Assumptions
+- The biggest remaining extraction-quality gap is document coverage, not one more
+  prompt wording tweak.
+- Chunking should stay bounded in cost and latency; a small maximum chunk count is
+  better than unbounded fan-out.
+- Existing entity and relation merge rules are good enough for a first chunking
+  slice if overlap is modest and relation dedupe remains conservative.
+
+### Plan
+1. Add bounded chunk splitting to the batch orchestrator with sentence/paragraph-aware boundaries and small overlap.
+2. Run the existing batch extraction flow per chunk and merge entities/relations across chunks with stable dedupe.
+3. Keep the single-pass path for short texts unchanged.
+4. Add focused regression tests for multi-chunk coverage, overlap dedupe, and bounded tail coverage.
+5. Run targeted backend pytest coverage for batch extraction orchestration and affected extraction workflow paths.
+
+### Validation
+- Backend: `cd backend && uv run pytest tests/test_batch_extraction_orchestrator.py tests/test_document_extraction_workflow.py -q`
+
+### Risks
+- Overlap that is too small may miss findings near chunk boundaries.
+- Overlap that is too large may increase duplicate candidate volume and latency.
+- If chunk merge keys are too coarse, distinct repeated findings from different
+  sections could collapse into one extracted relation.
 
 ### Status
 completed

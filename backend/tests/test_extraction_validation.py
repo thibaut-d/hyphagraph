@@ -232,6 +232,33 @@ class TestTextSpanValidator:
         assert "invalid_contextual_core_role" in result.flags
         assert "invalid_contextual_core_role:agent:sample-size-41" in result.flags
 
+    def test_relation_validation_rejects_multiple_primary_targets_in_one_relation(self):
+        """Collapsed multi-outcome findings should be split, not stored as one relation."""
+        validator = TextSpanValidator(validation_level="moderate")
+        relation = ExtractedRelation.model_construct(
+            relation_type="treats",
+            roles=[
+                ExtractedRole(entity_slug="ssris", role_type="agent"),
+                ExtractedRole(entity_slug="fibromyalgia", role_type="target"),
+                ExtractedRole(entity_slug="depression", role_type="target"),
+                ExtractedRole(entity_slug="chronic-pain", role_type="target"),
+            ],
+            confidence="medium",
+            text_span=(
+                "SSRIs significantly reduced pain and improved depression in fibromyalgia "
+                "patients compared to placebo."
+            ),
+            notes=None,
+            scope=None,
+            evidence_context=None,
+        )
+
+        result = validator.validate_relation(relation, SAMPLE_SOURCE)
+
+        assert result.is_valid is False
+        assert "invalid_relation_shape" in result.flags
+        assert "too_many_role_group_members:target:3" in result.flags
+
 @pytest.mark.asyncio
 class TestExtractionValidationService:
     """Test batch validation service."""
@@ -335,6 +362,155 @@ class TestExtractionValidationService:
         # Assert
         assert len(validated) == 2
         assert all(r.is_valid for r in results)
+
+    async def test_validate_relations_rejects_locally_ungrounded_context_role(self):
+        """Context roles must be justified by the relation span, not by the document overall."""
+        service = ExtractionValidationService(validation_level="moderate")
+        source_text = "Duloxetine caused nausea in treated participants."
+        entities = [
+            ExtractedEntity(
+                slug="duloxetine",
+                category="drug",
+                confidence="high",
+                text_span="Duloxetine",
+            ),
+            ExtractedEntity(
+                slug="nausea",
+                category="symptom",
+                confidence="high",
+                text_span="nausea",
+            ),
+            ExtractedEntity(
+                slug="placebo",
+                category="other",
+                confidence="high",
+                text_span="placebo",
+            ),
+        ]
+        relations = [
+            ExtractedRelation(
+                relation_type="causes",
+                roles=[
+                    {"entity_slug": "duloxetine", "role_type": "agent"},
+                    {"entity_slug": "nausea", "role_type": "target"},
+                    {"entity_slug": "placebo", "role_type": "control_group"},
+                ],
+                confidence="medium",
+                text_span="Duloxetine caused nausea in treated participants.",
+            ),
+        ]
+
+        validated, results = await service.validate_relations(
+            relations,
+            source_text,
+            entities=entities,
+        )
+
+        assert len(validated) == 1
+        assert results[0].is_valid is False
+        assert "relation_role_not_grounded_locally" in results[0].flags
+        assert "ungrounded_relation_role:control_group:placebo" in results[0].flags
+
+    async def test_validate_relations_accepts_role_source_mentions_for_abbreviations(self):
+        """Role-level source mentions should ground abbreviation-heavy local spans."""
+        service = ExtractionValidationService(validation_level="moderate")
+        source_text = "SSRIs reduced pain compared with placebo."
+        entities = [
+            ExtractedEntity(
+                slug="selective-serotonin-reuptake-inhibitors",
+                category="drug",
+                confidence="high",
+                text_span="selective serotonin reuptake inhibitors (SSRIs)",
+            ),
+            ExtractedEntity(
+                slug="pain",
+                category="outcome",
+                confidence="high",
+                text_span="pain",
+            ),
+            ExtractedEntity(
+                slug="placebo",
+                category="other",
+                confidence="high",
+                text_span="placebo",
+            ),
+        ]
+        relations = [
+            ExtractedRelation(
+                relation_type="treats",
+                roles=[
+                    {
+                        "entity_slug": "selective-serotonin-reuptake-inhibitors",
+                        "role_type": "agent",
+                        "source_mention": "SSRIs",
+                    },
+                    {
+                        "entity_slug": "pain",
+                        "role_type": "target",
+                        "source_mention": "pain",
+                    },
+                    {
+                        "entity_slug": "placebo",
+                        "role_type": "control_group",
+                        "source_mention": "placebo",
+                    },
+                ],
+                confidence="high",
+                text_span="SSRIs reduced pain compared with placebo.",
+            ),
+        ]
+
+        validated, results = await service.validate_relations(
+            relations,
+            source_text,
+            entities=entities,
+        )
+
+        assert len(validated) == 1
+        assert results[0].is_valid is True
+        assert results[0].flags == []
+
+    async def test_relation_validation_accepts_parenthetical_entity_variants_without_role_mentions(self):
+        """Entity text spans with parenthetical abbreviations should still ground local spans."""
+        validator = TextSpanValidator(validation_level="moderate")
+        relation = ExtractedRelation(
+            relation_type="treats",
+            roles=[
+                {
+                    "entity_slug": "selective-serotonin-reuptake-inhibitors",
+                    "role_type": "agent",
+                },
+                {
+                    "entity_slug": "pain",
+                    "role_type": "target",
+                },
+            ],
+            confidence="high",
+            text_span="SSRIs reduced pain compared with placebo.",
+        )
+        entity_lookup = {
+            "selective-serotonin-reuptake-inhibitors": ExtractedEntity(
+                slug="selective-serotonin-reuptake-inhibitors",
+                category="drug",
+                confidence="high",
+                text_span="selective serotonin reuptake inhibitors (SSRIs)",
+            ),
+            "pain": ExtractedEntity(
+                slug="pain",
+                category="outcome",
+                confidence="high",
+                text_span="pain",
+            ),
+        }
+
+        result = validator.validate_relation(
+            relation,
+            "SSRIs reduced pain compared with placebo.",
+            entity_lookup=entity_lookup,
+        )
+
+        assert result.is_valid is True
+        assert result.flags == []
 
 class TestEdgeCases:
     """Test edge cases and boundary conditions."""

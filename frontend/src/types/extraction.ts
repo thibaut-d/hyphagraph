@@ -83,6 +83,7 @@ export type StudyDesign =
 export interface ExtractedRole {
   entity_slug: string;
   role_type: string;
+  source_mention?: string | null;
 }
 
 export interface ExtractedRelationEvidenceContext {
