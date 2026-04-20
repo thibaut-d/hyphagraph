@@ -6,9 +6,12 @@ Defines structured schemas for:
 - Relation extraction
 - Entity linking
 """
+import logging
 import re
 from typing import Literal
 from pydantic import AliasChoices, BaseModel, Field, field_validator, model_validator
+
+logger = logging.getLogger(__name__)
 
 from app.schemas.common_types import JsonObject, JsonValue
 
@@ -176,12 +179,25 @@ class ExtractedRole(BaseModel):
         return _normalize_extracted_slug(value)
 
 
+_VALID_RELATION_TYPES: frozenset[str] = frozenset(RelationType.__args__)  # type: ignore[attr-defined]
+
+
 class ExtractedRelation(BaseModel):
     """
     Schema for an extracted N-ary relation with semantic roles.
 
     Represents a hypergraph edge connecting multiple entities with explicit roles.
     """
+
+    @field_validator("relation_type", mode="before")
+    @classmethod
+    def coerce_relation_type(cls, value: object) -> object:
+        """Silently map unknown relation types to 'other' rather than hard-failing."""
+        if isinstance(value, str) and value not in _VALID_RELATION_TYPES:
+            logger.warning("Unknown relation_type %r — coercing to 'other'", value)
+            return "other"
+        return value
+
     relation_type: RelationType = Field(
         ...,
         description="Type of relation between entities"
