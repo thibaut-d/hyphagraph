@@ -5,6 +5,7 @@ Provides integration with OpenAI's Chat Completions API.
 """
 import json
 import logging
+import re as _re
 
 from openai import AsyncOpenAI, OpenAIError
 
@@ -13,6 +14,24 @@ from app.llm.base import LLMProvider, LLMResponse, LLMError
 from app.schemas.common_types import JsonObject, JsonValue
 
 logger = logging.getLogger(__name__)
+
+_MARKDOWN_JSON_RE = _re.compile(
+    r"```(?:json)?\s*\n?(.*?)\n?```",
+    _re.DOTALL | _re.IGNORECASE,
+)
+
+
+def _strip_markdown_json(text: str) -> str:
+    """
+    Strip markdown code fences that some models wrap around JSON output.
+
+    E.g. ```json\\n{...}\\n``` → ``{...}``
+    If no fences are present the text is returned unchanged.
+    """
+    m = _MARKDOWN_JSON_RE.search(text)
+    if m:
+        return m.group(1).strip()
+    return text.strip()
 
 
 class OpenAIProvider(LLMProvider):
@@ -197,14 +216,19 @@ class OpenAIProvider(LLMProvider):
             **kwargs,
         )
 
-        # Parse JSON
+        # Parse JSON — strip markdown code fences that some models wrap around JSON
+        content = _strip_markdown_json(response.content)
         try:
-            result = json.loads(response.content)
+            result = json.loads(content)
             if not isinstance(result, dict):
                 raise LLMError("Invalid JSON in response: expected a JSON object")
             logger.info(f"Successfully parsed JSON response from OpenAI")
             return result
         except json.JSONDecodeError as e:
-            logger.exception("Failed to parse JSON from OpenAI response")
-            logger.error("Response content (first 500 chars): %s", response.content[:500])
+            finish_reason = response.metadata.get("finish_reason", "unknown")
+            logger.error(
+                "Failed to parse JSON from OpenAI response — finish_reason=%s, content=%r",
+                finish_reason,
+                content[:1000],
+            )
             raise LLMError("LLM response could not be parsed as JSON") from e
