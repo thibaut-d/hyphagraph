@@ -74,9 +74,20 @@ def test_relation_prompt_requires_explicit_relations_and_separate_conflicts():
     assert 'do NOT emit a single-agent treats relation for only X or only Y' in RELATION_EXTRACTION_PROMPT
     assert "Correct extraction shape: treats(agent=pregabalin, agent=duloxetine, target=fibromyalgia, control_group=placebo)" in RELATION_EXTRACTION_PROMPT
     assert "the finding is about the combination, not pregabalin alone" in RELATION_EXTRACTION_PROMPT
-    assert "silent completeness audit over the text" in RELATION_EXTRACTION_PROMPT
+    assert "silent second pass over the text" in RELATION_EXTRACTION_PROMPT
     assert "Keep source wording separate from normalized fields" in RELATION_EXTRACTION_PROMPT
     assert 'prefer evidence_context.statement_kind "hypothesis" or' in RELATION_EXTRACTION_PROMPT
+
+
+def test_relation_and_batch_prompts_block_invented_role_names():
+    for prompt, label in [
+        (RELATION_EXTRACTION_PROMPT, "relation"),
+        (format_batch_extraction_prompt("text"), "batch"),
+    ]:
+        assert "comparator_detail" in prompt, f"{label}: must name comparator_detail to block it"
+        assert "is NOT a valid role" in prompt, f"{label}: must explicitly block invalid roles"
+        assert "control_group" in prompt, f"{label}: control_group must be listed as valid role"
+        assert "study_group" in prompt, f"{label}: study_group must be listed as valid role"
 
 
 def test_entity_linking_prompt_requires_conservative_matching():
@@ -99,7 +110,7 @@ def test_batch_prompt_carries_global_evidence_first_constraints():
     assert "emit each real-world entity only once per batch" in prompt
     assert "relation text_span should usually be 1-3 sentences" in prompt
     assert "null findings and no-difference findings should still be extracted" in prompt
-    assert 'for null efficacy findings such as "did not significantly improve" or "no significant' in prompt
+    assert 'for null efficacy findings such as "did not significantly improve"' in prompt
     assert "assertion_text should be a faithful, source-bounded paraphrase" in prompt
     assert "include evidence_context for every relation" in prompt
     assert "each role should include source_mention" in prompt

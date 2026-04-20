@@ -5,6 +5,8 @@ Contains system prompts and extraction templates for:
 - Entity extraction
 - Relation extraction
 - Entity linking
+- Batch extraction (entities + relations in one pass)
+- Batch gleaning (append-only second-pass quality recovery)
 """
 import json
 from typing import TypedDict
@@ -266,7 +268,7 @@ RELATION EXTRACTION RULES:
 - First identify the minimal claim-bearing sentence or local span that states the relation, then extract from that span only.
 - Each relation text_span should usually be 1-3 sentences and should be sufficient on its own to justify the relation.
 - Do not build one relation by stitching together separate hints from distant paragraphs unless one local span explicitly states the relation.
-- Before returning JSON, do a silent completeness audit over the text and check whether each
+- Before finalizing JSON, do one silent second pass over the text and check whether each
   claim-bearing span with extracted entities was either captured as a relation or intentionally
   omitted because the source span lacks the required core roles.
 - Preserve negation, uncertainty, study conditions, dosage, timeframe, comparator, and population in scope or notes when relevant
@@ -313,17 +315,28 @@ RELATION EXTRACTION RULES:
 - If the source says "combined X with Y", "X plus Y", "adjunctive Y", or similar combination language, do NOT emit a single-agent treats relation for only X or only Y unless the text explicitly attributes the effect to that one component
 - For combination findings, comparator/control groups are not active agents; include named active interventions as agent roles and keep placebo only as control_group
 
-SEMANTIC ROLES (use these instead of subject/object):
-- agent: Entity performing action (drug, treatment)
-- target: Entity being treated/affected (disease, symptom)
-- outcome: Result produced (pain-relief, mortality-reduction)
-- mechanism: Biological mechanism (serotonin-reuptake, cox-inhibition)
-- population: Patient group (adults, women, elderly)
-- condition: Clinical context (chronic-pain, depression)
-- biomarker: Diagnostic marker (crp, mirna-223-3p)
-- measured_by: Assessment tool (vas, moca)
-- control_group: Comparison group (healthy-controls, placebo)
-- location: Anatomical site (brain, joints)
+SEMANTIC ROLES — use ONLY these exact values (no others):
+Core roles:
+- agent: Entity performing action or causing effect (drug, treatment)
+- target: Entity receiving action or being affected (disease, symptom)
+- outcome: Result or effect produced (pain-relief, mortality-reduction)
+- mechanism: Biological mechanism involved (serotonin-reuptake, cox-inhibition)
+- population: Patient population or demographic group (adults, women, elderly)
+- condition: Clinical condition or qualifying context (chronic-pain, depression)
+
+Measurement roles:
+- biomarker: Diagnostic or prognostic marker (crp, mirna-223-3p)
+- measured_by: Assessment tool or instrument (vas, moca)
+- control_group: Comparison or control group in study (healthy-controls, placebo)
+- study_group: Experimental or named patient group (high-dose-arm, intervention-group)
+
+Contextual roles (only when the participant is a real entity, not a vague label):
+- location: Anatomical site (brain, joints, lumbar-spine)
+
+CRITICAL: Do NOT invent role types. In particular:
+- "comparator_detail" is NOT a valid role — use control_group for comparison arms
+- "comparator" is NOT a valid role — use control_group
+- Never use role names not listed above
 
 CRITICAL: relation_type MUST be EXACTLY one of these values (no variations):
 - treats: Drug/treatment treats disease/symptom
@@ -336,7 +349,8 @@ CRITICAL: relation_type MUST be EXACTLY one of these values (no variations):
 - interacts_with: Drug interacts with another drug
 - metabolized_by: Drug is metabolized by enzyme/pathway
 - biomarker_for: Biomarker indicates disease/condition
-- affects_population: Treatment affects specific population
+- affects_population: condition is the disease/condition, population is the patient group
+  Example: "fibromyalgia affects_population women" (NOT "women affects_population fibromyalgia")
 - measures: Assessment tool/test measures condition/symptom (e.g., "VAS measures pain", "MoCA measures cognition")
 - other: Any other type of relationship
 
@@ -458,7 +472,9 @@ Extract:
    - Examples: "aspirin", "cox-2-inhibition", "vitamin-d3", "type-2-diabetes"
    - INVALID examples: "2-diabetes" (starts with number), "COX" (uppercase), "α" (too short), "cox_inhibition" (underscore)
 
-   - category: drug, disease, symptom, biological_mechanism, treatment, biomarker, population, outcome, other
+   - category: one of drug, disease, symptom, biological_mechanism, treatment, biomarker, population, outcome, other
+     other → source-stated entities that can participate in relations but do not fit another category,
+             such as comparator/control groups, study arms, or named conditions explicitly mentioned
    - confidence: high, medium, low
      high   → explicitly and unambiguously named in the source span with no interpretation needed
      medium → minor surface-form normalization required, or named with light qualification
@@ -497,6 +513,29 @@ Extract:
    "other" is appropriate only when the core participants and their direction are clear but the type genuinely
    does not map to any named type. Do NOT use "other" as a catch-all for vague spans: if the source span is
    too ambiguous to identify clear core roles, omit the relation entirely instead.
+
+   SEMANTIC ROLES — use ONLY these exact values (no others):
+   Core roles:
+   - agent: Entity performing action or causing effect (drug, treatment)
+   - target: Entity receiving action or being affected (disease, symptom)
+   - outcome: Result or effect produced (pain-relief, mortality-reduction)
+   - mechanism: Biological mechanism involved (serotonin-reuptake, cox-inhibition)
+   - population: Patient population or demographic group (adults, women, elderly)
+   - condition: Clinical condition or qualifying context (chronic-pain, depression)
+
+   Measurement roles:
+   - biomarker: Diagnostic or prognostic marker (crp, mirna-223-3p)
+   - measured_by: Assessment tool or instrument (vas, moca)
+   - control_group: Comparison or control group in study (healthy-controls, placebo)
+   - study_group: Experimental or named patient group (high-dose-arm, intervention-group)
+
+   Contextual roles (only when the participant is a real entity, not a vague label):
+   - location: Anatomical site (brain, joints, lumbar-spine)
+
+   CRITICAL: Do NOT invent role types. In particular:
+   - "comparator_detail" is NOT a valid role — use control_group for comparison arms
+   - "comparator" is NOT a valid role — use control_group
+   - Never use role names not listed above
 
    HYPERGRAPH ROLE RULE:
    - HyphaGraph relations are n-ary hyperedges, not only binary subject/object pairs.
@@ -537,7 +576,7 @@ Extract:
    - statement_kind should usually be "finding" for explicit study results and should only be "background", "hypothesis", or "methodology" when the text clearly frames it that way
    - finding_polarity should reflect whether the source supports, contradicts, or leaves the relation mixed/uncertain
    - null findings and no-difference findings should still be extracted when the tested relation and core participants are explicit
-   - for null efficacy findings such as "did not significantly improve" or "no significant difference", use finding_polarity "neutral" unless the source explicitly says the intervention performed worse than the comparator
+   - for null efficacy findings such as "did not significantly improve", "no significant difference", or "similar to placebo", use finding_polarity "neutral" unless the source explicitly says the intervention performed worse than the comparator
    - if the same entities appear in multiple contradictory or differently qualified spans, emit separate relations instead of merging them
    - if the source uses modal or hedged language such as "may", "might", "could", "suggests", "potential", or "appears to", prefer statement_kind "hypothesis" or finding_polarity "uncertain" unless the same span reports direct measured findings
    - For side-effect or safety findings where no significant difference is found versus a control or placebo, use relation_type "causes" with finding_polarity "contradicts" — do NOT use "other". Example: "no significant increase in nausea vs placebo" → relation_type "causes", finding_polarity "contradicts".
