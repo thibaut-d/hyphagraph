@@ -38,7 +38,7 @@ def test_entity_prompt_requires_neutral_global_summaries_and_explicit_mentions()
     assert "text_span should be the shortest exact mention" in ENTITY_EXTRACTION_PROMPT
     assert "Prefer entities that participate in an explicit relation" in ENTITY_EXTRACTION_PROMPT
     assert "Omit generic document nouns or paper artifacts" in ENTITY_EXTRACTION_PROMPT
-    assert 'Do not create intervention-arm wrapper entities like "SSRI groups"' in ENTITY_EXTRACTION_PROMPT
+    assert 'Do not create intervention-arm wrapper entities like "chemotherapy arm"' in ENTITY_EXTRACTION_PROMPT
     assert "text_span must remain the exact shortest source phrase" in ENTITY_EXTRACTION_PROMPT
 
 
@@ -68,12 +68,12 @@ def test_relation_prompt_requires_explicit_relations_and_separate_conflicts():
     assert "control_group, population, and comparator context NEVER replace a missing core role" in RELATION_EXTRACTION_PROMPT
     assert 'For null efficacy findings such as "did not significantly improve"' in RELATION_EXTRACTION_PROMPT
     assert 'Do NOT use relation_type "other" for ordinary efficacy findings' in RELATION_EXTRACTION_PROMPT
-    assert 'a measured clinical outcome like "depression", "pain", or' in RELATION_EXTRACTION_PROMPT
+    assert 'a measured clinical outcome like "overall survival", "blood pressure", or' in RELATION_EXTRACTION_PROMPT
     assert 'Wrong extraction: causes(target=nausea, control_group=placebo)' in RELATION_EXTRACTION_PROMPT
     assert 'When a source reports combination therapy, adjunct therapy, co-administration, or "X with Y"' in RELATION_EXTRACTION_PROMPT
     assert 'do NOT emit a single-agent treats relation for only X or only Y' in RELATION_EXTRACTION_PROMPT
-    assert "Correct extraction shape: treats(agent=pregabalin, agent=duloxetine, target=fibromyalgia, control_group=placebo)" in RELATION_EXTRACTION_PROMPT
-    assert "the finding is about the combination, not pregabalin alone" in RELATION_EXTRACTION_PROMPT
+    assert "Correct extraction shape: treats(agent=carboplatin, agent=paclitaxel, target=advanced-ovarian-cancer, control_group=carboplatin)" in RELATION_EXTRACTION_PROMPT
+    assert "the finding is about the combination regimen, not carboplatin alone" in RELATION_EXTRACTION_PROMPT
     assert "silent second pass over the text" in RELATION_EXTRACTION_PROMPT
     assert "Keep source wording separate from normalized fields" in RELATION_EXTRACTION_PROMPT
     assert 'prefer evidence_context.statement_kind "hypothesis" or' in RELATION_EXTRACTION_PROMPT
@@ -119,17 +119,17 @@ def test_batch_prompt_carries_global_evidence_first_constraints():
     assert "do NOT create entities for dosage, duration, timeframe, sample size, or study design metadata" in prompt
     assert "brief general biomedical knowledge is allowed for entity summaries only" in prompt
     assert "keep the summary short, generic, and non-interpretive" in prompt
-    assert '"dosage": "60mg daily"' in prompt
+    assert '"dosage": "500mg twice daily"' in prompt
     assert "placebo" in prompt
     assert '"entity_slug": "dose-60mg-daily"' not in prompt
     assert "Do not flatten combination therapy, adjunct therapy, or co-administration findings into single-agent relations" in prompt
     assert "include every explicitly named active intervention as agent roles in the SAME relation" in prompt
-    assert '"entity_slug": "pregabalin", "role_type": "agent"' in prompt
-    assert '"entity_slug": "duloxetine", "role_type": "agent"' in prompt
-    assert '"source_mention": "duloxetine"' in prompt
+    assert '"entity_slug": "carboplatin", "role_type": "agent"' in prompt
+    assert '"entity_slug": "paclitaxel", "role_type": "agent"' in prompt
+    assert '"source_mention": "carboplatin"' in prompt
     assert "Prefer relation-bearing biomedical entities" in prompt
     assert "omit generic document nouns or paper artifacts" in prompt
-    assert 'do not create intervention-arm wrapper entities like "SSRI groups"' in prompt
+    assert 'do not create intervention-arm wrapper entities like "chemotherapy arm"' in prompt
     assert 'do NOT use relation_type "other" for ordinary efficacy findings or adverse-event findings' in prompt
     assert "text_span, sample_size_text, and statistical_support should copy or minimally trim the source wording" in prompt
     assert 'prefer statement_kind "hypothesis" or finding_polarity "uncertain"' in prompt

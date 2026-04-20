@@ -80,7 +80,7 @@ SUMMARY RULES:
 - You may use brief general biomedical knowledge to say what the entity is
 - Do NOT add source-specific efficacy, safety, recommendation, or evidence claims unless they are part of the entity's core definition
 - Do NOT turn a sparse mention into a source-specific use statement
-- Prefer a generic definitional summary like "Nonsteroidal anti-inflammatory drug class." over a context-bound summary like "Used in combination therapies for fibromyalgia."
+- Prefer a generic definitional summary like "Nonsteroidal anti-inflammatory drug class." over a context-bound summary like "Used in this study to treat chronic pain."
 - Keep the summary short and neutral; do not expand it into a long encyclopedia entry
 - Do not create standalone entities for dosage, duration, timeframe, sample size, or study design metadata. Keep those as relation scope or evidence context instead.
 - Emit each real-world entity only once per extraction batch. Merge repeated mentions under one canonical slug instead of duplicating near-identical entities.
@@ -91,8 +91,8 @@ SUMMARY RULES:
   biomedical participants in a relation. Usually omit items like "study", "trial", "authors",
   "results", "table", "figure", "intervention group", or "control group" when they do not denote
   a reusable entity page.
-- Do not create intervention-arm wrapper entities like "SSRI groups", "treatment arm", or
-  "duloxetine group" when the reusable entity is the intervention itself. Extract the underlying
+- Do not create intervention-arm wrapper entities like "chemotherapy arm", "treatment arm", or
+  "high-dose group" when the reusable entity is the intervention itself. Extract the underlying
   intervention entity and keep the arm/group wording only in relation text_span or source_mention.
 - Keep normalized identity separate from source wording: slug may normalize the mention, but
   text_span must remain the exact shortest source phrase.
@@ -307,7 +307,7 @@ RELATION EXTRACTION RULES:
   - biomarker_for MUST include biomarker and target or condition
   - measures MUST include measured_by and target or outcome
 - control_group, population, and comparator context NEVER replace a missing core role
-- In therapeutic findings, a measured clinical outcome like "depression", "pain", or
+- In therapeutic findings, a measured clinical outcome like "overall survival", "blood pressure", or
   "quality of life" should usually be the relation's target, even if the sentence also frames it
   as an outcome or endpoint.
 - If the source mentions an adverse event like nausea but does not explicitly identify what caused it in the same source span, omit the relation instead of guessing
@@ -319,19 +319,19 @@ SEMANTIC ROLES — use ONLY these exact values (no others):
 Core roles:
 - agent: Entity performing action or causing effect (drug, treatment)
 - target: Entity receiving action or being affected (disease, symptom)
-- outcome: Result or effect produced (pain-relief, mortality-reduction)
-- mechanism: Biological mechanism involved (serotonin-reuptake, cox-inhibition)
-- population: Patient population or demographic group (adults, women, elderly)
-- condition: Clinical condition or qualifying context (chronic-pain, depression)
+- outcome: Result or effect produced (overall-survival, hba1c-reduction)
+- mechanism: Biological mechanism involved (gluconeogenesis-inhibition, cox-inhibition)
+- population: Patient population or demographic group (adults, older-adults, women)
+- condition: Clinical condition or qualifying context (refractory-disease, acute-phase)
 
 Measurement roles:
-- biomarker: Diagnostic or prognostic marker (crp, mirna-223-3p)
-- measured_by: Assessment tool or instrument (vas, moca)
+- biomarker: Diagnostic or prognostic marker (crp, hba1c)
+- measured_by: Assessment tool or instrument (mmse, ecog-score)
 - control_group: Comparison or control group in study (healthy-controls, placebo)
 - study_group: Experimental or named patient group (high-dose-arm, intervention-group)
 
 Contextual roles (only when the participant is a real entity, not a vague label):
-- location: Anatomical site (brain, joints, lumbar-spine)
+- location: Anatomical site (brain, lymph-nodes, lumbar-spine)
 
 CRITICAL: Do NOT invent role types. In particular:
 - "comparator_detail" is NOT a valid role — use control_group for comparison arms
@@ -350,7 +350,7 @@ CRITICAL: relation_type MUST be EXACTLY one of these values (no variations):
 - metabolized_by: Drug is metabolized by enzyme/pathway
 - biomarker_for: Biomarker indicates disease/condition
 - affects_population: condition is the disease/condition, population is the patient group
-  Example: "fibromyalgia affects_population women" (NOT "women affects_population fibromyalgia")
+  Example: "hypertension affects_population older-adults" (NOT "older-adults affects_population hypertension")
 - measures: Assessment tool/test measures condition/symptom (e.g., "VAS measures pain", "MoCA measures cognition")
 - other: Any other type of relationship
 
@@ -422,10 +422,10 @@ Invalid example to OMIT:
 - Reason: the span does not explicitly identify what causes nausea, so the relation is structurally incomplete and should not be emitted
 
 Combination-therapy example:
-- Text span: "pregabalin combined with duloxetine improved fibromyalgia symptoms compared with placebo"
-- Correct extraction shape: treats(agent=pregabalin, agent=duloxetine, target=fibromyalgia, control_group=placebo)
-- Wrong extraction to avoid: treats(agent=pregabalin, target=fibromyalgia, control_group=placebo)
-- Reason: the finding is about the combination, not pregabalin alone
+- Text span: "carboplatin combined with paclitaxel improved progression-free survival compared with carboplatin alone in patients with advanced ovarian cancer"
+- Correct extraction shape: treats(agent=carboplatin, agent=paclitaxel, target=advanced-ovarian-cancer, control_group=carboplatin)
+- Wrong extraction to avoid: treats(agent=carboplatin, target=advanced-ovarian-cancer, control_group=carboplatin)
+- Reason: the finding is about the combination regimen, not carboplatin alone
 
 Only extract relations that are explicitly stated in the text.
 Be conservative - avoid inferring relations that are not clearly supported.
@@ -488,7 +488,7 @@ Extract:
    - omit generic document nouns or paper artifacts unless the source clearly uses them as real biomedical participants in a relation
    - do NOT create entities for dosage, duration, timeframe, sample size, or study design metadata; keep them in relation scope or evidence_context
    - emit each real-world entity only once per batch; merge repeated mentions into one canonical entity record
-   - do not create intervention-arm wrapper entities like "SSRI groups" or "duloxetine arm" when the reusable entity is the intervention itself; use the underlying intervention entity and keep the arm/group wording only in source_mention if needed
+   - do not create intervention-arm wrapper entities like "chemotherapy arm" or "treatment group" when the reusable entity is the intervention itself; use the underlying intervention entity and keep the arm/group wording only in source_mention if needed
    - text_span should be the shortest exact source mention for that entity
 
 2. **Relations**: Relationships between entities
@@ -518,14 +518,14 @@ Extract:
    Core roles:
    - agent: Entity performing action or causing effect (drug, treatment)
    - target: Entity receiving action or being affected (disease, symptom)
-   - outcome: Result or effect produced (pain-relief, mortality-reduction)
-   - mechanism: Biological mechanism involved (serotonin-reuptake, cox-inhibition)
-   - population: Patient population or demographic group (adults, women, elderly)
-   - condition: Clinical condition or qualifying context (chronic-pain, depression)
+   - outcome: Result or effect produced (overall-survival, hba1c-reduction)
+   - mechanism: Biological mechanism involved (gluconeogenesis-inhibition, cox-inhibition)
+   - population: Patient population or demographic group (adults, older-adults, women)
+   - condition: Clinical condition or qualifying context (refractory-disease, acute-phase)
 
    Measurement roles:
-   - biomarker: Diagnostic or prognostic marker (crp, mirna-223-3p)
-   - measured_by: Assessment tool or instrument (vas, moca)
+   - biomarker: Diagnostic or prognostic marker (crp, hba1c)
+   - measured_by: Assessment tool or instrument (mmse, ecog-score)
    - control_group: Comparison or control group in study (healthy-controls, placebo)
    - study_group: Experimental or named patient group (high-dose-arm, intervention-group)
 
@@ -546,17 +546,17 @@ Extract:
 
    CRITICAL GUIDELINES FOR RELATION DIRECTION:
    - treats: agent is the treatment/drug, target is the disease/symptom
-     Example: "duloxetine treats fibromyalgia" (NOT "fibromyalgia treats duloxetine")
+     Example: "metformin treats type-2-diabetes" (NOT "type-2-diabetes treats metformin")
    - causes: agent is the cause, target/outcome is the effect/outcome
-     Example: "smoking causes cancer" (NOT "cancer causes smoking")
+     Example: "smoking causes lung-cancer" (NOT "lung-cancer causes smoking")
    - biomarker_for: biomarker is the biomarker/test, target is the disease/condition
-     Example: "crp biomarker_for inflammation" (NOT "inflammation biomarker_for crp")
+     Example: "hba1c biomarker_for type-2-diabetes" (NOT "type-2-diabetes biomarker_for hba1c")
    - affects_population: condition is disease/condition, population is the population group
-     Example: "fibromyalgia affects_population women" (NOT "women affects_population fibromyalgia")
+     Example: "type-2-diabetes affects_population adults-over-65" (NOT "adults-over-65 affects_population type-2-diabetes")
      SPECIAL CASE: "healthy controls" are NOT affected by the disease - they are comparison groups
      Do NOT create: "disease affects healthy-controls" - this is illogical
    - measures: measured_by is the assessment tool, target/outcome is what it measures
-     Example: "vas measures pain" (NOT "pain measures vas")
+     Example: "mmse measures cognitive-function" (NOT "cognitive-function measures mmse")
 
    - confidence: high, medium, low
      high   → explicitly and unambiguously stated in the source span with no interpretation needed
@@ -581,7 +581,7 @@ Extract:
    - if the source uses modal or hedged language such as "may", "might", "could", "suggests", "potential", or "appears to", prefer statement_kind "hypothesis" or finding_polarity "uncertain" unless the same span reports direct measured findings
    - For side-effect or safety findings where no significant difference is found versus a control or placebo, use relation_type "causes" with finding_polarity "contradicts" — do NOT use "other". Example: "no significant increase in nausea vs placebo" → relation_type "causes", finding_polarity "contradicts".
    - do NOT use relation_type "other" for ordinary efficacy findings or adverse-event findings when the span already makes "treats" or "causes" explicit
-   - in therapeutic findings, a measured clinical outcome like pain, depression, or quality of life should usually be the relation target even if the sentence also frames it as an endpoint or outcome
+   - in therapeutic findings, a measured clinical outcome like overall survival, blood pressure, or quality of life should usually be the relation target even if the sentence also frames it as an endpoint or outcome
    - evidence_strength assignment — use the strongest level warranted by the source, never inflate it:
      strong   → meta-analysis or systematic review with clear outcomes, or RCT with significant result
      moderate → non-randomized trial, cohort study, case-control study, or cross-sectional study
@@ -600,32 +600,25 @@ Respond with JSON containing two arrays:
 {{
   "entities": [
     {{
-      "slug": "aspirin",
-      "summary": "Nonsteroidal anti-inflammatory drug and antiplatelet medicine.",
+      "slug": "metformin",
+      "summary": "Biguanide antidiabetic agent that reduces hepatic glucose production.",
       "category": "drug",
       "confidence": "high",
-      "text_span": "aspirin"
+      "text_span": "metformin"
     }},
     {{
-      "slug": "duloxetine",
-      "summary": "Serotonin-norepinephrine reuptake inhibitor antidepressant.",
-      "category": "drug",
-      "confidence": "high",
-      "text_span": "duloxetine"
-    }},
-    {{
-      "slug": "fibromyalgia",
-      "summary": "Chronic pain disorder characterized by widespread pain and related symptoms.",
+      "slug": "type-2-diabetes",
+      "summary": "Chronic metabolic disorder characterized by insulin resistance and impaired glucose regulation.",
       "category": "disease",
       "confidence": "high",
-      "text_span": "fibromyalgia"
+      "text_span": "type 2 diabetes"
     }},
     {{
-      "slug": "adults",
-      "summary": "Adult population.",
+      "slug": "adults-over-65",
+      "summary": "Adult population aged 65 years or above.",
       "category": "population",
       "confidence": "high",
-      "text_span": "adults"
+      "text_span": "adults over 65"
     }},
     {{
       "slug": "placebo",
@@ -633,119 +626,178 @@ Respond with JSON containing two arrays:
       "category": "other",
       "confidence": "high",
       "text_span": "placebo"
+    }},
+    {{
+      "slug": "hba1c",
+      "summary": "Glycated haemoglobin biomarker reflecting average blood glucose over the preceding 2–3 months.",
+      "category": "biomarker",
+      "confidence": "high",
+      "text_span": "HbA1c"
+    }},
+    {{
+      "slug": "gastrointestinal-adverse-events",
+      "summary": "Adverse effects of gastrointestinal origin such as nausea or diarrhoea.",
+      "category": "symptom",
+      "confidence": "medium",
+      "text_span": "gastrointestinal adverse events"
+    }},
+    {{
+      "slug": "hepatic-gluconeogenesis",
+      "summary": "Hepatic synthesis of glucose from non-carbohydrate substrates.",
+      "category": "biological_mechanism",
+      "confidence": "high",
+      "text_span": "hepatic gluconeogenesis"
+    }},
+    {{
+      "slug": "carboplatin",
+      "summary": "Platinum-based chemotherapy agent used in several solid tumours.",
+      "category": "drug",
+      "confidence": "high",
+      "text_span": "carboplatin"
+    }},
+    {{
+      "slug": "paclitaxel",
+      "summary": "Taxane chemotherapy agent that stabilizes microtubules.",
+      "category": "drug",
+      "confidence": "high",
+      "text_span": "paclitaxel"
+    }},
+    {{
+      "slug": "advanced-ovarian-cancer",
+      "summary": "Ovarian cancer at an advanced stage with regional or distant spread.",
+      "category": "disease",
+      "confidence": "high",
+      "text_span": "advanced ovarian cancer"
+    }},
+    {{
+      "slug": "carboplatin-monotherapy",
+      "summary": "Carboplatin administered as a single agent without combination chemotherapy.",
+      "category": "treatment",
+      "confidence": "high",
+      "text_span": "carboplatin alone"
+    }},
+    {{
+      "slug": "mmse",
+      "summary": "Mini-Mental State Examination, a brief standardized cognitive screening instrument.",
+      "category": "other",
+      "confidence": "high",
+      "text_span": "Mini-Mental State Examination (MMSE)"
+    }},
+    {{
+      "slug": "cognitive-function",
+      "summary": "Capacity for mental processes including memory, attention, and executive function.",
+      "category": "outcome",
+      "confidence": "high",
+      "text_span": "cognitive function"
     }}
   ],
   "relations": [
     {{
       "relation_type": "treats",
       "roles": [
-        {{"entity_slug": "duloxetine", "role_type": "agent", "source_mention": "duloxetine"}},
-        {{"entity_slug": "fibromyalgia", "role_type": "target", "source_mention": "fibromyalgia"}},
-        {{"entity_slug": "adults", "role_type": "population", "source_mention": "adults"}},
+        {{"entity_slug": "metformin", "role_type": "agent", "source_mention": "metformin"}},
+        {{"entity_slug": "type-2-diabetes", "role_type": "target", "source_mention": "type 2 diabetes"}},
+        {{"entity_slug": "adults-over-65", "role_type": "population", "source_mention": "adults over 65"}},
         {{"entity_slug": "placebo", "role_type": "control_group", "source_mention": "placebo"}}
       ],
       "confidence": "high",
-      "text_span": "duloxetine 60mg daily is effective for fibromyalgia in adults compared with placebo",
-      "notes": "Context includes adult population, daily dose, and placebo comparator",
+      "text_span": "metformin 500mg twice daily significantly reduced HbA1c compared with placebo in adults over 65 with type 2 diabetes (p < 0.001)",
+      "notes": "Dose-specific finding in an older adult population",
       "scope": {{
-        "dosage": "60mg daily"
+        "dosage": "500mg twice daily"
       }},
       "evidence_context": {{
         "statement_kind": "finding",
         "finding_polarity": "supports",
         "evidence_strength": "strong",
-        "study_design": "randomized_controlled_trial",
-        "assertion_text": "Duloxetine 60mg daily was reported as effective for fibromyalgia in adults compared with placebo.",
-        "methodology_text": "Randomized placebo-controlled comparison in adults.",
-        "statistical_support": "p<0.001"
+        "study_design": "meta_analysis",
+        "sample_size": 1240,
+        "sample_size_text": "1,240 participants",
+        "assertion_text": "Metformin 500mg twice daily significantly reduced HbA1c compared with placebo in adults over 65 with type 2 diabetes.",
+        "statistical_support": "p < 0.001"
       }}
     }},
     {{
       "relation_type": "biomarker_for",
       "roles": [
-        {{"entity_slug": "mirna-223-3p", "role_type": "biomarker", "source_mention": "miRNA-223-3p"}},
-        {{"entity_slug": "fibromyalgia", "role_type": "target", "source_mention": "fibromyalgia"}},
-        {{"entity_slug": "women", "role_type": "population", "source_mention": "women"}}
+        {{"entity_slug": "hba1c", "role_type": "biomarker", "source_mention": "HbA1c"}},
+        {{"entity_slug": "type-2-diabetes", "role_type": "target", "source_mention": "type 2 diabetes"}}
       ],
       "confidence": "high",
-      "text_span": "miRNA-223-3p levels correlate with pain severity in women with fibromyalgia",
-      "notes": "Potential diagnostic biomarker",
+      "text_span": "HbA1c levels were used to monitor glycaemic control in participants with type 2 diabetes",
       "evidence_context": {{
-        "statement_kind": "hypothesis",
-        "finding_polarity": "uncertain",
-        "evidence_strength": "weak",
-        "study_design": "unknown",
-        "assertion_text": "miRNA-223-3p was proposed as a potential biomarker in women with fibromyalgia."
+        "statement_kind": "background",
+        "finding_polarity": "neutral",
+        "study_design": "background",
+        "assertion_text": "HbA1c was used as a glycaemic control marker in type 2 diabetes participants."
       }}
     }},
     {{
       "relation_type": "mechanism",
       "roles": [
-        {{"entity_slug": "duloxetine", "role_type": "agent", "source_mention": "duloxetine"}},
-        {{"entity_slug": "serotonin-reuptake-inhibition", "role_type": "mechanism", "source_mention": "serotonin and norepinephrine reuptake"}}
+        {{"entity_slug": "metformin", "role_type": "agent", "source_mention": "metformin"}},
+        {{"entity_slug": "hepatic-gluconeogenesis", "role_type": "mechanism", "source_mention": "hepatic gluconeogenesis"}}
       ],
       "confidence": "high",
-      "text_span": "duloxetine inhibits serotonin and norepinephrine reuptake",
-      "notes": "SNRI mechanism of action",
+      "text_span": "metformin reduces fasting glucose primarily by inhibiting hepatic gluconeogenesis",
       "evidence_context": {{
         "statement_kind": "background",
         "finding_polarity": "neutral",
         "study_design": "background",
-        "assertion_text": "Duloxetine inhibits serotonin and norepinephrine reuptake."
+        "assertion_text": "Metformin reduces fasting glucose primarily by inhibiting hepatic gluconeogenesis."
       }}
     }},
     {{
       "relation_type": "measures",
       "roles": [
-        {{"entity_slug": "vas", "role_type": "measured_by", "source_mention": "visual analogue scale (VAS)"}},
-        {{"entity_slug": "pain-intensity", "role_type": "outcome", "source_mention": "Pain intensity"}}
+        {{"entity_slug": "mmse", "role_type": "measured_by", "source_mention": "Mini-Mental State Examination (MMSE)"}},
+        {{"entity_slug": "cognitive-function", "role_type": "outcome", "source_mention": "cognitive function"}}
       ],
       "confidence": "high",
-      "text_span": "Pain intensity was assessed using a visual analogue scale (VAS) at baseline and week 12",
-      "notes": "Assessment tool used to measure the primary endpoint",
+      "text_span": "Cognitive function was assessed using the Mini-Mental State Examination (MMSE) at baseline and month 6",
+      "notes": "Cognitive screening instrument used as secondary endpoint",
       "evidence_context": {{
         "statement_kind": "methodology",
         "finding_polarity": "neutral",
-        "study_design": "unknown",
-        "assertion_text": "VAS was used to measure pain intensity at baseline and week 12.",
-        "methodology_text": "Assessment conducted at baseline and week 12."
+        "assertion_text": "MMSE was used to assess cognitive function at baseline and month 6.",
+        "methodology_text": "Assessment conducted at baseline and month 6."
       }}
     }},
     {{
       "relation_type": "causes",
       "roles": [
-        {{"entity_slug": "duloxetine", "role_type": "agent", "source_mention": "duloxetine"}},
-        {{"entity_slug": "nausea", "role_type": "target", "source_mention": "nausea"}},
+        {{"entity_slug": "metformin", "role_type": "agent", "source_mention": "metformin"}},
+        {{"entity_slug": "gastrointestinal-adverse-events", "role_type": "target", "source_mention": "gastrointestinal adverse events"}},
         {{"entity_slug": "placebo", "role_type": "control_group", "source_mention": "placebo"}}
       ],
       "confidence": "medium",
-      "text_span": "no significant difference in nausea rates compared to placebo",
-      "notes": "Null finding: duloxetine did not cause significantly more nausea than placebo",
+      "text_span": "no significant difference in gastrointestinal adverse events was observed between metformin and placebo groups",
+      "notes": "Null safety finding: metformin did not cause significantly more gastrointestinal adverse events than placebo",
       "evidence_context": {{
         "statement_kind": "finding",
         "finding_polarity": "contradicts",
-        "evidence_strength": "weak",
-        "study_design": "randomized_controlled_trial",
-        "assertion_text": "No significant difference in nausea rates was found between duloxetine and placebo."
+        "evidence_strength": "strong",
+        "study_design": "meta_analysis",
+        "assertion_text": "No significant difference in gastrointestinal adverse events was found between metformin and placebo."
       }}
     }},
     {{
       "relation_type": "treats",
       "roles": [
-        {{"entity_slug": "pregabalin", "role_type": "agent", "source_mention": "pregabalin"}},
-        {{"entity_slug": "duloxetine", "role_type": "agent", "source_mention": "duloxetine"}},
-        {{"entity_slug": "fibromyalgia", "role_type": "target", "source_mention": "fibromyalgia"}},
-        {{"entity_slug": "placebo", "role_type": "control_group", "source_mention": "placebo"}}
+        {{"entity_slug": "carboplatin", "role_type": "agent", "source_mention": "carboplatin"}},
+        {{"entity_slug": "paclitaxel", "role_type": "agent", "source_mention": "paclitaxel"}},
+        {{"entity_slug": "advanced-ovarian-cancer", "role_type": "target", "source_mention": "advanced ovarian cancer"}},
+        {{"entity_slug": "carboplatin-monotherapy", "role_type": "control_group", "source_mention": "carboplatin alone"}}
       ],
-      "confidence": "medium",
-      "text_span": "pregabalin combined with duloxetine improved fibromyalgia symptoms compared with placebo",
-      "notes": "Combination finding; effect is attributed to the combined regimen rather than a single component.",
+      "confidence": "high",
+      "text_span": "carboplatin combined with paclitaxel improved progression-free survival compared with carboplatin alone in patients with advanced ovarian cancer",
+      "notes": "Combination finding; effect is attributed to the carboplatin-paclitaxel regimen, not either agent alone.",
       "evidence_context": {{
         "statement_kind": "finding",
         "finding_polarity": "supports",
-        "evidence_strength": "weak",
-        "study_design": "unknown",
-        "assertion_text": "The combination of pregabalin and duloxetine was reported to improve fibromyalgia symptoms compared with placebo."
+        "evidence_strength": "strong",
+        "study_design": "randomized_controlled_trial",
+        "assertion_text": "Carboplatin combined with paclitaxel improved progression-free survival versus carboplatin alone in advanced ovarian cancer."
       }}
     }}
   ]
