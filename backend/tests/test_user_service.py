@@ -50,6 +50,7 @@ def sample_user():
         is_active=True,
         is_superuser=False,
         is_verified=False,
+        token_version=0,
         created_at=datetime.now(timezone.utc),
     )
 
