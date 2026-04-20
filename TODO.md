@@ -1,6 +1,6 @@
 # Current Work
 
-**Last updated**: 2026-04-19
+**Last updated**: 2026-04-20
 
 ## Tighten Benchmark-Driven Extraction Normalization
 
@@ -882,6 +882,102 @@ result, so relations are structurally complete before preview/save.
 - Strict enforcement may cause the model to omit relations it cannot fully
   ground, reducing recall on comparison-heavy study designs.
 - Existing-KB lookup adds a round-trip; consider caching slug presence checks.
+
+### Status
+pending
+
+---
+
+## Build Relation Type Proposal Page
+
+Allow curators to formally propose a new relation type when the model invents
+one that isn't in the controlled vocabulary. Ensure no duplicate is created
+by showing all existing types first, and use an LLM to challenge the need.
+
+### Objective
+Give curators a governed path from "the model used `coexists_with`" to either
+reassigning to an existing type or creating a justified new one, with LLM
+review acting as a first gatekeeping step.
+
+### Background
+The review queue already shows a "proposed: coexists_with" warning chip on
+relations where the model invented a type. That chip links to
+`/relation-types/propose?name=coexists_with`. This page needs to be built.
+
+### Impacted modules
+- `frontend/src/views/RelationTypeProposeView.tsx` (new)
+- `frontend/src/api/relationTypes.ts` (new — existing types list + propose endpoint)
+- `backend/app/api/relation_types.py` (new — GET list + POST propose + LLM evaluation)
+- `backend/app/models/relation_type.py` (already has the right schema)
+- `backend/app/llm/prompts.py` (new prompt: evaluate proposed type)
+- `frontend/src/App.tsx` or router (add route `/relation-types/propose`)
+
+### Plan
+1. Add `GET /api/relation-types` backend endpoint returning all active types with
+   description, aliases, examples, and category.
+2. Add `POST /api/relation-types/evaluate` endpoint that calls the LLM with the
+   proposed name plus all existing types and returns one of:
+   - `{ recommendation: "create", rationale: "..." }`
+   - `{ recommendation: "reject", rationale: "...", suggested_existing: "treats" }`
+   - `{ recommendation: "rename", rationale: "...", suggested_name: "diagnoses" }`
+3. Add `POST /api/relation-types` (admin only) to create a new type row.
+4. Build `RelationTypeProposeView`:
+   - Show all existing types in a scrollable list with descriptions.
+   - Only enable the "Propose" form after the user has scrolled to the bottom
+     (or explicitly clicked "I have read all existing types").
+   - Proposal form: name, description, example sentence, category.
+   - On submit, call the evaluate endpoint and show the LLM recommendation
+     prominently (green/yellow/red card) before any confirmation button.
+   - If recommendation is "reject", show the suggested existing type as a link
+     back to the review queue.
+   - Admin-only "Create anyway" button visible regardless of recommendation.
+5. Wire the route into the app router.
+
+### LLM prompt shape
+```
+You are evaluating whether a new relation type should be added to a biomedical
+knowledge graph. Existing types: {list with descriptions}.
+Proposed type: "{name}" — "{description}".
+Example: "{example}".
+
+Respond with JSON: { "recommendation": "create"|"reject"|"rename",
+  "rationale": "...", "suggested_existing": null|"<type>",
+  "suggested_name": null|"<name>" }
+```
+
+### Validation
+- Backend: focused pytest for relation-type list and evaluate endpoints
+- Frontend: manual smoke-test of the scroll-gate, LLM card, and create flow
+
+### Risks
+- LLM recommendation is advisory, not blocking; admins can override.
+- The scroll-gate is a soft UX constraint, not a security control.
+- New types added here must also be added to the backend `RelationType` Literal
+  and `ALL_RELATION_TYPES` frontend array to become extractable — document this
+  as a separate manual step in the admin UI.
+
+### Status
+pending
+
+---
+
+## Run Benchmark Against Current gpt-5.4 Extraction Stack
+
+Re-run the gold extraction benchmark now that the model, token limits,
+validation normalizers, and relation types have all changed significantly.
+
+### Objective
+Get a current baseline score and identify the top remaining failure modes
+before further prompt or schema work.
+
+### Plan
+1. `cd backend && uv run python scripts/run_extraction_eval.py --json`
+2. Review case-by-case failures.
+3. Add new benchmark cases for `diagnoses` and `predicts` relation types.
+4. Open new TODO items for systematic failure patterns found.
+
+### Validation
+- Backend: `cd backend && uv run python scripts/run_extraction_eval.py --json`
 
 ### Status
 pending
