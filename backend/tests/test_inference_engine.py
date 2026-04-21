@@ -2,8 +2,8 @@
 Tests for Inference Engine - TDD approach.
 
 Tests the mathematical model from COMPUTED_RELATIONS.md:
-- Claim scoring: x(c) = p(c) × i(c)
-- Role contribution: normalized sum of claims
+- Relation scoring: x(c) = p(c) × i(c)
+- Role contribution: normalized sum of relation scores
 - Evidence aggregation: weighted sum across relations
 - Confidence: 1 - exp(-λ × Coverage)
 """
@@ -25,111 +25,111 @@ def mock_repo():
 
 
 @pytest.mark.asyncio
-class TestClaimScoring:
-    """Test claim-level scoring: x(c) = p(c) × i(c)"""
+class TestRelationScoring:
+    """Test relation-level scoring: x(c) = p(c) × i(c)"""
 
-    async def test_positive_claim_score(self, mock_db):
-        """Test positive claim: polarity=+1, intensity=0.8 → score=0.8"""
+    async def test_positive_relation_score(self, mock_db):
+        """Test positive relation score: polarity=+1, intensity=0.8 → score=0.8"""
         service = InferenceService(mock_db)
 
-        # Claim: "Aspirin reduces pain" (positive, strong)
+        # Relation statement: "Aspirin reduces pain" (positive, strong)
         polarity = 1
         intensity = 0.8
 
-        score = service.compute_claim_score(polarity, intensity)
+        score = service.compute_relation_score(polarity, intensity)
 
         assert score == 0.8
         assert -1 <= score <= 1
 
-    async def test_negative_claim_score(self, mock_db):
-        """Test negative claim: polarity=-1, intensity=0.6 → score=-0.6"""
+    async def test_negative_relation_score(self, mock_db):
+        """Test negative relation score: polarity=-1, intensity=0.6 → score=-0.6"""
         service = InferenceService(mock_db)
 
-        # Claim: "Aspirin causes bleeding" (negative, moderate)
+        # Relation statement: "Aspirin causes bleeding" (negative, moderate)
         polarity = -1
         intensity = 0.6
 
-        score = service.compute_claim_score(polarity, intensity)
+        score = service.compute_relation_score(polarity, intensity)
 
         assert score == -0.6
         assert -1 <= score <= 1
 
-    async def test_neutral_claim_score(self, mock_db):
-        """Test neutral claim: polarity=0, intensity=0.5 → score=0"""
+    async def test_neutral_relation_score(self, mock_db):
+        """Test neutral relation score: polarity=0, intensity=0.5 → score=0"""
         service = InferenceService(mock_db)
 
-        # Claim: "No effect observed"
+        # Relation statement: "No effect observed"
         polarity = 0
         intensity = 0.5
 
-        score = service.compute_claim_score(polarity, intensity)
+        score = service.compute_relation_score(polarity, intensity)
 
         assert score == 0
 
-    async def test_weak_positive_claim(self, mock_db):
-        """Test weak positive claim: polarity=+1, intensity=0.2 → score=0.2"""
+    async def test_weak_positive_relation(self, mock_db):
+        """Test weak positive relation: polarity=+1, intensity=0.2 → score=0.2"""
         service = InferenceService(mock_db)
 
         polarity = 1
         intensity = 0.2
 
-        score = service.compute_claim_score(polarity, intensity)
+        score = service.compute_relation_score(polarity, intensity)
 
         assert score == 0.2
 
 
 @pytest.mark.asyncio
 class TestRoleContribution:
-    """Test role contribution within a relation: x(h, r) = sum(x(c)) / sum(|x(c)|)"""
+    """Test role contribution within a relation: x(h, r) = sum(x(c)) / sum(|x(c)|)."""
 
-    async def test_single_positive_claim(self, mock_db):
-        """Test single claim: [0.8] → contribution = 1.0 (normalized)"""
+    async def test_single_positive_relation_score(self, mock_db):
+        """Test single score: [0.8] → contribution = 1.0 (normalized)."""
         service = InferenceService(mock_db)
 
-        claims = [0.8]  # One positive claim
+        relation_scores = [0.8]  # One positive relation score
 
-        contribution = service.compute_role_contribution(claims)
+        contribution = service.compute_role_contribution(relation_scores)
 
-        # Single claim normalizes to 1.0: 0.8 / |0.8| = 1.0
+        # Single score normalizes to 1.0: 0.8 / |0.8| = 1.0
         assert contribution == 1.0
 
-    async def test_two_positive_claims(self, mock_db):
-        """Test two positive claims: [0.8, 0.6] → contribution = 1.4/1.4 = 1.0"""
+    async def test_two_positive_relation_scores(self, mock_db):
+        """Test two positive scores: [0.8, 0.6] → contribution = 1.4/1.4 = 1.0."""
         service = InferenceService(mock_db)
 
-        claims = [0.8, 0.6]  # Two positive claims
+        relation_scores = [0.8, 0.6]  # Two positive relation scores
 
-        contribution = service.compute_role_contribution(claims)
+        contribution = service.compute_role_contribution(relation_scores)
 
         assert contribution == 1.0  # Saturates at max
 
-    async def test_mixed_claims_slight_positive(self, mock_db):
-        """Test mixed claims: [0.8, -0.3] → contribution = 0.5/1.1 ≈ 0.45"""
+    async def test_mixed_relation_scores_slight_positive(self, mock_db):
+        """Test mixed scores: [0.8, -0.3] → contribution = 0.5/1.1 ≈ 0.45."""
         service = InferenceService(mock_db)
 
-        claims = [0.8, -0.3]  # Positive outweighs negative
+        relation_scores = [0.8, -0.3]  # Positive outweighs negative
 
-        contribution = service.compute_role_contribution(claims)
+        contribution = service.compute_role_contribution(relation_scores)
 
         assert abs(contribution - 0.45) < 0.01  # ~0.45
 
-    async def test_contradictory_claims_balanced(self, mock_db):
+    async def test_balanced_contradiction_scores(self, mock_db):
         """Test balanced contradiction: [0.8, -0.8] → contribution = 0"""
         service = InferenceService(mock_db)
 
-        claims = [0.8, -0.8]  # Perfect contradiction
+        relation_scores = [0.8, -0.8]  # Perfect contradiction
 
-        contribution = service.compute_role_contribution(claims)
+        contribution = service.compute_role_contribution(relation_scores)
 
         assert contribution == 0
 
-    async def test_empty_claims(self, mock_db):
-        """Test no claims: [] → contribution is None (undefined)"""
+    async def test_empty_relation_scores(self, mock_db):
+        """Test no relation scores: [] → contribution is None (undefined)."""
         service = InferenceService(mock_db)
 
-        claims = []
+        relation_scores = []
 
-        contribution = service.compute_role_contribution(claims)
+        contribution = service.compute_role_contribution(relation_scores)
 
         assert contribution is None  # Role not exposed
 
@@ -308,7 +308,7 @@ class TestDisagreementMeasure:
     """Test disagreement (contradiction) measure."""
 
     async def test_perfect_agreement(self, mock_db):
-        """Test all positive claims → zero disagreement"""
+        """Test all positive relation scores → zero disagreement"""
         service = InferenceService(mock_db)
 
         relations_data = [

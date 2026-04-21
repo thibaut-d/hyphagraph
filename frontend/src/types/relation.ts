@@ -16,6 +16,7 @@ export interface RelationRevisionRead {
   direction?: string | null;
   confidence?: number | null;
   scope?: Record<string, unknown> | null;
+  evidence_context?: Record<string, unknown> | null;
   notes?: string | Record<string, string> | null;
   created_with_llm?: string | null;
   created_by_user_id?: string | null;
@@ -37,6 +38,7 @@ export interface RelationRead {
   direction?: string | null;
   confidence?: number | null;
   scope?: Record<string, unknown> | null;
+  evidence_context?: Record<string, unknown> | null;
   notes?: string | Record<string, string> | null;
   created_with_llm?: string | null;
   status: "draft" | "confirmed";

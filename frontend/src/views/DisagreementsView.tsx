@@ -1,13 +1,13 @@
 /**
  * DisagreementsView
  *
- * Dedicated view for exploring contradictions and conflicting claims
+ * Dedicated view for exploring contradictions and conflicting evidence statements
  * about an entity. Upholds scientific honesty by never hiding contradictions.
  *
  * Purpose (from UX.md & VIBE.md):
  * - Show all contradictory evidence side-by-side
  * - Never hide contradictions (fundamental principle)
- * - Enable scientific audit of conflicting claims
+ * - Enable scientific audit of conflicting evidence statements
  * - Provide clear source attribution for each side
  * - Help users understand WHY sources disagree
  *
@@ -37,6 +37,7 @@ import {
 } from "../components/disagreements/DisagreementsGroupsSection";
 import { DisagreementsHeaderSection } from "../components/disagreements/DisagreementsHeaderSection";
 import { DisagreementsSummarySection } from "../components/disagreements/DisagreementsSummarySection";
+import { entityPath, entitySubpath } from "../utils/entityPath";
 
 /**
  * DisagreementsView Component
@@ -44,7 +45,7 @@ import { DisagreementsSummarySection } from "../components/disagreements/Disagre
  * Shows contradictions in a structured, scientific manner:
  * - Group contradictions by role type
  * - Side-by-side comparison of supporting vs contradicting evidence
- * - Source attribution for each claim
+ * - Source attribution for each relation statement
  * - Confidence metrics
  * - Links to full evidence details
  *
@@ -93,6 +94,7 @@ export function DisagreementsView() {
   }
 
   const entityLabel = entity.slug;
+  const canonicalEntityPath = entityPath(entity);
 
   // Group relations by role type and direction
   const disagreementGroups: DisagreementGroup[] = inference?.disagreement_groups
@@ -136,9 +138,9 @@ export function DisagreementsView() {
   return (
     <Stack spacing={3}>
       <DisagreementsHeaderSection
-        entityId={id!}
+        entityId={entity.slug}
         entityLabel={entityLabel}
-        onBack={() => navigate(`/entities/${id}`)}
+        onBack={() => navigate(canonicalEntityPath)}
       />
 
       {hasDisagreements ? (
@@ -150,12 +152,12 @@ export function DisagreementsView() {
 
           <DisagreementsGroupsSection
             groups={disagreementGroups}
-            onViewExplanation={(roleType) => navigate(`/entities/${id}/properties/${roleType}`)}
+            onViewExplanation={(roleType) => navigate(entitySubpath(entity, `properties/${roleType}`))}
           />
 
           <DisagreementsFooterSection
-            onViewSynthesis={() => navigate(`/entities/${id}/synthesis`)}
-            onBackToDetail={() => navigate(`/entities/${id}`)}
+            onViewSynthesis={() => navigate(entitySubpath(entity, "synthesis"))}
+            onBackToDetail={() => navigate(canonicalEntityPath)}
           />
         </>
       ) : (

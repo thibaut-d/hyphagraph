@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from app.llm.schemas import ExtractedClaim, ExtractedEntity, ExtractedRelation
+from app.llm.schemas import ExtractedEntity, ExtractedRelation
 
 
 class TextExtractionRequest(BaseModel):
@@ -67,30 +67,8 @@ class RelationExtractionResponse(BaseModel):
     text_length: int = Field(..., description="Length of input text in characters")
 
 
-class ClaimExtractionRequest(TextExtractionRequest):
-    """Request schema for claim extraction."""
-
-    min_evidence_strength: Literal["strong", "moderate", "weak", "anecdotal"] | None = Field(
-        None,
-        description="Minimum evidence strength for results",
-    )
-
-
-class ClaimExtractionResponse(BaseModel):
-    """Response schema for claim extraction."""
-
-    claims: list[ExtractedClaim]
-    count: int = Field(..., description="Number of claims extracted")
-    text_length: int = Field(..., description="Length of input text in characters")
-
-
 class BatchExtractionRequest(TextExtractionRequest):
     """Request schema for batch extraction."""
-
-    min_evidence_strength: Literal["strong", "moderate", "weak", "anecdotal"] | None = Field(
-        None,
-        description="Minimum evidence strength for claims",
-    )
 
 
 class BatchExtractionResponse(BaseModel):
@@ -98,8 +76,6 @@ class BatchExtractionResponse(BaseModel):
 
     entities: list[ExtractedEntity]
     relations: list[ExtractedRelation]
-    claims: list[ExtractedClaim]
     entity_count: int
     relation_count: int
-    claim_count: int
     text_length: int

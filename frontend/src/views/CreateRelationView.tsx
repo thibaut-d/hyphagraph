@@ -298,7 +298,12 @@ export function CreateRelationView() {
         )}
 
         {roles.map((role, index) => (
-          <Stack direction="row" spacing={2} key={index}>
+          <Stack
+            key={index}
+            direction={{ xs: "column", sm: "row" }}
+            spacing={2}
+            alignItems={{ xs: "stretch", sm: "flex-start" }}
+          >
             <TextField
               select
               label={t("relation.entity", "Entity")}
@@ -328,9 +333,11 @@ export function CreateRelationView() {
               helperText={t("relation.role_type_help", "Describe what this entity does in the statement")}
             />
 
-            <IconButton onClick={() => removeRole(index)} aria-label="Remove participant">
-              <DeleteIcon />
-            </IconButton>
+            <Box sx={{ display: "flex", justifyContent: { xs: "flex-end", sm: "center" }, alignItems: "flex-start", pt: { sm: 1 } }}>
+              <IconButton onClick={() => removeRole(index)} aria-label="Remove participant">
+                <DeleteIcon />
+              </IconButton>
+            </Box>
           </Stack>
         ))}
 

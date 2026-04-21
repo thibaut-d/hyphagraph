@@ -4,11 +4,14 @@ Pydantic schemas for LLM extraction responses.
 Defines structured schemas for:
 - Entity extraction
 - Relation extraction
-- Claim extraction
 - Entity linking
 """
+import logging
+import re
 from typing import Literal
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field, field_validator, model_validator
+
+logger = logging.getLogger(__name__)
 
 from app.schemas.common_types import JsonObject, JsonValue
 
@@ -30,6 +33,28 @@ EntityCategory = Literal[
 ]
 
 ConfidenceLevel = Literal["high", "medium", "low"]
+
+
+def _normalize_extracted_slug(value: object) -> object:
+    """
+    Normalize LLM-emitted slugs into the canonical lowercase hyphenated form.
+
+    The extraction prompt asks for stable slugs, but model outputs can still
+    include uppercase acronyms, punctuation, or leading digits such as
+    `5-hydroxytryptophan` or `30-percent-pain-relief`. Normalize those values
+    at the schema boundary so one malformed slug does not reject the whole batch.
+    """
+    if not isinstance(value, str):
+        return value
+
+    normalized = value.strip().lower()
+    normalized = re.sub(r"[^a-z0-9]+", "-", normalized)
+    normalized = re.sub(r"-{2,}", "-", normalized).strip("-")
+
+    if normalized and not normalized[0].isalpha():
+        normalized = f"item-{normalized}"
+
+    return normalized or value
 
 
 class ExtractedEntity(BaseModel):
@@ -67,6 +92,11 @@ class ExtractedEntity(BaseModel):
         max_length=500
     )
 
+    @field_validator("slug", mode="before")
+    @classmethod
+    def normalize_slug(cls, value: object) -> object:
+        return _normalize_extracted_slug(value)
+
 
 class EntityExtractionResponse(BaseModel):
     """Response schema for entity extraction."""
@@ -92,9 +122,38 @@ RelationType = Literal[
     "metabolized_by",
     "biomarker_for",
     "affects_population",
-    "measures",  # For diagnostic tools, assessments, biomarkers
+    "measures",    # Quantifies a value (e.g. MMSE measures cognitive function)
+    "diagnoses",   # Confirms presence/absence of a condition (binary clinical decision)
+    "predicts",    # Forecasts a future clinical outcome (prognosis)
     "other"
 ]
+
+_REQUIRED_RELATION_ROLE_GROUPS: dict[str, tuple[tuple[str, ...], ...]] = {
+    "treats": (("agent",), ("target",)),
+    "causes": (("agent",), ("target", "outcome")),
+    "prevents": (("agent",), ("target", "outcome")),
+    "increases_risk": (("agent", "condition"), ("target", "outcome")),
+    "decreases_risk": (("agent", "condition"), ("target", "outcome")),
+    "contraindicated": (("agent",), ("target", "condition")),
+    "metabolized_by": (("agent",), ("target", "mechanism")),
+    "biomarker_for": (("biomarker",), ("target", "condition")),
+    "measures": (("measured_by",), ("target", "outcome", "condition")),
+    "diagnoses": (("measured_by",), ("target", "condition")),
+    "predicts": (("agent", "biomarker"), ("target", "outcome")),
+}
+
+
+def get_missing_required_relation_roles(
+    relation_type: str,
+    role_types: list[str],
+) -> list[tuple[str, ...]]:
+    normalized_roles = set(role_types)
+    required_groups = _REQUIRED_RELATION_ROLE_GROUPS.get(relation_type, ())
+    return [
+        role_group
+        for role_group in required_groups
+        if not any(role_type in normalized_roles for role_type in role_group)
+    ]
 
 
 class ExtractedRole(BaseModel):
@@ -109,6 +168,22 @@ class ExtractedRole(BaseModel):
         ...,
         description="Semantic role type (agent, target, population, mechanism, etc.)"
     )
+    source_mention: str | None = Field(
+        None,
+        description=(
+            "Shortest exact local source mention for this role participant inside the relation text span"
+        ),
+        min_length=1,
+        max_length=200,
+    )
+
+    @field_validator("entity_slug", mode="before")
+    @classmethod
+    def normalize_entity_slug(cls, value: object) -> object:
+        return _normalize_extracted_slug(value)
+
+
+_VALID_RELATION_TYPES: frozenset[str] = frozenset(RelationType.__args__)  # type: ignore[attr-defined]
 
 
 class ExtractedRelation(BaseModel):
@@ -117,6 +192,38 @@ class ExtractedRelation(BaseModel):
 
     Represents a hypergraph edge connecting multiple entities with explicit roles.
     """
+
+    # Stores the type name the model originally proposed when it was not in the
+    # controlled vocabulary. Populated automatically by coerce_relation_type.
+    # Preserved in extraction_data JSON so the review UI can display it and
+    # offer a "Propose as new type" path.
+    model_proposed_type: str | None = Field(
+        None,
+        description="Relation type originally proposed by the model when it was not in the controlled vocabulary",
+    )
+
+    @field_validator("relation_type", mode="before")
+    @classmethod
+    def coerce_relation_type(cls, value: object) -> object:
+        """Map unknown relation types to 'other'; the original value is captured in model_proposed_type."""
+        if isinstance(value, str) and value not in _VALID_RELATION_TYPES:
+            logger.warning("Unknown relation_type %r — coercing to 'other'", value)
+            # Store the original value in model_proposed_type via model_validator below
+            return "other"
+        return value
+
+    @model_validator(mode="before")
+    @classmethod
+    def capture_proposed_type(cls, data: object) -> object:
+        """Before field validation: if relation_type is unknown, save it to model_proposed_type."""
+        if not isinstance(data, dict):
+            return data
+        rt = data.get("relation_type")
+        if isinstance(rt, str) and rt not in _VALID_RELATION_TYPES:
+            data = dict(data)
+            data.setdefault("model_proposed_type", rt)
+        return data
+
     relation_type: RelationType = Field(
         ...,
         description="Type of relation between entities"
@@ -141,6 +248,43 @@ class ExtractedRelation(BaseModel):
         description="Important caveats, conditions, or context",
         max_length=500
     )
+    scope: JsonObject | None = Field(
+        None,
+        description=(
+            "Applicability qualifiers for this relation, such as population, dosage, "
+            "duration, comparator, or condition"
+        ),
+    )
+    evidence_context: "ExtractedRelationEvidenceContext | None" = Field(
+        None,
+        validation_alias=AliasChoices("evidence_context", "study_context"),
+        description=(
+            "Structured evidence metadata describing whether this relation is a finding, "
+            "hypothesis, background statement, or methodology note, plus proof-level qualifiers"
+        ),
+    )
+
+    @property
+    def study_context(self) -> "ExtractedRelationEvidenceContext | None":
+        """Backward-compatible alias for callers still using the old field name."""
+        return self.evidence_context
+
+    @model_validator(mode="after")
+    def validate_required_core_roles(self) -> "ExtractedRelation":
+        missing_role_groups = get_missing_required_relation_roles(
+            self.relation_type,
+            [role.role_type for role in self.roles],
+        )
+        if missing_role_groups:
+            missing_labels = [
+                " or ".join(role_group)
+                for role_group in missing_role_groups
+            ]
+            raise ValueError(
+                f"relation_type '{self.relation_type}' is missing required core roles: "
+                f"{', '.join(missing_labels)}"
+            )
+        return self
 
 
 class RelationExtractionResponse(BaseModel):
@@ -151,18 +295,6 @@ class RelationExtractionResponse(BaseModel):
     )
 
 
-# =============================================================================
-# Claim Extraction Schemas
-# =============================================================================
-
-ClaimType = Literal[
-    "efficacy",
-    "safety",
-    "mechanism",
-    "epidemiology",
-    "other"
-]
-
 EvidenceStrength = Literal[
     "strong",      # RCTs, meta-analyses
     "moderate",    # Observational studies
@@ -171,51 +303,209 @@ EvidenceStrength = Literal[
 ]
 
 
-class ExtractedClaim(BaseModel):
+def _normalize_evidence_strength_alias(value: object) -> object:
     """
-    Schema for an extracted factual claim.
+    Normalize common confidence-style aliases into the evidence-strength vocabulary.
 
-    Represents a specific factual statement from the source with
-    information about evidence quality and involved entities.
+    Some model responses still emit `high`/`medium`/`low` even though the prompt
+    asks for `strong`/`moderate`/`weak`. Accepting those aliases keeps the
+    extraction pipeline robust without broadening the stored contract.
     """
-    claim_text: str = Field(
+    if not isinstance(value, str):
+        return value
+
+    normalized = value.strip().lower()
+    aliases = {
+        "high": "strong",
+        "medium": "moderate",
+        "low": "weak",
+    }
+    return aliases.get(normalized, normalized)
+
+
+def _normalize_study_design(value: object) -> object:
+    """
+    Map free-text study-design descriptions to enum values.
+
+    LLMs frequently return verbose phrases like "systematic review and
+    meta-analysis of randomized controlled trials" instead of a single
+    enum token. This function normalises the most common patterns so
+    Pydantic validation does not reject valid extractions.
+
+    Priority order when the text matches multiple keywords: meta_analysis >
+    systematic_review > randomized_controlled_trial > nonrandomized_trial >
+    cohort_study > case_control_study > cross_sectional_study > case_series >
+    case_report > guideline > review > animal_study > in_vitro > background.
+    """
+    if not isinstance(value, str):
+        return value
+
+    v = value.strip().lower()
+
+    # Already a valid enum token — pass through unchanged.
+    _valid = {
+        "meta_analysis", "systematic_review", "randomized_controlled_trial",
+        "nonrandomized_trial", "cohort_study", "case_control_study",
+        "cross_sectional_study", "case_series", "case_report", "guideline",
+        "review", "animal_study", "in_vitro", "background", "unknown",
+    }
+    if v in _valid:
+        return v
+
+    # Keyword-based heuristics (highest-specificity first).
+    if "meta-analysis" in v or "meta analysis" in v or "meta_analysis" in v:
+        return "meta_analysis"
+    if "systematic review" in v or "systematic_review" in v:
+        return "systematic_review"
+    if "randomized controlled trial" in v or "randomised controlled trial" in v or "rct" == v:
+        return "randomized_controlled_trial"
+    if "nonrandomized" in v or "non-randomized" in v or "non randomized" in v:
+        return "nonrandomized_trial"
+    if "cohort" in v:
+        return "cohort_study"
+    if "case-control" in v or "case control" in v:
+        return "case_control_study"
+    if "cross-sectional" in v or "cross sectional" in v:
+        return "cross_sectional_study"
+    if "case series" in v or "case_series" in v:
+        return "case_series"
+    if "case report" in v or "case_report" in v:
+        return "case_report"
+    if "guideline" in v:
+        return "guideline"
+    if "animal" in v:
+        return "animal_study"
+    if "in vitro" in v or "in_vitro" in v:
+        return "in_vitro"
+    if "review" in v:
+        return "review"
+    if "background" in v:
+        return "background"
+
+    # Cannot map — return original value so Pydantic emits the validation
+    # error with the actual bad input rather than a silent None.
+    return value
+
+
+def _normalize_sample_size(value: object) -> object:
+    """Extract an integer participant count from common free-text sample-size formats."""
+    if isinstance(value, int):
+        return value
+    if not isinstance(value, str):
+        return value
+
+    match = re.search(r"\d[\d,]*", value)
+    if not match:
+        return value
+
+    return int(match.group(0).replace(",", ""))
+
+StatementKind = Literal[
+    "finding",
+    "background",
+    "hypothesis",
+    "methodology",
+]
+
+FindingPolarity = Literal[
+    "supports",
+    "contradicts",
+    "mixed",
+    "neutral",
+    "uncertain",
+]
+
+StudyDesign = Literal[
+    "meta_analysis",
+    "systematic_review",
+    "randomized_controlled_trial",
+    "nonrandomized_trial",
+    "cohort_study",
+    "case_control_study",
+    "cross_sectional_study",
+    "case_series",
+    "case_report",
+    "guideline",
+    "review",
+    "animal_study",
+    "in_vitro",
+    "background",
+    "unknown",
+]
+
+
+class ExtractedRelationEvidenceContext(BaseModel):
+    """Structured context describing the evidentiary status of an extracted relation."""
+
+    @field_validator("study_design", mode="before")
+    @classmethod
+    def normalize_study_design(cls, value: object) -> object:
+        return _normalize_study_design(value)
+
+    @field_validator("evidence_strength", mode="before")
+    @classmethod
+    def normalize_evidence_strength(cls, value: object) -> object:
+        return _normalize_evidence_strength_alias(value)
+
+    @field_validator("sample_size", mode="before")
+    @classmethod
+    def normalize_sample_size(cls, value: object) -> object:
+        return _normalize_sample_size(value)
+
+    statement_kind: StatementKind = Field(
         ...,
-        description="The factual statement being made",
-        min_length=10,
-        max_length=1000
+        description=(
+            "Whether the relation is a concrete finding, a hypothesis/assumption, "
+            "background context, or methodology note"
+        ),
     )
-    entities_involved: list[str] = Field(
-        ...,
-        description="List of entity slugs mentioned in the claim",
-        min_length=1
+    finding_polarity: FindingPolarity | None = Field(
+        None,
+        description=(
+            "Whether the source supports, contradicts, or presents mixed/uncertain evidence for the relation"
+        ),
     )
-    claim_type: ClaimType = Field(
-        ...,
-        description="Type of claim"
+    evidence_strength: EvidenceStrength | None = Field(
+        None,
+        description="Conservative evidence strength for this relation when supported by the source",
     )
-    evidence_strength: EvidenceStrength = Field(
-        ...,
-        description="Strength of evidence supporting the claim"
+    study_design: StudyDesign | None = Field(
+        None,
+        description="Study design explicitly stated or directly signaled by the source text",
     )
-    confidence: ConfidenceLevel = Field(
-        ...,
-        description="Confidence in extracting this claim"
+    sample_size: int | None = Field(
+        None,
+        ge=1,
+        le=10000000,
+        description="Participant count when explicitly stated",
     )
-    text_span: str = Field(
-        ...,
-        description="Exact text supporting this claim",
+    sample_size_text: str | None = Field(
+        None,
         min_length=1,
-        max_length=2000
+        max_length=300,
+        description="Exact source wording for the participant count or study size",
+    )
+    assertion_text: str | None = Field(
+        None,
+        min_length=5,
+        max_length=500,
+        description="Core source-bounded statement for this relation",
+    )
+    methodology_text: str | None = Field(
+        None,
+        min_length=5,
+        max_length=300,
+        description="Short note about methodology or applicability limits explicitly stated in the source",
+    )
+    statistical_support: str | None = Field(
+        None,
+        min_length=2,
+        max_length=200,
+        description="Statistical support snippet when the source provides one, such as p-values or effect sizes",
     )
 
 
-class ClaimExtractionResponse(BaseModel):
-    """Response schema for claim extraction."""
-    claims: list[ExtractedClaim] = Field(
-        default_factory=list,
-        description="List of extracted claims"
-    )
-
+ExtractedRelationStudyContext = ExtractedRelationEvidenceContext
 
 # =============================================================================
 # Batch Extraction Schema (All-in-One)
@@ -225,7 +515,7 @@ class BatchExtractionResponse(BaseModel):
     """
     Response schema for batch extraction of all knowledge.
 
-    Contains entities, relations, and claims extracted from
+    Contains entities and relations extracted from
     a single piece of text in one pass.
     """
     entities: list[ExtractedEntity] = Field(
@@ -235,10 +525,6 @@ class BatchExtractionResponse(BaseModel):
     relations: list[ExtractedRelation] = Field(
         default_factory=list,
         description="Extracted relations"
-    )
-    claims: list[ExtractedClaim] = Field(
-        default_factory=list,
-        description="Extracted claims"
     )
 
 
@@ -284,11 +570,6 @@ def validate_relation_extraction(data: JsonObject) -> RelationExtractionResponse
     return RelationExtractionResponse.model_validate(data)
 
 
-def validate_claim_extraction(data: JsonObject) -> ClaimExtractionResponse:
-    """Validate and parse claim extraction response from LLM."""
-    return ClaimExtractionResponse.model_validate(data)
-
-
 def validate_batch_extraction(data: JsonObject) -> BatchExtractionResponse:
     """Validate and parse batch extraction response from LLM."""
     # Convert old subject/object format to new roles format for backward compatibility
@@ -318,6 +599,9 @@ def validate_batch_extraction(data: JsonObject) -> BatchExtractionResponse:
                 ]
 
     return BatchExtractionResponse.model_validate(data)
+
+
+ExtractedRelation.model_rebuild()
 
 
 def validate_entity_linking(data: JsonObject) -> EntityLinkingResponse:

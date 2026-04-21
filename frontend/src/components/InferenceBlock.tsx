@@ -18,7 +18,7 @@ import type { InferenceRead, RoleInference } from "../types/inference";
 import type { RelationRead } from "../types/relation";
 import {
   formatDirectionLabel,
-  formatRelationClaim,
+  formatRelationStatement,
   formatRelationContext,
   normalizeRelationDirection,
 } from "../utils/relationPresentation";
@@ -121,7 +121,7 @@ function RelationDisplay({ relation, kind }: { relation: RelationRead; kind: str
         />
       </Stack>
       <Typography variant="body2" sx={{ fontWeight: 600 }}>
-        {formatRelationClaim(relation, kind)}
+        {formatRelationStatement(relation, kind)}
       </Typography>
       {contextParts.length > 0 && (
         <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
@@ -266,6 +266,7 @@ function RoleInferenceCard({
 
 export function InferenceBlock({
   inference,
+  currentEntitySlug,
 }: {
   inference: InferenceRead | null;
   currentEntitySlug?: string;
@@ -295,7 +296,7 @@ export function InferenceBlock({
               <RoleInferenceCard
                 key={roleInf.role_type}
                 roleInference={roleInf}
-                entityId={inference.entity_id}
+                entityId={currentEntitySlug || inference.entity_id}
               />
             ))}
           </Stack>
@@ -309,7 +310,7 @@ export function InferenceBlock({
         <Typography variant="body2" color="text.secondary" paragraph>
           {t(
             "inference.source_evidence_description",
-            "These source-backed relations are the evidence the computed reading is built from. Use them to inspect the exact claims, their direction, and their context."
+            "These source-backed relations are the evidence the computed reading is built from. Use them to inspect the exact relation statements, their direction, and their context."
           )}
         </Typography>
         <Stack spacing={2}>

@@ -1,7 +1,7 @@
 """
 Tests for explainability API endpoints.
 
-Tests the /explain/inference/{entity_id}/{role_type} endpoint
+Tests the /explain/inference/{entity_ref}/{role_type} endpoint
 including scope filtering, error handling, and response validation.
 """
 import pytest
@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock
 from httpx import AsyncClient, ASGITransport
 
 from app.api.inference_dependencies import get_explanation_service
+from app.api.service_dependencies import get_entity_service
 from app.main import app
 from app.database import get_db
 from app.services.entity_service import EntityService
@@ -32,7 +33,7 @@ def override_get_db(db_session):
 
 @pytest.mark.asyncio
 class TestExplainEndpoint:
-    """Test /explain/inference/{entity_id}/{role_type} endpoint."""
+    """Test /explain/inference/{entity_ref}/{role_type} endpoint."""
 
     async def test_explain_inference_success(self, db_session, override_get_db):
         """Test successful explanation retrieval."""
@@ -72,6 +73,7 @@ class TestExplainEndpoint:
         try:
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
                 response = await client.get(f"/api/explain/inference/{entity.id}/drug")
+                slug_response = await client.get(f"/api/explain/inference/{entity.slug}/drug")
         finally:
             app.dependency_overrides.clear()
 
@@ -96,6 +98,9 @@ class TestExplainEndpoint:
         assert source_contrib["source_authors"] == ["Smith J."]
         assert source_contrib["source_year"] == 2020
         assert source_contrib["relation_confidence"] == 0.9
+
+        assert slug_response.status_code == 200
+        assert slug_response.json()["entity_id"] == str(entity.id)
 
     async def test_explain_inference_with_scope_filter(self, db_session, override_get_db):
         """Test explanation with scope filter parameter."""
@@ -307,8 +312,8 @@ class TestExplainEndpoint:
         assert response.status_code == 404
         assert "not found" in response.json()["error"]["message"].lower()
 
-    async def test_explain_inference_invalid_entity_id(self, override_get_db):
-        """Test explanation with invalid entity UUID returns 422."""
+    async def test_explain_inference_missing_slug_ref(self, override_get_db):
+        """Test slug-like missing entity refs return 404."""
         # Act
         app.dependency_overrides[get_db] = override_get_db
         try:
@@ -318,7 +323,7 @@ class TestExplainEndpoint:
             app.dependency_overrides.clear()
 
         # Assert
-        assert response.status_code == 422  # Validation error
+        assert response.status_code == 404
 
     async def test_explain_inference_nonexistent_entity(self, override_get_db):
         """Test explanation for non-existent entity returns 404."""
@@ -345,8 +350,11 @@ class TestExplainEndpoint:
             error_code=ErrorCode.FORBIDDEN,
             message="Forbidden explanation access",
         )
+        entity_service = AsyncMock()
+        entity_service.resolve_ref_to_id.return_value = fake_entity_id
 
         app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_entity_service] = lambda: entity_service
         app.dependency_overrides[get_explanation_service] = lambda: service
         try:
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:

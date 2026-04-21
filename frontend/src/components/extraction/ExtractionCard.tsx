@@ -1,22 +1,34 @@
 import { Link as RouterLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { StagedExtractionRead } from "../../api/extractionReview";
-import type { ExtractedEntity, ExtractedRelation, ExtractedClaim } from "../../types/extraction";
+import type { ExtractedEntity, ExtractedRelation, RelationType } from "../../types/extraction";
+import { ALL_RELATION_TYPES } from "../../types/extraction";
+import {
+  getRelationDisplayRoles,
+  getRelationObject,
+  getRelationSubject,
+} from "../../utils/extractionRelation";
 import {
   Box,
   Button,
   Checkbox,
   Chip,
+  FormControl,
+  InputLabel,
   ListItem,
   ListItemText,
+  MenuItem,
   Paper,
+  Select,
   Stack,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import WarningIcon from "@mui/icons-material/Warning";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 
 interface ExtractionCardProps {
   extraction: StagedExtractionRead;
@@ -24,13 +36,114 @@ interface ExtractionCardProps {
   onToggleSelect: () => void;
   onApprove: () => void;
   onReject: () => void;
+  onChangeRelationType?: (extractionId: string, newType: RelationType) => void;
+}
+
+function isRelationExtraction(extraction: StagedExtractionRead): extraction is StagedExtractionRead & {
+  extraction_data: ExtractedRelation;
+} {
+  return extraction.extraction_type === "relation";
+}
+
+function humanizeToken(value: string | null | undefined): string {
+  if (!value || !value.trim()) {
+    return "Unknown";
+  }
+
+  return value
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^\w/, (char) => char.toUpperCase());
+}
+
+function formatRelationSentence(relation: ExtractedRelation): string {
+  const subject = getRelationSubject(relation);
+  const object = getRelationObject(relation);
+
+  if (subject !== "Unknown" && object !== "Unknown" && subject !== object) {
+    return `${subject} ${humanizeToken(relation.relation_type).toLowerCase()} ${object}`;
+  }
+
+  const displayRoles = getRelationDisplayRoles(relation);
+  if (displayRoles.length > 0) {
+    return displayRoles
+      .map(({ role, value }) => `${humanizeToken(role)}: ${value}`)
+      .join(" • ");
+  }
+
+  return humanizeToken(relation.relation_type);
+}
+
+const REQUIRED_RELATION_ROLE_GROUPS: Record<string, string[][]> = {
+  treats: [["agent"], ["target"]],
+  causes: [["agent"], ["target", "outcome"]],
+  prevents: [["agent"], ["target", "outcome"]],
+  increases_risk: [["agent", "condition"], ["target", "outcome"]],
+  decreases_risk: [["agent", "condition"], ["target", "outcome"]],
+  contraindicated: [["agent"], ["target", "condition"]],
+  metabolized_by: [["agent"], ["target", "mechanism"]],
+  biomarker_for: [["biomarker"], ["target", "condition"]],
+  measures: [["measured_by"], ["target", "outcome", "condition"]],
+  diagnoses: [["measured_by"], ["target", "condition"]],
+  predicts: [["agent", "biomarker"], ["target", "outcome"]],
+};
+
+const CONTEXTUAL_ENTITY_PREFIXES = [
+  "dose-",
+  "dosage-",
+  "duration-",
+  "timeframe-",
+  "participants-",
+  "participant-count-",
+  "sample-size-",
+  "study-design-",
+];
+
+function getRelationStructuralWarnings(relation: ExtractedRelation, t: (key: string, opts?: Record<string, unknown>) => string): string[] {
+  const warnings: string[] = [];
+  const roles = relation.roles ?? [];
+  const requiredGroups = REQUIRED_RELATION_ROLE_GROUPS[relation.relation_type] ?? [];
+
+  for (const group of requiredGroups) {
+    const matchingRoles = roles.filter((role) => group.includes(role.role_type));
+    if (matchingRoles.length === 0) {
+      warnings.push(
+        t("extraction_card.missing_required_roles", {
+          roles: group.map((role) => humanizeToken(role)).join(" / "),
+        })
+      );
+      continue;
+    }
+
+    const contextualCoreRoles = matchingRoles.filter((role) =>
+      CONTEXTUAL_ENTITY_PREFIXES.some((prefix) => (role.entity_slug ?? "").startsWith(prefix))
+    );
+    if (contextualCoreRoles.length === matchingRoles.length) {
+      warnings.push(
+        t("extraction_card.invalid_contextual_role", {
+          role: group.map((role) => humanizeToken(role)).join(" / "),
+          entity: contextualCoreRoles[0]?.entity_slug || "Unknown",
+        })
+      );
+    }
+  }
+
+  return warnings;
+}
+
+function getExtractionTextSpan(extraction: StagedExtractionRead): string | null {
+  const textSpan = extraction.extraction_data.text_span;
+  if (typeof textSpan === "string" && textSpan.trim().length > 0) {
+    return textSpan;
+  }
+  return null;
 }
 
 function getExtractionTitle(extraction: StagedExtractionRead): string {
   switch (extraction.extraction_type) {
     case "entity": return (extraction.extraction_data as ExtractedEntity).slug;
-    case "relation": return (extraction.extraction_data as ExtractedRelation).relation_type;
-    case "claim": return (extraction.extraction_data as ExtractedClaim).claim_text;
+    case "relation": return formatRelationSentence(extraction.extraction_data as ExtractedRelation);
   }
 }
 
@@ -60,15 +173,26 @@ export function ExtractionCard({
   onToggleSelect,
   onApprove,
   onReject,
+  onChangeRelationType,
 }: ExtractionCardProps) {
   const { t } = useTranslation();
 
   const noNotesLabel = t("extraction_card.no_notes");
+  const textSpan = getExtractionTextSpan(extraction);
+  const showMissingTextSpanHint =
+    extraction.validation_flags.includes("claim_text_span_not_found") ||
+    extraction.validation_flags.includes("text_span_not_found");
+  const relationData = isRelationExtraction(extraction) ? extraction.extraction_data : null;
+  const relationRoles = relationData?.roles ?? [];
+  const relationEvidenceContext = relationData?.evidence_context ?? relationData?.study_context;
+  const relationStructuralWarnings = relationData
+    ? getRelationStructuralWarnings(relationData, t)
+    : [];
   const summary = (() => {
     switch (extraction.extraction_type) {
       case "entity": return (extraction.extraction_data as ExtractedEntity).summary ?? "";
-      case "relation": return (extraction.extraction_data as ExtractedRelation).notes || noNotesLabel;
-      case "claim": return (extraction.extraction_data as ExtractedClaim).claim_text;
+      case "relation":
+        return relationData?.notes?.trim() || t("extraction_card.relation_summary_help");
     }
   })();
 
@@ -118,6 +242,128 @@ export function ExtractionCard({
           secondary={
             <Stack spacing={1} sx={{ mt: 1 }} component="div">
               <Typography variant="body2" component="span">{summary}</Typography>
+              {isRelationExtraction(extraction) && (
+                <Stack spacing={1} component="span">
+                  <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" component="span">
+                    {(() => {
+                      const rel = extraction.extraction_data as ExtractedRelation;
+                      const proposedType = rel.model_proposed_type;
+                      const isOther = rel.relation_type === "other";
+                      const showProposed = isOther && proposedType;
+                      return (
+                        <Stack direction="row" spacing={0.5} alignItems="center" component="span">
+                          {onChangeRelationType && isOther ? (
+                            <FormControl size="small" sx={{ minWidth: 140 }}>
+                              <InputLabel id={`rel-type-label-${extraction.id}`} sx={{ fontSize: "0.75rem" }}>
+                                {t("extraction_card.relation_type_label", "Type")}
+                              </InputLabel>
+                              <Select
+                                labelId={`rel-type-label-${extraction.id}`}
+                                value={rel.relation_type}
+                                label={t("extraction_card.relation_type_label", "Type")}
+                                onChange={(e) => onChangeRelationType(extraction.id, e.target.value as RelationType)}
+                                sx={{ fontSize: "0.75rem" }}
+                              >
+                                {ALL_RELATION_TYPES.map((rt) => (
+                                  <MenuItem key={rt} value={rt} sx={{ fontSize: "0.75rem" }}>
+                                    {humanizeToken(rt)}
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                          ) : (
+                            <Chip
+                              label={t("extraction_card.relation_type", {
+                                relationType: humanizeToken(rel.relation_type),
+                              })}
+                              size="small"
+                              variant="outlined"
+                            />
+                          )}
+                          {showProposed && (
+                            <Tooltip
+                              title={t(
+                                "extraction_card.proposed_type_tooltip",
+                                "Model proposed \"{{type}}\" — not in the controlled vocabulary. Reassign above or propose it as a new type.",
+                                { type: proposedType }
+                              )}
+                            >
+                              <Chip
+                                icon={<HelpOutlineIcon />}
+                                label={t("extraction_card.proposed_type", "proposed: {{type}}", { type: proposedType })}
+                                size="small"
+                                color="warning"
+                                variant="outlined"
+                                component={RouterLink}
+                                to={`/relation-types/propose?name=${encodeURIComponent(proposedType)}`}
+                                clickable
+                              />
+                            </Tooltip>
+                          )}
+                        </Stack>
+                      );
+                    })()}
+                    {relationEvidenceContext?.study_design && (
+                      <Chip
+                        label={t("extraction_card.study_design", {
+                          studyDesign: humanizeToken(relationEvidenceContext.study_design),
+                        })}
+                        size="small"
+                        variant="outlined"
+                      />
+                    )}
+                    {relationEvidenceContext?.sample_size_text && (
+                      <Chip
+                        label={t("extraction_card.sample_size", {
+                          sampleSize: relationEvidenceContext.sample_size_text,
+                        })}
+                        size="small"
+                        variant="outlined"
+                      />
+                    )}
+                  </Stack>
+                  {relationRoles.length > 0 ? (
+                    <Box component="span">
+                      <Typography variant="caption" color="text.secondary" component="span">
+                        {t("extraction_card.linked_roles")}
+                      </Typography>
+                      {relationRoles.map((role) => (
+                        <Chip
+                          key={`${role.role_type ?? "unknown-role"}-${role.entity_slug ?? "unknown-entity"}`}
+                          label={t("extraction_card.role_value", {
+                            role: humanizeToken(role.role_type),
+                            entity: role.entity_slug || "Unknown",
+                          })}
+                          size="small"
+                          variant="outlined"
+                          sx={{ ml: 0.5, mt: 0.5 }}
+                        />
+                      ))}
+                    </Box>
+                  ) : (
+                    <Typography variant="caption" color="warning.main" component="span">
+                      {t("extraction_card.no_structured_roles")}
+                    </Typography>
+                  )}
+                  {relationStructuralWarnings.length > 0 && (
+                    <Box component="span">
+                      <Typography variant="caption" color="warning.main" component="span">
+                        {t("extraction_card.structural_issues")}
+                      </Typography>
+                      {relationStructuralWarnings.map((warning) => (
+                        <Chip
+                          key={warning}
+                          label={warning}
+                          size="small"
+                          color="warning"
+                          variant="outlined"
+                          sx={{ ml: 0.5, mt: 0.5 }}
+                        />
+                      ))}
+                    </Box>
+                  )}
+                </Stack>
+              )}
               {extraction.validation_flags.length > 0 && (
                 <Box component="span">
                   <Typography variant="caption" color="text.secondary" component="span">
@@ -128,10 +374,16 @@ export function ExtractionCard({
                   ))}
                 </Box>
               )}
-              <Typography variant="caption" color="text.secondary" component="span">
-                {t("extraction_card.text_span")} &quot;{(extraction.extraction_data as ExtractedEntity).text_span}&quot;
-              </Typography>
-              <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+              {textSpan ? (
+                <Typography variant="caption" color="text.secondary" component="span">
+                  {t("extraction_card.text_span")} &quot;{textSpan}&quot;
+                </Typography>
+              ) : showMissingTextSpanHint ? (
+                <Typography variant="caption" color="warning.main" component="span">
+                  {t("extraction_card.no_exact_source_quote")}
+                </Typography>
+              ) : null}
+              <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
                 <Button
                   size="small"
                   variant="contained"
@@ -168,6 +420,13 @@ export function ExtractionCard({
                     {t("extraction_card.view_relation")}
                   </Button>
                 )}
+                <Button
+                  size="small"
+                  component={RouterLink}
+                  to={`/sources/${extraction.source_id}`}
+                >
+                  {t("extraction_card.view_source")}
+                </Button>
               </Stack>
             </Stack>
           }

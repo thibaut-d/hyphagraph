@@ -90,7 +90,7 @@ describe("SynthesisView actions", () => {
     });
 
     await user.click(screen.getByText(/View Disagreements/));
-    expect(mockNavigate).toHaveBeenCalledWith("/entities/entity-123/disagreements");
+    expect(mockNavigate).toHaveBeenCalledWith("/entities/paracetamol/disagreements");
   });
 
   it("navigates back to entity detail from the back button", async () => {
@@ -104,6 +104,6 @@ describe("SynthesisView actions", () => {
     });
 
     await user.click(screen.getByText("Back to entity"));
-    expect(mockNavigate).toHaveBeenCalledWith("/entities/entity-123");
+    expect(mockNavigate).toHaveBeenCalledWith("/entities/paracetamol");
   });
 });

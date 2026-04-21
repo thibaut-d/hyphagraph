@@ -31,7 +31,7 @@ export function ProfileView() {
   }
 
   return (
-    <Paper sx={{ p: 4, maxWidth: 800, mx: "auto" }}>
+    <Paper sx={{ p: { xs: 2, sm: 4 }, maxWidth: 800, mx: "auto" }}>
       <Stack spacing={3}>
         {/* Header with avatar */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 3 }}>

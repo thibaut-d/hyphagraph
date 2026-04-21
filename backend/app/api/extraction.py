@@ -4,7 +4,6 @@ API endpoints for LLM-based knowledge extraction.
 Provides endpoints for:
 - Entity extraction from text
 - Relation extraction from text
-- Claim extraction from text
 - Batch extraction (all-in-one)
 """
 import logging
@@ -20,8 +19,6 @@ from app.models.user import User
 from app.schemas.extraction import (
     BatchExtractionRequest,
     BatchExtractionResponse,
-    ClaimExtractionRequest,
-    ClaimExtractionResponse,
     EntityExtractionRequest,
     EntityExtractionResponse,
     ExtractionStatusResponse,
@@ -140,75 +137,21 @@ async def extract_relations(
 
 
 @router.post(
-    "/extract/claims",
-    response_model=ClaimExtractionResponse,
-    summary="Extract factual claims from text",
-    description="""
-    Extract factual claims from scientific text using LLM.
-
-    Claim types:
-    - efficacy: Treatment effectiveness claims
-    - safety: Safety, side effects, risk claims
-    - mechanism: Biological mechanism claims
-    - epidemiology: Prevalence, risk factor claims
-    - other: Other factual claims
-
-    Evidence strength:
-    - strong: RCTs, meta-analyses, systematic reviews
-    - moderate: Observational studies, case-control studies
-    - weak: Case reports, small studies, expert opinion
-    - anecdotal: Individual experiences, isolated reports
-
-    Each claim includes:
-    - Claim text (the factual statement)
-    - Entities involved (referenced entity slugs)
-    - Claim type
-    - Evidence strength
-    - Confidence level
-    - Source text span
-
-    Requires authentication.
-    """
-)
-@handle_extraction_errors
-async def extract_claims(
-    request: ClaimExtractionRequest,
-    current_user: User = Depends(get_current_user),
-    service: ExtractionService = Depends(get_extraction_service),
-) -> ClaimExtractionResponse:
-    """Extract factual claims from text."""
-    logger.info(f"Claim extraction requested by user {current_user.email}")
-
-    claims = await service.extract_claims(
-        text=request.text,
-        min_evidence_strength=request.min_evidence_strength
-    )
-
-    return ClaimExtractionResponse(
-        claims=claims,
-        count=len(claims),
-        text_length=len(request.text)
-    )
-
-
-@router.post(
     "/extract/batch",
     response_model=BatchExtractionResponse,
-    summary="Extract entities, relations, and claims in one request",
+    summary="Extract entities and relations in one request",
     description="""
-    Perform batch extraction of entities, relations, and claims from text.
+    Perform batch extraction of entities and source-grounded relations from text.
 
     More efficient than calling each endpoint separately, as the LLM processes
     the text once and extracts all knowledge types together.
 
     Returns:
     - Entities: All identified entities
-    - Relations: Relations between the entities
-    - Claims: Factual statements with evidence
+    - Relations: Source-grounded assertions between the entities
 
     Supports filtering:
     - min_confidence: Filter entities and relations
-    - min_evidence_strength: Filter claims
 
     Requires authentication.
     """
@@ -219,22 +162,19 @@ async def extract_batch(
     current_user: User = Depends(get_current_user),
     service: ExtractionService = Depends(get_extraction_service),
 ) -> BatchExtractionResponse:
-    """Extract entities, relations, and claims in one batch."""
+    """Extract entities and relations in one batch."""
     logger.info(f"Batch extraction requested by user {current_user.email}")
 
-    entities, relations, claims = await service.extract_batch(
+    entities, relations = await service.extract_batch(
         text=request.text,
         min_confidence=request.min_confidence,
-        min_evidence_strength=request.min_evidence_strength
     )
 
     return BatchExtractionResponse(
         entities=entities,
         relations=relations,
-        claims=claims,
         entity_count=len(entities),
         relation_count=len(relations),
-        claim_count=len(claims),
         text_length=len(request.text)
     )
 

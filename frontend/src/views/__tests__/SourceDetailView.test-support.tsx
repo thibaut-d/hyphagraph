@@ -25,11 +25,26 @@ vi.mock("../../utils/cacheUtils", () => ({
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string, defaultValueOrOptions?: string | { defaultValue?: string }) => {
+    t: (
+      key: string,
+      defaultValueOrOptions?: string | { defaultValue?: string },
+      interpolation?: Record<string, string | number>,
+    ) => {
+      const applyInterpolation = (value: string) => {
+        if (!interpolation) {
+          return value;
+        }
+        return Object.entries(interpolation).reduce(
+          (result, [token, replacement]) =>
+            result.replaceAll(`{{${token}}}`, String(replacement)),
+          value,
+        );
+      };
+
       if (typeof defaultValueOrOptions === "string") {
-        return defaultValueOrOptions;
+        return applyInterpolation(defaultValueOrOptions);
       }
-      return defaultValueOrOptions?.defaultValue || key;
+      return applyInterpolation(defaultValueOrOptions?.defaultValue || key);
     },
   }),
   initReactI18next: { type: '3rdParty', init: () => {} },

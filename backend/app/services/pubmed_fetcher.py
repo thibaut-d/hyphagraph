@@ -6,13 +6,14 @@ and metadata. This is the recommended way to access PubMed programmatically.
 
 API Documentation: https://www.ncbi.nlm.nih.gov/books/NBK25501/
 """
+import asyncio
 import logging
 import re
-import asyncio
-from dataclasses import dataclass
-from urllib.parse import urlparse, parse_qs
-import httpx
 import xml.etree.ElementTree as ET
+from dataclasses import dataclass
+from urllib.parse import parse_qs, urlparse
+
+import httpx
 
 from app.utils.errors import (
     AppException,
@@ -143,12 +144,17 @@ class PubMedFetcher:
                         pmc_fetcher = _load_pmc_fetcher()()
                         pmc_article = await pmc_fetcher.fetch_by_pmid(pmid)
 
-                        if pmc_article:
-                            # Replace abstract-only full_text with PMC full text
+                        if pmc_article and pmc_article.full_text.strip():
+                            # Replace abstract-only full_text only when PMC produced text.
                             article.full_text = pmc_article.full_text
                             logger.info(
                                 f"✅ Enriched PMID {pmid} with PMC full text: "
                                 f"{pmc_article.char_count} chars ({len(pmc_article.sections)} sections)"
+                            )
+                        elif pmc_article:
+                            logger.warning(
+                                "PMC enrichment for PMID %s returned empty text; keeping PubMed abstract text",
+                                pmid,
                             )
                     except Exception as e:
                         # PMC enrichment is optional - don't fail if it doesn't work

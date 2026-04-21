@@ -21,6 +21,33 @@ from app.utils.errors import (
 logger = logging.getLogger(__name__)
 
 
+def _summarize_validation_errors(errors: list[dict]) -> list[dict[str, str | None]]:
+    """
+    Reduce FastAPI/Pydantic validation errors into a context shape compatible
+    with our structured error envelope.
+
+    Raw validation errors can include arbitrarily nested `input` payloads that
+    exceed the `ContextObject` contract and can themselves trigger a 500 while
+    handling a 422. Keep only scalar diagnostic fields here.
+    """
+    summaries: list[dict[str, str | None]] = []
+    for error in errors:
+        loc = ".".join(str(part) for part in error.get("loc", [])) or None
+        summaries.append(
+            {
+                "loc": loc,
+                "msg": str(error.get("msg", "")) or None,
+                "type": str(error.get("type", "")) or None,
+                "input_type": (
+                    type(error.get("input")).__name__
+                    if "input" in error and error.get("input") is not None
+                    else None
+                ),
+            }
+        )
+    return summaries
+
+
 async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
     """
     Handle AppException instances.
@@ -58,7 +85,7 @@ async def validation_exception_handler(
             message=f"Invalid {field}: {message}",
             details=f"Field '{field}' failed validation: {message}",
             field=field,
-            context={"validation_errors": errors},
+            context={"validation_errors": _summarize_validation_errors(errors)},
         )
     else:
         error_detail = ErrorDetail(

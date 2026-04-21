@@ -89,19 +89,85 @@ describe("ExtractionCard", () => {
     expect(screen.getByText("entity")).toBeInTheDocument();
   });
 
-  it("renders relation type as title for relation extractions", () => {
+  it("renders relation context for relation extractions", () => {
     renderCard(
       makeExtraction({
         extraction_type: "relation",
         extraction_data: {
-          relation_type: "treats",
-          roles: [],
+          relation_type: "causes",
+          roles: [
+            { entity_slug: "duloxetine", role_type: "agent" },
+            { entity_slug: "nausea", role_type: "target" },
+            { entity_slug: "fibromyalgia", role_type: "population" },
+          ],
           confidence: "high",
-          text_span: "aspirin treats pain",
+          text_span: "Nausea was a common adverse event in duloxetine-treated fibromyalgia participants.",
+          notes: "Common adverse event reported.",
+          evidence_context: {
+            study_design: "randomized_controlled_trial",
+            sample_size_text: "89 participants",
+          },
         } as unknown as StagedExtractionRead["extraction_data"],
       })
     );
-    expect(screen.getByText("treats")).toBeInTheDocument();
+    expect(screen.getByText("duloxetine causes nausea")).toBeInTheDocument();
+    expect(screen.getByText("Common adverse event reported.")).toBeInTheDocument();
+    expect(screen.getByText("extraction_card.relation_type")).toBeInTheDocument();
+    expect(screen.getByText("extraction_card.study_design")).toBeInTheDocument();
+    expect(screen.getByText("extraction_card.sample_size")).toBeInTheDocument();
+    expect(screen.getAllByText("extraction_card.role_value")).toHaveLength(3);
+  });
+
+  it("flags malformed relations that are missing required core roles", () => {
+    renderCard(
+      makeExtraction({
+        extraction_type: "relation",
+        extraction_data: {
+          relation_type: "causes",
+          roles: [
+            { entity_slug: "nausea", role_type: "target" },
+            { entity_slug: "placebo", role_type: "control_group" },
+          ],
+          confidence: "high",
+          text_span: "adverse events experienced by participants were not serious",
+          notes: "Common adverse event reported.",
+        } as unknown as StagedExtractionRead["extraction_data"],
+      })
+    );
+
+    expect(screen.getByText("Target: nausea • Control group: placebo")).toBeInTheDocument();
+    expect(screen.getByText("extraction_card.structural_issues")).toBeInTheDocument();
+    expect(screen.getByText("extraction_card.missing_required_roles")).toBeInTheDocument();
+  });
+
+  it("renders relation evidence context and source link for relation-only review items", () => {
+    renderCard(
+      makeExtraction({
+        extraction_type: "relation",
+        extraction_data: {
+          relation_type: "other",
+          roles: [
+            { entity_slug: "duloxetine", role_type: "participant" },
+            { entity_slug: "fibromyalgia", role_type: "participant" },
+          ],
+          confidence: "low",
+          notes: "Adverse events experienced by participants were not serious.",
+          text_span: "",
+          evidence_context: {
+            statement_kind: "finding",
+            evidence_strength: "moderate",
+            assertion_text: "Adverse events experienced by participants were not serious.",
+          },
+        } as unknown as StagedExtractionRead["extraction_data"],
+        validation_flags: ["claim_text_span_not_found", "possible_hallucination"],
+      })
+    );
+
+    expect(screen.getByText("duloxetine other fibromyalgia")).toBeInTheDocument();
+    expect(screen.getByText("Adverse events experienced by participants were not serious.")).toBeInTheDocument();
+    expect(screen.getByText("extraction_card.no_exact_source_quote")).toBeInTheDocument();
+    const link = screen.getByText("extraction_card.view_source");
+    expect(link.closest("a")).toHaveAttribute("href", "/sources/src-1");
   });
 
   it("renders pending status chip", () => {
@@ -188,6 +254,12 @@ describe("ExtractionCard", () => {
   it("does not render View Relation link without materialized_relation_id", () => {
     renderCard(makeExtraction({ materialized_relation_id: undefined }));
     expect(screen.queryByText("extraction_card.view_relation")).not.toBeInTheDocument();
+  });
+
+  it("always renders View Source link", () => {
+    renderCard(makeExtraction());
+    const link = screen.getByText("extraction_card.view_source");
+    expect(link.closest("a")).toHaveAttribute("href", "/sources/src-1");
   });
 
   it("shows validation flags list when flags exist", () => {

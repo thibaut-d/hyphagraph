@@ -8,6 +8,7 @@ import { useValidationMessage } from "./useValidationMessage";
 import type { JsonObject } from "../types/json";
 
 type ValidationField = "title" | "url";
+type SummaryMap = Record<string, string>;
 
 export interface QualityBadge {
   label: string;
@@ -65,8 +66,8 @@ export function useCreateSourceForm() {
   const [year, setYear] = useState("");
   const [origin, setOrigin] = useState("");
   const [trustLevel, setTrustLevel] = useState("0.5");
-  const [summaryEn, setSummaryEn] = useState("");
-  const [summaryFr, setSummaryFr] = useState("");
+  const [summaries, setSummaries] = useState<SummaryMap>({});
+  const [activeSummaryLanguage, setActiveSummaryLanguage] = useState("en");
   const [sourceMetadata, setSourceMetadata] = useState<JsonObject | null>(null);
 
   const {
@@ -104,8 +105,25 @@ export function useCreateSourceForm() {
       if (metadata.trust_level !== undefined && metadata.trust_level !== null) {
         setTrustLevel(metadata.trust_level.toString());
       }
-      if (metadata.summary?.en) setSummaryEn(metadata.summary.en);
-      if (metadata.summary?.fr) setSummaryFr(metadata.summary.fr);
+      if (metadata.summary) {
+        const extractedSummaries = Object.fromEntries(
+          Object.entries(metadata.summary).filter(
+            (entry): entry is [string, string] =>
+              typeof entry[0] === "string" && typeof entry[1] === "string",
+          ),
+        );
+        if (Object.keys(extractedSummaries).length > 0) {
+          setSummaries((current) => ({
+            ...current,
+            ...extractedSummaries,
+          }));
+          setActiveSummaryLanguage(
+            extractedSummaries.en !== undefined
+              ? "en"
+              : Object.keys(extractedSummaries)[0] ?? "en",
+          );
+        }
+      }
       if (metadata.source_metadata) setSourceMetadata(metadata.source_metadata);
 
       setAutofilled(true);
@@ -130,9 +148,11 @@ export function useCreateSourceForm() {
     }
 
     const result = await runCreateSource(async () => {
-      const summary: Record<string, string> = {};
-      if (summaryEn.trim()) summary.en = summaryEn.trim();
-      if (summaryFr.trim()) summary.fr = summaryFr.trim();
+      const summary = Object.fromEntries(
+        Object.entries(summaries)
+          .map(([language, value]) => [language, value.trim()])
+          .filter(([, value]) => value.length > 0),
+      );
 
       const authorsList = authors
         .split(",")
@@ -168,8 +188,8 @@ export function useCreateSourceForm() {
     year, setYear,
     origin, setOrigin,
     trustLevel, setTrustLevel,
-    summaryEn, setSummaryEn,
-    summaryFr, setSummaryFr,
+    summaries, setSummaries,
+    activeSummaryLanguage, setActiveSummaryLanguage,
     sourceMetadata,
     // Validation
     getFieldError,

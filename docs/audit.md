@@ -67,7 +67,7 @@ rg "certainty|consensus|final truth|resolved contradiction" backend/app frontend
 
 ## 2. Revision Architecture & Provenance
 
-> AI context core: "Claims are immutable in meaning (revision architecture)."
+> AI context core: "Relations are immutable in meaning (revision architecture)."
 > CODE_GUIDE: all create/update operations accept optional `user_id`.
 
 **Scope**: `backend/app/models/`, `backend/app/services/`, `backend/app/repositories/`, migrations, relation/entity/source write paths.
@@ -199,7 +199,7 @@ rg "return \\[\\]|return \\{\\}|return None" backend/app/services backend/app/ap
 
 ## 7. Test Suite Health
 
-> AI context core: TDD mandatory, never claim done if tests fail, target >= 80% coverage.
+> AI context core: TDD mandatory, never mark work done if tests fail, target >= 80% coverage.
 
 **Scope**: `backend/tests/`, `frontend/src/**/__tests__/`, `e2e/tests/`, changed modules in backend/frontend.
 

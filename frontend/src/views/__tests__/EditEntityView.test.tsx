@@ -105,6 +105,17 @@ describe('EditEntityView', () => {
     expect(screen.getByText('Names and terms')).toBeInTheDocument();
   });
 
+  it('supports slug edit routes while using the resolved entity ID for terms', async () => {
+    renderEditView('/entities/aspirin/edit');
+
+    await waitFor(() => {
+      expect(entityApi.getEntity).toHaveBeenCalledWith('aspirin');
+      expect(screen.getByTestId('entity-terms-manager')).toHaveTextContent(
+        'Entity Terms Manager for entity-123'
+      );
+    });
+  });
+
   it('displays loading state initially', () => {
     vi.mocked(entityApi.getEntity).mockImplementation(() => new Promise(() => {}));
     vi.mocked(entityApi.getEntityFilterOptions).mockImplementation(() => new Promise(() => {}));
@@ -181,6 +192,7 @@ describe('EditEntityView', () => {
     // Verify navigation
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalled();
+      expect(mockNavigate).toHaveBeenCalledWith('/entities/paracetamol');
     });
   });
 

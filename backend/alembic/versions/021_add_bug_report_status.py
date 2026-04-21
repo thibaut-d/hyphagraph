@@ -1,7 +1,7 @@
 """Add resolved status fields to bug_reports
 
 Revision ID: 021_add_bug_report_status
-Revises: 020_add_entity_term_display_name_flag
+Revises: 020_entity_term_display_flag
 Create Date: 2026-04-06
 """
 
@@ -11,7 +11,7 @@ from sqlalchemy.dialects.postgresql import UUID as PGUUID
 
 
 revision = "021_add_bug_report_status"
-down_revision = "020_add_entity_term_display_name_flag"
+down_revision = "020_entity_term_display_flag"
 branch_labels = None
 depends_on = None
 

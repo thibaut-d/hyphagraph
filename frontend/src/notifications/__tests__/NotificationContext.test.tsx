@@ -1,6 +1,7 @@
 import { render, screen, waitFor, fireEvent, act } from "@testing-library/react";
 import { NotificationProvider, useNotification } from "../NotificationContext";
 import { describe, test, expect, vi, beforeEach } from "vitest";
+import { ErrorCode, ParsedAppError } from "../../utils/errorHandler";
 
 // Mock i18next
 vi.mock("react-i18next", () => ({
@@ -49,6 +50,37 @@ function TestComponent() {
       >
         Show Persistent
       </button>
+      <button
+        onClick={() =>
+          showError(
+            new ParsedAppError({
+              userMessage: "Structured extraction failure",
+              developerMessage: "Backend stack details",
+              code: ErrorCode.INTERNAL_SERVER_ERROR,
+              field: "source_url",
+              context: { sourceId: "source-123" },
+              statusCode: 500,
+            }),
+            { autoDismiss: false },
+          )
+        }
+      >
+        Show Structured Error
+      </button>
+      <button
+        onClick={() =>
+          showError(
+            new ParsedAppError({
+              userMessage: "Timed structured extraction failure",
+              developerMessage: "Timed backend stack details",
+              code: ErrorCode.INTERNAL_SERVER_ERROR,
+            }),
+            { duration: 1000, autoDismiss: true },
+          )
+        }
+      >
+        Show Timed Structured Error
+      </button>
       <button onClick={dismiss}>Dismiss</button>
     </div>
   );
@@ -62,6 +94,13 @@ function HookOutsideProvider() {
 describe("NotificationContext", () => {
   beforeEach(() => {
     vi.useRealTimers();
+    window.history.pushState({}, "", "/");
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: vi.fn().mockResolvedValue(undefined),
+      },
+    });
   });
 
   afterEach(() => {
@@ -263,6 +302,107 @@ describe("NotificationContext", () => {
 
     await waitFor(() => {
       expect(screen.queryByText("Success message")).not.toBeInTheDocument();
+    });
+  });
+
+  test("clicking notification content does not dismiss a persistent structured error", async () => {
+    render(
+      <NotificationProvider>
+        <TestComponent />
+      </NotificationProvider>,
+    );
+
+    fireEvent.click(screen.getByText("Show Structured Error"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Structured extraction failure")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText("Structured extraction failure"));
+
+    expect(screen.getByText("Structured extraction failure")).toBeInTheDocument();
+  });
+
+  test("copy debug details includes page and structured error context", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-04-09T12:34:56.000Z"));
+    window.history.pushState({}, "", "/sources/abc?tab=review#errors");
+
+    render(
+      <NotificationProvider>
+        <TestComponent />
+      </NotificationProvider>,
+    );
+
+    fireEvent.click(screen.getByText("Show Structured Error"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Structured extraction failure")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Dev details/i }));
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText("Copy debug details"));
+      await Promise.resolve();
+    });
+
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      JSON.stringify(
+        {
+          timestamp: "2026-04-09T12:34:56.000Z",
+          severity: "error",
+          page: "/sources/abc?tab=review#errors",
+          userMessage: "Structured extraction failure",
+          code: ErrorCode.INTERNAL_SERVER_ERROR,
+          developerMessage: "Backend stack details",
+          statusCode: 500,
+          field: "source_url",
+          context: { sourceId: "source-123" },
+        },
+        null,
+        2,
+      ),
+    );
+
+    expect(screen.getByText("Structured extraction failure")).toBeInTheDocument();
+  });
+
+  test("hovering an auto-dismissing structured error keeps it open while reading details", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    render(
+      <NotificationProvider>
+        <TestComponent />
+      </NotificationProvider>,
+    );
+
+    fireEvent.click(screen.getByText("Show Timed Structured Error"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Timed structured extraction failure")).toBeInTheDocument();
+    });
+
+    const alert = screen.getByRole("alert");
+    fireEvent.mouseEnter(alert);
+    fireEvent.click(screen.getByRole("button", { name: /Dev details/i }));
+
+    expect(screen.getByText(/Timed backend stack details/)).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+
+    expect(screen.getByText("Timed structured extraction failure")).toBeInTheDocument();
+
+    fireEvent.mouseLeave(alert);
+
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText("Timed structured extraction failure"),
+      ).not.toBeInTheDocument();
     });
   });
 

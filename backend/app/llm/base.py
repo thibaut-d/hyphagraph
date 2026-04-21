@@ -11,7 +11,10 @@ from app.schemas.common_types import JsonObject, JsonValue
 
 class LLMError(Exception):
     """Base exception for LLM-related errors."""
-    pass
+
+    def __init__(self, message: str, finish_reason: str | None = None):
+        super().__init__(message)
+        self.finish_reason = finish_reason  # e.g. "length", "content_filter", "stop"
 
 
 @dataclass
@@ -111,6 +114,6 @@ class LLMProvider(ABC):
         Get the name/identifier of the model being used.
 
         Returns:
-            Model name (e.g., "gpt-4o-mini", "claude-3-sonnet")
+            Model name (e.g., "gpt-5.4", "claude-3-sonnet")
         """
         pass

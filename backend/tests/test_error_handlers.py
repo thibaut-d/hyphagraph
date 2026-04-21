@@ -76,6 +76,42 @@ async def test_validation_exception_handler_canonical_envelope():
 
 
 @pytest.mark.asyncio
+async def test_validation_exception_handler_summarizes_nested_error_input():
+    request = _make_request()
+    raw_errors = [
+        {
+            "type": "value_error",
+            "loc": ("response", "extractions", 0, "extraction_data"),
+            "msg": "relation payload invalid",
+            "input": {
+                "relation_type": "causes",
+                "roles": [
+                    {"entity_slug": "headache", "role_type": "target"},
+                    {"entity_slug": "placebo", "role_type": "control_group"},
+                ],
+                "evidence_context": {"statement_kind": "finding"},
+            },
+        }
+    ]
+    exc = RequestValidationError(errors=raw_errors)
+
+    response = await validation_exception_handler(request, exc)
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    payload = json.loads(response.body)
+    assert payload["error"]["code"] == ErrorCode.VALIDATION_ERROR
+    assert payload["error"]["field"] == "response.extractions.0.extraction_data"
+    assert payload["error"]["context"]["validation_errors"] == [
+        {
+            "loc": "response.extractions.0.extraction_data",
+            "msg": "relation payload invalid",
+            "type": "value_error",
+            "input_type": "dict",
+        }
+    ]
+
+
+@pytest.mark.asyncio
 async def test_integrity_error_handler_canonical_envelope():
     request = _make_request()
     orig = MagicMock()

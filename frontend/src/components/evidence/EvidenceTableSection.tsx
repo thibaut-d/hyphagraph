@@ -125,7 +125,7 @@ export function EvidenceTableSection({
           <TableRow>
             <TableCell>
               <TableSortLabel active={sortField === "kind"} direction={sortField === "kind" ? sortOrder : "asc"} onClick={() => onSort("kind")}>
-                <strong>{t("evidence.table.claim", "Claim / Relation Kind")}</strong>
+                <strong>{t("evidence.table.relation", "Relation Statement / Kind")}</strong>
               </TableSortLabel>
             </TableCell>
             <TableCell>
@@ -187,7 +187,12 @@ export function EvidenceTableSection({
                         <Typography variant="caption" color="text.secondary">
                           {formatRoleTypeLabel(role.role_type, t)}:
                         </Typography>
-                        <Link component={RouterLink} to={`/entities/${role.entity_id}`} variant="caption" underline="hover">
+                        <Link
+                          component={RouterLink}
+                          to={`/entities/${role.entity_slug || role.entity_id}`}
+                          variant="caption"
+                          underline="hover"
+                        >
                           {role.entity_id === entityId
                             ? entityLabel
                             : role.entity_slug || role.entity_id}

@@ -31,20 +31,20 @@ If a role does not appear in a relation, it does not contribute to inference.
 
 ---
 
-## 3. Claim-level model (inside a relation)
+## 3. Relation-level model (inside a relation)
 
-Each relation is decomposed into claims.
+Each relation contributes one or more signed role-level scores.
 
-For each claim c:
+For each relation score c:
 
 - r(c) : role type
 - p(c) ∈ { -1, 0, +1 } : polarity  
   +1 = supports  
   -1 = contradicts  
   0 = neutral / no effect
-- i(c) ∈ (0, 1] : intensity (strength of the claim)
+- i(c) ∈ (0, 1] : intensity (strength of the relation statement)
 
-### Claim contribution
+### Relation contribution
 
 ```
 x(c) = p(c) × i(c)
@@ -60,15 +60,15 @@ For a relation h and role r:
 
 ```
 x(h, r) =
-  sum over claims c in h with role r of x(c)
+  sum over relation scores c in h with role r of x(c)
   ------------------------------------------------
-  sum over claims c in h with role r of |x(c)|
+  sum over relation scores c in h with role r of |x(c)|
 ```
 
 Properties:
 - x(h, r) ∈ [-1, 1]
 - Internal contradictions are normalized
-- If no claim exists for role r, x(h, r) is undefined
+- If no relation score exists for role r, x(h, r) is undefined
 
 ---
 

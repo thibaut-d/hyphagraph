@@ -162,7 +162,7 @@ export function EditSourceView() {
         <Typography variant="body2" color="text.secondary">
           {t(
             "edit_source.description",
-            "Update the source information. Sources provide the foundation for relations and claims."
+            "Update the source information. Sources ground relations and evidence."
           )}
         </Typography>
 

@@ -1,7 +1,7 @@
 from uuid import UUID
 from typing import Optional, List
 from datetime import datetime
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from app.schemas.base import Schema
 from app.llm.schemas import ExtractedEntity, ExtractedRelation
 from app.schemas.common_types import I18nText, JsonObject
@@ -161,6 +161,7 @@ class SaveExtractionRequest(Schema):
     entities_to_create: List[ExtractedEntity]  # User-approved entities
     entity_links: dict[str, UUID]  # extracted_slug -> existing_entity_id (Pydantic coerces UUID strings)
     relations_to_create: List[ExtractedRelation]
+    user_language: str = Field("en", pattern=r"^[a-z]{2}$")
     # Note: source_id is in URL path, not needed in body
 
 

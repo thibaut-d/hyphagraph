@@ -51,8 +51,8 @@ HyphaGraph proposes a different model:
 
 Concretely:
 - Documents are treated as **sources**, not knowledge.
-- Each document produces one or more **claims**.
-- Claims may contradict each other.
+- Each document produces one or more **relations**.
+- Relations may contradict each other.
 - Contradictions are preserved, not resolved by opinion.
 - The system derives **weighted, explainable syntheses** using explicit rules.
 
@@ -97,7 +97,7 @@ A **hypergraph** allows a single relation to connect **multiple entities at once
 
 In HyphaGraph:
 
-> **One hyper-edge represents one document-grounded claim.**
+> **One hyper-edge represents one document-grounded relation.**
 
 This preserves:
 - full context,
@@ -118,10 +118,10 @@ HyphaGraph is structured around a clear separation of concerns:
   Documents that state something (studies, guidelines, reports).
 - **Entities**  
   Stable domain objects (drugs, diseases, symptoms, populations, methods).
-- **Relations (claims)**  
+- **Relations**  
   What a source states about entities, in a given context.
 - **Inference**  
-  What the system computes from multiple claims.
+  What the system computes from multiple relations.
 
 > The database stores *statements*, not *beliefs*.
 
@@ -138,13 +138,13 @@ AI is deliberately **constrained**.
 
 - Read documents.
 - Extract explicit, factual statements.
-- Map statements into structured claims.
+- Map statements into structured relations.
 - Rephrase computed results for human readability.
 - Generate explanations from traceable evidence.
 
 ### 4.2 What AI is not allowed to do
 
-- Invent claims.
+- Invent relations.
 - Merge documents directly.
 - Decide consensus.
 - Override scoring or inference rules.
@@ -193,7 +193,7 @@ TypeDB reasons about their implications.
 
 The UI focuses on:
 - document ingestion,
-- claim review and correction,
+- relation review and correction,
 - computed syntheses,
 - explanations and traceability.
 
@@ -221,7 +221,7 @@ HyphaGraph is not:
 
 It is:
 
-> **A system where knowledge is derived from weighted, document-grounded claims,
+> **A system where knowledge is derived from weighted, document-grounded relations,
 > rather than written opinions.**
 
 This enables:
@@ -249,8 +249,7 @@ It is **not** intended to deliver medical, legal, or operational recommendations
 ## 8. Summary
 
 - Documents are sources, not knowledge.
-- Claims are stored, not conclusions.
+- Relations are stored, not conclusions.
 - Hypergraphs preserve full context.
 - AI is constrained by design.
 - Knowledge becomes computable.
-

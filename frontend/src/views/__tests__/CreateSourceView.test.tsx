@@ -85,8 +85,8 @@ describe('CreateSourceView', () => {
       expect(screen.getByLabelText(/publication year/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/journal.*publisher/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/quality score/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/summary \(english\)/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/summary \(french\)/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/summary language/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/^summary$/i)).toBeInTheDocument();
     });
 
     it('routes placeholders through translation keys', () => {
@@ -116,6 +116,38 @@ describe('CreateSourceView', () => {
 
       const trustLevelInput = screen.getByLabelText(/quality score/i) as HTMLInputElement;
       expect(trustLevelInput.value).toBe('0.5');
+    });
+
+    it('fills multilingual summaries from URL metadata extraction', async () => {
+      vi.mocked(sourceApi.extractMetadataFromUrl).mockResolvedValue({
+        url: 'https://example.com/article',
+        title: 'Extracted Article',
+        kind: 'article',
+        summary: {
+          en: 'Extracted English summary',
+          fr: 'Résumé extrait',
+        },
+      });
+
+      renderWithProviders();
+
+      fireEvent.change(screen.getByLabelText(/source url/i), {
+        target: { value: 'https://example.com/article' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /auto-fill/i }));
+
+      await waitFor(() => {
+        expect(sourceApi.extractMetadataFromUrl).toHaveBeenCalledWith(
+          'https://example.com/article',
+        );
+      });
+
+      expect(screen.getByLabelText(/^summary$/i)).toHaveValue('Extracted English summary');
+
+      fireEvent.mouseDown(screen.getByLabelText(/summary language/i));
+      fireEvent.click(screen.getByRole('option', { name: 'French' }));
+
+      expect(screen.getByLabelText(/^summary$/i)).toHaveValue('Résumé extrait');
     });
   });
 
@@ -257,8 +289,7 @@ describe('CreateSourceView', () => {
       const yearInput = screen.getByLabelText(/year/i);
       const originInput = screen.getByLabelText(/journal.*publisher/i);
       const trustLevelInput = screen.getByLabelText(/quality score/i);
-      const summaryEnInput = screen.getByLabelText(/summary \(english\)/i);
-      const summaryFrInput = screen.getByLabelText(/summary \(french\)/i);
+      const summaryInput = screen.getByLabelText(/^summary$/i);
 
       fireEvent.change(titleInput, { target: { value: 'Complete Guide' } });
       fireEvent.change(urlInput, { target: { value: 'https://example.com/book' } });
@@ -266,8 +297,14 @@ describe('CreateSourceView', () => {
       fireEvent.change(yearInput, { target: { value: '2023' } });
       fireEvent.change(originInput, { target: { value: 'Example Publisher' } });
       fireEvent.change(trustLevelInput, { target: { value: '0.9' } });
-      fireEvent.change(summaryEnInput, { target: { value: 'English summary' } });
-      fireEvent.change(summaryFrInput, { target: { value: 'French summary' } });
+      fireEvent.change(summaryInput, { target: { value: 'English summary' } });
+
+      fireEvent.mouseDown(screen.getByLabelText(/summary language/i));
+      fireEvent.click(screen.getByRole('option', { name: 'French' }));
+
+      fireEvent.change(screen.getByLabelText(/^summary$/i), {
+        target: { value: 'French summary' },
+      });
 
       // Note: Kind field defaults to 'article', we're testing that the form submits with all other fields
       // Changing MUI Select programmatically is complex, so we test with default kind value
@@ -292,6 +329,56 @@ describe('CreateSourceView', () => {
         expect(mockNavigate).toHaveBeenCalledWith('/sources/456');
       });
     }); // Uses global testTimeout from vitest.config.ts
+
+    it('switches summary language and submits all filled summaries', async () => {
+      const mockSource = {
+        id: 'source-with-summaries',
+        kind: 'article',
+        title: 'Multilingual Source',
+        url: 'https://example.com/multilingual',
+        trust_level: 0.5,
+        created_at: new Date().toISOString(),
+        status: 'confirmed' as const,
+      };
+
+      vi.mocked(sourceApi.createSource).mockResolvedValue(mockSource);
+
+      renderWithProviders();
+
+      fireEvent.change(screen.getByLabelText(/title/i), {
+        target: { value: 'Multilingual Source' },
+      });
+      fireEvent.change(screen.getByLabelText(/url/i), {
+        target: { value: 'https://example.com/multilingual' },
+      });
+
+      fireEvent.change(screen.getByLabelText(/^summary$/i), {
+        target: { value: 'English summary' },
+      });
+
+      fireEvent.mouseDown(screen.getByLabelText(/summary language/i));
+      fireEvent.click(screen.getByRole('option', { name: 'Spanish' }));
+
+      fireEvent.change(screen.getByLabelText(/^summary$/i), {
+        target: { value: 'Resumen en español' },
+      });
+
+      expect(screen.getByText('EN')).toBeInTheDocument();
+      expect(screen.getByText('ES')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: /create source/i }));
+
+      await waitFor(() => {
+        expect(sourceApi.createSource).toHaveBeenCalledWith(
+          expect.objectContaining({
+            summary: {
+              en: 'English summary',
+              es: 'Resumen en español',
+            },
+          }),
+        );
+      });
+    });
 
     it('parses comma-separated authors correctly', async () => {
       const mockSource = {

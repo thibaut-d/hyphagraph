@@ -134,7 +134,7 @@ export function SourceRelationsSection({
   };
 
   return (
-    <Paper sx={{ p: 3 }}>
+    <Paper sx={{ p: { xs: 2, sm: 3 } }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
         <Typography variant="h5">{t("sources.linked_relations_entities", "Linked relations and entities")}</Typography>
         {hasRelations && (
@@ -339,7 +339,7 @@ export function SourceRelationsSection({
                                           component="span"
                                           sx={{ display: "inline-flex", alignItems: "baseline", gap: 0.5 }}
                                         >
-                                          <Link component={RouterLink} to={`/entities/${role.entity_id}`}>
+                                          <Link component={RouterLink} to={`/entities/${role.entity_slug || role.entity_id}`}>
                                             {entityLabel}
                                           </Link>
                                           <Typography component="span" variant="caption" color="text.secondary">

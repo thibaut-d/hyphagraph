@@ -5,9 +5,9 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.llm.schemas import ExtractedClaim, ExtractedEntity, ExtractedRelation
+from app.llm.schemas import ExtractedEntity, ExtractedRelation
 from app.models.staged_extraction import ExtractionStatus, ExtractionType, StagedExtraction
-from app.services.extraction_review.materialization import materialize_claim, materialize_entity, materialize_relation
+from app.services.extraction_review.materialization import materialize_entity, materialize_relation
 from app.services.extraction_validation_service import ValidationResult
 
 logger = logging.getLogger(__name__)
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 async def create_staged_extraction(
     db: AsyncSession,
     extraction_type: ExtractionType,
-    extraction_data: ExtractedEntity | ExtractedRelation | ExtractedClaim,
+    extraction_data: ExtractedEntity | ExtractedRelation,
     source_id: UUID,
     validation_result: ValidationResult,
     llm_model: str | None,
@@ -55,16 +55,23 @@ async def create_staged_extraction(
         await db.flush()
 
         if auto_materialize:
+            llm_review_status = (
+                "auto_verified" if initial_status == ExtractionStatus.AUTO_VERIFIED else "pending_review"
+            )
             if extraction_type == ExtractionType.ENTITY:
-                entity_id = await materialize_entity(db, staged)
+                entity_id = await materialize_entity(
+                    db,
+                    staged,
+                    llm_review_status=llm_review_status,
+                )
                 staged.materialized_entity_id = entity_id
                 materialized_id = entity_id
             elif extraction_type == ExtractionType.RELATION:
-                relation_id = await materialize_relation(db, staged)
-                staged.materialized_relation_id = relation_id
-                materialized_id = relation_id
-            elif extraction_type == ExtractionType.CLAIM:
-                relation_id = await materialize_claim(db, staged)
+                relation_id = await materialize_relation(
+                    db,
+                    staged,
+                    llm_review_status=llm_review_status,
+                )
                 staged.materialized_relation_id = relation_id
                 materialized_id = relation_id
 

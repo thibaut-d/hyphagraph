@@ -6,6 +6,8 @@ import { getSource } from "../api/sources";
 import { ParsedAppError } from "../utils/errorHandler";
 import { usePageErrorHandler } from "./usePageErrorHandler";
 
+const EMPTY_SCOPE_FILTER: ScopeFilter = {};
+
 /**
  * Hook for fetching and managing entity inference data with source cache.
  *
@@ -28,7 +30,7 @@ export interface UseEntityInferenceReturn {
 
 export function useEntityInference(
   entityId: string | undefined,
-  initialScopeFilter: ScopeFilter = {}
+  initialScopeFilter: ScopeFilter = EMPTY_SCOPE_FILTER
 ): UseEntityInferenceReturn {
   const handlePageError = usePageErrorHandler();
   const [inference, setInference] = useState<InferenceRead | null>(null);
@@ -44,7 +46,7 @@ export function useEntityInference(
     if (!entityId) {
       setInference(null);
       setSources({});
-      setError(new Error("Missing entity ID"));
+      setError(null);
       setSourceWarning(null);
       setLoadingSources(false);
       return;

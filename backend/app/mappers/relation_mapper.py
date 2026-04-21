@@ -8,6 +8,10 @@ from app.schemas.relation import (
     RelationRead,
     RoleRevisionRead,
 )
+from app.utils.relation_context import (
+    build_relation_context_payload,
+    split_relation_context_payload,
+)
 
 
 class RelationRevisionPayload(TypedDict, total=False):
@@ -31,7 +35,10 @@ def relation_revision_from_write(payload: RelationWrite) -> RelationRevisionPayl
         "kind": payload.kind,
         "direction": payload.direction,
         "confidence": payload.confidence,
-        "scope": payload.scope,
+        "scope": build_relation_context_payload(
+            scope=payload.scope,
+            evidence_context=payload.evidence_context,
+        ),
         "notes": payload.notes,
         "created_with_llm": payload.created_with_llm,
     }
@@ -56,6 +63,7 @@ def relation_to_read(
         entity_slug_map: Optional mapping of entity_id to slug for resolving entity names
     """
     # Convert role revisions to read schema
+    scope, evidence_context = split_relation_context_payload(current_revision.scope)
     roles = [
         RoleRevisionRead(
             id=role.id,
@@ -80,7 +88,8 @@ def relation_to_read(
         kind=current_revision.kind,
         direction=current_revision.direction,
         confidence=current_revision.confidence,
-        scope=current_revision.scope,
+        scope=scope,
+        evidence_context=evidence_context,
         notes=current_revision.notes,
         created_with_llm=current_revision.created_with_llm,
         status=current_revision.status,

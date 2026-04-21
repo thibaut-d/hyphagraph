@@ -98,8 +98,8 @@ describe("InferencesView", () => {
     expect(screen.getByText("Support-leaning")).toBeInTheDocument();
     expect(screen.getByText("Contradiction-leaning")).toBeInTheDocument();
     const detailLinks = screen.getAllByRole("link", { name: "View detail" });
-    expect(detailLinks[0]).toHaveAttribute("href", "/entities/entity-1/properties/agent");
-    expect(detailLinks[1]).toHaveAttribute("href", "/entities/entity-2/properties/target");
+    expect(detailLinks[0]).toHaveAttribute("href", "/entities/aspirin/properties/agent");
+    expect(detailLinks[1]).toHaveAttribute("href", "/entities/ibuprofen/properties/target");
   });
 
   it("filters the index by role and search term", async () => {

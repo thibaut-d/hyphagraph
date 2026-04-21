@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import datetime
 import logging
+import re
 from dataclasses import dataclass
 from typing import Protocol, TypeAlias
 from uuid import UUID
@@ -21,12 +22,21 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.llm.schemas import ExtractedClaim, ExtractedEntity, ExtractedRelation
+from app.llm.client import get_llm_provider, get_prefill_llm_provider
+from app.llm.schemas import (
+    ExtractedEntity,
+    ExtractedRelation,
+    ExtractedRelationEvidenceContext,
+    get_missing_required_relation_roles,
+)
 from app.models.entity import Entity
+from app.models.entity_revision import EntityRevision
+from app.models.entity_term import EntityTerm
 from app.models.source import Source
 from app.models.source_revision import SourceRevision
 from app.models.staged_extraction import ExtractionStatus, ExtractionType, StagedExtraction
 from app.schemas.common_types import SlugEntityMap
+from app.schemas.entity import EntityPrefillDraft
 from app.schemas.source import (
     DocumentExtractionPreview,
     EntityLinkMatch,
@@ -37,25 +47,47 @@ from app.schemas.source import (
 )
 from app.services.batch_extraction_orchestrator import BatchExtractionOrchestrator
 from app.services.bulk_creation_service import BulkCreationService
-from app.services.entity_linking_service import EntityLinkMatch as ExistingEntityLinkMatch
 from app.services.entity_linking_service import EntityLinkingService
+from app.services.entity_linking_service import EntityLinkMatch as ExistingEntityLinkMatch
+from app.services.entity_prefill_service import EntityPrefillService
 from app.services.extraction_review_service import ExtractionReviewService
-from app.utils.revision_helpers import create_new_revision
 from app.services.extraction_service import ExtractionService
-from app.services.extraction_validation_service import ValidationResult
+from app.services.extraction_validation_service import TextSpanValidator, ValidationResult
 from app.services.pubmed_fetcher import PubMedArticle, PubMedFetcher
 from app.services.source_service import SourceService
-from app.services.url_fetcher import UrlFetchResult, UrlFetcher
+from app.services.url_fetcher import UrlFetcher, UrlFetchResult
+from app.utils.datetime import utc_now_naive
 from app.utils.errors import SourceNotFoundException, ValidationException
+from app.utils.revision_helpers import create_new_revision
 
 logger = logging.getLogger(__name__)
+
+_DOSAGE_ENTITY_PREFIXES = ("dose-", "dosage-")
+_DURATION_ENTITY_PREFIXES = ("duration-", "timeframe-")
+_SAMPLE_SIZE_ENTITY_PREFIXES = ("participants-", "participant-count-", "sample-size-")
+_STUDY_DESIGN_ENTITY_PREFIXES = ("study-design-",)
+
+_STUDY_DESIGN_ALIASES: tuple[tuple[tuple[str, ...], str], ...] = (
+    (("meta analysis", "meta-analysis"), "meta_analysis"),
+    (("systematic review",), "systematic_review"),
+    (("randomized controlled trial", "randomised controlled trial", "rct", "randomized trial", "randomised trial"), "randomized_controlled_trial"),
+    (("nonrandomized trial", "non-randomized trial", "nonrandomized", "non-randomized"), "nonrandomized_trial"),
+    (("cohort study", "cohort"), "cohort_study"),
+    (("case control study", "case-control study"), "case_control_study"),
+    (("cross sectional study", "cross-sectional study"), "cross_sectional_study"),
+    (("case series",), "case_series"),
+    (("case report",), "case_report"),
+    (("guideline",), "guideline"),
+    (("review",), "review"),
+    (("animal study", "animal model"), "animal_study"),
+    (("in vitro",), "in_vitro"),
+    (("background",), "background"),
+)
 
 
 ExtractedBatchResult: TypeAlias = tuple[
     list[ExtractedEntity],
     list[ExtractedRelation],
-    list[ExtractedClaim],
-    list[ValidationResult],
     list[ValidationResult],
     list[ValidationResult],
 ]
@@ -86,7 +118,6 @@ class BatchExtractionOrchestratorProtocol(Protocol):
         *,
         text: str,
         min_confidence: str | None = None,
-        min_evidence_strength: str | None = None,
     ) -> ExtractedBatchResult: ...
 
 
@@ -119,7 +150,6 @@ class ExtractionReviewServiceProtocol(Protocol):
         *,
         entities: list[tuple[ExtractedEntity, ValidationResult]],
         relations: list[tuple[ExtractedRelation, ValidationResult]],
-        claims: list[tuple[ExtractedClaim, ValidationResult]],
         source_id: UUID,
         llm_model: str | None = None,
         llm_provider: str | None = None,
@@ -154,6 +184,7 @@ class BulkCreationServiceProtocol(Protocol):
         self,
         *,
         entities: list[ExtractedEntity],
+        entity_prefill_drafts: dict[str, EntityPrefillDraft] | None = None,
         user_id: UUID | None,
     ) -> tuple[SlugEntityMap, list[str]]: ...
 
@@ -169,6 +200,18 @@ class BulkCreationServiceProtocol(Protocol):
 
 class BulkCreationServiceFactory(Protocol):
     def __call__(self, db: AsyncSession) -> BulkCreationServiceProtocol: ...
+
+
+class EntityPrefillServiceProtocol(Protocol):
+    async def generate_draft_for_extracted_entity(
+        self,
+        entity: ExtractedEntity,
+        user_language: str,
+    ) -> EntityPrefillDraft: ...
+
+
+class EntityPrefillServiceFactory(Protocol):
+    def __call__(self, db: AsyncSession) -> EntityPrefillServiceProtocol: ...
 
 
 class PubMedFetcherProtocol(Protocol):
@@ -207,10 +250,8 @@ class UrlFetcherFactory(Protocol):
 class ExtractedBatch:
     entities: list[ExtractedEntity]
     relations: list[ExtractedRelation]
-    claims: list[ExtractedClaim]
     entity_results: list[ValidationResult]
     relation_results: list[ValidationResult]
-    claim_results: list[ValidationResult]
 
 
 @dataclass
@@ -227,6 +268,250 @@ class FetchedDocument:
     file_name: str
 
 
+def validate_fetched_document_text(text: str, *, source_id: UUID, url: str) -> str:
+    if text.strip():
+        return text
+
+    raise ValidationException(
+        message="Fetched document has no extractable text",
+        details="The source URL returned an empty document body. Try a fuller document or another URL.",
+        context={"source_id": str(source_id), "url": url},
+    )
+
+
+def _is_contextual_entity_slug(slug: str) -> bool:
+    return slug.startswith(
+        _DOSAGE_ENTITY_PREFIXES
+        + _DURATION_ENTITY_PREFIXES
+        + _SAMPLE_SIZE_ENTITY_PREFIXES
+        + _STUDY_DESIGN_ENTITY_PREFIXES
+    )
+
+
+def _extract_text_value(entity: ExtractedEntity | None, slug: str) -> str:
+    return entity.text_span.strip() if entity and entity.text_span.strip() else slug
+
+
+def _extract_sample_size_value(text: str) -> int | None:
+    match = re.search(r"\d[\d,]*", text)
+    if not match:
+        return None
+    return int(match.group(0).replace(",", ""))
+
+
+def _extract_sample_size_text(text: str) -> str | None:
+    patterns = (
+        r"\bn\s*=\s*\d[\d,]*\b",
+        r"\b\d[\d,]*\s+(?:participants?|patients?|subjects?)\b",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, text, flags=re.IGNORECASE)
+        if match:
+            return match.group(0)
+    return None
+
+
+def _infer_study_design(text: str) -> str | None:
+    normalized = text.replace("_", " ").replace("-", " ").strip().lower()
+    for aliases, canonical in _STUDY_DESIGN_ALIASES:
+        if any(alias in normalized for alias in aliases):
+            return canonical
+    return None
+
+
+def _normalized_evidence_context(
+    existing: ExtractedRelationEvidenceContext | None,
+    updates: dict[str, object],
+) -> ExtractedRelationEvidenceContext | None:
+    if not existing and not updates:
+        return None
+
+    payload = existing.model_dump(exclude_none=True) if existing else {}
+    payload.update(updates)
+    payload.setdefault("statement_kind", "finding")
+    return ExtractedRelationEvidenceContext.model_validate(payload)
+
+
+def _infer_evidence_context_from_relation_text(
+    relation: ExtractedRelation,
+    existing: ExtractedRelationEvidenceContext | None,
+) -> dict[str, object]:
+    updates: dict[str, object] = {}
+    candidate_text = " ".join(
+        value.strip()
+        for value in (relation.text_span, relation.notes or "")
+        if value and value.strip()
+    )
+
+    if not candidate_text:
+        return updates
+
+    if not (existing and existing.sample_size):
+        sample_size_text = _extract_sample_size_text(candidate_text)
+        if sample_size_text:
+            sample_size = _extract_sample_size_value(sample_size_text)
+            if sample_size is not None:
+                updates["sample_size"] = sample_size
+                updates["sample_size_text"] = sample_size_text
+
+    if not (existing and existing.study_design):
+        study_design = _infer_study_design(candidate_text)
+        if study_design:
+            updates["study_design"] = study_design
+
+    return updates
+
+
+def _normalize_relation_contextual_roles(
+    relation: ExtractedRelation,
+    entity_lookup: dict[str, ExtractedEntity],
+) -> tuple[ExtractedRelation, set[str]]:
+    scope = dict(relation.scope or {})
+    evidence_updates: dict[str, object] = {}
+    retained_roles = []
+    moved_slugs: set[str] = set()
+
+    for role in relation.roles:
+        entity = entity_lookup.get(role.entity_slug)
+        text_value = _extract_text_value(entity, role.entity_slug)
+        slug = role.entity_slug
+
+        if role.role_type == "dosage" or slug.startswith(_DOSAGE_ENTITY_PREFIXES):
+            scope.setdefault("dosage", text_value)
+            moved_slugs.add(slug)
+            continue
+
+        if role.role_type in {"duration", "timeframe"} or slug.startswith(_DURATION_ENTITY_PREFIXES):
+            key = "timeframe" if role.role_type == "timeframe" or slug.startswith("timeframe-") else "duration"
+            scope.setdefault(key, text_value)
+            moved_slugs.add(slug)
+            continue
+
+        if role.role_type == "sample_size" or slug.startswith(_SAMPLE_SIZE_ENTITY_PREFIXES):
+            sample_size = _extract_sample_size_value(text_value)
+            if sample_size is not None:
+                evidence_updates.setdefault("sample_size", sample_size)
+                evidence_updates.setdefault("sample_size_text", text_value)
+                moved_slugs.add(slug)
+                continue
+
+        if role.role_type == "study_design" or slug.startswith(_STUDY_DESIGN_ENTITY_PREFIXES):
+            study_design = _infer_study_design(text_value)
+            if study_design:
+                evidence_updates.setdefault("study_design", study_design)
+                moved_slugs.add(slug)
+                continue
+
+        retained_roles.append(role)
+
+    if len(retained_roles) < 2:
+        return relation, set()
+
+    evidence_updates.update(
+        _infer_evidence_context_from_relation_text(relation, relation.evidence_context)
+    )
+    evidence_context = _normalized_evidence_context(relation.evidence_context, evidence_updates)
+    if get_missing_required_relation_roles(
+        relation.relation_type,
+        [role.role_type for role in retained_roles],
+    ):
+        return relation.model_copy(
+            update={
+                "scope": scope or relation.scope or None,
+                "evidence_context": evidence_context,
+            }
+        ), set()
+
+    return relation.model_copy(
+        update={
+            "roles": retained_roles,
+            "scope": scope or None,
+            "evidence_context": evidence_context,
+        }
+    ), moved_slugs
+
+
+def normalize_extracted_batch_context(extracted_batch: ExtractedBatch) -> ExtractedBatch:
+    entity_lookup = {entity.slug: entity for entity in extracted_batch.entities}
+    normalized_relations: list[ExtractedRelation] = []
+    moved_slugs: set[str] = set()
+    relation_entity_slugs: set[str] = set()
+
+    for relation in extracted_batch.relations:
+        normalized_relation, moved_for_relation = _normalize_relation_contextual_roles(
+            relation,
+            entity_lookup,
+        )
+        normalized_relations.append(normalized_relation)
+        moved_slugs.update(moved_for_relation)
+        relation_entity_slugs.update(role.entity_slug for role in normalized_relation.roles)
+
+    filtered_entities: list[ExtractedEntity] = []
+    filtered_entity_results: list[ValidationResult] = []
+    for index, entity in enumerate(extracted_batch.entities):
+        keep_entity = (
+            entity.slug in relation_entity_slugs
+            or entity.slug not in moved_slugs
+            and not _is_contextual_entity_slug(entity.slug)
+        )
+        if keep_entity:
+            filtered_entities.append(entity)
+            filtered_entity_results.append(extracted_batch.entity_results[index])
+
+    return ExtractedBatch(
+        entities=filtered_entities,
+        relations=normalized_relations,
+        entity_results=filtered_entity_results,
+        relation_results=extracted_batch.relation_results,
+    )
+
+
+def _merge_validation_results(
+    original: ValidationResult | object,
+    updated: ValidationResult,
+) -> ValidationResult:
+    original_flags = list(getattr(original, "flags", []) or [])
+    return ValidationResult(
+        is_valid=bool(getattr(original, "is_valid", True)) and updated.is_valid,
+        confidence_adjustment=min(
+            float(getattr(original, "confidence_adjustment", updated.confidence_adjustment)),
+            updated.confidence_adjustment,
+        ),
+        validation_score=min(
+            float(getattr(original, "validation_score", updated.validation_score)),
+            updated.validation_score,
+        ),
+        flags=list(dict.fromkeys([*original_flags, *updated.flags])),
+        matched_span=updated.matched_span or getattr(original, "matched_span", None),
+    )
+
+
+def _revalidate_normalized_relation_results(
+    *,
+    relations: list[ExtractedRelation],
+    entities: list[ExtractedEntity],
+    relation_results: list[ValidationResult],
+    source_text: str,
+) -> list[ValidationResult]:
+    validator = TextSpanValidator(validation_level="moderate")
+    refreshed_results: list[ValidationResult] = []
+    entity_lookup = {entity.slug: entity for entity in entities}
+
+    for relation, existing_result in zip(relations, relation_results):
+        normalized_result = validator.validate_relation(
+            relation,
+            source_text,
+            entity_lookup=entity_lookup,
+        )
+        refreshed_results.append(_merge_validation_results(existing_result, normalized_result))
+
+    return refreshed_results
+
+
+def _build_default_entity_prefill_service(db: AsyncSession) -> EntityPrefillService:
+    return EntityPrefillService(db=db, llm_provider=get_prefill_llm_provider())
+
+
 async def load_source_document_text(db: AsyncSession, source_id: UUID) -> str:
     """
     Return the document text from the current revision of source_id.
@@ -236,7 +521,7 @@ async def load_source_document_text(db: AsyncSession, source_id: UUID) -> str:
     """
     stmt = select(SourceRevision).where(
         SourceRevision.source_id == source_id,
-        SourceRevision.is_current == True,
+        SourceRevision.is_current.is_(True),
     )
     result = await db.execute(stmt)
     revision = result.scalar_one_or_none()
@@ -317,10 +602,8 @@ async def run_validated_extraction(
     (
         entities,
         relations,
-        claims,
         entity_results,
         relation_results,
-        claim_results,
     ) = await orchestrator.extract_batch_with_validation_results(
         text=text,
         min_confidence="medium",
@@ -328,10 +611,8 @@ async def run_validated_extraction(
     return ExtractedBatch(
         entities=entities,
         relations=relations,
-        claims=claims,
         entity_results=entity_results,
         relation_results=relation_results,
-        claim_results=claim_results,
     )
 
 
@@ -340,6 +621,7 @@ async def stage_review_batch(
     *,
     source_id: UUID,
     extracted_batch: ExtractedBatch,
+    source_text: str | None = None,
     review_service_factory: ExtractionReviewServiceFactory = ExtractionReviewService,
 ) -> ReviewSummary:
     """
@@ -357,10 +639,20 @@ async def stage_review_batch(
         require_no_flags_for_auto_commit=True,
     )
 
+    relation_results = (
+        _revalidate_normalized_relation_results(
+            relations=extracted_batch.relations,
+            entities=extracted_batch.entities,
+            relation_results=extracted_batch.relation_results,
+            source_text=source_text,
+        )
+        if source_text is not None
+        else extracted_batch.relation_results
+    )
+
     staged_items = await review_service.stage_batch(
         entities=list(zip(extracted_batch.entities, extracted_batch.entity_results)),
-        relations=list(zip(extracted_batch.relations, extracted_batch.relation_results)),
-        claims=list(zip(extracted_batch.claims, extracted_batch.claim_results)),
+        relations=list(zip(extracted_batch.relations, relation_results)),
         source_id=source_id,
         llm_model=settings.OPENAI_MODEL,
         llm_provider=settings.LLM_PROVIDER,
@@ -428,10 +720,12 @@ async def build_extraction_preview(
         text=text,
         orchestrator_factory=orchestrator_factory,
     )
+    extracted_batch = normalize_extracted_batch_context(extracted_batch)
     review_summary = await stage_review_batch(
         db,
         source_id=source_id,
         extracted_batch=extracted_batch,
+        source_text=text,
         review_service_factory=review_service_factory,
     )
     link_suggestions = await build_link_suggestions(
@@ -479,29 +773,27 @@ async def build_extraction_preview_with_service(
     (
         entities,
         relations,
-        claims,
         entity_results,
         relation_results,
-        claim_results,
     ) = await extraction_service.extract_batch_with_validation_results(text)
 
     extracted_batch = ExtractedBatch(
         entities=entities,
         relations=relations,
-        claims=claims,
         entity_results=entity_results,
         relation_results=relation_results,
-        claim_results=claim_results,
     )
+    extracted_batch = normalize_extracted_batch_context(extracted_batch)
     review_summary = await stage_review_batch(
         db,
         source_id=source_id,
         extracted_batch=extracted_batch,
+        source_text=text,
         review_service_factory=review_service_factory,
     )
     link_suggestions = await build_link_suggestions(
         db,
-        entities=entities,
+        entities=extracted_batch.entities,
         linking_service_factory=linking_service_factory,
     )
 
@@ -510,10 +802,10 @@ async def build_extraction_preview_with_service(
 
     return DocumentExtractionPreview(
         source_id=source_id,
-        entities=entities,
-        relations=relations,
-        entity_count=len(entities),
-        relation_count=len(relations),
+        entities=extracted_batch.entities,
+        relations=extracted_batch.relations,
+        entity_count=len(extracted_batch.entities),
+        relation_count=len(extracted_batch.relations),
         link_suggestions=link_suggestions,
         needs_review_count=review_summary.needs_review_count,
         auto_verified_count=review_summary.auto_verified_count,
@@ -541,18 +833,20 @@ async def fetch_document_from_url(
 
     if not pmid:
         fetch_result = await url_fetcher_factory().fetch_url(url)
+        document_text = validate_fetched_document_text(fetch_result.text, source_id=source_id, url=url)
         return FetchedDocument(
-            text=fetch_result.text,
+            text=document_text,
             document_format="txt",
             file_name="web_content.txt",
         )
 
     article = await pubmed_fetcher.fetch_by_pmid(pmid)
+    document_text = validate_fetched_document_text(article.full_text, source_id=source_id, url=url)
     await ensure_source_exists(db, source_id)
     await _update_source_revision_from_pubmed(db, source_id=source_id, article=article)
 
     return FetchedDocument(
-        text=article.full_text,
+        text=document_text,
         document_format="txt",
         file_name=f"pubmed_{pmid}.txt",
     )
@@ -575,7 +869,7 @@ async def _update_source_revision_from_pubmed(
     """
     stmt = select(SourceRevision).where(
         SourceRevision.source_id == source_id,
-        SourceRevision.is_current == True,
+        SourceRevision.is_current.is_(True),
     )
     result = await db.execute(stmt)
     revision = result.scalar_one_or_none()
@@ -641,7 +935,7 @@ async def reconcile_staged_extractions(
       → REJECTED (user linked to an existing entity instead)
     - RELATION staged extractions matched by (relation_type, roles)
       → APPROVED + materialized_relation_id set
-    - Claims and unmatched items remain PENDING for the human review queue.
+    - Unmatched staged items remain PENDING for the human review queue.
 
     This is a no-op when no staged extractions exist for the source (e.g. direct
     API calls that bypass the document extraction preview).
@@ -659,7 +953,7 @@ async def reconcile_staged_extractions(
     if not staged_items:
         return []
 
-    now = datetime.datetime.now(datetime.UTC)
+    now = utc_now_naive()
 
     # Build relation key → (index, relation_id) map; first match wins for duplicates
     relation_key_to_idx: dict[tuple, int] = {}
@@ -723,6 +1017,103 @@ async def reconcile_staged_extractions(
     return skipped_relations
 
 
+async def _build_entity_prefill_drafts(
+    db: AsyncSession,
+    *,
+    entities: list[ExtractedEntity],
+    user_language: str,
+    entity_prefill_service_factory: EntityPrefillServiceFactory,
+) -> dict[str, EntityPrefillDraft]:
+    if not entities:
+        return {}
+
+    prefill_service = entity_prefill_service_factory(db)
+    drafts: dict[str, EntityPrefillDraft] = {}
+    for entity in entities:
+        drafts[entity.slug] = await prefill_service.generate_draft_for_extracted_entity(
+            entity,
+            user_language,
+        )
+    return drafts
+
+
+async def _find_existing_entity_slugs(db: AsyncSession, slugs: list[str]) -> set[str]:
+    if not slugs:
+        return set()
+    result = await db.execute(
+        select(EntityRevision.slug).where(
+            EntityRevision.slug.in_(slugs),
+            EntityRevision.is_current.is_(True),
+        )
+    )
+    return set(result.scalars().all())
+
+
+def _entity_terms_from_prefill_draft(draft: EntityPrefillDraft) -> list[EntityTerm]:
+    terms: list[EntityTerm] = []
+    display_order = 0
+    seen: set[tuple[str, str | None]] = set()
+
+    for language, value in draft.display_names.items():
+        term = value.strip()
+        normalized_language = language or None
+        key = (term.casefold(), normalized_language)
+        if not term or key in seen:
+            continue
+        terms.append(
+            EntityTerm(
+                term=term,
+                language=normalized_language,
+                display_order=display_order,
+                is_display_name=True,
+                term_kind="alias",
+            )
+        )
+        seen.add(key)
+        display_order += 1
+
+    for alias in draft.aliases:
+        term = alias.term.strip()
+        key = (term.casefold(), alias.language)
+        if not term or key in seen:
+            continue
+        terms.append(
+            EntityTerm(
+                term=term,
+                language=alias.language,
+                display_order=display_order,
+                is_display_name=False,
+                term_kind=alias.term_kind,
+            )
+        )
+        seen.add(key)
+        display_order += 1
+
+    return terms
+
+
+async def _attach_prefill_terms_to_new_entities(
+    db: AsyncSession,
+    *,
+    original_slug_to_entity_id: SlugEntityMap,
+    prefill_drafts: dict[str, EntityPrefillDraft],
+    preexisting_prefill_slugs: set[str],
+) -> None:
+    attached_entity_ids: set[UUID] = set()
+    for original_slug, draft in prefill_drafts.items():
+        if draft.slug in preexisting_prefill_slugs:
+            continue
+        entity_id = original_slug_to_entity_id.get(original_slug)
+        if entity_id is None:
+            continue
+        if entity_id in attached_entity_ids:
+            continue
+        for term in _entity_terms_from_prefill_draft(draft):
+            term.entity_id = entity_id
+            db.add(term)
+        attached_entity_ids.add(entity_id)
+
+
 async def save_extraction_to_graph(
     db: AsyncSession,
     *,
@@ -730,6 +1121,7 @@ async def save_extraction_to_graph(
     request: SaveExtractionRequest,
     user_id: UUID | None,
     bulk_creation_service_factory: BulkCreationServiceFactory = BulkCreationService,
+    entity_prefill_service_factory: EntityPrefillServiceFactory = _build_default_entity_prefill_service,
 ) -> SaveExtractionResult:
     """
     Materialise a user-confirmed extraction into the knowledge graph.
@@ -745,24 +1137,68 @@ async def save_extraction_to_graph(
     """
     await ensure_source_exists(db, source_id)
 
+    normalized_request_batch = normalize_extracted_batch_context(
+        ExtractedBatch(
+            entities=request.entities_to_create,
+            relations=request.relations_to_create,
+            entity_results=[
+                ValidationResult(
+                    is_valid=True,
+                    confidence_adjustment=1.0,
+                    validation_score=1.0,
+                    flags=[],
+                )
+                for _ in request.entities_to_create
+            ],
+            relation_results=[
+                ValidationResult(
+                    is_valid=True,
+                    confidence_adjustment=1.0,
+                    validation_score=1.0,
+                    flags=[],
+                )
+                for _ in request.relations_to_create
+            ],
+        )
+    )
+    entities_to_create = normalized_request_batch.entities
+    relations_to_create = normalized_request_batch.relations
+
     bulk_service = bulk_creation_service_factory(db)
     entity_mapping: SlugEntityMap = {}
     all_warnings: list[str] = []
+    prefill_drafts = await _build_entity_prefill_drafts(
+        db,
+        entities=entities_to_create,
+        user_language=getattr(request, "user_language", "en"),
+        entity_prefill_service_factory=entity_prefill_service_factory,
+    )
+    preexisting_prefill_slugs = await _find_existing_entity_slugs(
+        db,
+        [draft.slug for draft in prefill_drafts.values()],
+    )
 
-    if request.entities_to_create:
+    if entities_to_create:
         entity_mapping, entity_warnings = await bulk_service.bulk_create_entities(
-            entities=request.entities_to_create,
+            entities=entities_to_create,
+            entity_prefill_drafts=prefill_drafts,
             user_id=user_id,
         )
         all_warnings.extend(entity_warnings)
+        await _attach_prefill_terms_to_new_entities(
+            db,
+            original_slug_to_entity_id=entity_mapping,
+            prefill_drafts=prefill_drafts,
+            preexisting_prefill_slugs=preexisting_prefill_slugs,
+        )
 
     entity_mapping.update(request.entity_links)
 
     created_relations: list[ExtractedRelation] = []
     relation_ids: list[UUID] = []
-    if request.relations_to_create:
+    if relations_to_create:
         created_relations, relation_ids, relation_warnings = await bulk_service.bulk_create_relations(
-            relations=request.relations_to_create,
+            relations=relations_to_create,
             entity_mapping=entity_mapping,
             source_id=source_id,
             user_id=user_id,
@@ -777,7 +1213,7 @@ async def save_extraction_to_graph(
     # approved_relation_ids remain aligned even when some entries were skipped.
     created_slug_to_id = {
         e.slug: entity_mapping[e.slug]
-        for e in request.entities_to_create
+        for e in entities_to_create
         if e.slug in entity_mapping
     }
     skipped_relations = await reconcile_staged_extractions(
@@ -792,7 +1228,7 @@ async def save_extraction_to_graph(
     await db.commit()
 
     return SaveExtractionResult(
-        entities_created=len(request.entities_to_create),
+        entities_created=len(entities_to_create),
         entities_linked=len(request.entity_links),
         relations_created=len(relation_ids),
         created_entity_ids=list(created_slug_to_id.values()),

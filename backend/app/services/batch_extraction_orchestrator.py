@@ -1,27 +1,26 @@
 """
-Batch extraction orchestrator for coordinating multi-type LLM extractions.
+Batch extraction orchestrator for coordinating entity and relation extraction.
 
 Handles:
-- Batch LLM calls for entities, relations, and claims
+- Batch LLM calls for entities and relations
 - Validation pipeline coordination
-- Confidence and evidence filtering
+- Confidence filtering
 - Result aggregation with validation metadata
-
-Used by document extraction workflows where all extraction types
-are needed from a single text source.
 """
+import json
 import logging
+import re
 
 from app.llm.client import get_llm_provider
 from app.llm.prompts import (
     MEDICAL_KNOWLEDGE_SYSTEM_PROMPT,
     format_batch_extraction_prompt,
+    format_batch_gleaning_prompt,
 )
 from app.llm.schemas import (
+    BatchExtractionResponse,
     ExtractedEntity,
     ExtractedRelation,
-    ExtractedClaim,
-    BatchExtractionResponse,
     validate_batch_extraction,
 )
 from app.services.extraction_validation_service import (
@@ -29,6 +28,7 @@ from app.services.extraction_validation_service import (
     ValidationLevel,
     ValidationResult,
 )
+from app.services.extraction_semantic_normalizer import ExtractionSemanticNormalizer
 from app.utils.confidence_filter import filter_by_confidence
 
 logger = logging.getLogger(__name__)
@@ -36,44 +36,32 @@ logger = logging.getLogger(__name__)
 
 class BatchExtractionOrchestrator:
     """
-    Orchestrates batch extraction of entities, relations, and claims.
-
-    Coordinates:
-    1. LLM batch extraction
-    2. Validation pipeline
-    3. Confidence/evidence filtering
-    4. Result aggregation
-
-    Used by document extraction workflows where all extraction types
-    are needed from a single text source.
+    Orchestrates batch extraction of entities and source-grounded relations.
     """
 
     def __init__(
         self,
-        temperature: float = 0.2,
-        max_tokens: int = 3000,
+        temperature: float = 0.0,
+        max_tokens: int = 8000,
         enable_validation: bool = True,
         validation_level: ValidationLevel = "moderate",
-        db=None,  # For future prompt generation
+        max_gleaning_passes: int = 1,
+        max_chunk_chars: int = 12000,
+        chunk_overlap_chars: int = 800,
+        max_chunks: int = 6,
+        db=None,
     ):
-        """
-        Initialize batch extraction orchestrator.
-
-        Args:
-            temperature: LLM temperature for extraction (lower = more deterministic)
-            max_tokens: Maximum tokens for LLM response (batch uses 2x)
-            enable_validation: Whether to validate extractions against source text
-            validation_level: Strictness of validation ("strict", "moderate", "lenient")
-            db: Optional database session for future dynamic prompt generation
-        """
         self.llm = get_llm_provider()
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.system_prompt = MEDICAL_KNOWLEDGE_SYSTEM_PROMPT
         self.db = db
-
-        # Validation setup
         self.enable_validation = enable_validation
+        self.max_gleaning_passes = max(0, max_gleaning_passes)
+        self.max_chunk_chars = max(1, max_chunk_chars)
+        self.chunk_overlap_chars = max(0, min(chunk_overlap_chars, self.max_chunk_chars // 2))
+        self.max_chunks = max(1, max_chunks)
+        self.semantic_normalizer = ExtractionSemanticNormalizer()
         self.validation_service = (
             ExtractionValidationService(
                 validation_level=validation_level,
@@ -87,249 +75,340 @@ class BatchExtractionOrchestrator:
         self,
         text: str,
         min_confidence: str | None = None,
-        min_evidence_strength: str | None = None,
-    ) -> tuple[list[ExtractedEntity], list[ExtractedRelation], list[ExtractedClaim]]:
-        """
-        Extract entities, relations, and claims in one batch.
+    ) -> tuple[list[ExtractedEntity], list[ExtractedRelation]]:
+        logger.info("Batch extraction from text (%d chars)", len(text))
+        validated = await self._call_llm_for_batch(text)
 
-        More efficient than calling each extraction separately.
-
-        Args:
-            text: Input text to extract from
-            min_confidence: Optional minimum confidence for entities/relations
-            min_evidence_strength: Optional minimum evidence strength for claims
-
-        Returns:
-            Tuple of (entities, relations, claims)
-
-        Raises:
-            Exception: If extraction fails or LLM is unavailable
-        """
-        logger.info(f"Batch extraction from text ({len(text)} chars)")
-
-        # Call LLM for batch extraction
-        try:
-            validated = await self._call_llm_for_batch(text)
-        except Exception as e:
-            logger.error(f"Batch extraction failed: {e}")
-            raise
-
-        # Extract initial results
         entities = validated.entities
         relations = validated.relations
-        claims = validated.claims
 
-        # Validate extractions against source text (hallucination prevention)
         if self.enable_validation and self.validation_service:
-            entities, relations, claims = await self._validate_extractions_simple(
-                entities, relations, claims, text
+            entities, relations = await self._validate_extractions_simple(
+                entities,
+                relations,
+                text,
             )
 
-        # Filter entities and relations by confidence
         entities = filter_by_confidence(entities, min_confidence)
         relations = filter_by_confidence(relations, min_confidence)
 
-        # Filter claims by evidence strength
-        claims = self._filter_by_evidence(claims, min_evidence_strength)
-
         logger.info(
-            f"Batch extraction complete: {len(entities)} entities, "
-            f"{len(relations)} relations, {len(claims)} claims"
+            "Batch extraction complete: %d entities, %d relations",
+            len(entities),
+            len(relations),
         )
-
-        return entities, relations, claims
+        return entities, relations
 
     async def extract_batch_with_validation_results(
         self,
         text: str,
         min_confidence: str | None = None,
-        min_evidence_strength: str | None = None,
     ) -> tuple[
         list[ExtractedEntity],
         list[ExtractedRelation],
-        list[ExtractedClaim],
-        list[ValidationResult],  # Entity validation results
-        list[ValidationResult],  # Relation validation results
-        list[ValidationResult],  # Claim validation results
+        list[ValidationResult],
+        list[ValidationResult],
     ]:
-        """
-        Extract entities, relations, and claims with validation results.
+        logger.info("Batch extraction with validation results from text (%d chars)", len(text))
+        validated = await self._call_llm_for_batch(text)
 
-        This is an extended version of extract_batch() that returns validation
-        metadata alongside extractions. Used for human-in-the-loop review workflow.
-
-        Args:
-            text: Input text to extract from
-            min_confidence: Optional minimum confidence for entities/relations
-            min_evidence_strength: Optional minimum evidence strength for claims
-
-        Returns:
-            Tuple of:
-            - entities: List of extracted entities
-            - relations: List of extracted relations
-            - claims: List of extracted claims
-            - entity_validation_results: Validation metadata for each entity
-            - relation_validation_results: Validation metadata for each relation
-            - claim_validation_results: Validation metadata for each claim
-
-        Raises:
-            Exception: If extraction fails or LLM is unavailable
-        """
-        logger.info(f"Batch extraction with validation results from text ({len(text)} chars)")
-
-        # Call LLM for batch extraction
-        try:
-            validated = await self._call_llm_for_batch(text)
-        except Exception as e:
-            logger.error(f"Batch extraction with validation failed: {e}")
-            raise
-
-        # Get initial extractions
         entities = validated.entities
         relations = validated.relations
-        claims = validated.claims
 
-        # Validate extractions against source text
-        (
-            entities,
-            relations,
-            claims,
-            entity_results,
-            relation_results,
-            claim_results,
-        ) = await self._validate_extractions_with_results(entities, relations, claims, text)
+        entities, relations, entity_results, relation_results = (
+            await self._validate_extractions_with_results(entities, relations, text)
+        )
 
-        # Filter by confidence/evidence strength while keeping results aligned
         if min_confidence:
             entities, entity_results = self._filter_by_confidence_with_results(
-                entities, entity_results, min_confidence
+                entities,
+                entity_results,
+                min_confidence,
             )
             relations, relation_results = self._filter_by_confidence_with_results(
-                relations, relation_results, min_confidence
-            )
-
-        if min_evidence_strength:
-            claims, claim_results = self._filter_by_evidence_with_results(
-                claims, claim_results, min_evidence_strength
+                relations,
+                relation_results,
+                min_confidence,
             )
 
         logger.info(
-            f"Batch extraction complete: {len(entities)} entities, "
-            f"{len(relations)} relations, {len(claims)} claims"
+            "Batch extraction complete: %d entities, %d relations",
+            len(entities),
+            len(relations),
         )
-
-        return entities, relations, claims, entity_results, relation_results, claim_results
+        return entities, relations, entity_results, relation_results
 
     async def _call_llm_for_batch(self, text: str) -> BatchExtractionResponse:
-        """
-        Call LLM with batch prompt and return validated response.
+        chunks = self._split_text_for_extraction(text)
+        if len(chunks) == 1:
+            return await self._extract_single_batch_response(chunks[0])
 
-        Args:
-            text: Input text to extract from
+        logger.info(
+            "Batch extraction will run across %d chunks (%d chars total)",
+            len(chunks),
+            len(text),
+        )
+        merged_response = BatchExtractionResponse(entities=[], relations=[])
+        for chunk_index, chunk_text in enumerate(chunks):
+            logger.info(
+                "Extracting chunk %d/%d (%d chars)",
+                chunk_index + 1,
+                len(chunks),
+                len(chunk_text),
+            )
+            chunk_response = await self._extract_single_batch_response(chunk_text)
+            merged_response, _ = self._merge_batch_extractions(
+                merged_response,
+                chunk_response,
+            )
 
-        Returns:
-            Validated batch extraction response
+        return merged_response
 
-        Raises:
-            Exception: If LLM call fails or validation fails
-        """
-        # Format prompt
+    async def _extract_single_batch_response(self, text: str) -> BatchExtractionResponse:
         prompt = format_batch_extraction_prompt(text)
-
-        # Call LLM with higher token limit for batch
         response_data = await self.llm.generate_json(
             prompt=prompt,
             system_prompt=self.system_prompt,
             temperature=self.temperature,
-            max_tokens=min(self.max_tokens * 2, 4000),  # Double tokens for batch
+            max_tokens=min(self.max_tokens * 2, 16000),
+        )
+        merged_response = self.semantic_normalizer.normalize_batch_response(
+            validate_batch_extraction(response_data)
         )
 
-        # Validate response schema
-        validated = validate_batch_extraction(response_data)
-        return validated
+        for pass_index in range(self.max_gleaning_passes):
+            merged_response, added_any = await self._run_gleaning_pass(
+                text=text,
+                current_response=merged_response,
+                pass_index=pass_index,
+            )
+            if not added_any:
+                break
+
+        return merged_response
+
+    def _split_text_for_extraction(self, text: str) -> list[str]:
+        normalized_text = text.strip()
+        if len(normalized_text) <= self.max_chunk_chars:
+            return [normalized_text]
+
+        chunks: list[str] = []
+        start = 0
+        text_length = len(normalized_text)
+
+        while start < text_length:
+            remaining_slots = self.max_chunks - len(chunks)
+            if remaining_slots <= 1:
+                start = max(start, text_length - self.max_chunk_chars)
+                start = self._find_preferred_chunk_start(
+                    normalized_text,
+                    start,
+                )
+                end = text_length
+            else:
+                hard_end = min(start + self.max_chunk_chars, text_length)
+                end = self._find_preferred_chunk_end(
+                    normalized_text,
+                    start,
+                    hard_end,
+                )
+
+            chunk_text = normalized_text[start:end].strip()
+            if chunk_text and (not chunks or chunk_text != chunks[-1]):
+                chunks.append(chunk_text)
+
+            if end >= text_length:
+                break
+
+            next_start = max(0, end - self.chunk_overlap_chars)
+            next_start = self._find_preferred_chunk_start(
+                normalized_text,
+                next_start,
+            )
+            if next_start <= start:
+                next_start = end
+            start = next_start
+
+        return chunks or [normalized_text[: self.max_chunk_chars].strip()]
+
+    def _find_preferred_chunk_end(
+        self,
+        text: str,
+        start: int,
+        hard_end: int,
+    ) -> int:
+        if hard_end >= len(text):
+            return len(text)
+
+        search_start = start + max(1, self.max_chunk_chars // 2)
+        candidate_positions = [
+            match.end()
+            for match in re.finditer(r"\n\s*\n|(?<=[.!?])\s+|\n", text[search_start:hard_end])
+        ]
+        if not candidate_positions:
+            return hard_end
+
+        return search_start + candidate_positions[-1]
+
+    def _find_preferred_chunk_start(self, text: str, start: int) -> int:
+        search_start = max(0, start - max(10, self.max_chunk_chars // 4))
+        candidate_positions = [
+            match.end()
+            for match in re.finditer(r"\n\s*\n|(?<=[.!?])\s+|\n", text[search_start:start])
+        ]
+        if candidate_positions:
+            start = search_start + candidate_positions[-1]
+
+        while start < len(text) and text[start].isspace():
+            start += 1
+        return start
+
+    async def _run_gleaning_pass(
+        self,
+        *,
+        text: str,
+        current_response: BatchExtractionResponse,
+        pass_index: int,
+    ) -> tuple[BatchExtractionResponse, bool]:
+        glean_prompt = format_batch_gleaning_prompt(
+            text=text,
+            existing_extraction=current_response.model_dump(mode="json"),
+        )
+        response_data = await self.llm.generate_json(
+            prompt=glean_prompt,
+            system_prompt=self.system_prompt,
+            temperature=self.temperature,
+            max_tokens=min(self.max_tokens * 2, 16000),
+        )
+        gleaned_response = self.semantic_normalizer.normalize_batch_response(
+            validate_batch_extraction(response_data)
+        )
+        merged_response, added_any = self._merge_batch_extractions(
+            current_response,
+            gleaned_response,
+        )
+        logger.info(
+            "Batch gleaning pass %d/%d complete: +%d entities, +%d relations",
+            pass_index + 1,
+            self.max_gleaning_passes,
+            len(merged_response.entities) - len(current_response.entities),
+            len(merged_response.relations) - len(current_response.relations),
+        )
+        return merged_response, added_any
+
+    def _merge_batch_extractions(
+        self,
+        base: BatchExtractionResponse,
+        additions: BatchExtractionResponse,
+    ) -> tuple[BatchExtractionResponse, bool]:
+        merged_entities = list(base.entities)
+        merged_relations = list(base.relations)
+        seen_entity_slugs = {entity.slug for entity in merged_entities}
+        seen_relation_keys = {
+            self._relation_merge_key(relation) for relation in merged_relations
+        }
+        added_any = False
+
+        for entity in additions.entities:
+            if entity.slug in seen_entity_slugs:
+                continue
+            merged_entities.append(entity)
+            seen_entity_slugs.add(entity.slug)
+            added_any = True
+
+        for relation in additions.relations:
+            relation_key = self._relation_merge_key(relation)
+            if relation_key in seen_relation_keys:
+                continue
+            merged_relations.append(relation)
+            seen_relation_keys.add(relation_key)
+            added_any = True
+
+        return (
+            BatchExtractionResponse(
+                entities=merged_entities,
+                relations=merged_relations,
+            ),
+            added_any,
+        )
+
+    def _relation_merge_key(self, relation: ExtractedRelation) -> tuple[object, ...]:
+        roles_key = tuple(
+            sorted((role.role_type, role.entity_slug) for role in relation.roles)
+        )
+        scope_key = json.dumps(
+            relation.scope or {},
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=True,
+        )
+        evidence_context = relation.evidence_context
+        evidence_key = (
+            evidence_context.statement_kind if evidence_context else None,
+            evidence_context.finding_polarity if evidence_context else None,
+        )
+        text_span_key = " ".join(relation.text_span.split())
+        return (
+            relation.relation_type,
+            roles_key,
+            text_span_key,
+            scope_key,
+            evidence_key,
+        )
 
     async def _validate_extractions_simple(
         self,
         entities: list[ExtractedEntity],
         relations: list[ExtractedRelation],
-        claims: list[ExtractedClaim],
         text: str,
-    ) -> tuple[list[ExtractedEntity], list[ExtractedRelation], list[ExtractedClaim]]:
-        """
-        Validate extractions and return filtered lists (without validation results).
-
-        Delegates to _validate_extractions_with_results and discards the result metadata.
-        """
-        entities, relations, claims, _, _, _ = await self._validate_extractions_with_results(
-            entities, relations, claims, text
+    ) -> tuple[list[ExtractedEntity], list[ExtractedRelation]]:
+        entities, relations, _, _ = await self._validate_extractions_with_results(
+            entities,
+            relations,
+            text,
         )
-        return entities, relations, claims
+        return entities, relations
 
     async def _validate_extractions_with_results(
         self,
         entities: list[ExtractedEntity],
         relations: list[ExtractedRelation],
-        claims: list[ExtractedClaim],
         text: str,
     ) -> tuple[
         list[ExtractedEntity],
         list[ExtractedRelation],
-        list[ExtractedClaim],
-        list[ValidationResult],
         list[ValidationResult],
         list[ValidationResult],
     ]:
-        """
-        Validate extractions and return both filtered lists and validation results.
-
-        Args:
-            entities: Extracted entities
-            relations: Extracted relations
-            claims: Extracted claims
-            text: Source text for validation
-
-        Returns:
-            Tuple of (entities, relations, claims, entity_results, relation_results, claim_results)
-        """
-        entity_results = []
-        relation_results = []
-        claim_results = []
+        entity_results: list[ValidationResult]
+        relation_results: list[ValidationResult]
 
         if self.enable_validation and self.validation_service:
             logger.info("Validating extractions against source text...")
-
-            # Validate entities
             entities, entity_results = await self.validation_service.validate_entities(
-                entities, text
+                entities,
+                text,
             )
-
-            # Validate relations
             relations, relation_results = await self.validation_service.validate_relations(
-                relations, text
+                relations,
+                text,
+                entities=entities,
+            )
+            relations, relation_results = self._check_entity_slug_coherence(
+                entities,
+                relations,
+                relation_results,
             )
 
-            # Validate claims
-            claims, claim_results = await self.validation_service.validate_claims(claims, text)
-
-            # Semantic cross-field check: entity_slug coherence
-            relations, relation_results, claims, claim_results = (
-                self._check_entity_slug_coherence(
-                    entities, relations, relation_results, claims, claim_results
-                )
-            )
-
-            # Log validation summary
-            flagged_entities = sum(1 for r in entity_results if r.flags)
-            flagged_relations = sum(1 for r in relation_results if r.flags)
-            flagged_claims = sum(1 for r in claim_results if r.flags)
-
-            if flagged_entities + flagged_relations + flagged_claims > 0:
+            flagged_entities = sum(1 for result in entity_results if result.flags)
+            flagged_relations = sum(1 for result in relation_results if result.flags)
+            if flagged_entities + flagged_relations > 0:
                 logger.warning(
-                    f"Validation flagged items: {flagged_entities} entities, "
-                    f"{flagged_relations} relations, {flagged_claims} claims"
+                    "Validation flagged items: %d entities, %d relations",
+                    flagged_entities,
+                    flagged_relations,
                 )
         else:
-            # No validation - create dummy validation results
             entity_results = [
                 ValidationResult(
                     is_valid=True,
@@ -350,40 +429,19 @@ class BatchExtractionOrchestrator:
                 )
                 for _ in relations
             ]
-            claim_results = [
-                ValidationResult(
-                    is_valid=True,
-                    confidence_adjustment=1.0,
-                    validation_score=1.0,
-                    flags=[],
-                    matched_span=None,
-                )
-                for _ in claims
-            ]
 
-        return entities, relations, claims, entity_results, relation_results, claim_results
+        return entities, relations, entity_results, relation_results
 
     def _check_entity_slug_coherence(
         self,
         entities: list[ExtractedEntity],
         relations: list[ExtractedRelation],
         relation_results: list[ValidationResult],
-        claims: list[ExtractedClaim],
-        claim_results: list[ValidationResult],
-    ) -> tuple[
-        list[ExtractedRelation],
-        list[ValidationResult],
-        list[ExtractedClaim],
-        list[ValidationResult],
-    ]:
+    ) -> tuple[list[ExtractedRelation], list[ValidationResult]]:
         """
-        Cross-field semantic check: every entity_slug referenced in relations
-        and claims must appear in the extracted entity list from the same batch.
-
-        Flags offending items and halves their confidence score.
-        In strict mode (auto_reject_invalid=True) they are removed entirely.
+        Every entity_slug referenced in relations must appear in the entity list.
         """
-        entity_slug_set = {e.slug for e in entities}
+        entity_slug_set = {entity.slug for entity in entities}
         auto_reject = (
             self.validation_service is not None
             and self.validation_service.auto_reject_invalid
@@ -391,8 +449,15 @@ class BatchExtractionOrchestrator:
 
         out_relations: list[ExtractedRelation] = []
         out_relation_results: list[ValidationResult] = []
+
         for relation, result in zip(relations, relation_results):
-            unknown = sorted({r.entity_slug for r in relation.roles if r.entity_slug not in entity_slug_set})
+            unknown = sorted(
+                {
+                    role.entity_slug
+                    for role in relation.roles
+                    if role.entity_slug not in entity_slug_set
+                }
+            )
             if unknown:
                 result = ValidationResult(
                     is_valid=False if auto_reject else result.is_valid,
@@ -406,53 +471,12 @@ class BatchExtractionOrchestrator:
                     relation.relation_type,
                     unknown,
                 )
+
             if result.is_valid or not auto_reject:
                 out_relations.append(relation)
                 out_relation_results.append(result)
 
-        out_claims: list[ExtractedClaim] = []
-        out_claim_results: list[ValidationResult] = []
-        for claim, result in zip(claims, claim_results):
-            unknown = sorted({s for s in claim.entities_involved if s not in entity_slug_set})
-            if unknown:
-                result = ValidationResult(
-                    is_valid=False if auto_reject else result.is_valid,
-                    confidence_adjustment=result.confidence_adjustment * 0.5,
-                    validation_score=result.validation_score * 0.5,
-                    flags=result.flags + [f"unknown_entity_slug:{','.join(unknown)}"],
-                    matched_span=result.matched_span,
-                )
-                logger.warning(
-                    "Claim references unknown entity slugs: %s",
-                    unknown,
-                )
-            if result.is_valid or not auto_reject:
-                out_claims.append(claim)
-                out_claim_results.append(result)
-
-        return out_relations, out_relation_results, out_claims, out_claim_results
-
-    def _filter_by_evidence(
-        self, claims: list[ExtractedClaim], min_evidence_strength: str | None
-    ) -> list[ExtractedClaim]:
-        """
-        Filter claims by evidence strength.
-
-        Args:
-            claims: List of extracted claims
-            min_evidence_strength: Minimum evidence strength ("strong", "moderate", "weak", "anecdotal")
-
-        Returns:
-            Filtered list of claims
-        """
-        if not min_evidence_strength:
-            return claims
-
-        evidence_order = {"strong": 4, "moderate": 3, "weak": 2, "anecdotal": 1}
-        min_level = evidence_order.get(min_evidence_strength, 1)
-        return [
-            c for c in claims if evidence_order.get(c.evidence_strength, 0) >= min_level
-        ]
+        return out_relations, out_relation_results
 
     def _filter_by_confidence_with_results(
         self,
@@ -460,68 +484,18 @@ class BatchExtractionOrchestrator:
         results: list[ValidationResult],
         min_confidence: str | None,
     ) -> tuple[list, list[ValidationResult]]:
-        """
-        Filter items and validation results together by confidence.
-
-        Args:
-            items: List of extracted entities or relations
-            results: List of validation results (parallel to items)
-            min_confidence: Minimum confidence level ("high", "medium", "low")
-
-        Returns:
-            Tuple of (filtered_items, filtered_results)
-        """
         if not min_confidence:
             return items, results
 
         confidence_order = {"high": 3, "medium": 2, "low": 1}
         min_level = confidence_order.get(min_confidence, 1)
-
-        # Filter items and results together
         filtered = [
             (item, result)
             for item, result in zip(items, results)
             if confidence_order.get(item.confidence, 0) >= min_level
         ]
-
         if not filtered:
             return [], []
 
         filtered_items, filtered_results = zip(*filtered)
         return list(filtered_items), list(filtered_results)
-
-    def _filter_by_evidence_with_results(
-        self,
-        claims: list[ExtractedClaim],
-        results: list[ValidationResult],
-        min_evidence_strength: str | None,
-    ) -> tuple[list[ExtractedClaim], list[ValidationResult]]:
-        """
-        Filter claims and validation results together by evidence strength.
-
-        Args:
-            claims: List of extracted claims
-            results: List of validation results (parallel to claims)
-            min_evidence_strength: Minimum evidence strength
-
-        Returns:
-            Tuple of (filtered_claims, filtered_results)
-        """
-        if not min_evidence_strength:
-            return claims, results
-
-        evidence_order = {"strong": 4, "moderate": 3, "weak": 2, "anecdotal": 1}
-        min_level = evidence_order.get(min_evidence_strength, 1)
-
-        # Filter claims and results together
-        filtered = [
-            (claim, result)
-            for claim, result in zip(claims, results)
-            if evidence_order.get(claim.evidence_strength, 0) >= min_level
-        ]
-
-        if not filtered:
-            return [], []
-
-        filtered_claims, filtered_results = zip(*filtered)
-        return list(filtered_claims), list(filtered_results)

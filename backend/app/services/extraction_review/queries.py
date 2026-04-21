@@ -1,4 +1,3 @@
-from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy import and_, func, select
@@ -6,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.staged_extraction import ExtractionStatus, ExtractionType, StagedExtraction
 from app.schemas.staged_extraction import ReviewStats, StagedExtractionFilters
+from app.utils.datetime import utc_now_naive
 
 
 async def load_staged_extraction(
@@ -41,7 +41,6 @@ async def list_extractions(
         conditions.append(StagedExtraction.auto_commit_eligible == filters.auto_commit_eligible)
     if filters.auto_approved is not None:
         conditions.append(StagedExtraction.auto_approved == filters.auto_approved)
-
     if conditions:
         query = query.where(and_(*conditions))
 
@@ -62,14 +61,18 @@ async def list_extractions(
 
 
 async def get_stats(db: AsyncSession) -> ReviewStats:
+    status_filter = True
     status_counts = await db.execute(
-        select(StagedExtraction.status, func.count(StagedExtraction.id)).group_by(StagedExtraction.status)
+        select(StagedExtraction.status, func.count(StagedExtraction.id))
+        .where(status_filter)
+        .group_by(StagedExtraction.status)
     )
     status_map = {row[0]: row[1] for row in status_counts}
 
     type_counts = await db.execute(
         select(StagedExtraction.extraction_type, func.count(StagedExtraction.id))
         .where(StagedExtraction.status == ExtractionStatus.PENDING)
+        .where(status_filter)
         .group_by(StagedExtraction.extraction_type)
     )
     type_map = {row[0]: row[1] for row in type_counts}
@@ -82,7 +85,9 @@ async def get_stats(db: AsyncSession) -> ReviewStats:
                 func.count(StagedExtraction.id).filter(
                     func.json_array_length(StagedExtraction.validation_flags) > 0
                 ),
-            ).where(StagedExtraction.status == ExtractionStatus.PENDING)
+            )
+            .where(StagedExtraction.status == ExtractionStatus.PENDING)
+            .where(status_filter)
         )
     ).one()
 
@@ -93,7 +98,6 @@ async def get_stats(db: AsyncSession) -> ReviewStats:
         total_auto_verified=status_map.get(ExtractionStatus.AUTO_VERIFIED, 0),
         pending_entities=type_map.get(ExtractionType.ENTITY, 0),
         pending_relations=type_map.get(ExtractionType.RELATION, 0),
-        pending_claims=type_map.get(ExtractionType.CLAIM, 0),
         avg_validation_score=float(quality_row[0] or 0.0),
         high_confidence_count=int(quality_row[1] or 0),
         flagged_count=int(quality_row[2] or 0),
@@ -103,5 +107,5 @@ async def get_stats(db: AsyncSession) -> ReviewStats:
 def apply_review_metadata(staged: StagedExtraction, reviewer_id: UUID, notes: str | None, approved: bool) -> None:
     staged.status = ExtractionStatus.APPROVED if approved else ExtractionStatus.REJECTED
     staged.reviewed_by = reviewer_id
-    staged.reviewed_at = datetime.now(timezone.utc)
+    staged.reviewed_at = utc_now_naive()
     staged.review_notes = notes

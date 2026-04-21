@@ -25,7 +25,6 @@ def review_service():
         "total_auto_verified": 0,
         "pending_entities": 0,
         "pending_relations": 0,
-        "pending_claims": 0,
         "avg_validation_score": 0.0,
         "high_confidence_count": 0,
         "flagged_count": 0,
@@ -208,6 +207,63 @@ class TestExtractionReviewPendingFilters:
         assert filters.sort_order == "asc"
 
     @pytest.mark.asyncio
+    async def test_pending_allows_review_of_relation_payload_that_fails_strict_write_schema(
+        self, review_service, superuser
+    ):
+        async def override_superuser():
+            return superuser
+
+        review_service.list_extractions.return_value = (
+            [{
+                "id": uuid4(),
+                "extraction_type": "relation",
+                "status": "pending",
+                "source_id": uuid4(),
+                "extraction_data": {
+                    "relation_type": "causes",
+                    "roles": [
+                        {"entity_slug": "headache", "role_type": "target"},
+                        {"entity_slug": "placebo", "role_type": "control_group"},
+                    ],
+                    "confidence": "high",
+                    "text_span": "Headache was compared against placebo.",
+                    "evidence_context": {
+                        "statement_kind": "finding",
+                        "finding_polarity": "neutral",
+                    },
+                },
+                "validation_score": 0.42,
+                "validation_flags": ["missing_required_agent_role"],
+                "auto_commit_eligible": False,
+                "llm_model": "gpt-5.4",
+                "llm_provider": "openai",
+                "created_at": datetime.now(timezone.utc),
+                "reviewed_at": None,
+                "review_notes": None,
+                "materialized_entity_id": None,
+                "materialized_relation_id": None,
+                "confidence_adjustment": 1.0,
+                "matched_span": None,
+                "auto_commit_threshold": None,
+                "auto_approved": False,
+            }],
+            1,
+        )
+
+        app.dependency_overrides[get_current_active_superuser] = override_superuser
+        app.dependency_overrides[get_extraction_review_service] = lambda: review_service
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get("/api/extraction-review/pending")
+
+        assert response.status_code == status.HTTP_200_OK
+        payload = response.json()
+        assert payload["total"] == 1
+        assert payload["extractions"][0]["extraction_type"] == "relation"
+        assert payload["extractions"][0]["extraction_data"]["relation_type"] == "causes"
+        assert payload["extractions"][0]["validation_flags"] == ["missing_required_agent_role"]
+
+    @pytest.mark.asyncio
     async def test_pending_response_uses_filter_pagination(self, review_service, superuser):
         async def override_superuser():
             return superuser
@@ -226,3 +282,17 @@ class TestExtractionReviewPendingFilters:
         assert body["page"] == 2
         assert body["page_size"] == 10
         assert body["has_more"] is False
+
+    @pytest.mark.asyncio
+    async def test_stats_returns_relation_only_review_queue_metrics(self, review_service, superuser):
+        async def override_superuser():
+            return superuser
+
+        app.dependency_overrides[get_current_active_superuser] = override_superuser
+        app.dependency_overrides[get_extraction_review_service] = lambda: review_service
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get("/api/extraction-review/stats")
+
+        assert response.status_code == status.HTTP_200_OK
+        review_service.get_stats.assert_awaited_once()

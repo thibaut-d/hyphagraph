@@ -35,6 +35,7 @@ import { search as searchApi, type EntitySearchResult } from "../api/search";
 import { useAsyncAction } from "../hooks/useAsyncAction";
 import { useValidationMessage } from "../hooks/useValidationMessage";
 import { useNotification } from "../notifications/NotificationContext";
+import { entityPath } from "../utils/entityPath";
 import { slugifyInput } from "../utils/slug";
 
 type ValidationField = "slug";
@@ -378,7 +379,7 @@ export function CreateEntityView() {
       }
 
       // Navigate to the created entity
-      navigate(`/entities/${created.id}`);
+      navigate(entityPath(created));
     }, t("common.error", "An error occurred"));
 
     if (!result.ok) {
@@ -408,7 +409,7 @@ export function CreateEntityView() {
     .map(([language]) => language);
 
   return (
-    <Paper sx={{ p: 4, maxWidth: 800, mx: "auto" }}>
+    <Paper sx={{ p: { xs: 2, sm: 4 }, maxWidth: 800, mx: "auto" }}>
       <Stack spacing={3}>
         {/* Header with back button */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
@@ -488,7 +489,7 @@ export function CreateEntityView() {
                         <Link
                           key={result.id}
                           component={RouterLink}
-                          to={`/entities/${result.id}`}
+                          to={entityPath(result)}
                           underline="hover"
                         >
                           {result.slug}

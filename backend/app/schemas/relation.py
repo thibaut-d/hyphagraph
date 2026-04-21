@@ -2,7 +2,7 @@ from uuid import UUID
 from typing import List, Optional
 from datetime import datetime
 from app.schemas.base import Schema
-from app.schemas.common_types import I18nText, ScopeFilter
+from app.schemas.common_types import I18nText, JsonObject, ScopeFilter
 
 
 class RoleRevisionWrite(Schema):
@@ -32,6 +32,7 @@ class RelationWrite(Schema):
     direction: Optional[str] = None
     confidence: Optional[float] = None
     scope: Optional[ScopeFilter] = None  # Contextual qualifiers
+    evidence_context: Optional[JsonObject] = None  # Source/evidence metadata
     notes: Optional[I18nText] = None  # i18n: {"en": "...", "fr": "..."}
     roles: List[RoleRevisionWrite]
     created_with_llm: Optional[str] = None
@@ -45,6 +46,7 @@ class RelationRevisionRead(Schema):
     direction: Optional[str] = None
     confidence: Optional[float] = None
     scope: Optional[ScopeFilter] = None
+    evidence_context: Optional[JsonObject] = None
     notes: Optional[I18nText] = None
     created_with_llm: Optional[str] = None
     created_by_user_id: Optional[UUID] = None
@@ -73,6 +75,7 @@ class RelationRead(Schema):
     direction: Optional[str] = None
     confidence: Optional[float] = None
     scope: Optional[ScopeFilter] = None
+    evidence_context: Optional[JsonObject] = None
     notes: Optional[I18nText] = None
     created_with_llm: Optional[str] = None
     status: str = "confirmed"  # "draft" for LLM-created, "confirmed" for manually entered/reviewed

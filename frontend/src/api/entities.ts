@@ -123,3 +123,27 @@ export function deleteEntity(id: string): Promise<void> {
 export function getEntityFilterOptions(): Promise<EntityFilterOptions> {
   return apiFetch("/entities/filter-options");
 }
+
+export interface EntitySmartSuggestRequest {
+  query: string;
+  count?: number;
+  user_language?: string;
+}
+
+export interface EntitySmartSuggestResponse {
+  terms: string[];
+  query_used: string;
+}
+
+export function smartSuggestEntities(
+  payload: EntitySmartSuggestRequest
+): Promise<EntitySmartSuggestResponse> {
+  return apiFetch("/entities/smart-suggest", {
+    method: "POST",
+    body: JSON.stringify({
+      query: payload.query,
+      count: payload.count ?? 10,
+      user_language: payload.user_language ?? "en",
+    }),
+  });
+}

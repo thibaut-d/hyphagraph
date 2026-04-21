@@ -53,6 +53,7 @@ export function SourceDetailView() {
   const [saveResult, setSaveResult] = useState<SaveExtractionResult | null>(null);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const lastScrolledRelationIdRef = useRef<string | null>(null);
+  const extractionPreviewRef = useRef<HTMLDivElement | null>(null);
 
   // URL extraction state
   const [urlDialogOpen, setUrlDialogOpen] = useState(false);
@@ -103,6 +104,14 @@ export function SourceDetailView() {
     row.scrollIntoView({ behavior: "smooth", block: "center" });
     lastScrolledRelationIdRef.current = highlightedRelationId;
   }, [highlightedRelationId, relations]);
+
+  useEffect(() => {
+    if (!extractionPreview) {
+      return;
+    }
+
+    extractionPreviewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [extractionPreview]);
 
   const handleDelete = async () => {
     if (!id) return;
@@ -164,7 +173,7 @@ export function SourceDetailView() {
         setUrlDialogOpen(true);
       }
     } catch (error) {
-      showError(error);
+      showError(error, { autoDismiss: false });
     } finally {
       setAutoExtracting(false);
     }
@@ -182,7 +191,7 @@ export function SourceDetailView() {
       const preview = await uploadAndExtract(id, file);
       setExtractionPreview(preview);
     } catch (error) {
-      showError(error);
+      showError(error, { autoDismiss: false });
       setUploadedFileName(null);
     } finally {
       setUploading(false);
@@ -214,7 +223,7 @@ export function SourceDetailView() {
       setExtractionPreview(preview);
       setUrlDialogOpen(false);
     } catch (error) {
-      showError(error);
+      showError(error, { autoDismiss: false });
       throw error; // Re-throw to let dialog handle error display
     } finally {
       setUrlExtracting(false);
@@ -263,11 +272,13 @@ export function SourceDetailView() {
       />
 
       {extractionPreview && (
-        <ExtractionPreview
-          preview={extractionPreview}
-          onSaveComplete={handleSaveComplete}
-          onCancel={handleCancelExtraction}
-        />
+        <Box ref={extractionPreviewRef}>
+          <ExtractionPreview
+            preview={extractionPreview}
+            onSaveComplete={handleSaveComplete}
+            onCancel={handleCancelExtraction}
+          />
+        </Box>
       )}
 
       <SourceRelationsSection

@@ -5,6 +5,6 @@ from app.startup import bootstrap_admin_user
 async def main():
     async with AsyncSessionLocal() as db:
         await bootstrap_admin_user(db)
-        print("Admin user created!")
+        print("Admin bootstrap complete.")
 
 asyncio.run(main())

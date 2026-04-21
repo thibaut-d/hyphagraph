@@ -345,7 +345,7 @@ As a **User**, I want to search PubMed and import results so that I can add lite
 
 ### US-SRC-09 — Upload Document for Extraction
 
-As a **User**, I want to upload a document so that claims can be extracted automatically via LLM.
+As a **User**, I want to upload a document so that relations can be extracted automatically via LLM.
 
 **Acceptance criteria:**
 - A document upload action is accessible from the source detail extraction area
@@ -387,11 +387,11 @@ As a **User**, I want to export the sources list so that I can use the bibliogra
 
 ### US-REL-01 — View Relation Detail
 
-As a **User**, I want to view the detail of a relation so that I can understand the specific claim made by a source.
+As a **User**, I want to view the detail of a relation so that I can understand the specific source-grounded statement it records.
 
 **Acceptance criteria:**
 - A relation detail view shows: kind, direction, confidence, scope, notes
-- The source that asserts the claim is linked and accessible
+- The source that asserts the relation is linked and accessible
 - All participating entities with their roles are listed
 - Audit metadata is visible, including timestamps and relation/source identifiers
 - LLM provenance is shown if applicable
@@ -400,7 +400,7 @@ As a **User**, I want to view the detail of a relation so that I can understand 
 
 ### US-REL-02 — Create Relation
 
-As a **User**, I want to create a relation between entities so that I can record a claim from a source.
+As a **User**, I want to create a relation between entities so that I can record a source-grounded statement.
 
 **Acceptance criteria:**
 - A "Create relation" action is accessible from entity detail and relation list pages
@@ -413,7 +413,7 @@ As a **User**, I want to create a relation between entities so that I can record
 
 ### US-REL-03 — Edit Relation
 
-As a **User**, I want to edit a relation so that I can correct an incorrect claim.
+As a **User**, I want to edit a relation so that I can correct an incorrect relation statement.
 
 **Acceptance criteria:**
 - An edit action is accessible from the relation detail page
@@ -425,7 +425,7 @@ As a **User**, I want to edit a relation so that I can correct an incorrect clai
 
 ### US-REL-04 — Delete Relation
 
-As a **User**, I want to delete a relation so that I can remove an erroneous or duplicate claim.
+As a **User**, I want to delete a relation so that I can remove an erroneous or duplicate relation.
 
 **Acceptance criteria:**
 - A delete action is accessible from the relation detail page
@@ -435,7 +435,7 @@ As a **User**, I want to delete a relation so that I can remove an erroneous or 
 
 ### US-REL-05 — Batch Create Relations
 
-As a **User**, I want to create multiple relations at once so that I can record several claims from the same source efficiently.
+As a **User**, I want to create multiple relations at once so that I can record several source-grounded statements from the same source efficiently.
 
 **Acceptance criteria:**
 - A batch relation creation form is accessible from the sources or relations area
@@ -513,7 +513,7 @@ As a **User**, I want to view all hyperedges supporting or contradicting a prope
 
 **Acceptance criteria:**
 - A property detail view lists all associated evidence items
-- Each item shows: readable claim, direction (support/contradict), conditions, source
+- Each item shows: readable relation statement, direction (support/contradict), conditions, source
 - The list is sortable by direction and source authority
 
 ---
@@ -536,7 +536,7 @@ As a **User**, I want to see where sources disagree so that I can identify areas
 
 **Acceptance criteria:**
 - A disagreements view is accessible from the entity detail page
-- Contradicting claims are shown side by side with their respective sources
+- Contradicting relations are shown side by side with their respective sources
 - Contradictions are never hidden or downplayed
 - The user can navigate from a disagreement directly to the conflicting sources
 
@@ -546,11 +546,11 @@ As a **User**, I want to see where sources disagree so that I can identify areas
 
 ### US-LLM-01 — Review Extraction Queue
 
-As an **Admin**, I want to review LLM-extracted claims before they become authoritative so that hallucinations do not enter the knowledge graph unchecked.
+As an **Admin**, I want to review LLM-extracted relations before they become authoritative so that hallucinations do not enter the knowledge graph unchecked.
 
 **Acceptance criteria:**
 - A superuser-only review queue is accessible from the application
-- The queue lists pending extractions with: claim text, entity links, confidence score, flags
+- The queue lists pending extractions with: relation text/context, entity links, confidence score, flags
 - Extractions with score ≥ 0.9 and no flags are auto-verified and do not appear in the queue
 - Uncertain extractions appear with status `pending`
 
@@ -674,7 +674,7 @@ As a **User**, I want to switch the interface language so that I can use the app
 
 ### US-NF-01 — Traceability Constraint
 
-As a **User**, I want every claim's source to be reachable in at most 2 clicks so that I can verify knowledge quickly.
+As a **User**, I want every relation's source to be reachable in at most 2 clicks so that I can verify knowledge quickly.
 
 **Acceptance criteria:**
 - From any displayed property, inference, or synthesis, the originating source is never more than 2 navigation steps away
@@ -697,4 +697,4 @@ As a **User**, I want LLM-generated content to be clearly labeled so that I am n
 
 **Acceptance criteria:**
 - Every piece of content generated or assisted by an LLM carries a visible label
-- LLM output cannot bypass the human review workflow to become an authoritative claim
+- LLM output cannot bypass the human review workflow to become an authoritative relation

@@ -45,7 +45,7 @@ describe("Extraction review API client", () => {
   it("serializes all supported admin filters", async () => {
     await listAllExtractions({
       status: "pending",
-      extraction_type: "claim",
+      extraction_type: "relation",
       source_id: "source-2",
       min_validation_score: 0.4,
       max_validation_score: 0.8,
@@ -58,7 +58,7 @@ describe("Extraction review API client", () => {
     });
 
     expect(apiFetch).toHaveBeenCalledWith(
-      "/extraction-review/all?status=pending&extraction_type=claim&source_id=source-2&min_validation_score=0.4&max_validation_score=0.8&has_flags=false&auto_commit_eligible=true&page=3&page_size=25&sort_by=created_at&sort_order=asc"
+      "/extraction-review/all?status=pending&extraction_type=relation&source_id=source-2&min_validation_score=0.4&max_validation_score=0.8&has_flags=false&auto_commit_eligible=true&page=3&page_size=25&sort_by=created_at&sort_order=asc"
     );
   });
 });

@@ -24,7 +24,7 @@ class Attribute(Base, UUIDMixin):
     - Metadata that doesn't fit in main schema
 
     Rules:
-    - Attributes MUST NOT encode multi-entity claims or causality
+    - Attributes MUST NOT encode multi-entity relation assertions or causality
     - They are descriptive/qualifying only
     - Not versioned - updates replace previous value with timestamp
     """

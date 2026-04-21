@@ -35,7 +35,7 @@ Key fields:
 
 ### Source
 
-Documentary source from which claims originate.
+Documentary source from which relations originate.
 
 Current source metadata lives in `SourceRevision`.
 
@@ -46,9 +46,9 @@ Key fields:
 
 ### Relation
 
-A single claim made by one source.
+A single source-grounded relation made by one source.
 
-Current claim state lives in `RelationRevision`.
+Current relation state lives in `RelationRevision`.
 
 Key fields:
 
@@ -103,16 +103,16 @@ Rules:
 ## Provenance rules
 
 - every relation references exactly one source
-- no claim exists without provenance
+- no relation exists without provenance
 - created-with-LLM metadata is descriptive, not authoritative
-- computed outputs never replace source-grounded claims
+- computed outputs never replace source-grounded relations
 
 ## Relation semantics
 
-- a relation stores what a source claims, not what the system believes
+- a relation stores what a source states, not what the system believes
 - confidence reflects source assertion strength, not system truth
 - roles are mandatory because relations carry meaning through role assignment
-- revising a relation creates a new full claim snapshot, including roles
+- revising a relation creates a new full relation snapshot, including roles
 
 ## Inference rules
 
@@ -147,5 +147,5 @@ The exact implementation may evolve, but determinism for identical scopes is req
 
 - do not store human-authored synthesis as fact
 - do not let LLM output become authoritative
-- do not encode multi-entity claims as simple attributes
+- do not encode multi-entity relation assertions as simple attributes
 - do not bypass revision history for mutable records

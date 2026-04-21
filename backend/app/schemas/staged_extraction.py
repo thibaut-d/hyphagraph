@@ -8,13 +8,14 @@ Defines request/response models for:
 - Review statistics
 """
 
-from pydantic import Field, ConfigDict
+from typing import Literal
 from uuid import UUID
 from datetime import datetime
-from typing import Literal
 
-from app.llm.schemas import ExtractedEntity, ExtractedRelation, ExtractedClaim
+from pydantic import AliasChoices, ConfigDict, Field
+
 from app.schemas.base import Schema
+from app.schemas.common_types import JsonObject, JsonScalar
 
 
 # =============================================================================
@@ -22,12 +23,69 @@ from app.schemas.base import Schema
 # =============================================================================
 
 ExtractionStatusLiteral = Literal["auto_verified", "pending", "approved", "rejected"]
-ExtractionTypeLiteral = Literal["entity", "relation", "claim"]
+ExtractionTypeLiteral = Literal["entity", "relation"]
 
 
 # =============================================================================
 # Response Models
 # =============================================================================
+
+
+class StagedExtractedEntityRead(Schema):
+    """
+    Review-safe entity payload.
+
+    Staged review data must remain listable even when an extracted draft is
+    incomplete or no longer matches the stricter write-time extraction schema.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    slug: str | None = None
+    summary: str | None = None
+    category: str | None = None
+    confidence: str | None = None
+    text_span: str | None = None
+
+
+class StagedExtractedRoleRead(Schema):
+    model_config = ConfigDict(extra="allow")
+
+    entity_slug: str | None = None
+    role_type: str | None = None
+
+
+class StagedExtractedRelationEvidenceContextRead(Schema):
+    model_config = ConfigDict(extra="allow")
+
+    statement_kind: str | None = None
+    finding_polarity: str | None = None
+    evidence_strength: str | None = None
+    study_design: str | None = None
+    sample_size: int | None = None
+    sample_size_text: str | None = None
+    assertion_text: str | None = None
+    methodology_text: str | None = None
+    statistical_support: str | None = None
+
+
+class StagedExtractedRelationRead(Schema):
+    model_config = ConfigDict(extra="allow")
+
+    relation_type: str | None = None
+    roles: list[StagedExtractedRoleRead] = Field(default_factory=list)
+    confidence: str | None = None
+    text_span: str | None = None
+    notes: str | None = None
+    scope: JsonObject | None = None
+    evidence_context: StagedExtractedRelationEvidenceContextRead | None = Field(
+        None,
+        validation_alias=AliasChoices("evidence_context", "study_context"),
+    )
+
+    @property
+    def study_context(self) -> StagedExtractedRelationEvidenceContextRead | None:
+        return self.evidence_context
 
 
 class StagedExtractionRead(Schema):
@@ -70,8 +128,14 @@ class StagedExtractionRead(Schema):
     # Source tracking
     source_id: UUID
 
-    # Extraction data (polymorphic based on extraction_type)
-    extraction_data: ExtractedEntity | ExtractedRelation | ExtractedClaim
+    # Extraction data (polymorphic based on extraction_type). This read contract is
+    # intentionally looser than the write-time extraction schema so pending review
+    # rows remain visible even when they contain incomplete or drifted payloads.
+    extraction_data: (
+        StagedExtractedEntityRead
+        | StagedExtractedRelationRead
+        | dict[str, JsonScalar | list[object] | dict[str, object] | None]
+    )
 
     # Validation metadata
     validation_score: float = Field(..., ge=0.0, le=1.0, description="Overall validation score")
@@ -124,7 +188,6 @@ class ReviewStats(Schema):
     # Breakdown by type
     pending_entities: int
     pending_relations: int
-    pending_claims: int
 
     # Quality metrics
     avg_validation_score: float = Field(

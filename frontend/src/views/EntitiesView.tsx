@@ -16,16 +16,17 @@ import {
   Button,
   Stack,
   Badge,
-  Alert,
   CircularProgress,
   Chip,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import UploadIcon from "@mui/icons-material/Upload";
 import ClearAllIcon from "@mui/icons-material/ClearAll";
 
 import { FilterDrawer, FilterSection, CheckboxFilter, SearchFilter, RangeFilter } from "../components/filters";
+import { EntitySmartDiscoveryDialog } from "../components/entity/EntitySmartDiscoveryDialog";
 import { ScrollToTop } from "../components/ScrollToTop";
 import { ExportMenu } from "../components/ExportMenu";
 import { useFilterDrawer } from "../hooks/useFilterDrawer";
@@ -33,6 +34,7 @@ import { useFilterOptionsCache } from "../hooks/useFilterOptionsCache";
 import { usePersistedFilters } from "../hooks/usePersistedFilters";
 import { useDebounce } from "../hooks/useDebounce";
 import { useInfiniteScroll } from "../hooks/useInfiniteScroll";
+import { entityPath } from "../utils/entityPath";
 
 const PAGE_SIZE = 50;
 
@@ -44,6 +46,7 @@ export function EntitiesView() {
   const [isLoading, setIsLoading] = useState(true);
   const [hasMore, setHasMore] = useState(true);
   const [offset, setOffset] = useState(0);
+  const [smartDiscoveryOpen, setSmartDiscoveryOpen] = useState(false);
   const filterOptions = useFilterOptionsCache<EntityFilterOptions>(
     'entity-filter-options-cache',
     getEntityFilterOptions,
@@ -292,7 +295,7 @@ export function EntitiesView() {
             <Typography variant="caption" color="text.secondary">
               {t("entities.toolbar_manage", "Add data")}
             </Typography>
-            <Stack direction="row" spacing={1} flexWrap="wrap">
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
               <Button
                 component={RouterLink}
                 to="/entities/import"
@@ -301,6 +304,14 @@ export function EntitiesView() {
                 size="small"
               >
                 {t("entities.import", "Import")}
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<AutoAwesomeIcon />}
+                onClick={() => setSmartDiscoveryOpen(true)}
+                size="small"
+              >
+                {t("entity_smart_discover.button", "Smart Discover")}
               </Button>
               <Button
                 component={RouterLink}
@@ -368,7 +379,7 @@ export function EntitiesView() {
                     <ListItemText
                       primary={
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                          <Link component={RouterLink} to={`/entities/${e.id}`}>
+                          <Link component={RouterLink} to={entityPath(e)}>
                             {e.slug}
                           </Link>
                           {categoryLabel && (
@@ -397,7 +408,10 @@ export function EntitiesView() {
                           )}
                         </Box>
                       }
-                      secondary={e.summary?.en}
+                      secondary={
+                        e.summary?.[i18n.language.split("-")[0]] ??
+                        e.summary?.en
+                      }
                     />
                   </ListItem>
                 );
@@ -524,6 +538,12 @@ export function EntitiesView() {
 
       {/* Scroll to top button */}
       <ScrollToTop />
+
+      <EntitySmartDiscoveryDialog
+        open={smartDiscoveryOpen}
+        onClose={() => setSmartDiscoveryOpen(false)}
+        onCreated={() => loadEntities(0)}
+      />
     </Stack>
   );
 }

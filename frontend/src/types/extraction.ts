@@ -2,7 +2,7 @@
  * TypeScript types for knowledge extraction from documents.
  *
  * Matches backend schemas from:
- * - app/llm/schemas.py (ExtractedEntity, ExtractedRelation, ExtractedClaim)
+ * - app/llm/schemas.py (ExtractedEntity, ExtractedRelation)
  * - app/schemas/source.py (DocumentExtractionPreview, EntityLinkMatch)
  */
 
@@ -48,46 +48,96 @@ export type RelationType =
   | "biomarker_for"
   | "affects_population"
   | "measures"
+  | "diagnoses"
+  | "predicts"
   | "other";
+
+export const ALL_RELATION_TYPES: RelationType[] = [
+  "treats",
+  "causes",
+  "prevents",
+  "increases_risk",
+  "decreases_risk",
+  "mechanism",
+  "contraindicated",
+  "interacts_with",
+  "metabolized_by",
+  "biomarker_for",
+  "affects_population",
+  "measures",
+  "diagnoses",
+  "predicts",
+  "other",
+];
+
+export type StatementKind =
+  | "finding"
+  | "background"
+  | "hypothesis"
+  | "methodology";
+
+export type FindingPolarity =
+  | "supports"
+  | "contradicts"
+  | "mixed"
+  | "neutral"
+  | "uncertain";
+
+export type StudyDesign =
+  | "meta_analysis"
+  | "systematic_review"
+  | "randomized_controlled_trial"
+  | "nonrandomized_trial"
+  | "cohort_study"
+  | "case_control_study"
+  | "cross_sectional_study"
+  | "case_series"
+  | "case_report"
+  | "guideline"
+  | "review"
+  | "animal_study"
+  | "in_vitro"
+  | "background"
+  | "unknown";
 
 export interface ExtractedRole {
   entity_slug: string;
   role_type: string;
+  source_mention?: string | null;
 }
+
+export interface ExtractedRelationEvidenceContext {
+  statement_kind: StatementKind;
+  finding_polarity?: FindingPolarity | null;
+  evidence_strength?: EvidenceStrength | null;
+  study_design?: StudyDesign | null;
+  sample_size?: number | null;
+  sample_size_text?: string | null;
+  assertion_text?: string | null;
+  methodology_text?: string | null;
+  statistical_support?: string | null;
+}
+
+export type RelationScopeValue = string | number | boolean | null;
 
 export interface ExtractedRelation {
   relation_type: RelationType;
+  /** Set by the backend when the model proposed an unknown type that was coerced to "other". */
+  model_proposed_type?: string | null;
   roles: ExtractedRole[];
   confidence: ConfidenceLevel;
   text_span: string;
   notes?: string | null;
+  scope?: Record<string, RelationScopeValue> | null;
+  evidence_context?: ExtractedRelationEvidenceContext | null;
+  study_context?: ExtractedRelationEvidenceContext | null;
 }
-
-// =============================================================================
-// Claim Extraction
-// =============================================================================
-
-export type ClaimType =
-  | "efficacy"
-  | "safety"
-  | "mechanism"
-  | "epidemiology"
-  | "other";
 
 export type EvidenceStrength =
   | "strong"      // RCTs, meta-analyses
   | "moderate"    // Observational studies
   | "weak"        // Case reports, small studies
   | "anecdotal";  // Individual experiences
-
-export interface ExtractedClaim {
-  claim_text: string;
-  entities_involved: string[];
-  claim_type: ClaimType;
-  evidence_strength: EvidenceStrength;
-  confidence: ConfidenceLevel;
-  text_span: string;
-}
 
 // =============================================================================
 // Entity Linking
@@ -136,6 +186,7 @@ export interface SaveExtractionRequest {
   entities_to_create: ExtractedEntity[];
   entity_links: Record<string, string>;  // extracted_slug -> existing_entity_id
   relations_to_create: ExtractedRelation[];
+  user_language?: string;
 }
 
 export interface SkippedRelationDetail {
@@ -162,7 +213,6 @@ export interface SaveExtractionResult {
 export interface BatchExtractionResponse {
   entities: ExtractedEntity[];
   relations: ExtractedRelation[];
-  claims: ExtractedClaim[];
 }
 
 // =============================================================================
@@ -185,5 +235,4 @@ export interface ExtractionWorkflowState {
   preview: DocumentExtractionPreview;
   entity_decisions: Record<string, EntityLinkingDecision>;  // slug -> decision
   selected_relations: Set<string>;  // slugs of relations to create
-  selected_claims: Set<string>;  // claim_text of claims to create
 }

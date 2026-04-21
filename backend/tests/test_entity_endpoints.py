@@ -171,13 +171,39 @@ class TestEntityEndpoints:
         finally:
             app.dependency_overrides.clear()
 
-    async def test_invalid_uuid_format(self, override_get_db):
-        """Test invalid UUID format in URL."""
+    async def test_get_entity_by_current_slug(self, mock_current_user, override_get_db, db_session):
+        """Test getting a specific entity by its current slug."""
+        from app.dependencies.auth import get_current_user
+
+        db_session.add(mock_current_user)
+        await db_session.commit()
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_current_user] = lambda: mock_current_user
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                create_response = await client.post(
+                    "/api/entities/",
+                    json={"slug": "paracetamol"},
+                )
+                assert create_response.status_code == status.HTTP_201_CREATED
+
+                response = await client.get("/api/entities/paracetamol")
+
+                assert response.status_code == status.HTTP_200_OK
+                data = response.json()
+                assert data["id"] == create_response.json()["id"]
+                assert data["slug"] == "paracetamol"
+        finally:
+            app.dependency_overrides.clear()
+
+    async def test_slug_like_missing_entity_returns_404(self, override_get_db):
+        """Test slug-like refs are treated as entity lookups, not UUID parse errors."""
         app.dependency_overrides[get_db] = override_get_db
         try:
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
                 response = await client.get("/api/entities/not-a-uuid")
-                assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+                assert response.status_code == status.HTTP_404_NOT_FOUND
         finally:
             app.dependency_overrides.clear()
 

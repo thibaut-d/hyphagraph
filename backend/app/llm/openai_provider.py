@@ -5,6 +5,7 @@ Provides integration with OpenAI's Chat Completions API.
 """
 import json
 import logging
+import re as _re
 
 from openai import AsyncOpenAI, OpenAIError
 
@@ -13,6 +14,24 @@ from app.llm.base import LLMProvider, LLMResponse, LLMError
 from app.schemas.common_types import JsonObject, JsonValue
 
 logger = logging.getLogger(__name__)
+
+_MARKDOWN_JSON_RE = _re.compile(
+    r"```(?:json)?\s*\n?(.*?)\n?```",
+    _re.DOTALL | _re.IGNORECASE,
+)
+
+
+def _strip_markdown_json(text: str) -> str:
+    """
+    Strip markdown code fences that some models wrap around JSON output.
+
+    E.g. ```json\\n{...}\\n``` → ``{...}``
+    If no fences are present the text is returned unchanged.
+    """
+    m = _MARKDOWN_JSON_RE.search(text)
+    if m:
+        return m.group(1).strip()
+    return text.strip()
 
 
 class OpenAIProvider(LLMProvider):
@@ -54,6 +73,17 @@ class OpenAIProvider(LLMProvider):
         """Get the configured model name."""
         return self.model
 
+    def _get_token_limit_param_name(self) -> str:
+        """
+        Return the token-limit parameter accepted by the configured model.
+
+        GPT-5 chat-completions models reject `max_tokens` and require
+        `max_completion_tokens`. Keep the provider interface stable and translate
+        here so upstream extraction code does not need model-specific branching.
+        """
+        normalized_model = (self.model or "").strip().lower()
+        return "max_completion_tokens" if normalized_model.startswith("gpt-5") else "max_tokens"
+
     async def generate(
         self,
         prompt: str,
@@ -93,12 +123,18 @@ class OpenAIProvider(LLMProvider):
         try:
             logger.info(f"Calling OpenAI API with model={self.model}, temp={temp}")
 
+            request_kwargs = dict(kwargs)
+            if (
+                "max_tokens" not in request_kwargs
+                and "max_completion_tokens" not in request_kwargs
+            ):
+                request_kwargs[self._get_token_limit_param_name()] = max_tokens
+
             response = await self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
                 temperature=temp,
-                max_tokens=max_tokens,
-                **kwargs,
+                **request_kwargs,
             )
 
             # Extract content
@@ -180,14 +216,27 @@ class OpenAIProvider(LLMProvider):
             **kwargs,
         )
 
-        # Parse JSON
+        # Parse JSON — strip markdown code fences that some models wrap around JSON
+        finish_reason = response.metadata.get("finish_reason", "unknown")
+        content = _strip_markdown_json(response.content)
         try:
-            result = json.loads(response.content)
+            result = json.loads(content)
             if not isinstance(result, dict):
-                raise LLMError("Invalid JSON in response: expected a JSON object")
-            logger.info(f"Successfully parsed JSON response from OpenAI")
+                raise LLMError("Invalid JSON in response: expected a JSON object", finish_reason=finish_reason)
+            logger.info("Successfully parsed JSON response from OpenAI")
             return result
         except json.JSONDecodeError as e:
-            logger.exception("Failed to parse JSON from OpenAI response")
-            logger.error("Response content (first 500 chars): %s", response.content[:500])
-            raise LLMError("LLM response could not be parsed as JSON") from e
+            logger.error(
+                "Failed to parse JSON from OpenAI response — finish_reason=%s, content=%r",
+                finish_reason,
+                content[:1000],
+            )
+            if finish_reason == "length":
+                raise LLMError(
+                    "LLM response was truncated before JSON was complete — increase max_tokens",
+                    finish_reason=finish_reason,
+                ) from e
+            raise LLMError(
+                "LLM response could not be parsed as JSON",
+                finish_reason=finish_reason,
+            ) from e

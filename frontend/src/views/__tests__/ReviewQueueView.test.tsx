@@ -31,10 +31,6 @@ vi.mock("react-i18next", () => ({
   initReactI18next: { type: "3rdParty", init: () => {} },
 }));
 
-vi.mock("../../components/review/LlmDraftsPanel", () => ({
-  LlmDraftsPanel: () => <div>Draft panel content</div>,
-}));
-
 vi.mock("../../notifications/NotificationContext", () => ({
   useNotification: () => ({
     showError: vi.fn(),
@@ -51,7 +47,6 @@ const mockStats = {
   total_auto_verified: 2,
   pending_entities: 3,
   pending_relations: 2,
-  pending_claims: 0,
   avg_validation_score: 0.82,
   high_confidence_count: 0,
   flagged_count: 1,
@@ -110,12 +105,20 @@ describe("ReviewQueueView", () => {
     renderView();
 
     expect(await screen.findByRole("heading", { name: "Staged extraction review" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Staged Extraction Review" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "LLM Draft Review" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Review queue" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Summary metrics" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Filters" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Batch tools" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Queue items" })).toBeInTheDocument();
+  });
+
+  it("does not offer a removed third extraction type in the staged review queue", async () => {
+    renderView();
+
+    expect(await screen.findByRole("heading", { name: "Staged extraction review" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "review_queue.type_entity" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "review_queue.type_relation" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "review_queue.type_claim" })).not.toBeInTheDocument();
   });
 
   it("shows staged queue stats and extraction items", async () => {
@@ -201,15 +204,5 @@ describe("ReviewQueueView", () => {
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "review_queue.approve_selected" })).toBeDisabled();
     });
-  });
-
-  it("switches to the draft queue with a queue-specific introduction", async () => {
-    renderView();
-    await screen.findByText("aspirin");
-
-    fireEvent.click(screen.getByRole("tab", { name: "LLM Draft Review" }));
-
-    expect(await screen.findByRole("heading", { name: "LLM draft revision review" })).toBeInTheDocument();
-    expect(screen.getByText("Draft panel content")).toBeInTheDocument();
   });
 });

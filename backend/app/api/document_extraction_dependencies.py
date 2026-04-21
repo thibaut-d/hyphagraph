@@ -1,8 +1,6 @@
 import importlib.util
 from pathlib import Path
 
-from fastapi import HTTPException, status
-
 from app.api.document_extraction_schemas import (
     PubMedBulkImportRequest,
     PubMedBulkSearchRequest,
@@ -11,7 +9,12 @@ from app.api.document_extraction_schemas import (
 )
 from app.llm.client import is_llm_available
 from app.services.pubmed_fetcher import PubMedArticle, PubMedFetcher
-from app.utils.errors import LLMServiceUnavailableException, ValidationException
+from app.utils.errors import (
+    AppException,
+    ErrorCode,
+    LLMServiceUnavailableException,
+    ValidationException,
+)
 
 
 def _get_test_support_module():
@@ -56,12 +59,13 @@ def raise_internal_api_exception(
     details: str | None = None,
     context: dict[str, str] | None = None,
 ) -> None:
-    detail = message
-    if details:
-        detail = f"{message}: {details}"
-    if context:
-        detail = f"{detail} ({context})"
-    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=detail)
+    raise AppException(
+        status_code=500,
+        error_code=ErrorCode.INTERNAL_SERVER_ERROR,
+        message=message,
+        details=details,
+        context=context,
+    )
 
 
 def require_llm() -> None:

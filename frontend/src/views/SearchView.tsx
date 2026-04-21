@@ -26,6 +26,7 @@ import {
   type RelationSearchResult,
 } from "../api/search";
 import { usePageErrorHandler } from "../hooks/usePageErrorHandler";
+import { entityPath } from "../utils/entityPath";
 
 const RESULTS_PER_PAGE = 20;
 
@@ -131,7 +132,7 @@ export function SearchView() {
 
   const getResultLink = (result: SearchResult): string => {
     if (result.type === "entity") {
-      return `/entities/${result.id}`;
+      return entityPath(result);
     } else if (result.type === "source") {
       return `/sources/${result.id}`;
     } else if (result.type === "relation") {
@@ -172,7 +173,7 @@ export function SearchView() {
           autoFocus
           helperText={t(
             "search.helper_text",
-            "Search across entities, publications, and evidence claims. Match strength reflects text similarity, not confidence or study quality."
+            "Search across entities, publications, and evidence relations. Match strength reflects text similarity, not confidence or study quality."
           )}
         />
 
@@ -201,8 +202,8 @@ export function SearchView() {
               <ToggleButton value="source" aria-label={t("search.filter_sources", "Publications & documents")}>
                 {t("search.filter_sources", "Publications & documents")} ({sourceCount})
               </ToggleButton>
-              <ToggleButton value="relation" aria-label={t("search.filter_relations", "Evidence claims")}>
-                {t("search.filter_relations", "Evidence claims")} ({relationCount})
+              <ToggleButton value="relation" aria-label={t("search.filter_relations", "Evidence relations")}>
+                {t("search.filter_relations", "Evidence relations")} ({relationCount})
               </ToggleButton>
             </ToggleButtonGroup>
           </Box>
@@ -234,7 +235,7 @@ export function SearchView() {
                       kinds: typeFilter.map(f =>
                         f === "entity" ? t("search.filter_entities", "Entities")
                         : f === "source" ? t("search.filter_sources", "Publications & documents")
-                        : t("search.filter_relations", "Evidence claims")
+                        : t("search.filter_relations", "Evidence relations")
                       ).join(", ")
                     })}
                   </>
@@ -266,7 +267,7 @@ export function SearchView() {
                               ? t("search.kind_entity", "Entity")
                               : result.type === "source"
                               ? t("search.kind_source", "Publication")
-                              : t("search.kind_relation", "Evidence claim")
+                              : t("search.kind_relation", "Evidence relation")
                           }
                           size="small"
                           color={
@@ -346,7 +347,7 @@ export function SearchView() {
         {/* Empty State */}
         {!query && (
           <Typography color="text.secondary">
-            {t("search.empty_state", "Enter a search term to find entities, publications, and evidence claims.")}
+            {t("search.empty_state", "Enter a search term to find entities, publications, and evidence relations.")}
           </Typography>
         )}
       </Stack>

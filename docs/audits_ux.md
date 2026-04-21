@@ -18,13 +18,13 @@ Canonical current model:
 
 - `source`: a document that states something
 - `entity`: a stable domain object
-- `relation (claim)`: one document-grounded statement about entities in context
-- `inference`: a computed result from multiple document-grounded claims
+- `relation`: one document-grounded statement about entities in context
+- `inference`: a computed result from multiple document-grounded relations
 - `synthesis`: a human-readable computed summary over inferred or aggregated evidence
 
 Current architectural invariants from the project docs:
 
-- document-grounded claims are the only source of facts
+- document-grounded relations are the only source of facts
 - contradictions must be preserved, not hidden
 - syntheses must remain computable and explainable
 - AI must not become epistemically authoritative
@@ -33,7 +33,7 @@ Current architectural invariants from the project docs:
 Audit rule:
 
 - By default, audits evaluate the current model above.
-- If an audit proposes a future model split, such as separating `claim` and `relation` into distinct first-class page families, it must label that recommendation as `future-model proposal`, not `current-model defect`.
+- If an audit proposes a future model split that goes beyond the current relation-only model, it must label that recommendation as `future-model proposal`, not `current-model defect`.
 
 ## 2. Implemented-Surface Gate
 
@@ -118,7 +118,7 @@ The audits below are still the right set, but they must be run under the rules a
 
 Question:
 
-- Do users understand the difference between `source`, `entity`, `relation (claim)`, `inference`, and `synthesis` in the current product?
+- Do users understand the difference between `source`, `entity`, `relation`, `inference`, and `synthesis` in the current product?
 
 Looks for:
 
@@ -221,7 +221,7 @@ Question:
 Example workflows:
 
 - find an entity
-- inspect linked claims or relations
+- inspect linked relations
 - compare support and contradiction
 - open exact source evidence
 - validate relation meaning

@@ -147,19 +147,19 @@ export function HomeView() {
     stats.sources === 0;
 
   return (
-    <Box sx={{ maxWidth: 1200, mx: "auto", p: 3 }}>
+    <Box sx={{ maxWidth: 1200, mx: "auto" }}>
       {/* Hero Section */}
       <Paper
         sx={{
           background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
           color: "white",
-          p: 4,
+          p: { xs: 3, sm: 4 },
           mb: 4,
           borderRadius: 2,
         }}
       >
         <Stack spacing={2}>
-          <Typography variant="h3" fontWeight="bold">
+          <Typography variant="h3" fontWeight="bold" sx={{ fontSize: { xs: '1.75rem', sm: '2.5rem', md: '3rem' } }}>
             {t("home.title", {
               brand: siteDisplayName,
               defaultValue: siteDisplayName,
@@ -185,7 +185,7 @@ export function HomeView() {
             <Button
               variant="contained"
               color="inherit"
-              sx={{ color: "primary.main", bgcolor: "white" }}
+              sx={{ color: "primary.main", bgcolor: "white", width: { xs: "100%", sm: "auto" } }}
               onClick={() => navigate("/review-queue")}
             >
               {t("home.cta_review_evidence", "Review new evidence")}
@@ -193,7 +193,7 @@ export function HomeView() {
             <Button
               variant="outlined"
               color="inherit"
-              sx={{ borderColor: "rgba(255,255,255,0.6)", color: "white" }}
+              sx={{ borderColor: "rgba(255,255,255,0.6)", color: "white", width: { xs: "100%", sm: "auto" } }}
               onClick={() => navigate("/inferences")}
             >
               {t("home.cta_explore_evidence", "Explore evidence")}
@@ -201,7 +201,7 @@ export function HomeView() {
             <Button
               variant="outlined"
               color="inherit"
-              sx={{ borderColor: "rgba(255,255,255,0.6)", color: "white" }}
+              sx={{ borderColor: "rgba(255,255,255,0.6)", color: "white", width: { xs: "100%", sm: "auto" } }}
               onClick={() => navigate("/search")}
             >
               {t("home.cta_search", "Search the knowledge base")}
@@ -333,7 +333,7 @@ export function HomeView() {
                       <Typography variant="body2" color="text.secondary" mt={0.5}>
                         {t(
                           "home.relationsDesc",
-                          "Inspect source-grounded claims linking entities. Follow evidence trails from relation to original document."
+                          "Inspect source-grounded relations linking entities. Follow evidence trails from relation to original document."
                         )}
                       </Typography>
                     </Box>
@@ -381,7 +381,7 @@ export function HomeView() {
                       <Typography variant="body2" color="text.secondary" mt={0.5}>
                         {t(
                           "home.review_queue_desc",
-                          "Triage newly extracted entities, relations, and claims before they change the visible graph."
+                          "Triage newly extracted entities and relations before they change the visible graph."
                         )}
                       </Typography>
                     </Box>
@@ -447,7 +447,7 @@ export function HomeView() {
                 <Typography variant="body2" color="text.secondary">
                   {t(
                     "home.step1Desc",
-                    "Check the review queue for newly extracted relations. Approve, reject, or flag each claim before it affects inferences."
+                    "Check the review queue for newly extracted relations. Approve, reject, or flag each relation before it affects inferences."
                   )}
                 </Typography>
               </Box>
@@ -464,7 +464,7 @@ export function HomeView() {
               </Box>
               <Box>
                 <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                  {t("home.step3Title", "3. Trace claims to their source")}
+                  {t("home.step3Title", "3. Trace evidence to its source")}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   {t(

@@ -1,7 +1,7 @@
 """
 Knowledge extraction service using LLM.
 
-Provides high-level functions for extracting entities, relations, and claims
+Provides high-level functions for extracting entities and relations
 from text using the LLM integration with built-in hallucination validation.
 """
 import logging
@@ -14,15 +14,12 @@ from app.llm.prompts import (
     RelationPromptEntity,
     format_entity_extraction_prompt,
     format_relation_extraction_prompt,
-    format_claim_extraction_prompt,
 )
 from app.llm.schemas import (
     ExtractedEntity,
     ExtractedRelation,
-    ExtractedClaim,
     validate_entity_extraction,
     validate_relation_extraction,
-    validate_claim_extraction,
 )
 from app.services.extraction_validation_service import ValidationResult
 from app.services.extraction_validation_service import (
@@ -55,10 +52,10 @@ class ExtractionService:
     """
     Service for individual knowledge extraction from text using LLM.
 
-    Handles entity extraction, relation extraction, and claim extraction
+    Handles entity extraction and relation extraction
     with validation and error handling.
 
-    For batch extraction (entities + relations + claims in one call),
+    For batch extraction (entities + relations in one call),
     use BatchExtractionOrchestrator instead.
 
     Uses DYNAMIC prompts generated from database relation types.
@@ -66,8 +63,8 @@ class ExtractionService:
 
     def __init__(
         self,
-        temperature: float = 0.2,
-        max_tokens: int = 3000,
+        temperature: float = 0.0,
+        max_tokens: int = 8000,
         db=None,
         enable_validation: bool = True,
         validation_level: ValidationLevel = "moderate",
@@ -258,66 +255,13 @@ class ExtractionService:
             logger.error(f"Relation extraction failed: {e}")
             raise
 
-    async def extract_claims(
-        self,
-        text: str,
-        min_evidence_strength: str | None = None
-    ) -> list[ExtractedClaim]:
-        """
-        Extract factual claims from text.
-
-        Args:
-            text: Input text to extract claims from
-            min_evidence_strength: Optional minimum evidence level (strong, moderate, weak)
-
-        Returns:
-            List of extracted claims with metadata
-
-        Raises:
-            Exception: If extraction fails or LLM is unavailable
-        """
-        logger.info(f"Extracting claims from text ({len(text)} chars)")
-
-        # Format prompt
-        prompt = format_claim_extraction_prompt(text)
-
-        # Call LLM
-        try:
-            response_data = await self.llm.generate_json(
-                prompt=prompt,
-                system_prompt=self.system_prompt,
-                temperature=self.temperature,
-                max_tokens=self.max_tokens,
-            )
-
-            # Validate response
-            validated = validate_claim_extraction(response_data)
-
-            # Filter by evidence strength if requested
-            claims = validated.claims
-            if min_evidence_strength:
-                evidence_order = {"strong": 4, "moderate": 3, "weak": 2, "anecdotal": 1}
-                min_level = evidence_order.get(min_evidence_strength, 1)
-                claims = [
-                    c for c in claims
-                    if evidence_order.get(c.evidence_strength, 0) >= min_level
-                ]
-
-            logger.info(f"Extracted {len(claims)} claims (filtered: {min_evidence_strength})")
-            return claims
-
-        except Exception as e:
-            logger.error(f"Claim extraction failed: {e}")
-            raise
-
     async def extract_batch(
         self,
         text: str,
         min_confidence: str | None = None,
-        min_evidence_strength: str | None = None,
-    ) -> tuple[list[ExtractedEntity], list[ExtractedRelation], list[ExtractedClaim]]:
+    ) -> tuple[list[ExtractedEntity], list[ExtractedRelation]]:
         """
-        Extract entities, relations, and claims in one batch.
+        Extract entities and relations in one batch.
 
         Delegates to BatchExtractionOrchestrator for efficient single-pass LLM extraction.
         """
@@ -330,24 +274,20 @@ class ExtractionService:
         return await orchestrator.extract_batch(
             text=text,
             min_confidence=min_confidence,
-            min_evidence_strength=min_evidence_strength,
         )
 
     async def extract_batch_with_validation_results(
         self,
         text: str,
         min_confidence: str | None = None,
-        min_evidence_strength: str | None = None,
     ) -> tuple[
         list[ExtractedEntity],
         list[ExtractedRelation],
-        list[ExtractedClaim],
-        list[ValidationResult],
         list[ValidationResult],
         list[ValidationResult],
     ]:
         """
-        Extract entities, relations, and claims with per-item validation results.
+        Extract entities and relations with per-item validation results.
 
         Delegates to BatchExtractionOrchestrator. Used by the human-in-the-loop
         review workflow where validation metadata must be stored alongside each item.
@@ -361,5 +301,4 @@ class ExtractionService:
         return await orchestrator.extract_batch_with_validation_results(
             text=text,
             min_confidence=min_confidence,
-            min_evidence_strength=min_evidence_strength,
         )

@@ -119,7 +119,7 @@ async def deactivate_user(service: UserServiceContext, user_id: UUID) -> None:
         raise user_not_found(user_id)
 
     try:
-        user.token_version += 1
+        user.token_version = (user.token_version or 0) + 1
         user.is_active = False
         await service.repo.update(user)
 
@@ -143,7 +143,7 @@ async def delete_user(service: UserServiceContext, user_id: UUID) -> None:
     try:
         # Increment token_version so any cached user objects holding old tokens
         # are invalidated before the row is removed.
-        user.token_version += 1
+        user.token_version = (user.token_version or 0) + 1
         # Revoke active refresh tokens first to prevent in-flight token replay
         active_tokens = await load_active_refresh_tokens(service.db, user_id)
         for token in active_tokens:
@@ -205,7 +205,7 @@ async def change_password(
         )
 
     try:
-        user.token_version += 1
+        user.token_version = (user.token_version or 0) + 1
         user.hashed_password = await hash_password_fn(new_password)
         await service.repo.update(user)
 

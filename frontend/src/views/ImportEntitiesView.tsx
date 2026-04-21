@@ -157,6 +157,7 @@ export function ImportEntitiesView() {
               variant="outlined"
               startIcon={<UploadFileIcon />}
               onClick={() => fileInputRef.current?.click()}
+              sx={{ width: { xs: "100%", sm: "auto" } }}
             >
               {file ? file.name : t("import.choose_file")}
             </Button>

@@ -68,6 +68,41 @@ Enter plan mode before executing when any of the following apply:
 
 A valid plan must include: execution steps, verification steps, identified risks, and stated assumptions. If something breaks mid-execution, stop and re-plan — do not continue blindly.
 
+## Local environment
+
+There are two independent Docker Compose stacks on this machine. They do not share
+databases or volumes.
+
+| Stack | Compose file | Container prefix | Database | Who accesses it |
+|-------|-------------|-----------------|----------|-----------------|
+| Local dev | `docker-compose.local.yml` | `hyphagraph-*` | `hyphagraph-db-1` (localhost only) | Developer browser on the same machine |
+| Remote dev | `docker-compose.remote-dev.yml` | `hyphagraph-dev-*` | `hyphagraph-dev-db-1` | Mobile devices and external browsers via `algiagraph.com` (Caddy / HTTPS) |
+
+When the user says "the app" or "the site" from a mobile device or external URL, they
+are hitting the **remote-dev** stack, not the local one.
+
+### Wiping data
+
+To reset knowledge graph data while preserving user accounts:
+
+```bash
+# Remote-dev stack (what mobile / algiagraph.com sees)
+docker exec hyphagraph-dev-api-1 bash -c "cd /app && uv run python scripts/wipe_graph_data.py --yes"
+
+# Local stack (localhost only)
+docker compose -f docker-compose.local.yml exec api bash -c "cd /app && uv run python scripts/wipe_graph_data.py --yes"
+```
+
+To fully wipe and rebuild a database (drops all data including users):
+
+```bash
+# Remote-dev stack
+docker exec hyphagraph-dev-db-1 psql -U hyphagraph -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='hyphagraph' AND pid<>pg_backend_pid();"
+docker exec hyphagraph-dev-db-1 psql -U hyphagraph -d postgres -c "DROP DATABASE hyphagraph;"
+docker exec hyphagraph-dev-db-1 psql -U hyphagraph -d postgres -c "CREATE DATABASE hyphagraph OWNER hyphagraph;"
+docker exec hyphagraph-dev-api-1 bash -c "cd /app && uv run alembic upgrade head && uv run python bootstrap_admin.py"
+```
+
 Execution notes:
 
 - Identify impacted modules, make a short plan, and state validation before starting.

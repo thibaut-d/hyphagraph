@@ -19,7 +19,7 @@ describe("EvidenceView table", () => {
 
     await waitFor(() => {
       expect(screen.getByText("evidence.header_all")).toBeInTheDocument();
-      expect(screen.getByText("evidence.table.claim")).toBeInTheDocument();
+      expect(screen.getByText("evidence.table.relation")).toBeInTheDocument();
       expect(screen.getByText("evidence.table.direction")).toBeInTheDocument();
       expect(screen.getByText("evidence.table.confidence")).toBeInTheDocument();
     });
@@ -75,12 +75,12 @@ describe("EvidenceView table", () => {
     });
 
     clickSortableHeader("evidence.table.confidence");
-    clickSortableHeader("evidence.table.claim");
+    clickSortableHeader("evidence.table.relation");
     clickSortableHeader("evidence.table.direction");
     clickSortableHeader("evidence.table.source_authority");
 
     expect(screen.getByText("evidence.table.confidence")).toBeInTheDocument();
-    expect(screen.getByText("evidence.table.claim")).toBeInTheDocument();
+    expect(screen.getByText("evidence.table.relation")).toBeInTheDocument();
     expect(screen.getByText("evidence.table.direction")).toBeInTheDocument();
     expect(screen.getByText("evidence.table.source_authority")).toBeInTheDocument();
   });

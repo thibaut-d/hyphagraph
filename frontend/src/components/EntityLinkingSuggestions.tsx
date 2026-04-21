@@ -24,6 +24,8 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import {
   Link as LinkIcon,
@@ -74,6 +76,9 @@ export const EntityLinkingSuggestions: React.FC<EntityLinkingSuggestionsProps> =
   onDecisionChange,
 }) => {
   const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
+  const theme = useTheme();
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
+  const effectiveViewMode = isSmallScreen ? "cards" : viewMode;
 
   const getSuggestionForEntity = (slug: string): EntityLinkMatch | undefined => {
     return linkSuggestions.find((s) => s.extracted_slug === slug);
@@ -104,7 +109,7 @@ export const EntityLinkingSuggestions: React.FC<EntityLinkingSuggestionsProps> =
   return (
     <Stack spacing={2}>
       {/* View Mode Toggle */}
-      <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+      <Box sx={{ display: { xs: "none", sm: "flex" }, justifyContent: "flex-end" }}>
         <ToggleButtonGroup
           value={viewMode}
           exclusive
@@ -124,9 +129,9 @@ export const EntityLinkingSuggestions: React.FC<EntityLinkingSuggestionsProps> =
         </ToggleButtonGroup>
       </Box>
 
-      {viewMode === "table" ? (
-        <TableContainer>
-          <Table size="small">
+      {effectiveViewMode === "table" ? (
+        <TableContainer sx={{ overflowX: "auto" }}>
+          <Table size="small" sx={{ minWidth: { xs: 640, md: "auto" } }}>
             <TableHead>
               <TableRow>
                 <TableCell>Entity</TableCell>
@@ -144,10 +149,10 @@ export const EntityLinkingSuggestions: React.FC<EntityLinkingSuggestionsProps> =
                 return (
                   <TableRow key={entity.slug} hover>
                     <TableCell>
-                      <Typography variant="body2" fontWeight="medium">
+                      <Typography variant="body2" fontWeight="medium" sx={{ overflowWrap: "anywhere" }}>
                         {entity.slug}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography variant="caption" color="text.secondary" sx={{ overflowWrap: "anywhere" }}>
                         "{entity.text_span}"
                       </Typography>
                     </TableCell>
@@ -243,17 +248,24 @@ export const EntityLinkingSuggestions: React.FC<EntityLinkingSuggestionsProps> =
             <CardContent>
               <Stack spacing={2}>
                 {/* Entity header */}
-                <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="h6" component="div">
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 2,
+                    flexDirection: { xs: "column", sm: "row" },
+                  }}
+                >
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="h6" component="div" sx={{ overflowWrap: "anywhere" }}>
                       {entity.slug}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, overflowWrap: "anywhere" }}>
                       {entity.summary}
                     </Typography>
                   </Box>
 
-                  <Stack direction="row" spacing={1}>
+                  <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
                     <Chip
                       label={entity.category}
                       size="small"
@@ -321,7 +333,7 @@ export const EntityLinkingSuggestions: React.FC<EntityLinkingSuggestionsProps> =
                 )}
 
                 {/* Action selector */}
-                <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+                <Box sx={{ display: "flex", justifyContent: { xs: "flex-start", sm: "flex-end" } }}>
                   <ToggleButtonGroup
                     value={decision?.action || "create"}
                     exclusive
@@ -331,6 +343,16 @@ export const EntityLinkingSuggestions: React.FC<EntityLinkingSuggestionsProps> =
                       }
                     }}
                     size="small"
+                    sx={{
+                      flexWrap: "wrap",
+                      gap: 0.5,
+                      "& .MuiToggleButtonGroup-grouped": {
+                        border: 1,
+                        borderColor: "divider",
+                        borderRadius: 1,
+                        m: 0,
+                      },
+                    }}
                   >
                     <ToggleButton value="create">
                       <Tooltip title="Create as new entity">

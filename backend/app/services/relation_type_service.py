@@ -91,6 +91,59 @@ class RelationTypeService:
 
         return new_type
 
+    async def update_relation_type(
+        self,
+        type_id: str,
+        label: dict | None = None,
+        description: str | None = None,
+        examples: str | None = None,
+        aliases: list[str] | None = None,
+        category: str | None = None,
+        is_active: bool | None = None,
+    ) -> RelationType | None:
+        """Update an existing relation type. Only provided fields are changed."""
+        relation_type = await self.get_by_id(type_id)
+        if relation_type is None:
+            return None
+
+        if label is not None:
+            relation_type.label = label
+        if description is not None:
+            relation_type.description = description
+        if examples is not None:
+            relation_type.examples = examples
+        if aliases is not None:
+            relation_type.aliases = aliases
+        if category is not None:
+            relation_type.category = category
+        if is_active is not None:
+            relation_type.is_active = is_active
+
+        await self.db.commit()
+        await self.db.refresh(relation_type)
+        return relation_type
+
+    async def delete_relation_type(self, type_id: str) -> bool:
+        """
+        Delete a relation type by ID.
+
+        System types are soft-deleted (is_active=False). User-created types
+        are hard-deleted.
+        """
+        relation_type = await self.get_by_id(type_id)
+        if relation_type is None:
+            return False
+
+        if relation_type.is_system:
+            # Soft-delete system types
+            relation_type.is_active = False
+            await self.db.commit()
+        else:
+            await self.db.delete(relation_type)
+            await self.db.commit()
+
+        return True
+
     async def find_similar(
         self,
         type_id: str,

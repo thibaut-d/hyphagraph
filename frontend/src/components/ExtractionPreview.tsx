@@ -76,7 +76,7 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
     new Set(preview.relations.map(getRelationKey))
   );
 
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const handleSave = async () => {
@@ -103,6 +103,7 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
         entities_to_create: entitiesToCreate,
         entity_links: entityLinks,
         relations_to_create: relationsToCreate,
+        user_language: i18n.language.slice(0, 2),
       };
 
       const result = await saveExtraction(preview.source_id, request);
@@ -140,24 +141,31 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
     relationsSelected: selectedRelations.size,
   };
 
+  const hasExtractedItems = preview.entities.length > 0 || preview.relations.length > 0;
   // Auto-accept logic: If all entities are high-confidence matches, show quick save option
   const allHighConfidence =
+    hasExtractedItems &&
+    preview.entities.length > 0 &&
     preview.link_suggestions.every((s) => s.match_type === "exact" || s.match_type === "synonym") &&
     preview.entities.every((e) => e.confidence === "high");
 
-  const hasDecisions = stats.toCreate > 0 || stats.toLink > 0;
+  const hasDecisions = stats.toCreate > 0 || stats.toLink > 0 || stats.relationsSelected > 0;
 
   return (
-    <Paper sx={{ p: 3, border: 2, borderColor: "primary.main" }}>
+    <Paper sx={{ p: { xs: 2, sm: 3 }, border: 2, borderColor: "primary.main" }}>
       <Stack spacing={3}>
         {/* Header */}
         <Box>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1, minWidth: 0 }}>
             <CheckCircleIcon color="success" />
-            <Typography variant="h5">{t("extraction_preview.title")}</Typography>
+            <Typography variant="h5" sx={{ overflowWrap: "anywhere" }}>
+              {t("extraction_preview.title")}
+            </Typography>
           </Box>
           <Typography variant="body2" color="text.secondary">
-            {allHighConfidence ? (
+            {!hasExtractedItems ? (
+              <>{t("extraction_preview.empty_msg")}</>
+            ) : allHighConfidence ? (
               <>
                 <strong>{t("extraction_preview.high_confidence_bold")}</strong>{" "}
                 {t("extraction_preview.high_confidence_rest")}
@@ -169,18 +177,20 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
         </Box>
 
         {/* Stats */}
-        <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
           <Chip
             icon={<AddCircleIcon />}
             label={t("extraction_preview.new_entities", { count: stats.toCreate })}
             color="success"
             variant="outlined"
+            sx={{ maxWidth: "100%" }}
           />
           <Chip
             icon={<LinkIcon />}
             label={t("extraction_preview.linked_entities", { count: stats.toLink })}
             color="info"
             variant="outlined"
+            sx={{ maxWidth: "100%" }}
           />
           {stats.toSkip > 0 && (
             <Chip
@@ -188,6 +198,7 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
               label={t("extraction_preview.skipped_entities", { count: stats.toSkip })}
               color="warning"
               variant="outlined"
+              sx={{ maxWidth: "100%" }}
             />
           )}
           <Chip
@@ -195,6 +206,7 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
             label={t("extraction_preview.relations", { count: stats.relationsSelected })}
             color="primary"
             variant="outlined"
+            sx={{ maxWidth: "100%" }}
           />
         </Box>
 
@@ -222,10 +234,22 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
           </Typography>
           <ExtractedRelationsList
             relations={preview.relations}
+            entities={preview.entities}
             selectedRelations={selectedRelations}
             onToggle={handleRelationToggle}
           />
         </Box>
+
+        {!hasExtractedItems && (
+          <Alert severity="warning">
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              {t("extraction_preview.empty_title")}
+            </Typography>
+            <Typography variant="body2">
+              {t("extraction_preview.empty_guidance")}
+            </Typography>
+          </Alert>
+        )}
 
         {error && (
           <Alert severity="error" onClose={() => setError(null)}>
@@ -234,7 +258,7 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
         )}
 
         {/* Help message when all entities are skipped */}
-        {stats.toCreate === 0 && stats.toLink === 0 && !saving && (
+        {hasExtractedItems && stats.toCreate === 0 && stats.toLink === 0 && !saving && (
           <Alert severity="info">
             {t("extraction_preview.no_entities_alert")}
           </Alert>
@@ -243,12 +267,20 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
         {/* Quick Save for High-Confidence Extractions */}
         {allHighConfidence && (
           <Alert severity="success" sx={{ bgcolor: "success.50" }}>
-            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
-              <Box>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: { xs: "stretch", sm: "center" },
+                justifyContent: "space-between",
+                flexDirection: { xs: "column", sm: "row" },
+                gap: 2,
+              }}
+            >
+              <Box sx={{ minWidth: 0 }}>
                 <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
                   {t("extraction_preview.all_validated")}
                 </Typography>
-                <Typography variant="caption">
+                <Typography variant="caption" sx={{ overflowWrap: "anywhere" }}>
                   {t("extraction_preview.quick_save_stats", { create: stats.toCreate, link: stats.toLink, relations: stats.relationsSelected })}
                 </Typography>
               </Box>
@@ -259,7 +291,7 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
                 startIcon={saving ? <CircularProgress size={20} /> : <SaveIcon />}
                 onClick={handleSave}
                 disabled={saving || !hasDecisions}
-                sx={{ minWidth: 180, fontWeight: 600 }}
+                sx={{ minWidth: { sm: 180 }, width: { xs: "100%", sm: "auto" }, fontWeight: 600 }}
               >
                 {saving ? t("extraction_preview.saving") : t("extraction_preview.quick_save")}
               </Button>
@@ -268,26 +300,41 @@ export const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
         )}
 
         {/* Actions */}
-        <Box sx={{ display: "flex", gap: 2, justifyContent: "space-between", alignItems: "center" }}>
+        <Box
+          sx={{
+            display: "flex",
+            gap: 2,
+            justifyContent: "space-between",
+            alignItems: { xs: "stretch", sm: "center" },
+            flexDirection: { xs: "column", sm: "row" },
+          }}
+        >
           <Typography variant="caption" color="text.secondary" sx={{ flex: 1 }}>
-            {hasDecisions
+            {!hasExtractedItems
+              ? t("extraction_preview.empty_action_guidance")
+              : hasDecisions
               ? t("extraction_preview.review_guidance")
               : t("extraction_preview.all_skipped")}
           </Typography>
-          <Box sx={{ display: "flex", gap: 2 }}>
+          <Box sx={{ display: "flex", gap: 2, flexDirection: { xs: "column", sm: "row" } }}>
             {onCancel && (
-              <Button onClick={onCancel} disabled={saving} variant="outlined">
+              <Button
+                onClick={onCancel}
+                disabled={saving}
+                variant="outlined"
+                sx={{ width: { xs: "100%", sm: "auto" } }}
+              >
                 {t("common.cancel")}
               </Button>
             )}
-            {!allHighConfidence && (
+            {!allHighConfidence && hasExtractedItems && (
               <Button
                 variant="contained"
                 size="large"
                 startIcon={saving ? <CircularProgress size={16} /> : <SaveIcon />}
                 onClick={handleSave}
                 disabled={saving || !hasDecisions}
-                sx={{ minWidth: 180 }}
+                sx={{ minWidth: { sm: 180 }, width: { xs: "100%", sm: "auto" } }}
               >
                 {saving ? t("extraction_preview.saving") : t("extraction_preview.save_to_graph")}
               </Button>

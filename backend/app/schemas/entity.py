@@ -3,6 +3,7 @@ from typing import Literal, Optional
 from datetime import datetime
 from pydantic import Field, field_validator
 from app.schemas.base import Schema
+from app.llm.schemas import _normalize_extracted_slug
 
 
 class EntityWrite(Schema):
@@ -96,8 +97,27 @@ class EntityPrefillAlias(Schema):
 
 class EntityPrefillDraft(Schema):
     """Non-authoritative draft values for the create-entity form."""
+
+    @field_validator("slug", mode="before")
+    @classmethod
+    def normalize_slug(cls, value: object) -> object:
+        return _normalize_extracted_slug(value)
+
     slug: str = Field(..., pattern=r"^[a-z][a-z0-9-]*$", min_length=3, max_length=100)
     display_names: dict[str, str] = Field(default_factory=dict)
     summary: dict[str, str] = Field(default_factory=dict)
     aliases: list[EntityPrefillAlias] = Field(default_factory=list)
     ui_category_id: Optional[UUID] = None
+
+
+class EntitySmartSuggestRequest(Schema):
+    """Request AI-suggested entity terms for a free-text topic query."""
+    query: str = Field(..., min_length=1, max_length=500)
+    count: int = Field(default=10, ge=1, le=50)
+    user_language: str = Field("en", pattern=r"^[a-z]{2}$")
+
+
+class EntitySmartSuggestResponse(Schema):
+    """AI-suggested entity term names for a given topic query."""
+    terms: list[str]
+    query_used: str

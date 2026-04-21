@@ -50,21 +50,25 @@ export function SourceVerificationSummary({
             label={`${t("sources.relations", "Relations")}: ${relationsCount}`}
             size="small"
             variant="outlined"
+            sx={{ maxWidth: "100%" }}
           />
           <Chip
             label={`${t("sources.recorded_statements", "Recorded statements")}: ${statementsCount}`}
             size="small"
             variant="outlined"
+            sx={{ maxWidth: "100%" }}
           />
           <Chip
             label={`${t("sources.quality", "Quality")}: ${qualityLabel}`}
             size="small"
             color={trustLevel != null && trustLevel >= 0.75 ? "info" : "default"}
+            sx={{ maxWidth: "100%" }}
           />
           <Chip
             label={`${t("relation.status", "Status")}: ${isConfirmed ? t("common.confirmed", "Confirmed") : t("common.draft", "Draft")}`}
             size="small"
             color={isConfirmed ? "success" : "warning"}
+            sx={{ maxWidth: "100%" }}
           />
         </Box>
         {relationsCount === 0 && statementsCount === 0 && (

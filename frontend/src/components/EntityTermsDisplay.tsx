@@ -30,7 +30,8 @@ export function EntityTermsDisplay({
   compact = false,
   onTermsLoaded,
 }: EntityTermsDisplayProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const currentLanguage = i18n.language?.split("-")[0] ?? "en";
 
   const [terms, setTerms] = useState<EntityTermRead[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,7 +67,11 @@ export function EntityTermsDisplay({
     );
   }
 
-  const visibleTerms = terms.filter((term) => !term.is_display_name);
+  const visibleTerms = terms.filter(
+    (term) =>
+      !term.is_display_name &&
+      (term.language === null || term.language === currentLanguage),
+  );
 
   if (visibleTerms.length === 0) {
     return null; // Don't show anything if no terms

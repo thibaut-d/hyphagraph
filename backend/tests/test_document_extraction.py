@@ -591,6 +591,13 @@ class TestUrlExtraction:
                 )
 
         assert exc_info.value.status_code == 500
+        assert exc_info.value.detail == "Failed to extract from URL"
+        assert exc_info.value.error_detail.details == "preview failed"
+        assert exc_info.value.error_detail.context == {
+            "source_id": str(mock_source.id),
+            "url": "https://example.com/article",
+            "exception_type": "RuntimeError",
+        }
 
         current_revision = await db_session.execute(
             select(SourceRevision).where(
