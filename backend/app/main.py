@@ -11,6 +11,7 @@ from app.api import (
     bug_reports,
     document_extraction,
     entities,
+    entity_categories,
     entity_terms,
     explain,
     export,
@@ -83,6 +84,7 @@ from app.models.computed_relation import ComputedRelation  # noqa: F401
 from app.models.refresh_token import RefreshToken  # noqa: F401
 from app.models.audit_log import AuditLog  # noqa: F401
 from app.models.relation_type import RelationType  # noqa: F401
+from app.models.entity_category import EntityCategory  # noqa: F401
 from app.models.staged_extraction import StagedExtraction  # noqa: F401
 from app.models.bug_report import BugReport  # noqa: F401
 
@@ -162,6 +164,7 @@ app.include_router(search.router, prefix="/api")
 app.include_router(extraction.router, prefix="/api")
 app.include_router(document_extraction.router, prefix="/api")
 app.include_router(relation_types.router, prefix="/api/relation-types", tags=["relation-types"])
+app.include_router(entity_categories.router, prefix="/api/entity-categories", tags=["entity-categories"])
 app.include_router(export.router, prefix="/api/export", tags=["export"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 app.include_router(extraction_review.router, prefix="/api")

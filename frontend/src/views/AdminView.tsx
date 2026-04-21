@@ -48,6 +48,7 @@ import CategoryIcon from "@mui/icons-material/Category";
 import BugReportIcon from "@mui/icons-material/BugReport";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
 import LockIcon from "@mui/icons-material/Lock";
+import LabelIcon from "@mui/icons-material/Label";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
 import { apiFetch } from "../api/client";
@@ -69,6 +70,16 @@ interface UserListItem {
   is_superuser: boolean;
   is_verified: boolean;
   created_at: string;
+}
+
+interface EntityCategoryItem {
+  category_id: string;
+  label: Record<string, string>;
+  description: string;
+  examples: string | null;
+  is_active: boolean;
+  is_system: boolean;
+  usage_count: number;
 }
 
 interface RelationTypeItem {
@@ -120,6 +131,13 @@ const emptyRelTypeForm = () => ({
   category: "",
 });
 
+const emptyEntityCatForm = () => ({
+  category_id: "",
+  label_en: "",
+  description: "",
+  examples: "",
+});
+
 export function AdminView() {
   const { t } = useTranslation();
   const handlePageError = usePageErrorHandler();
@@ -157,6 +175,15 @@ export function AdminView() {
   const [selectedRelType, setSelectedRelType] = useState<RelationTypeItem | null>(null);
   const [relTypeForm, setRelTypeForm] = useState(emptyRelTypeForm());
   const [relTypeSaving, setRelTypeSaving] = useState(false);
+  // Entity category state
+  const [entityCats, setEntityCats] = useState<EntityCategoryItem[]>([]);
+  const [entityCatLoading, setEntityCatLoading] = useState(false);
+  const [entityCatError, setEntityCatError] = useState<string | null>(null);
+  const [entityCatDialogOpen, setEntityCatDialogOpen] = useState(false);
+  const [entityCatDeleteDialogOpen, setEntityCatDeleteDialogOpen] = useState(false);
+  const [selectedEntityCat, setSelectedEntityCat] = useState<EntityCategoryItem | null>(null);
+  const [entityCatForm, setEntityCatForm] = useState(emptyEntityCatForm());
+  const [entityCatSaving, setEntityCatSaving] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -166,6 +193,7 @@ export function AdminView() {
     if (activeTab === 1) loadCategories();
     if (activeTab === 2) loadBugReports();
     if (activeTab === 3) loadRelTypes();
+    if (activeTab === 4) loadEntityCats();
   }, [activeTab]);
 
   const loadData = async () => {
@@ -446,6 +474,91 @@ export function AdminView() {
     }
   };
 
+  const loadEntityCats = async () => {
+    setEntityCatLoading(true);
+    setEntityCatError(null);
+    try {
+      const data = await apiFetch<EntityCategoryItem[]>("/entity-categories/all");
+      setEntityCats(data);
+    } catch (err) {
+      const parsedError = handlePageError(err, "Failed to load entity categories");
+      setEntityCatError(parsedError.userMessage);
+    } finally {
+      setEntityCatLoading(false);
+    }
+  };
+
+  const handleEntityCatNewClick = () => {
+    setSelectedEntityCat(null);
+    setEntityCatForm(emptyEntityCatForm());
+    setEntityCatDialogOpen(true);
+  };
+
+  const handleEntityCatEditClick = (cat: EntityCategoryItem) => {
+    setSelectedEntityCat(cat);
+    setEntityCatForm({
+      category_id: cat.category_id,
+      label_en: cat.label.en ?? "",
+      description: cat.description,
+      examples: cat.examples ?? "",
+    });
+    setEntityCatDialogOpen(true);
+  };
+
+  const handleEntityCatSave = async () => {
+    setEntityCatSaving(true);
+    setEntityCatError(null);
+    try {
+      if (selectedEntityCat) {
+        await apiFetch(`/entity-categories/${selectedEntityCat.category_id}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            label: entityCatForm.label_en ? { en: entityCatForm.label_en } : undefined,
+            description: entityCatForm.description || undefined,
+            examples: entityCatForm.examples || null,
+          }),
+        });
+      } else {
+        await apiFetch("/entity-categories/", {
+          method: "POST",
+          body: JSON.stringify({
+            category_id: entityCatForm.category_id,
+            label: { en: entityCatForm.label_en },
+            description: entityCatForm.description,
+            examples: entityCatForm.examples || null,
+          }),
+        });
+      }
+      setEntityCatDialogOpen(false);
+      await loadEntityCats();
+    } catch (err) {
+      const parsedError = handlePageError(err, "Failed to save entity category");
+      setEntityCatError(parsedError.userMessage);
+    } finally {
+      setEntityCatSaving(false);
+    }
+  };
+
+  const handleEntityCatDeleteClick = (cat: EntityCategoryItem) => {
+    setSelectedEntityCat(cat);
+    setEntityCatDeleteDialogOpen(true);
+  };
+
+  const handleEntityCatConfirmDelete = async () => {
+    if (!selectedEntityCat) return;
+    setEntityCatError(null);
+    try {
+      await apiFetch(`/entity-categories/${selectedEntityCat.category_id}`, {
+        method: "DELETE",
+      });
+      setEntityCatDeleteDialogOpen(false);
+      await loadEntityCats();
+    } catch (err) {
+      const parsedError = handlePageError(err, "Failed to delete entity category");
+      setEntityCatError(parsedError.userMessage);
+    }
+  };
+
   if (loading) {
     return <Typography>Loading...</Typography>;
   }
@@ -474,6 +587,7 @@ export function AdminView() {
           <Tab icon={<CategoryIcon />} iconPosition="start" label="UI Categories" />
           <Tab icon={<BugReportIcon />} iconPosition="start" label="Bug Reports" />
           <Tab icon={<AccountTreeIcon />} iconPosition="start" label="Relation Types" />
+          <Tab icon={<LabelIcon />} iconPosition="start" label="Entity Categories" />
         </Tabs>
       </Paper>
 
@@ -978,6 +1092,187 @@ export function AdminView() {
           <Button onClick={() => setRelTypeDeleteDialogOpen(false)}>Cancel</Button>
           <Button color="error" variant="contained" onClick={handleRelTypeConfirmDelete}>
             {selectedRelType?.is_system ? "Deactivate" : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Entity Categories tab ── */}
+      {activeTab === 4 && (
+        <Paper sx={{ p: 3 }}>
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+            <Typography variant="h5">Entity Categories</Typography>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleEntityCatNewClick}
+            >
+              New Category
+            </Button>
+          </Box>
+
+          {entityCatError && <Alert severity="error" sx={{ mb: 2 }}>{entityCatError}</Alert>}
+
+          {entityCatLoading ? (
+            <Typography>Loading…</Typography>
+          ) : (
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>ID</TableCell>
+                    <TableCell>Label</TableCell>
+                    <TableCell>Description</TableCell>
+                    <TableCell>Examples</TableCell>
+                    <TableCell align="right">Usage</TableCell>
+                    <TableCell>Flags</TableCell>
+                    <TableCell>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {entityCats.map((cat) => (
+                    <TableRow key={cat.category_id}>
+                      <TableCell><code>{cat.category_id}</code></TableCell>
+                      <TableCell>{cat.label.en ?? "—"}</TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ maxWidth: 280, whiteSpace: "normal" }}>
+                          {cat.description.length > 100 ? cat.description.slice(0, 100) + "…" : cat.description}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 200 }}>
+                          {cat.examples ?? "—"}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="right">{cat.usage_count}</TableCell>
+                      <TableCell>
+                        {!cat.is_active && (
+                          <Chip label="inactive" size="small" variant="outlined" color="default" />
+                        )}
+                        {cat.is_system && (
+                          <Chip
+                            icon={<LockIcon />}
+                            label="system"
+                            size="small"
+                            variant="outlined"
+                            color="default"
+                            title="Built-in category — deletion will deactivate it"
+                          />
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <IconButton size="small" onClick={() => handleEntityCatEditClick(cat)} title="Edit">
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => handleEntityCatDeleteClick(cat)}
+                          title={cat.is_system ? "Deactivate (system category)" : "Delete"}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {entityCats.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={7} align="center">
+                        <Typography color="text.secondary">No entity categories found</Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </Paper>
+      )}
+
+      {/* Entity category create/edit dialog */}
+      <Dialog open={entityCatDialogOpen} onClose={() => setEntityCatDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>{selectedEntityCat ? `Edit: ${selectedEntityCat.category_id}` : "New Entity Category"}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            {!selectedEntityCat && (
+              <TextField
+                label="Category ID"
+                value={entityCatForm.category_id}
+                onChange={(e) => setEntityCatForm((f) => ({ ...f, category_id: e.target.value }))}
+                fullWidth
+                required
+                helperText="Snake_case identifier, e.g. genetic_variant. Cannot be changed after creation."
+                inputProps={{ pattern: "[a-z][a-z0-9_]*" }}
+              />
+            )}
+            <TextField
+              label="Label (EN)"
+              value={entityCatForm.label_en}
+              onChange={(e) => setEntityCatForm((f) => ({ ...f, label_en: e.target.value }))}
+              fullWidth
+              required
+            />
+            <TextField
+              label="Description"
+              value={entityCatForm.description}
+              onChange={(e) => setEntityCatForm((f) => ({ ...f, description: e.target.value }))}
+              fullWidth
+              required
+              multiline
+              rows={3}
+              helperText="At least 10 characters. Shown to the LLM to guide category assignment."
+            />
+            <TextField
+              label="Examples"
+              value={entityCatForm.examples}
+              onChange={(e) => setEntityCatForm((f) => ({ ...f, examples: e.target.value }))}
+              fullWidth
+              multiline
+              rows={2}
+              helperText="Optional. Comma-separated examples for the LLM."
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEntityCatDialogOpen(false)}>Cancel</Button>
+          <Button
+            onClick={handleEntityCatSave}
+            variant="contained"
+            disabled={
+              entityCatSaving ||
+              (!selectedEntityCat && !entityCatForm.category_id) ||
+              !entityCatForm.label_en ||
+              entityCatForm.description.length < 10
+            }
+          >
+            {entityCatSaving ? "Saving…" : "Save"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Entity category delete confirmation dialog */}
+      <Dialog open={entityCatDeleteDialogOpen} onClose={() => setEntityCatDeleteDialogOpen(false)}>
+        <DialogTitle>
+          {selectedEntityCat?.is_system ? "Deactivate System Category" : "Delete Entity Category"}
+        </DialogTitle>
+        <DialogContent>
+          <Typography>
+            {selectedEntityCat?.is_system
+              ? <>
+                  <strong>{selectedEntityCat?.category_id}</strong> is a built-in system category.
+                  It will be <strong>deactivated</strong> rather than permanently deleted.
+                </>
+              : <>
+                  Permanently delete <strong>{selectedEntityCat?.category_id}</strong>? This cannot be undone.
+                  {(selectedEntityCat?.usage_count ?? 0) > 0 && (
+                    <> It has been used <strong>{selectedEntityCat?.usage_count}</strong> time(s).</>
+                  )}
+                </>}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEntityCatDeleteDialogOpen(false)}>Cancel</Button>
+          <Button color="error" variant="contained" onClick={handleEntityCatConfirmDelete}>
+            {selectedEntityCat?.is_system ? "Deactivate" : "Delete"}
           </Button>
         </DialogActions>
       </Dialog>
