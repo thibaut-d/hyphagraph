@@ -36,10 +36,15 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
+import CallMergeIcon from "@mui/icons-material/CallMerge";
 import PeopleIcon from "@mui/icons-material/People";
 import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
@@ -175,6 +180,11 @@ export function AdminView() {
   const [selectedRelType, setSelectedRelType] = useState<RelationTypeItem | null>(null);
   const [relTypeForm, setRelTypeForm] = useState(emptyRelTypeForm());
   const [relTypeSaving, setRelTypeSaving] = useState(false);
+  const [relTypeMergeDialogOpen, setRelTypeMergeDialogOpen] = useState(false);
+  const [relTypeMergeSource, setRelTypeMergeSource] = useState<RelationTypeItem | null>(null);
+  const [relTypeMergeTargetId, setRelTypeMergeTargetId] = useState("");
+  const [relTypeMergePreview, setRelTypeMergePreview] = useState<{ pending_staged: number; relation_revisions: number } | null>(null);
+  const [relTypeMergeSaving, setRelTypeMergeSaving] = useState(false);
   // Entity category state
   const [entityCats, setEntityCats] = useState<EntityCategoryItem[]>([]);
   const [entityCatLoading, setEntityCatLoading] = useState(false);
@@ -184,6 +194,11 @@ export function AdminView() {
   const [selectedEntityCat, setSelectedEntityCat] = useState<EntityCategoryItem | null>(null);
   const [entityCatForm, setEntityCatForm] = useState(emptyEntityCatForm());
   const [entityCatSaving, setEntityCatSaving] = useState(false);
+  const [entityCatMergeDialogOpen, setEntityCatMergeDialogOpen] = useState(false);
+  const [entityCatMergeSource, setEntityCatMergeSource] = useState<EntityCategoryItem | null>(null);
+  const [entityCatMergeTargetId, setEntityCatMergeTargetId] = useState("");
+  const [entityCatMergePendingStaged, setEntityCatMergePendingStaged] = useState<number | null>(null);
+  const [entityCatMergeSaving, setEntityCatMergeSaving] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -474,6 +489,40 @@ export function AdminView() {
     }
   };
 
+  const handleRelTypeMergeClick = async (rt: RelationTypeItem) => {
+    setRelTypeMergeSource(rt);
+    setRelTypeMergeTargetId("");
+    setRelTypeMergePreview(null);
+    setRelTypeMergeDialogOpen(true);
+    try {
+      const preview = await apiFetch<{ pending_staged: number; relation_revisions: number }>(
+        `/relation-types/${rt.type_id}/merge-preview`
+      );
+      setRelTypeMergePreview(preview);
+    } catch {
+      setRelTypeMergePreview({ pending_staged: 0, relation_revisions: 0 });
+    }
+  };
+
+  const handleRelTypeMergeConfirm = async () => {
+    if (!relTypeMergeSource || !relTypeMergeTargetId) return;
+    setRelTypeMergeSaving(true);
+    setRelTypeError(null);
+    try {
+      await apiFetch(
+        `/relation-types/${relTypeMergeSource.type_id}/merge-into/${relTypeMergeTargetId}`,
+        { method: "POST" }
+      );
+      setRelTypeMergeDialogOpen(false);
+      await loadRelTypes();
+    } catch (err) {
+      const parsedError = handlePageError(err, "Failed to merge relation types");
+      setRelTypeError(parsedError.userMessage);
+    } finally {
+      setRelTypeMergeSaving(false);
+    }
+  };
+
   const loadEntityCats = async () => {
     setEntityCatLoading(true);
     setEntityCatError(null);
@@ -556,6 +605,40 @@ export function AdminView() {
     } catch (err) {
       const parsedError = handlePageError(err, "Failed to delete entity category");
       setEntityCatError(parsedError.userMessage);
+    }
+  };
+
+  const handleEntityCatMergeClick = async (cat: EntityCategoryItem) => {
+    setEntityCatMergeSource(cat);
+    setEntityCatMergeTargetId("");
+    setEntityCatMergePendingStaged(null);
+    setEntityCatMergeDialogOpen(true);
+    try {
+      const preview = await apiFetch<{ pending_staged: number }>(
+        `/entity-categories/${cat.category_id}/merge-preview`
+      );
+      setEntityCatMergePendingStaged(preview.pending_staged);
+    } catch {
+      setEntityCatMergePendingStaged(0);
+    }
+  };
+
+  const handleEntityCatMergeConfirm = async () => {
+    if (!entityCatMergeSource || !entityCatMergeTargetId) return;
+    setEntityCatMergeSaving(true);
+    setEntityCatError(null);
+    try {
+      await apiFetch(
+        `/entity-categories/${entityCatMergeSource.category_id}/merge-into/${entityCatMergeTargetId}`,
+        { method: "POST" }
+      );
+      setEntityCatMergeDialogOpen(false);
+      await loadEntityCats();
+    } catch (err) {
+      const parsedError = handlePageError(err, "Failed to merge entity categories");
+      setEntityCatError(parsedError.userMessage);
+    } finally {
+      setEntityCatMergeSaving(false);
     }
   };
 
@@ -970,6 +1053,13 @@ export function AdminView() {
                         </IconButton>
                         <IconButton
                           size="small"
+                          onClick={() => handleRelTypeMergeClick(rt)}
+                          title="Merge into another type"
+                        >
+                          <CallMergeIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          size="small"
                           color="error"
                           onClick={() => handleRelTypeDeleteClick(rt)}
                           title={rt.is_system ? "Deactivate (system type)" : "Delete"}
@@ -1096,6 +1186,72 @@ export function AdminView() {
         </DialogActions>
       </Dialog>
 
+      {/* Relation type merge dialog */}
+      <Dialog
+        open={relTypeMergeDialogOpen}
+        onClose={() => setRelTypeMergeDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Merge Relation Type</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Typography>
+              Merge <strong>{relTypeMergeSource?.type_id}</strong> into another type.
+              All relation revisions and <em>pending</em> staged extractions using this type will be re-labelled.
+              The source type will then be deactivated.
+            </Typography>
+
+            {relTypeMergePreview !== null && (
+              <Alert severity={
+                relTypeMergePreview.relation_revisions + relTypeMergePreview.pending_staged > 0
+                  ? "warning"
+                  : "info"
+              }>
+                {relTypeMergePreview.relation_revisions > 0 && (
+                  <>{relTypeMergePreview.relation_revisions} relation revision(s) in the graph will be re-labelled. </>
+                )}
+                {relTypeMergePreview.pending_staged > 0 && (
+                  <>{relTypeMergePreview.pending_staged} pending staged extraction(s) will be re-labelled.</>
+                )}
+                {relTypeMergePreview.relation_revisions + relTypeMergePreview.pending_staged === 0 && (
+                  <>No live data uses this type.</>
+                )}
+              </Alert>
+            )}
+
+            <FormControl fullWidth required>
+              <InputLabel id="rel-merge-target-label">Merge into</InputLabel>
+              <Select
+                labelId="rel-merge-target-label"
+                label="Merge into"
+                value={relTypeMergeTargetId}
+                onChange={(e) => setRelTypeMergeTargetId(e.target.value)}
+              >
+                {relTypes
+                  .filter((r) => r.type_id !== relTypeMergeSource?.type_id)
+                  .map((r) => (
+                    <MenuItem key={r.type_id} value={r.type_id}>
+                      {r.label.en ?? r.type_id} ({r.type_id})
+                    </MenuItem>
+                  ))}
+              </Select>
+            </FormControl>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRelTypeMergeDialogOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="warning"
+            disabled={!relTypeMergeTargetId || relTypeMergeSaving}
+            onClick={handleRelTypeMergeConfirm}
+          >
+            {relTypeMergeSaving ? "Merging…" : "Merge"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* ── Entity Categories tab ── */}
       {activeTab === 4 && (
         <Paper sx={{ p: 3 }}>
@@ -1162,6 +1318,13 @@ export function AdminView() {
                       <TableCell>
                         <IconButton size="small" onClick={() => handleEntityCatEditClick(cat)} title="Edit">
                           <EditIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleEntityCatMergeClick(cat)}
+                          title="Merge into another category"
+                        >
+                          <CallMergeIcon fontSize="small" />
                         </IconButton>
                         <IconButton
                           size="small"
@@ -1273,6 +1436,62 @@ export function AdminView() {
           <Button onClick={() => setEntityCatDeleteDialogOpen(false)}>Cancel</Button>
           <Button color="error" variant="contained" onClick={handleEntityCatConfirmDelete}>
             {selectedEntityCat?.is_system ? "Deactivate" : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Entity category merge dialog */}
+      <Dialog
+        open={entityCatMergeDialogOpen}
+        onClose={() => setEntityCatMergeDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Merge Entity Category</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Typography>
+              Merge <strong>{entityCatMergeSource?.category_id}</strong> into another category.
+              All <em>pending</em> staged extractions using this category will be re-labelled.
+              The source category will then be deactivated.
+            </Typography>
+
+            {entityCatMergePendingStaged !== null && (
+              <Alert severity={entityCatMergePendingStaged > 0 ? "warning" : "info"}>
+                {entityCatMergePendingStaged > 0
+                  ? `${entityCatMergePendingStaged} pending staged extraction(s) will be re-labelled.`
+                  : "No pending staged extractions use this category."}
+              </Alert>
+            )}
+
+            <FormControl fullWidth required>
+              <InputLabel id="merge-target-label">Merge into</InputLabel>
+              <Select
+                labelId="merge-target-label"
+                label="Merge into"
+                value={entityCatMergeTargetId}
+                onChange={(e) => setEntityCatMergeTargetId(e.target.value)}
+              >
+                {entityCats
+                  .filter((c) => c.category_id !== entityCatMergeSource?.category_id && c.is_active)
+                  .map((c) => (
+                    <MenuItem key={c.category_id} value={c.category_id}>
+                      {c.label.en ?? c.category_id} ({c.category_id})
+                    </MenuItem>
+                  ))}
+              </Select>
+            </FormControl>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEntityCatMergeDialogOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="warning"
+            disabled={!entityCatMergeTargetId || entityCatMergeSaving}
+            onClick={handleEntityCatMergeConfirm}
+          >
+            {entityCatMergeSaving ? "Merging…" : "Merge"}
           </Button>
         </DialogActions>
       </Dialog>

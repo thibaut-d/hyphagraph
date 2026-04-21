@@ -1130,6 +1130,85 @@ extraction rows atomically.
 - Merged staged extractions may already be in `approved` or `rejected` status; only update `pending` rows to avoid corrupting completed review records.
 
 ### Status
+completed
+
+---
+
+## Merge Entity Categories in Admin Panel
+
+Allow admins to merge two entity categories into one when they decide the categories are
+semantically equivalent. All existing entities that use the source category should be
+re-labelled to the target category, and the source category should be deactivated.
+
+Mirrors the "Merge Relation Types" spec above, applied to the entity category vocabulary.
+
+### Objective
+Prevent category proliferation (e.g. a user-created `treatment_role` → `drug`) and let
+admins consolidate the vocabulary without manual SQL. Must update both live entity rows
+and staged extraction data atomically.
+
+### Impacted modules
+- `backend/app/services/entity_category_service.py` — `merge_entity_categories()` method
+- `backend/app/api/entity_categories.py` — `POST /entity-categories/{category_id}/merge-into/{target_id}` (superuser)
+- `backend/app/models/entity.py` — batch `category` update
+- `backend/app/models/staged_extraction.py` — batch `extraction_data[].entities[].category` update (JSON path)
+- `frontend/src/views/AdminView.tsx` — "Merge into…" action in the Entity Categories tab
+
+### Plan
+1. Add `merge_entity_categories(source_id, target_id)` to `EntityCategoryService`:
+   - Reject if source == target.
+   - Reject if source is a system category and target is not.
+   - Update all `Entity` rows where `category == source_id` → `target_id`.
+   - Update `extraction_data` JSON in `StagedExtraction` rows for entities using the source category.
+   - Soft-delete the source category (`is_active=False`).
+   - Commit atomically.
+2. Add `POST /entity-categories/{category_id}/merge-into/{target_id}` (superuser only).
+   - Returns a summary: `{ updated_entities, updated_staged, deactivated_category }`.
+3. Add a "Merge into…" icon button in the Entity Categories table row (admin panel).
+   - Opens a dialog: select target category from a dropdown of all other active categories.
+   - Shows a warning with counts: "X entities and Y staged extractions will be re-labelled."
+   - Requires explicit confirmation before submitting.
+
+### Validation
+- Backend: focused pytest for merge service method (re-label counts, atomic commit, system-category guard)
+- Frontend: manual smoke-test of merge dialog and count display
+
+### Risks
+- Staged extraction JSON update requires a JSON-path bulk update; test carefully on Postgres.
+- Merged staged extractions in `approved`/`rejected` status should be skipped; only update `pending` rows.
+
+### Status
+pending
+
+---
+
+## Add Admin UI for Entity Graph Merge
+
+Allow admins to merge two knowledge-graph entity nodes into one when they refer to the
+same real-world concept (e.g. "aspirin" and "acetylsalicylic-acid").
+
+**The backend service already exists**: `backend/app/services/entity_merge_service.py`
+exposes `merge_entities(source_id, target_id, db)`. What is missing is the API endpoint
+and the admin panel UI.
+
+Note: this is a *graph-level* merge (entity nodes + their relations), distinct from the
+*vocabulary-level* category merge above.
+
+### Objective
+Give admins a UI-driven way to deduplicate entity nodes without direct database access.
+
+### Impacted modules
+- `backend/app/api/entities.py` (or a new `entity_merge.py`) — `POST /entities/{entity_id}/merge-into/{target_id}` (superuser)
+- `frontend/src/views/AdminView.tsx` — "Merge into…" search-and-select dialog, accessible from an Entities tab or from the entity detail page
+
+### Plan
+1. Add `POST /entities/{entity_id}/merge-into/{target_id}` (superuser only) that delegates to `EntityMergeService.merge_entities()`.
+   - Returns a summary of re-parented relations and deleted source node.
+2. Add an Entities tab (or context menu entry on the entity detail page) in the admin panel with a merge action.
+   - Type-ahead search to find the target entity by slug or label.
+   - Confirmation dialog showing which entity will be kept and which removed.
+
+### Status
 pending
 
 ---

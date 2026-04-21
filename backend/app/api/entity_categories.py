@@ -5,6 +5,7 @@ Admin-only CRUD for the entity category controlled vocabulary.
 """
 from fastapi import APIRouter, Depends
 from fastapi import status as http_status
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -17,6 +18,11 @@ from app.schemas.entity_category import (
 )
 from app.services.entity_category_service import EntityCategoryService
 from app.utils.errors import AppException, ErrorCode, ValidationException
+
+
+class EntityCategoryMergeResult(BaseModel):
+    updated_staged: int
+    deactivated_category: str
 
 router = APIRouter(tags=["entity-categories"])
 
@@ -103,6 +109,58 @@ async def update_entity_category(
             message=f"Entity category '{category_id}' not found",
         )
     return entity_category_to_read(row)
+
+
+@router.get("/{category_id}/merge-preview", response_model=dict)
+async def preview_entity_category_merge(
+    category_id: str,
+    service: EntityCategoryService = Depends(get_entity_category_service),
+    current_user=Depends(get_current_active_superuser),
+):
+    """
+    Return counts of items that would be affected by merging this category (admin only).
+
+    Response: { pending_staged: int }
+    """
+    row = await service.get_by_id(category_id)
+    if row is None:
+        raise AppException(
+            status_code=404,
+            error_code=ErrorCode.NOT_FOUND,
+            message=f"Entity category '{category_id}' not found",
+        )
+    pending_staged = await service.count_pending_staged_by_category(category_id)
+    return {"pending_staged": pending_staged}
+
+
+@router.post(
+    "/{category_id}/merge-into/{target_id}",
+    response_model=EntityCategoryMergeResult,
+)
+async def merge_entity_category(
+    category_id: str,
+    target_id: str,
+    service: EntityCategoryService = Depends(get_entity_category_service),
+    current_user=Depends(get_current_active_superuser),
+):
+    """
+    Merge source category into target category (admin only).
+
+    Re-labels all pending staged entity extractions from source to target,
+    then soft-deletes the source category.
+    """
+    try:
+        result = await service.merge_entity_categories(
+            source_id=category_id,
+            target_id=target_id,
+        )
+        return EntityCategoryMergeResult(**result)
+    except ValueError as exc:
+        raise AppException(
+            status_code=400,
+            error_code=ErrorCode.VALIDATION_ERROR,
+            message=str(exc),
+        )
 
 
 @router.delete("/{category_id}", status_code=http_status.HTTP_204_NO_CONTENT)

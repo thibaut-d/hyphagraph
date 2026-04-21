@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel
 
 from app.api.service_dependencies import get_relation_type_service
 from app.services.relation_type_service import RelationTypeService
@@ -15,6 +16,12 @@ from app.schemas.relation_type import (
     relation_type_to_read,
 )
 from app.utils.errors import AppException, ErrorCode, ValidationException
+
+
+class RelationTypeMergeResult(BaseModel):
+    updated_revisions: int
+    updated_staged: int
+    deactivated_type: str
 
 
 router = APIRouter(tags=["relation-types"])
@@ -170,6 +177,61 @@ async def update_relation_type(
             message=f"Relation type '{type_id}' not found",
         )
     return relation_type_to_read(relation_type)
+
+
+@router.get("/{type_id}/merge-preview", response_model=dict)
+async def preview_relation_type_merge(
+    type_id: str,
+    service: RelationTypeService = Depends(get_relation_type_service),
+    current_user=Depends(get_current_active_superuser),
+):
+    """
+    Return counts of items that would be affected by merging this relation type (admin only).
+
+    Response: { pending_staged: int, relation_revisions: int }
+    """
+    relation_type = await service.get_by_id(type_id)
+    if relation_type is None:
+        raise AppException(
+            status_code=404,
+            error_code=ErrorCode.NOT_FOUND,
+            message=f"Relation type '{type_id}' not found",
+        )
+    pending_staged, relation_revisions = (
+        await service.count_pending_staged_by_relation_type(type_id),
+        await service.count_revisions_by_relation_type(type_id),
+    )
+    return {"pending_staged": pending_staged, "relation_revisions": relation_revisions}
+
+
+@router.post(
+    "/{type_id}/merge-into/{target_id}",
+    response_model=RelationTypeMergeResult,
+)
+async def merge_relation_type(
+    type_id: str,
+    target_id: str,
+    service: RelationTypeService = Depends(get_relation_type_service),
+    current_user=Depends(get_current_active_superuser),
+):
+    """
+    Merge source relation type into target relation type (admin only).
+
+    Re-labels all relation revisions and pending staged extractions from source to target,
+    then soft-deletes the source type.
+    """
+    try:
+        result = await service.merge_relation_types(
+            source_id=type_id,
+            target_id=target_id,
+        )
+        return RelationTypeMergeResult(**result)
+    except ValueError as exc:
+        raise AppException(
+            status_code=400,
+            error_code=ErrorCode.VALIDATION_ERROR,
+            message=str(exc),
+        )
 
 
 @router.delete("/{type_id}", status_code=http_status.HTTP_204_NO_CONTENT)

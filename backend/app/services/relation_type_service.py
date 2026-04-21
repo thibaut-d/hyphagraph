@@ -13,10 +13,11 @@ import difflib
 import logging
 from typing import List
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.relation_type import RelationType
+from app.models.staged_extraction import ExtractionStatus, ExtractionType
 from app.schemas.relation_type import RelationTypeStatisticsRead, SuggestNewTypeResponse, relation_type_to_read
 
 logger = logging.getLogger(__name__)
@@ -143,6 +144,125 @@ class RelationTypeService:
             await self.db.commit()
 
         return True
+
+    async def count_pending_staged_by_relation_type(self, type_id: str) -> int:
+        """
+        Count pending staged relation extractions that use the given relation type.
+
+        Used to populate the merge confirmation dialog.
+        """
+        result = await self.db.execute(
+            text(
+                """
+                SELECT COUNT(*)
+                FROM staged_extractions
+                WHERE extraction_type = :etype
+                  AND status = :status
+                  AND extraction_data->>'relation_type' = :type_id
+                """
+            ),
+            {
+                "etype": ExtractionType.RELATION.value,
+                "status": ExtractionStatus.PENDING.value,
+                "type_id": type_id,
+            },
+        )
+        return result.scalar_one()
+
+    async def count_revisions_by_relation_type(self, type_id: str) -> int:
+        """
+        Count materialized relation revisions that use the given relation type.
+
+        Used to populate the merge confirmation dialog.
+        """
+        result = await self.db.execute(
+            text("SELECT COUNT(*) FROM relation_revisions WHERE kind = :type_id"),
+            {"type_id": type_id},
+        )
+        return result.scalar_one()
+
+    async def merge_relation_types(
+        self,
+        source_id: str,
+        target_id: str,
+    ) -> dict:
+        """
+        Merge source relation type into target relation type.
+
+        - Re-labels all relation_revisions rows from source to target (kind column).
+        - Re-labels all pending staged relation extractions (extraction_data->>'relation_type').
+        - Soft-deletes the source type.
+        - Commits atomically.
+
+        Returns a summary dict: { updated_revisions, updated_staged, deactivated_type }.
+
+        Raises ValueError for invalid merge requests.
+        """
+        if source_id == target_id:
+            raise ValueError("source and target relation type must differ")
+
+        source = await self.get_by_id(source_id)
+        if source is None:
+            raise ValueError(f"Source relation type '{source_id}' not found")
+
+        target = await self.get_by_id(target_id)
+        if target is None:
+            raise ValueError(f"Target relation type '{target_id}' not found")
+
+        if source.is_system and not target.is_system:
+            raise ValueError(
+                "Cannot merge a system relation type into a user-created type"
+            )
+
+        # Re-label all materialized relation revisions
+        rev_result = await self.db.execute(
+            text(
+                "UPDATE relation_revisions SET kind = :target_id WHERE kind = :source_id"
+            ),
+            {"target_id": target_id, "source_id": source_id},
+        )
+        updated_revisions = rev_result.rowcount
+
+        # Re-label pending staged relation extractions
+        staged_result = await self.db.execute(
+            text(
+                """
+                UPDATE staged_extractions
+                SET extraction_data = jsonb_set(
+                    extraction_data,
+                    '{relation_type}',
+                    :target_json
+                )
+                WHERE extraction_type = :etype
+                  AND status = :status
+                  AND extraction_data->>'relation_type' = :source_id
+                """
+            ),
+            {
+                "target_json": f'"{target_id}"',
+                "etype": ExtractionType.RELATION.value,
+                "status": ExtractionStatus.PENDING.value,
+                "source_id": source_id,
+            },
+        )
+        updated_staged = staged_result.rowcount
+
+        # Soft-delete source type
+        source.is_active = False
+        await self.db.commit()
+
+        logger.info(
+            "Merged relation type '%s' → '%s': %d revisions, %d staged updated",
+            source_id,
+            target_id,
+            updated_revisions,
+            updated_staged,
+        )
+        return {
+            "updated_revisions": updated_revisions,
+            "updated_staged": updated_staged,
+            "deactivated_type": source_id,
+        }
 
     async def find_similar(
         self,
