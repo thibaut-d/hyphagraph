@@ -13,13 +13,15 @@ from app.schemas.entity import (
     EntityWrite,
     EntityRead,
 )
+from app.schemas.entity_merge import EntityMergeResult
 from app.schemas.filters import EntityFilters, EntityFilterOptions
 from app.schemas.pagination import PaginatedResponse
 from app.services.entity_service import EntityService
+from app.services.entity_merge_service import EntityMergeService
 from app.services.entity_prefill_service import EntityPrefillService
 from app.services.entity_suggest_service import EntitySuggestService
-from app.dependencies.auth import get_current_user
-from app.utils.errors import LLMServiceUnavailableException
+from app.dependencies.auth import get_current_user, get_current_active_superuser
+from app.utils.errors import AppException, ErrorCode, LLMServiceUnavailableException
 from app.utils.rate_limit import limiter
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -179,3 +181,32 @@ async def delete_entity(
 ):
     await service.delete(entity_id)
     return None
+
+
+@router.post("/{entity_id}/merge-into/{target_id}", response_model=EntityMergeResult)
+async def merge_entity(
+    entity_id: UUID,
+    target_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_active_superuser),
+):
+    """
+    Merge source entity into target entity (admin only).
+
+    Moves all current-revision relation roles from source to target,
+    adds source slug as a term on the target, and marks the source as merged.
+    """
+    try:
+        merge_service = EntityMergeService(db)
+        return await merge_service.merge_entities(
+            source_entity_id=entity_id,
+            target_entity_id=target_id,
+            preserve_source_slug_as_term=True,
+            merged_by_user_id=current_user.id,
+        )
+    except ValueError as exc:
+        raise AppException(
+            status_code=400,
+            error_code=ErrorCode.VALIDATION_ERROR,
+            message=str(exc),
+        )

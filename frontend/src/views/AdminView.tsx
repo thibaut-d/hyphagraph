@@ -40,11 +40,14 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
+  Autocomplete,
+  CircularProgress,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import CallMergeIcon from "@mui/icons-material/CallMerge";
+import MergeTypeIcon from "@mui/icons-material/MergeType";
 import PeopleIcon from "@mui/icons-material/People";
 import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
@@ -96,6 +99,12 @@ interface RelationTypeItem {
   category: string | null;
   usage_count: number;
   is_system: boolean;
+}
+
+interface EntitySearchResult {
+  id: string;
+  slug: string;
+  summary: Record<string, string> | null;
 }
 
 interface BugReportItem {
@@ -199,6 +208,17 @@ export function AdminView() {
   const [entityCatMergeTargetId, setEntityCatMergeTargetId] = useState("");
   const [entityCatMergePendingStaged, setEntityCatMergePendingStaged] = useState<number | null>(null);
   const [entityCatMergeSaving, setEntityCatMergeSaving] = useState(false);
+  // Entity graph merge state
+  const [entityMergeSource, setEntityMergeSource] = useState<EntitySearchResult | null>(null);
+  const [entityMergeTarget, setEntityMergeTarget] = useState<EntitySearchResult | null>(null);
+  const [entityMergeSourceOptions, setEntityMergeSourceOptions] = useState<EntitySearchResult[]>([]);
+  const [entityMergeTargetOptions, setEntityMergeTargetOptions] = useState<EntitySearchResult[]>([]);
+  const [entityMergeSourceLoading, setEntityMergeSourceLoading] = useState(false);
+  const [entityMergeTargetLoading, setEntityMergeTargetLoading] = useState(false);
+  const [entityMergeConfirmOpen, setEntityMergeConfirmOpen] = useState(false);
+  const [entityMergeSaving, setEntityMergeSaving] = useState(false);
+  const [entityMergeError, setEntityMergeError] = useState<string | null>(null);
+  const [entityMergeResult, setEntityMergeResult] = useState<{ source_slug: string; target_slug: string; relations_moved: number } | null>(null);
 
   useEffect(() => {
     loadData();
@@ -642,6 +662,53 @@ export function AdminView() {
     }
   };
 
+  const searchEntities = async (
+    query: string,
+    setOptions: (opts: EntitySearchResult[]) => void,
+    setSearchLoading: (v: boolean) => void,
+  ) => {
+    if (!query || query.length < 2) {
+      setOptions([]);
+      return;
+    }
+    setSearchLoading(true);
+    try {
+      const data = await apiFetch<{ items: EntitySearchResult[]; total: number }>(
+        `/entities/?search=${encodeURIComponent(query)}&limit=10`
+      );
+      setOptions(data.items);
+    } catch {
+      setOptions([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const handleEntityMergeConfirm = async () => {
+    if (!entityMergeSource || !entityMergeTarget) return;
+    setEntityMergeSaving(true);
+    setEntityMergeError(null);
+    setEntityMergeResult(null);
+    try {
+      const result = await apiFetch<{ source_slug: string; target_slug: string; relations_moved: number }>(
+        `/entities/${entityMergeSource.id}/merge-into/${entityMergeTarget.id}`,
+        { method: "POST" }
+      );
+      setEntityMergeResult(result);
+      setEntityMergeConfirmOpen(false);
+      setEntityMergeSource(null);
+      setEntityMergeTarget(null);
+      setEntityMergeSourceOptions([]);
+      setEntityMergeTargetOptions([]);
+    } catch (err) {
+      const parsedError = handlePageError(err, "Failed to merge entities");
+      setEntityMergeError(parsedError.userMessage);
+      setEntityMergeConfirmOpen(false);
+    } finally {
+      setEntityMergeSaving(false);
+    }
+  };
+
   if (loading) {
     return <Typography>Loading...</Typography>;
   }
@@ -671,6 +738,7 @@ export function AdminView() {
           <Tab icon={<BugReportIcon />} iconPosition="start" label="Bug Reports" />
           <Tab icon={<AccountTreeIcon />} iconPosition="start" label="Relation Types" />
           <Tab icon={<LabelIcon />} iconPosition="start" label="Entity Categories" />
+          <Tab icon={<MergeTypeIcon />} iconPosition="start" label="Entity Merge" />
         </Tabs>
       </Paper>
 
@@ -1572,6 +1640,127 @@ export function AdminView() {
           <Button onClick={() => setCatDeleteDialogOpen(false)}>Cancel</Button>
           <Button color="error" variant="contained" onClick={handleCatConfirmDelete}>
             Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Entity Merge tab ── */}
+      {activeTab === 5 && (
+        <Paper sx={{ p: 3 }}>
+          <Typography variant="h5" sx={{ mb: 2 }}>Entity Graph Merge</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Merge two knowledge-graph entity nodes into one. All current-revision relations from the
+            source will be re-attributed to the target. The source slug is preserved as a term on the
+            target. The source entity is then marked as merged and hidden from listings.
+          </Typography>
+
+          {entityMergeError && <Alert severity="error" sx={{ mb: 2 }}>{entityMergeError}</Alert>}
+          {entityMergeResult && (
+            <Alert severity="success" sx={{ mb: 2 }}>
+              Merged <strong>{entityMergeResult.source_slug}</strong> →{" "}
+              <strong>{entityMergeResult.target_slug}</strong>:{" "}
+              {entityMergeResult.relations_moved} relation(s) moved.
+            </Alert>
+          )}
+
+          <Stack spacing={3} sx={{ maxWidth: 600 }}>
+            <Autocomplete
+              options={entityMergeSourceOptions}
+              getOptionLabel={(o) => `${o.slug}${o.summary?.en ? " — " + o.summary.en.slice(0, 60) : ""}`}
+              isOptionEqualToValue={(a, b) => a.id === b.id}
+              loading={entityMergeSourceLoading}
+              value={entityMergeSource}
+              onChange={(_, value) => {
+                setEntityMergeSource(value);
+                if (value?.id === entityMergeTarget?.id) setEntityMergeTarget(null);
+              }}
+              onInputChange={(_, value) =>
+                searchEntities(value, setEntityMergeSourceOptions, setEntityMergeSourceLoading)
+              }
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Source entity (will be merged away)"
+                  helperText="Type at least 2 characters to search"
+                  InputProps={{
+                    ...params.InputProps,
+                    endAdornment: (
+                      <>
+                        {entityMergeSourceLoading ? <CircularProgress size={16} /> : null}
+                        {params.InputProps.endAdornment}
+                      </>
+                    ),
+                  }}
+                />
+              )}
+            />
+
+            <Autocomplete
+              options={entityMergeTargetOptions}
+              getOptionLabel={(o) => `${o.slug}${o.summary?.en ? " — " + o.summary.en.slice(0, 60) : ""}`}
+              isOptionEqualToValue={(a, b) => a.id === b.id}
+              loading={entityMergeTargetLoading}
+              value={entityMergeTarget}
+              onChange={(_, value) => setEntityMergeTarget(value)}
+              onInputChange={(_, value) =>
+                searchEntities(value, setEntityMergeTargetOptions, setEntityMergeTargetLoading)
+              }
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Target entity (will be kept)"
+                  helperText="Type at least 2 characters to search"
+                  InputProps={{
+                    ...params.InputProps,
+                    endAdornment: (
+                      <>
+                        {entityMergeTargetLoading ? <CircularProgress size={16} /> : null}
+                        {params.InputProps.endAdornment}
+                      </>
+                    ),
+                  }}
+                />
+              )}
+            />
+
+            <Box>
+              <Button
+                variant="contained"
+                color="warning"
+                startIcon={<MergeTypeIcon />}
+                disabled={!entityMergeSource || !entityMergeTarget || entityMergeSource.id === entityMergeTarget.id}
+                onClick={() => setEntityMergeConfirmOpen(true)}
+              >
+                Merge →
+              </Button>
+            </Box>
+          </Stack>
+        </Paper>
+      )}
+
+      {/* Entity merge confirmation dialog */}
+      <Dialog open={entityMergeConfirmOpen} onClose={() => setEntityMergeConfirmOpen(false)}>
+        <DialogTitle>Confirm Entity Merge</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Merge <strong>{entityMergeSource?.slug}</strong> into{" "}
+            <strong>{entityMergeTarget?.slug}</strong>?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            All current-revision relations from <em>{entityMergeSource?.slug}</em> will be
+            re-attributed to <em>{entityMergeTarget?.slug}</em>. The source slug will be added as
+            a term on the target. This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEntityMergeConfirmOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="warning"
+            disabled={entityMergeSaving}
+            onClick={handleEntityMergeConfirm}
+          >
+            {entityMergeSaving ? "Merging…" : "Merge"}
           </Button>
         </DialogActions>
       </Dialog>
