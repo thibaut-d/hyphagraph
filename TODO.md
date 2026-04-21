@@ -1,6 +1,6 @@
 # Current Work
 
-**Last updated**: 2026-04-20
+**Last updated**: 2026-04-20 (session 2)
 
 ## Tighten Benchmark-Driven Extraction Normalization
 
@@ -636,6 +636,120 @@ semantically coherent with the claimed source span and with downstream inference
 ### Status
 completed
 
+## Add Relation Type Management to Admin Panel
+
+Give admins a full CRUD interface for relation types without leaving the existing
+admin panel, following the same tab-and-dialog pattern as UI Categories.
+
+### Objective
+Allow admins to create, rename, and delete relation types directly in the admin
+panel. System types (built-in) are soft-deleted (deactivated) rather than
+permanently removed. User-created types are hard-deleted.
+
+### Impacted modules
+- `backend/app/schemas/relation_type.py`
+- `backend/app/services/relation_type_service.py`
+- `backend/app/api/relation_types.py`
+- `frontend/src/views/AdminView.tsx`
+
+### Plan
+1. Add `RelationTypeUpdate` schema (all fields optional).
+2. Add `update_relation_type()` and `delete_relation_type()` to `RelationTypeService`.
+3. Add `GET /{type_id}`, `PATCH /{type_id}`, `DELETE /{type_id}` endpoints (superuser).
+4. Add "Relation Types" tab (index 3) to `AdminView.tsx` with table + create/edit dialog + delete confirmation dialog.
+
+### Status
+completed
+
+---
+
+## Harden LLM Extraction Reliability and Error Reporting
+
+Several distinct extraction failure modes were discovered via the persistent
+error snackbar and fixed iteratively.
+
+### Objective
+Make LLM extraction resilient to format drift, token-limit truncation, and schema
+validation failures, and surface actionable error messages to the user.
+
+### Impacted modules
+- `backend/app/llm/base.py`
+- `backend/app/llm/openai_provider.py`
+- `backend/app/llm/schemas.py`
+- `backend/app/llm/prompts.py`
+- `backend/app/services/batch_extraction_orchestrator.py`
+- `backend/app/services/extraction_service.py`
+- `backend/app/api/document_extraction_routes/document.py`
+- `frontend/src/views/SourceDetailView.tsx`
+- `frontend/src/utils/errorHandler.ts`
+
+### Fixes applied
+- **Markdown JSON wrapping** (`gpt-5.4` wraps JSON in ` ```json ``` ` fences even
+  in `json_object` mode): added `_strip_markdown_json()` in `openai_provider.py`.
+- **Token-limit truncation** (`finish_reason=length`): raised default `max_tokens`
+  from 4 000 → 8 000 and hard cap from 6 000 → 16 000; `LLMError` now carries
+  `finish_reason` so the API layer emits a human-readable message per failure mode.
+- **`sample_size_text` too long**: raised `max_length` from 100 → 300.
+- **`relation_type` coercion**: unknown model-invented types are now gracefully
+  mapped to `"other"` with a warning log instead of failing schema validation.
+- **Error notification persistence**: extraction error snackbars now pass
+  `{ autoDismiss: false }` so the user can read and copy the full report.
+- **FastAPI `{"detail": "..."}` recognition**: `errorHandler.ts` now surfaces
+  plain-string FastAPI detail messages instead of "Unknown error type: object".
+
+### Status
+completed
+
+---
+
+## Add diagnoses and predicts Relation Types
+
+Two new controlled relation types added to the extraction vocabulary to distinguish
+binary clinical verdicts from probabilistic biomarker forecasts.
+
+### Objective
+- `diagnoses`: a diagnostic test / biomarker / criterion renders a binary clinical
+  verdict on a condition. Distinct from `measures` (which quantifies without verdict)
+  and `biomarker_for` (which associates without asserting clinical decision).
+- `predicts`: a biomarker or risk factor forecasts a future outcome or clinical
+  trajectory. Distinct from `biomarker_for` (cross-sectional) and `causes`
+  (mechanistic).
+
+### Impacted modules
+- `backend/app/llm/schemas.py`
+- `backend/app/llm/prompts.py`
+- `frontend/src/types/extraction.ts`
+- `frontend/src/components/ExtractedRelationsList.tsx`
+- `frontend/src/components/extraction/ExtractionCard.tsx`
+
+### Status
+completed
+
+---
+
+## Track Model-Invented Relation Types in Review Queue
+
+When the LLM proposes a relation type outside the controlled vocabulary, capture
+the invented name before schema coercion and surface it in the review queue so
+curators can reassign or propose a formal new type.
+
+### Objective
+Let curators see what type the model actually intended when it used `"other"`, and
+give them an in-place dropdown to correct it plus a link to propose a formal new type.
+
+### Impacted modules
+- `backend/app/llm/schemas.py` — `model_proposed_type` field + `capture_proposed_type` model_validator
+- `frontend/src/types/extraction.ts` — `model_proposed_type` on `ExtractedRelation`
+- `frontend/src/components/extraction/ExtractionCard.tsx` — inline type-correction Select + proposed-type warning chip
+- `frontend/src/api/extractionReview.ts` — `correctRelationType()` calling `PATCH /extraction-review/{id}/relation-type`
+- `backend/app/api/extraction_review.py` — `PATCH /{extraction_id}/relation-type` endpoint
+- `frontend/src/views/ReviewQueueView.tsx` — wired `onChangeRelationType` handler
+
+### Status
+completed
+
+---
+
 ## Verify Gleaning Loop Runs on Document Extraction Path
 
 Investigate whether the multi-turn gleaning loop is actually executed during
@@ -895,14 +1009,18 @@ one that isn't in the controlled vocabulary. Ensure no duplicate is created
 by showing all existing types first, and use an LLM to challenge the need.
 
 ### Objective
-Give curators a governed path from "the model used `coexists_with`" to either
+Give admins a governed path from "the model used `coexists_with`" to either
 reassigning to an existing type or creating a justified new one, with LLM
-review acting as a first gatekeeping step.
+review acting as a first gatekeeping step. Relation type creation is
+**admin-only** — the proposal page must be behind the superuser guard both
+on the backend evaluate endpoint and on the frontend route.
 
 ### Background
 The review queue already shows a "proposed: coexists_with" warning chip on
 relations where the model invented a type. That chip links to
 `/relation-types/propose?name=coexists_with`. This page needs to be built.
+Non-admin curators who follow that link should see a read-only explanation and
+be directed to contact an admin, not a creation form.
 
 ### Impacted modules
 - `frontend/src/views/RelationTypeProposeView.tsx` (new)
@@ -912,17 +1030,23 @@ relations where the model invented a type. That chip links to
 - `backend/app/llm/prompts.py` (new prompt: evaluate proposed type)
 - `frontend/src/App.tsx` or router (add route `/relation-types/propose`)
 
-### Plan
-1. Add `GET /api/relation-types` backend endpoint returning all active types with
-   description, aliases, examples, and category.
-2. Add `POST /api/relation-types/evaluate` endpoint that calls the LLM with the
-   proposed name plus all existing types and returns one of:
+### What is already done
+- `GET /api/relation-types/` — list all active types (exists)
+- `POST /api/relation-types/` — create a new type (admin, exists)
+- `PATCH /api/relation-types/{type_id}` — update a type (admin, added this session)
+- `DELETE /api/relation-types/{type_id}` — delete/deactivate a type (admin, added this session)
+- Admin panel "Relation Types" tab with full CRUD (added this session)
+
+### Plan (remaining)
+1. Add `POST /api/relation-types/evaluate` endpoint (superuser only) that calls
+   the LLM with the proposed name plus all existing types and returns one of:
    - `{ recommendation: "create", rationale: "..." }`
    - `{ recommendation: "reject", rationale: "...", suggested_existing: "treats" }`
    - `{ recommendation: "rename", rationale: "...", suggested_name: "diagnoses" }`
-3. Add `POST /api/relation-types` (admin only) to create a new type row.
-4. Build `RelationTypeProposeView`:
-   - Show all existing types in a scrollable list with descriptions.
+2. Build `RelationTypeProposeView` (superuser route):
+   - Non-admin users who follow the chip link see a read-only message explaining
+     that type creation is admin-only, with contact guidance.
+   - Admin view: show all existing types in a scrollable list with descriptions.
    - Only enable the "Propose" form after the user has scrolled to the bottom
      (or explicitly clicked "I have read all existing types").
    - Proposal form: name, description, example sentence, category.
@@ -930,8 +1054,8 @@ relations where the model invented a type. That chip links to
      prominently (green/yellow/red card) before any confirmation button.
    - If recommendation is "reject", show the suggested existing type as a link
      back to the review queue.
-   - Admin-only "Create anyway" button visible regardless of recommendation.
-5. Wire the route into the app router.
+   - "Create" button only shown to admins; always requires LLM evaluation first.
+3. Wire the route into the app router behind `SuperuserRoute`.
 
 ### LLM prompt shape
 ```
@@ -955,6 +1079,55 @@ Respond with JSON: { "recommendation": "create"|"reject"|"rename",
 - New types added here must also be added to the backend `RelationType` Literal
   and `ALL_RELATION_TYPES` frontend array to become extractable — document this
   as a separate manual step in the admin UI.
+
+### Status
+pending
+
+---
+
+## Merge Relation Types in Admin Panel
+
+Allow admins to merge two relation types into one when they decide the types are
+semantically equivalent. All existing relations that use the source type should be
+re-labelled to the target type, and the source type should be deactivated.
+
+### Objective
+Give admins a safe, auditable way to consolidate relation type proliferation
+(e.g. `coexists_with` → `other`, or a user-created `inhibits` → `decreases_risk`)
+without manual SQL. The merge must update both live relation rows and staged
+extraction rows atomically.
+
+### Impacted modules
+- `backend/app/services/relation_type_service.py` — `merge_relation_types()` method
+- `backend/app/api/relation_types.py` — `POST /relation-types/{type_id}/merge-into/{target_id}` (superuser)
+- `backend/app/models/relation.py` / `relation_revision.py` — batch `relation_type` update
+- `backend/app/models/staged_extraction.py` — batch `extraction_data.relation_type` update
+- `frontend/src/views/AdminView.tsx` — "Merge into…" action in the Relation Types tab
+
+### Plan
+1. Add `merge_relation_types(source_id, target_id)` to `RelationTypeService`:
+   - Reject if source == target.
+   - Reject if source is a system type and target is not (to prevent accidental collapse of core vocabulary).
+   - Update all `Relation` rows where `relation_type == source_id` → `target_id`.
+   - Update all `RelationRevision` rows similarly.
+   - Update `extraction_data->>'relation_type'` in `StagedExtraction` rows for the source type.
+   - Soft-delete the source type (`is_active=False`).
+   - Commit atomically.
+2. Add `POST /relation-types/{type_id}/merge-into/{target_id}` (superuser only).
+   - Returns a summary: `{ updated_relations, updated_revisions, updated_staged, deactivated_type }`.
+3. Add a "Merge into…" icon button in the Relation Types table row (admin panel).
+   - Opens a dialog: select target type from a dropdown of all other active types.
+   - Shows a warning with counts: "X relations and Y staged extractions will be re-labelled."
+   - Requires explicit confirmation before submitting.
+
+### Validation
+- Backend: focused pytest for merge service method (re-label counts, atomic commit, system-type guard)
+- Frontend: manual smoke-test of merge dialog and count display
+
+### Risks
+- Merging a high-usage type could be slow on large graphs; consider a background job for production scale.
+- If the target type has incompatible required roles, re-labelled relations may fail future validation; add a role-compatibility pre-check.
+- Merged staged extractions may already be in `approved` or `rejected` status; only update `pending` rows to avoid corrupting completed review records.
 
 ### Status
 pending

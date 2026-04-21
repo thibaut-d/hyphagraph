@@ -29,6 +29,17 @@ class RelationTypeCreate(BaseModel):
     category: str | None = Field(None, description="therapeutic, causal, diagnostic, etc.")
 
 
+class RelationTypeUpdate(BaseModel):
+    """Update schema for relation type (all fields optional)."""
+
+    label: dict[str, str] | None = None
+    description: str | None = Field(None, min_length=10, max_length=500)
+    examples: str | None = None
+    aliases: list[str] | None = None
+    category: str | None = None
+    is_active: bool | None = None
+
+
 class SuggestNewTypeRequest(BaseModel):
     """Request to check if a new relation type should be added."""
 

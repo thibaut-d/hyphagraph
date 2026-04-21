@@ -3,16 +3,18 @@ from fastapi import APIRouter, Depends
 from app.api.service_dependencies import get_relation_type_service
 from app.services.relation_type_service import RelationTypeService
 from app.dependencies.auth import get_current_active_superuser
+from fastapi import status as http_status
 from app.schemas.relation_type import (
     RelationTypeCreate,
     RelationTypePromptRead,
     RelationTypeRead,
     RelationTypeStatisticsRead,
+    RelationTypeUpdate,
     SuggestNewTypeRequest,
     SuggestNewTypeResponse,
     relation_type_to_read,
 )
-from app.utils.errors import ValidationException
+from app.utils.errors import AppException, ErrorCode, ValidationException
 
 
 router = APIRouter(tags=["relation-types"])
@@ -119,3 +121,74 @@ async def get_for_llm_prompt(
     """
     prompt_text = await service.get_for_llm_prompt()
     return RelationTypePromptRead(prompt_text=prompt_text)
+
+
+@router.get("/{type_id}", response_model=RelationTypeRead)
+async def get_relation_type(
+    type_id: str,
+    service: RelationTypeService = Depends(get_relation_type_service),
+    current_user=Depends(get_current_active_superuser),
+):
+    """Get a single relation type by ID (admin only)."""
+    relation_type = await service.get_by_id(type_id)
+    if relation_type is None:
+        raise AppException(
+            status_code=404,
+            error_code=ErrorCode.NOT_FOUND,
+            message=f"Relation type '{type_id}' not found",
+        )
+    return relation_type_to_read(relation_type)
+
+
+@router.patch("/{type_id}", response_model=RelationTypeRead)
+async def update_relation_type(
+    type_id: str,
+    payload: RelationTypeUpdate,
+    service: RelationTypeService = Depends(get_relation_type_service),
+    current_user=Depends(get_current_active_superuser),
+):
+    """
+    Update an existing relation type (admin only).
+
+    Only supplied fields are modified. System types may have their label,
+    description, examples, aliases, and category updated, but cannot be
+    hard-deleted (use is_active=false to disable instead).
+    """
+    relation_type = await service.update_relation_type(
+        type_id=type_id,
+        label=payload.label,
+        description=payload.description,
+        examples=payload.examples,
+        aliases=payload.aliases,
+        category=payload.category,
+        is_active=payload.is_active,
+    )
+    if relation_type is None:
+        raise AppException(
+            status_code=404,
+            error_code=ErrorCode.NOT_FOUND,
+            message=f"Relation type '{type_id}' not found",
+        )
+    return relation_type_to_read(relation_type)
+
+
+@router.delete("/{type_id}", status_code=http_status.HTTP_204_NO_CONTENT)
+async def delete_relation_type(
+    type_id: str,
+    service: RelationTypeService = Depends(get_relation_type_service),
+    current_user=Depends(get_current_active_superuser),
+):
+    """
+    Delete a relation type (admin only).
+
+    System types are soft-deleted (deactivated). User-created types are
+    permanently removed.
+    """
+    deleted = await service.delete_relation_type(type_id)
+    if not deleted:
+        raise AppException(
+            status_code=404,
+            error_code=ErrorCode.NOT_FOUND,
+            message=f"Relation type '{type_id}' not found",
+        )
+    return None

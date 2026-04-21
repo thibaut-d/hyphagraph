@@ -46,6 +46,8 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import EmailIcon from "@mui/icons-material/Email";
 import CategoryIcon from "@mui/icons-material/Category";
 import BugReportIcon from "@mui/icons-material/BugReport";
+import AccountTreeIcon from "@mui/icons-material/AccountTree";
+import LockIcon from "@mui/icons-material/Lock";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
 import { apiFetch } from "../api/client";
@@ -67,6 +69,17 @@ interface UserListItem {
   is_superuser: boolean;
   is_verified: boolean;
   created_at: string;
+}
+
+interface RelationTypeItem {
+  type_id: string;
+  label: Record<string, string>;
+  description: string;
+  examples: string | null;
+  aliases: string[] | null;
+  category: string | null;
+  usage_count: number;
+  is_system: boolean;
 }
 
 interface BugReportItem {
@@ -98,6 +111,15 @@ const emptyCatForm = () => ({
   order: 0,
 });
 
+const emptyRelTypeForm = () => ({
+  type_id: "",
+  label_en: "",
+  description: "",
+  examples: "",
+  aliases: "",
+  category: "",
+});
+
 export function AdminView() {
   const { t } = useTranslation();
   const handlePageError = usePageErrorHandler();
@@ -126,6 +148,15 @@ export function AdminView() {
   const [bugReports, setBugReports] = useState<BugReportItem[]>([]);
   const [bugLoading, setBugLoading] = useState(false);
   const [bugError, setBugError] = useState<string | null>(null);
+  // Relation type state
+  const [relTypes, setRelTypes] = useState<RelationTypeItem[]>([]);
+  const [relTypeLoading, setRelTypeLoading] = useState(false);
+  const [relTypeError, setRelTypeError] = useState<string | null>(null);
+  const [relTypeDialogOpen, setRelTypeDialogOpen] = useState(false);
+  const [relTypeDeleteDialogOpen, setRelTypeDeleteDialogOpen] = useState(false);
+  const [selectedRelType, setSelectedRelType] = useState<RelationTypeItem | null>(null);
+  const [relTypeForm, setRelTypeForm] = useState(emptyRelTypeForm());
+  const [relTypeSaving, setRelTypeSaving] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -134,6 +165,7 @@ export function AdminView() {
   useEffect(() => {
     if (activeTab === 1) loadCategories();
     if (activeTab === 2) loadBugReports();
+    if (activeTab === 3) loadRelTypes();
   }, [activeTab]);
 
   const loadData = async () => {
@@ -320,6 +352,100 @@ export function AdminView() {
     }
   };
 
+  const loadRelTypes = async () => {
+    setRelTypeLoading(true);
+    setRelTypeError(null);
+    try {
+      const data = await apiFetch<RelationTypeItem[]>("/relation-types/");
+      setRelTypes(data);
+    } catch (err) {
+      const parsedError = handlePageError(err, "Failed to load relation types");
+      setRelTypeError(parsedError.userMessage);
+    } finally {
+      setRelTypeLoading(false);
+    }
+  };
+
+  const handleRelTypeNewClick = () => {
+    setSelectedRelType(null);
+    setRelTypeForm(emptyRelTypeForm());
+    setRelTypeDialogOpen(true);
+  };
+
+  const handleRelTypeEditClick = (rt: RelationTypeItem) => {
+    setSelectedRelType(rt);
+    setRelTypeForm({
+      type_id: rt.type_id,
+      label_en: rt.label.en ?? "",
+      description: rt.description,
+      examples: rt.examples ?? "",
+      aliases: (rt.aliases ?? []).join(", "),
+      category: rt.category ?? "",
+    });
+    setRelTypeDialogOpen(true);
+  };
+
+  const handleRelTypeSave = async () => {
+    setRelTypeSaving(true);
+    setRelTypeError(null);
+    const aliases = relTypeForm.aliases
+      ? relTypeForm.aliases.split(",").map((a) => a.trim()).filter(Boolean)
+      : [];
+    try {
+      if (selectedRelType) {
+        await apiFetch(`/relation-types/${selectedRelType.type_id}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            label: relTypeForm.label_en ? { en: relTypeForm.label_en } : undefined,
+            description: relTypeForm.description || undefined,
+            examples: relTypeForm.examples || null,
+            aliases: aliases.length > 0 ? aliases : null,
+            category: relTypeForm.category || null,
+          }),
+        });
+      } else {
+        await apiFetch("/relation-types/", {
+          method: "POST",
+          body: JSON.stringify({
+            type_id: relTypeForm.type_id,
+            label: { en: relTypeForm.label_en },
+            description: relTypeForm.description,
+            examples: relTypeForm.examples || null,
+            aliases: aliases.length > 0 ? aliases : null,
+            category: relTypeForm.category || null,
+          }),
+        });
+      }
+      setRelTypeDialogOpen(false);
+      await loadRelTypes();
+    } catch (err) {
+      const parsedError = handlePageError(err, "Failed to save relation type");
+      setRelTypeError(parsedError.userMessage);
+    } finally {
+      setRelTypeSaving(false);
+    }
+  };
+
+  const handleRelTypeDeleteClick = (rt: RelationTypeItem) => {
+    setSelectedRelType(rt);
+    setRelTypeDeleteDialogOpen(true);
+  };
+
+  const handleRelTypeConfirmDelete = async () => {
+    if (!selectedRelType) return;
+    setRelTypeError(null);
+    try {
+      await apiFetch(`/relation-types/${selectedRelType.type_id}`, {
+        method: "DELETE",
+      });
+      setRelTypeDeleteDialogOpen(false);
+      await loadRelTypes();
+    } catch (err) {
+      const parsedError = handlePageError(err, "Failed to delete relation type");
+      setRelTypeError(parsedError.userMessage);
+    }
+  };
+
   if (loading) {
     return <Typography>Loading...</Typography>;
   }
@@ -347,6 +473,7 @@ export function AdminView() {
           <Tab icon={<PeopleIcon />} iconPosition="start" label="Users" />
           <Tab icon={<CategoryIcon />} iconPosition="start" label="UI Categories" />
           <Tab icon={<BugReportIcon />} iconPosition="start" label="Bug Reports" />
+          <Tab icon={<AccountTreeIcon />} iconPosition="start" label="Relation Types" />
         </Tabs>
       </Paper>
 
@@ -662,6 +789,198 @@ export function AdminView() {
           )}
         </Paper>
       )}
+
+      {/* ── Relation Types tab ── */}
+      {activeTab === 3 && (
+        <Paper sx={{ p: 3 }}>
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+            <Typography variant="h5">Relation Types</Typography>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleRelTypeNewClick}
+            >
+              New Type
+            </Button>
+          </Box>
+
+          {relTypeError && <Alert severity="error" sx={{ mb: 2 }}>{relTypeError}</Alert>}
+
+          {relTypeLoading ? (
+            <Typography>Loading…</Typography>
+          ) : (
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>ID</TableCell>
+                    <TableCell>Label</TableCell>
+                    <TableCell>Category</TableCell>
+                    <TableCell>Description</TableCell>
+                    <TableCell align="right">Usage</TableCell>
+                    <TableCell>Flags</TableCell>
+                    <TableCell>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {relTypes.map((rt) => (
+                    <TableRow key={rt.type_id}>
+                      <TableCell><code>{rt.type_id}</code></TableCell>
+                      <TableCell>{rt.label.en ?? "—"}</TableCell>
+                      <TableCell>{rt.category ?? "—"}</TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ maxWidth: 300, whiteSpace: "normal" }}>
+                          {rt.description.length > 120 ? rt.description.slice(0, 120) + "…" : rt.description}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="right">{rt.usage_count}</TableCell>
+                      <TableCell>
+                        {rt.is_system && (
+                          <Chip
+                            icon={<LockIcon />}
+                            label="system"
+                            size="small"
+                            variant="outlined"
+                            color="default"
+                            title="Built-in type — deletion will deactivate it rather than remove it"
+                          />
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleRelTypeEditClick(rt)}
+                          title="Edit"
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => handleRelTypeDeleteClick(rt)}
+                          title={rt.is_system ? "Deactivate (system type)" : "Delete"}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {relTypes.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={7} align="center">
+                        <Typography color="text.secondary">No relation types found</Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </Paper>
+      )}
+
+      {/* Relation type create/edit dialog */}
+      <Dialog open={relTypeDialogOpen} onClose={() => setRelTypeDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>{selectedRelType ? `Edit: ${selectedRelType.type_id}` : "New Relation Type"}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            {!selectedRelType && (
+              <TextField
+                label="Type ID"
+                value={relTypeForm.type_id}
+                onChange={(e) => setRelTypeForm((f) => ({ ...f, type_id: e.target.value }))}
+                fullWidth
+                required
+                helperText="Snake_case identifier, e.g. inhibits_growth. Cannot be changed after creation."
+                inputProps={{ pattern: "[a-z][a-z0-9_]*" }}
+              />
+            )}
+            <TextField
+              label="Label (EN)"
+              value={relTypeForm.label_en}
+              onChange={(e) => setRelTypeForm((f) => ({ ...f, label_en: e.target.value }))}
+              fullWidth
+              required
+            />
+            <TextField
+              label="Description"
+              value={relTypeForm.description}
+              onChange={(e) => setRelTypeForm((f) => ({ ...f, description: e.target.value }))}
+              fullWidth
+              required
+              multiline
+              rows={3}
+              helperText="At least 10 characters. Used in LLM prompts."
+            />
+            <TextField
+              label="Examples"
+              value={relTypeForm.examples}
+              onChange={(e) => setRelTypeForm((f) => ({ ...f, examples: e.target.value }))}
+              fullWidth
+              multiline
+              rows={2}
+              helperText="Optional. Free-text examples for the LLM."
+            />
+            <TextField
+              label="Aliases"
+              value={relTypeForm.aliases}
+              onChange={(e) => setRelTypeForm((f) => ({ ...f, aliases: e.target.value }))}
+              fullWidth
+              helperText="Comma-separated synonyms, e.g. treats, cures"
+            />
+            <TextField
+              label="Category"
+              value={relTypeForm.category}
+              onChange={(e) => setRelTypeForm((f) => ({ ...f, category: e.target.value }))}
+              fullWidth
+              helperText="Optional grouping, e.g. therapeutic, causal, diagnostic"
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRelTypeDialogOpen(false)}>Cancel</Button>
+          <Button
+            onClick={handleRelTypeSave}
+            variant="contained"
+            disabled={
+              relTypeSaving ||
+              (!selectedRelType && !relTypeForm.type_id) ||
+              !relTypeForm.label_en ||
+              relTypeForm.description.length < 10
+            }
+          >
+            {relTypeSaving ? "Saving…" : "Save"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Relation type delete confirmation dialog */}
+      <Dialog open={relTypeDeleteDialogOpen} onClose={() => setRelTypeDeleteDialogOpen(false)}>
+        <DialogTitle>
+          {selectedRelType?.is_system ? "Deactivate System Type" : "Delete Relation Type"}
+        </DialogTitle>
+        <DialogContent>
+          <Typography>
+            {selectedRelType?.is_system
+              ? <>
+                  <strong>{selectedRelType?.type_id}</strong> is a built-in system type. It will be{" "}
+                  <strong>deactivated</strong> (hidden from prompts and UI) rather than permanently deleted.
+                </>
+              : <>
+                  Permanently delete <strong>{selectedRelType?.type_id}</strong>? This cannot be undone.
+                  {(selectedRelType?.usage_count ?? 0) > 0 && (
+                    <> It has been used <strong>{selectedRelType?.usage_count}</strong> time(s) in the graph.</>
+                  )}
+                </>}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRelTypeDeleteDialogOpen(false)}>Cancel</Button>
+          <Button color="error" variant="contained" onClick={handleRelTypeConfirmDelete}>
+            {selectedRelType?.is_system ? "Deactivate" : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Category create/edit dialog */}
       <Dialog open={catDialogOpen} onClose={() => setCatDialogOpen(false)} maxWidth="sm" fullWidth>
