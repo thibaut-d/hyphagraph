@@ -32,6 +32,8 @@ EntityCategory = Literal[
     "other"
 ]
 
+_VALID_ENTITY_CATEGORIES: frozenset[str] = frozenset(EntityCategory.__args__)  # type: ignore[attr-defined]
+
 ConfidenceLevel = Literal["high", "medium", "low"]
 
 
@@ -96,6 +98,14 @@ class ExtractedEntity(BaseModel):
     @classmethod
     def normalize_slug(cls, value: object) -> object:
         return _normalize_extracted_slug(value)
+
+    @field_validator("category", mode="before")
+    @classmethod
+    def coerce_entity_category(cls, value: object) -> object:
+        if isinstance(value, str) and value not in _VALID_ENTITY_CATEGORIES:
+            logger.warning("Unknown entity category %r — coercing to 'other'", value)
+            return "other"
+        return value
 
 
 class EntityExtractionResponse(BaseModel):
