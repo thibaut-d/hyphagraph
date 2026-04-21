@@ -68,7 +68,7 @@ ENTITY_EXTRACTION_PROMPT = """Extract all relevant biomedical entities from the 
 For each entity, provide:
 - slug: A unique identifier following STRICT format rules (see below)
 - summary: A brief neutral description in English of what the entity is (prefer a short phrase or single sentence)
-- category: The entity type (drug, disease, symptom, biological_mechanism, treatment, biomarker, population, outcome, other)
+- category: The entity type (MUST be one of the values listed in the category section below)
 - confidence: Your confidence in this extraction (high, medium, low)
   high   → the entity is explicitly and unambiguously named in the source span with no interpretation needed
   medium → the entity requires minor surface-form normalization or is named with light qualification
@@ -105,16 +105,7 @@ CRITICAL SLUG FORMAT REQUIREMENTS:
 - Valid examples: "aspirin", "migraine-headache", "cox-2-inhibition", "vitamin-d3"
 - INVALID examples: "2mg" (starts with number), "COX" (uppercase), "α" (too short), "cox_inhibition" (underscore)
 
-Categories:
-- drug: Medications, pharmaceuticals, active ingredients
-- disease: Medical conditions, disorders, illnesses
-- symptom: Observable signs or symptoms of conditions
-- biological_mechanism: Pathways, mechanisms, physiological processes
-- treatment: Therapeutic interventions (non-drug)
-- biomarker: Measurable indicators (lab values, proteins, genes)
-- population: Patient groups, demographics (e.g., "adults over 65")
-- outcome: Clinical outcomes, endpoints (e.g., "mortality", "quality of life")
-- other: Source-stated entities that can participate in relations but do not fit another category, such as comparator/control groups, study arms, or named conditions explicitly mentioned in the source
+{entity_categories}
 
 Text to analyze:
 {text}
@@ -338,30 +329,7 @@ CRITICAL: Do NOT invent role types. In particular:
 - "comparator" is NOT a valid role — use control_group
 - Never use role names not listed above
 
-CRITICAL: relation_type MUST be EXACTLY one of these values (no variations):
-- treats: Drug/treatment treats disease/symptom
-- causes: Drug/disease causes symptom/outcome
-- prevents: Drug/treatment prevents disease/outcome
-- increases_risk: Factor increases risk of disease/outcome
-- decreases_risk: Factor decreases risk of disease/outcome
-- mechanism: Biological mechanism underlying an effect
-- contraindicated: Drug/treatment should not be used with disease/drug
-- interacts_with: Drug interacts with another drug
-- metabolized_by: Drug is metabolized by enzyme/pathway
-- biomarker_for: Biomarker indicates disease/condition
-- affects_population: condition is the disease/condition, population is the patient group
-  Example: "hypertension affects_population older-adults" (NOT "older-adults affects_population hypertension")
-- measures: Assessment tool/test QUANTIFIES a value (e.g., "VAS measures pain", "MoCA measures cognition") — yields a score or magnitude, not a yes/no decision
-- diagnoses: Test/tool confirms presence or absence of a condition (binary clinical decision, e.g., "PCR diagnoses COVID-19", "biopsy diagnoses lymphoma") — use this, NOT measures, when the output is a clinical verdict
-- predicts: Variable/score/biomarker forecasts a FUTURE clinical outcome or prognosis (e.g., "BRCA1-mutation predicts breast-cancer-recurrence", "APACHE-score predicts ICU-mortality") — distinct from biomarker_for (which identifies disease presence) and measures (which quantifies)
-- other: Any other type of relationship
-
-IMPORTANT: Do NOT create new relation types. If a relationship doesn't fit the above categories, use "other".
-Do NOT use types like: "has", "integrates_with", "coexists_with", "correlates_with", "associated_with", "regulates", "inhibits", "activates" — these are not in the vocabulary.
-"coexists_with" / "associated_with" / "correlates_with" express co-occurrence without mechanism; capture them as "other" with a clear assertion_text, or use affects_population if it is an epidemiological prevalence claim.
-"other" is appropriate only when the core participants and their direction are clear but the type genuinely
-does not map to any named type above. Do NOT use "other" as a catch-all for vague or under-specified spans:
-if the source span is too ambiguous to identify clear core roles, omit the relation entirely instead.
+{relation_types}
 
 Example roles in output:
 - {{"entity_slug": "aspirin", "role_type": "agent", "source_mention": "aspirin"}}
@@ -475,9 +443,7 @@ Extract:
    - Examples: "aspirin", "cox-2-inhibition", "vitamin-d3", "type-2-diabetes"
    - INVALID examples: "2-diabetes" (starts with number), "COX" (uppercase), "α" (too short), "cox_inhibition" (underscore)
 
-   - category: one of drug, disease, symptom, biological_mechanism, treatment, biomarker, population, outcome, other
-     other → source-stated entities that can participate in relations but do not fit another category,
-             such as comparator/control groups, study arms, or named conditions explicitly mentioned
+   - category: MUST be one of the values in the entity category list below
    - confidence: high, medium, low
      high   → explicitly and unambiguously named in the source span with no interpretation needed
      medium → minor surface-form normalization required, or named with light qualification
@@ -494,31 +460,11 @@ Extract:
    - do not create intervention-arm wrapper entities like "chemotherapy arm" or "treatment group" when the reusable entity is the intervention itself; use the underlying intervention entity and keep the arm/group wording only in source_mention if needed
    - text_span should be the shortest exact source mention for that entity
 
+{entity_categories}
+
 2. **Relations**: Relationships between entities
 
-   CRITICAL: relation_type MUST be EXACTLY one of these values (no variations allowed):
-   - treats
-   - causes
-   - prevents
-   - increases_risk
-   - decreases_risk
-   - mechanism
-   - contraindicated
-   - interacts_with
-   - metabolized_by
-   - biomarker_for
-   - affects_population
-   - measures      ← QUANTIFIES a value (score, magnitude); output is a number or level
-   - diagnoses     ← Confirms presence/absence of a condition (binary yes/no clinical verdict, e.g. "PCR diagnoses COVID-19")
-   - predicts      ← Forecasts a FUTURE outcome or prognosis (e.g. "BRCA1-mutation predicts recurrence")
-   - other
-
-   IMPORTANT: If the relationship doesn't clearly fit one of the specific types above, use "other".
-   Do NOT invent new relation types like "has", "coexists_with", "correlates_with", "associated_with", "regulates", "inhibits", "activates", "diagnosed_by", etc.
-   "coexists_with" / "associated_with" / "correlates_with" express co-occurrence without mechanism — use "other" or affects_population.
-   "other" is appropriate only when the core participants and their direction are clear but the type genuinely
-   does not map to any named type. Do NOT use "other" as a catch-all for vague spans: if the source span is
-   too ambiguous to identify clear core roles, omit the relation entirely instead.
+{relation_types}
 
    SEMANTIC ROLES — use ONLY these exact values (no others):
    Core roles:
@@ -866,12 +812,62 @@ Return JSON with exactly this shape:
 
 
 # =============================================================================
+# Static fallbacks — used when the database is unavailable
+# =============================================================================
+
+_STATIC_ENTITY_CATEGORIES = """CRITICAL: category MUST be EXACTLY one of these values (no others allowed):
+   - drug: Medications, pharmaceuticals, active ingredients
+   - disease: Medical conditions, disorders, illnesses
+   - symptom: Observable signs or symptoms of conditions
+   - biological_mechanism: Pathways, mechanisms, physiological processes
+   - treatment: Therapeutic interventions (non-drug)
+   - biomarker: Measurable indicators (lab values, proteins, genes)
+   - population: Patient groups, demographics (e.g., "adults over 65")
+   - outcome: Clinical outcomes, endpoints (e.g., "mortality", "quality of life")
+   - other: Source-stated entities that do not fit any other category (comparator groups, study arms, etc.)
+
+   IMPORTANT: Do NOT invent new category names. If an entity does not fit any listed category, use 'other'."""
+
+_STATIC_RELATION_TYPES = """CRITICAL: relation_type MUST be EXACTLY one of these values (no variations):
+   - treats: Drug/treatment is the active agent treating a disease or symptom
+   - causes: Drug, disease, or exposure causes a symptom or outcome
+   - prevents: Drug/treatment prevents disease or outcome
+   - increases_risk: Factor increases risk of disease or outcome
+   - decreases_risk: Factor decreases risk of disease or outcome
+   - mechanism: Biological mechanism underlying an effect
+   - contraindicated: Drug/treatment should not be used with disease/drug
+   - interacts_with: Drug interacts with another drug
+   - metabolized_by: Drug is metabolized by enzyme/pathway
+   - biomarker_for: Biomarker indicates disease/condition
+   - affects_population: Condition or exposure affects a patient population
+   - measures: Assessment tool/test QUANTIFIES a value (score, magnitude); output is a number or level
+   - diagnoses: Test/tool confirms presence or absence of a condition (binary yes/no clinical verdict)
+   - predicts: Variable/biomarker forecasts a FUTURE clinical outcome or prognosis
+   - other: Relationship that does not fit any specific type above
+
+   IMPORTANT: If the relationship doesn't clearly fit one of the specific types above, use "other".
+   Do NOT invent new relation types like "has", "coexists_with", "correlates_with", "associated_with",
+   "regulates", "inhibits", "activates", "diagnosed_by", etc.
+   "coexists_with" / "associated_with" / "correlates_with" express co-occurrence without mechanism —
+   use "other" or affects_population instead.
+   "other" is appropriate only when the core participants and their direction are clear but the type
+   genuinely does not map to any named type. Do NOT use "other" as a catch-all for vague spans:
+   if the source span is too ambiguous to identify clear core roles, omit the relation entirely."""
+
+
+# =============================================================================
 # Helper Functions
 # =============================================================================
 
-def format_entity_extraction_prompt(text: str) -> str:
-    """Format the entity extraction prompt with the given text."""
-    return ENTITY_EXTRACTION_PROMPT.format(text=text)
+def format_entity_extraction_prompt(
+    text: str,
+    entity_categories: str | None = None,
+) -> str:
+    """Format the entity extraction prompt with the given text and dynamic category list."""
+    return ENTITY_EXTRACTION_PROMPT.format(
+        text=text,
+        entity_categories=entity_categories or _STATIC_ENTITY_CATEGORIES,
+    )
 
 
 class RelationPromptEntity(TypedDict):
@@ -889,18 +885,31 @@ class ExistingPromptEntity(TypedDict):
 def format_relation_extraction_prompt(
     text: str,
     entities: list[RelationPromptEntity],
+    relation_types: str | None = None,
 ) -> str:
-    """Format the relation extraction prompt with text and extracted entities."""
+    """Format the relation extraction prompt with text, entities, and dynamic type list."""
     entities_str = "\n".join([
         f"- {e['slug']}: {e.get('summary', 'No description')}"
         for e in entities
     ])
-    return RELATION_EXTRACTION_PROMPT.format(text=text, entities=entities_str)
+    return RELATION_EXTRACTION_PROMPT.format(
+        text=text,
+        entities=entities_str,
+        relation_types=relation_types or _STATIC_RELATION_TYPES,
+    )
 
 
-def format_batch_extraction_prompt(text: str) -> str:
-    """Format the batch extraction prompt with the given text."""
-    return BATCH_EXTRACTION_PROMPT.format(text=text)
+def format_batch_extraction_prompt(
+    text: str,
+    relation_types: str | None = None,
+    entity_categories: str | None = None,
+) -> str:
+    """Format the batch extraction prompt with dynamic relation types and entity categories."""
+    return BATCH_EXTRACTION_PROMPT.format(
+        text=text,
+        relation_types=relation_types or _STATIC_RELATION_TYPES,
+        entity_categories=entity_categories or _STATIC_ENTITY_CATEGORIES,
+    )
 
 
 def format_batch_gleaning_prompt(

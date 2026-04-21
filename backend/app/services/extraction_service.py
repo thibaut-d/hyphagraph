@@ -11,6 +11,8 @@ from app.utils.confidence_filter import filter_by_confidence
 from app.services.batch_extraction_orchestrator import BatchExtractionOrchestrator
 from app.llm.prompts import (
     MEDICAL_KNOWLEDGE_SYSTEM_PROMPT,
+    _STATIC_ENTITY_CATEGORIES,
+    _STATIC_RELATION_TYPES,
     RelationPromptEntity,
     format_entity_extraction_prompt,
     format_relation_extraction_prompt,
@@ -26,26 +28,11 @@ from app.services.extraction_validation_service import (
     ExtractionValidationService,
     ValidationLevel,
 )
+from app.services.entity_category_service import EntityCategoryService
 from app.services.relation_type_service import RelationTypeService
 from app.services.semantic_role_service import SemanticRoleService
 
 logger = logging.getLogger(__name__)
-
-# Module-level cache for relation types prompt text. Populated on first DB hit and
-# reused for the lifetime of the process. Invalidate by restarting the server after
-# relation type changes (acceptable for an admin-only configuration surface).
-_RELATION_TYPES_PROMPT_CACHE: str | None = None
-
-# Static fallback used when the DB is unavailable. Lists every type from RelationType
-# in llm/schemas.py so the LLM always has an explicit, coherent enumeration.
-_STATIC_RELATION_TYPES_FALLBACK = """\
-Available relation_type values (use exactly one):
-  treats, causes, prevents, increases_risk, decreases_risk, mechanism,
-  contraindicated, interacts_with, metabolized_by, biomarker_for,
-  affects_population, measures, other
-
-CRITICAL: relation_type MUST be one of the values listed above. If unsure, use 'other'.\
-"""
 
 
 class ExtractionService:
@@ -69,6 +56,7 @@ class ExtractionService:
         enable_validation: bool = True,
         validation_level: ValidationLevel = "moderate",
         relation_type_service: RelationTypeService | None = None,
+        entity_category_service: EntityCategoryService | None = None,
         semantic_role_service: SemanticRoleService | None = None,
     ):
         """
@@ -90,6 +78,10 @@ class ExtractionService:
             relation_type_service or RelationTypeService(db)
             if db else relation_type_service
         )
+        self.entity_category_service = (
+            entity_category_service or EntityCategoryService(db)
+            if db else entity_category_service
+        )
         self.semantic_role_service = (
             semantic_role_service or SemanticRoleService(db)
             if db else semantic_role_service
@@ -103,32 +95,20 @@ class ExtractionService:
         ) if enable_validation else None
 
     async def _get_relation_types_prompt(self) -> str:
-        """
-        Generate dynamic relation types prompt from database.
-
-        Returns formatted string with all active relation types from DB.
-        Uses a module-level cache so the DB is only hit once per process lifetime.
-        Falls back to a static enumeration if the database is unavailable.
-        """
-        global _RELATION_TYPES_PROMPT_CACHE
-
-        if _RELATION_TYPES_PROMPT_CACHE:
-            return _RELATION_TYPES_PROMPT_CACHE
-
-        if self.db:
+        if self.relation_type_service:
             try:
-                if not self.relation_type_service:
-                    raise RuntimeError("Relation type service unavailable")
-                prompt_text = await self.relation_type_service.get_for_llm_prompt()
-                _RELATION_TYPES_PROMPT_CACHE = prompt_text
-                logger.info("Using DYNAMIC relation types from database")
-                return prompt_text
-            except Exception as e:
-                logger.warning(f"Failed to load dynamic relation types, using fallback: {e}")
+                return await self.relation_type_service.get_for_llm_prompt()
+            except Exception as exc:
+                logger.warning("Failed to load relation types from DB, using fallback: %s", exc)
+        return _STATIC_RELATION_TYPES
 
-        # Fallback: explicit static enumeration so the LLM always has a valid list.
-        logger.warning("Using STATIC relation types (database not available)")
-        return _STATIC_RELATION_TYPES_FALLBACK
+    async def _get_entity_categories_prompt(self) -> str:
+        if self.entity_category_service:
+            try:
+                return await self.entity_category_service.get_for_llm_prompt()
+            except Exception as exc:
+                logger.warning("Failed to load entity categories from DB, using fallback: %s", exc)
+        return _STATIC_ENTITY_CATEGORIES
 
     async def _get_semantic_roles_prompt(self) -> str:
         """
@@ -171,8 +151,9 @@ class ExtractionService:
         """
         logger.info(f"Extracting entities from text ({len(text)} chars)")
 
-        # Format prompt
-        prompt = format_entity_extraction_prompt(text)
+        # Format prompt with dynamic entity categories from DB
+        entity_categories = await self._get_entity_categories_prompt()
+        prompt = format_entity_extraction_prompt(text, entity_categories=entity_categories)
 
         # Call LLM
         try:
@@ -230,8 +211,9 @@ class ExtractionService:
             else:
                 entities_dict.append(e)
 
-        # Format prompt
-        prompt = format_relation_extraction_prompt(text, entities_dict)
+        # Format prompt with dynamic relation types from DB
+        relation_types = await self._get_relation_types_prompt()
+        prompt = format_relation_extraction_prompt(text, entities_dict, relation_types=relation_types)
 
         # Call LLM
         try:

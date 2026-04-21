@@ -85,6 +85,25 @@ class EntityCategoryService:
         await self.db.refresh(row)
         return row
 
+    async def get_for_llm_prompt(self) -> str:
+        """
+        Generate a formatted entity category list for injection into LLM prompts.
+
+        Returns a string ready to be dropped into {entity_categories} template slots.
+        """
+        categories = await self.get_all_active()
+
+        lines = ["CRITICAL: category MUST be EXACTLY one of these values (no others allowed):"]
+        for cat in categories:
+            label = cat.label.get("en", cat.category_id) if isinstance(cat.label, dict) else cat.category_id
+            lines.append(f"   - {cat.category_id}: {cat.description}")
+            if cat.examples:
+                lines.append(f"     Examples: {cat.examples}")
+        lines.append("")
+        lines.append("   IMPORTANT: Do NOT invent new category names. If an entity does not fit any listed")
+        lines.append("   category, use 'other'.")
+        return "\n".join(lines)
+
     async def delete(self, category_id: str) -> bool:
         row = await self.get_by_id(category_id)
         if row is None:

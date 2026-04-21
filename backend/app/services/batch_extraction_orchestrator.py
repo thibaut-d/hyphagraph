@@ -14,6 +14,8 @@ import re
 from app.llm.client import get_llm_provider
 from app.llm.prompts import (
     MEDICAL_KNOWLEDGE_SYSTEM_PROMPT,
+    _STATIC_ENTITY_CATEGORIES,
+    _STATIC_RELATION_TYPES,
     format_batch_extraction_prompt,
     format_batch_gleaning_prompt,
 )
@@ -62,6 +64,14 @@ class BatchExtractionOrchestrator:
         self.chunk_overlap_chars = max(0, min(chunk_overlap_chars, self.max_chunk_chars // 2))
         self.max_chunks = max(1, max_chunks)
         self.semantic_normalizer = ExtractionSemanticNormalizer()
+        if db:
+            from app.services.relation_type_service import RelationTypeService
+            from app.services.entity_category_service import EntityCategoryService
+            self._relation_type_service = RelationTypeService(db)
+            self._entity_category_service = EntityCategoryService(db)
+        else:
+            self._relation_type_service = None
+            self._entity_category_service = None
         self.validation_service = (
             ExtractionValidationService(
                 validation_level=validation_level,
@@ -164,8 +174,30 @@ class BatchExtractionOrchestrator:
 
         return merged_response
 
+    async def _get_relation_types_prompt(self) -> str:
+        if self._relation_type_service:
+            try:
+                prompt = await self._relation_type_service.get_for_llm_prompt()
+                logger.info("Using dynamic relation types from database")
+                return prompt
+            except Exception as exc:
+                logger.warning("Failed to load relation types from DB, using fallback: %s", exc)
+        return _STATIC_RELATION_TYPES
+
+    async def _get_entity_categories_prompt(self) -> str:
+        if self._entity_category_service:
+            try:
+                prompt = await self._entity_category_service.get_for_llm_prompt()
+                logger.info("Using dynamic entity categories from database")
+                return prompt
+            except Exception as exc:
+                logger.warning("Failed to load entity categories from DB, using fallback: %s", exc)
+        return _STATIC_ENTITY_CATEGORIES
+
     async def _extract_single_batch_response(self, text: str) -> BatchExtractionResponse:
-        prompt = format_batch_extraction_prompt(text)
+        relation_types = await self._get_relation_types_prompt()
+        entity_categories = await self._get_entity_categories_prompt()
+        prompt = format_batch_extraction_prompt(text, relation_types=relation_types, entity_categories=entity_categories)
         response_data = await self.llm.generate_json(
             prompt=prompt,
             system_prompt=self.system_prompt,
