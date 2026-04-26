@@ -39,6 +39,8 @@ _SINGLE_MEMBER_ROLE_GROUP_LIMITS: dict[str, tuple[tuple[str, ...], ...]] = {
     "prevents": (("target", "outcome"),),
     "increases_risk": (("target", "outcome"),),
     "decreases_risk": (("target", "outcome"),),
+    "associated_with": (("target",),),
+    "prevalence_in": (("target",),),
     "biomarker_for": (("target", "condition"),),
     "measures": (("target", "outcome", "condition"),),
     "affects_population": (("population",), ("condition", "target")),

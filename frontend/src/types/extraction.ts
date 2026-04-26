@@ -41,6 +41,8 @@ export type RelationType =
   | "prevents"
   | "increases_risk"
   | "decreases_risk"
+  | "associated_with"
+  | "prevalence_in"
   | "mechanism"
   | "contraindicated"
   | "interacts_with"
@@ -58,6 +60,8 @@ export const ALL_RELATION_TYPES: RelationType[] = [
   "prevents",
   "increases_risk",
   "decreases_risk",
+  "associated_with",
+  "prevalence_in",
   "mechanism",
   "contraindicated",
   "interacts_with",

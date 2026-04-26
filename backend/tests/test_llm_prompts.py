@@ -68,6 +68,8 @@ def test_relation_prompt_requires_explicit_relations_and_separate_conflicts():
     assert "control_group, population, and comparator context NEVER replace a missing core role" in RELATION_EXTRACTION_PROMPT
     assert 'For null efficacy findings such as "did not significantly improve"' in RELATION_EXTRACTION_PROMPT
     assert 'Do NOT use relation_type "other" for ordinary efficacy findings' in RELATION_EXTRACTION_PROMPT
+    assert 'Use relation_type "associated_with" for explicit non-causal association' in RELATION_EXTRACTION_PROMPT
+    assert 'Use relation_type "prevalence_in" for source-stated prevalence or incidence findings' in RELATION_EXTRACTION_PROMPT
     assert 'a measured clinical outcome like "overall survival", "blood pressure", or' in RELATION_EXTRACTION_PROMPT
     assert 'Wrong extraction: causes(target=nausea, control_group=placebo)' in RELATION_EXTRACTION_PROMPT
     assert 'When a source reports combination therapy, adjunct therapy, co-administration, or "X with Y"' in RELATION_EXTRACTION_PROMPT
@@ -77,6 +79,7 @@ def test_relation_prompt_requires_explicit_relations_and_separate_conflicts():
     assert "silent second pass over the text" in RELATION_EXTRACTION_PROMPT
     assert "Keep source wording separate from normalized fields" in RELATION_EXTRACTION_PROMPT
     assert 'prefer evidence_context.statement_kind "hypothesis" or' in RELATION_EXTRACTION_PROMPT
+    assert "Recommendation-only or screening-only language should usually NOT become a relation" in RELATION_EXTRACTION_PROMPT
 
 
 def test_relation_and_batch_prompts_block_invented_role_names():
@@ -131,9 +134,13 @@ def test_batch_prompt_carries_global_evidence_first_constraints():
     assert "omit generic document nouns or paper artifacts" in prompt
     assert 'do not create intervention-arm wrapper entities like "chemotherapy arm"' in prompt
     assert 'do NOT use relation_type "other" for ordinary efficacy findings or adverse-event findings' in prompt
+    assert 'Use relation_type "associated_with" for explicit non-causal association' in prompt
+    assert 'Use relation_type "prevalence_in" for source-stated prevalence or incidence findings' in prompt
     assert "text_span, sample_size_text, and statistical_support should copy or minimally trim the source wording" in prompt
     assert 'prefer statement_kind "hypothesis" or finding_polarity "uncertain"' in prompt
     assert '"relations"' in prompt
+    assert "associated_with" in prompt
+    assert "prevalence_in" in prompt
 
 
 def test_batch_gleaning_prompt_requires_append_only_missed_items():

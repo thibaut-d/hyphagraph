@@ -177,7 +177,8 @@ class BatchExtractionOrchestrator:
     async def _get_relation_types_prompt(self) -> str:
         if self._relation_type_service:
             try:
-                prompt = await self._relation_type_service.get_for_llm_prompt()
+                async with self.db.begin_nested():
+                    prompt = await self._relation_type_service.get_for_llm_prompt()
                 logger.info("Using dynamic relation types from database")
                 return prompt
             except Exception as exc:
@@ -187,7 +188,8 @@ class BatchExtractionOrchestrator:
     async def _get_entity_categories_prompt(self) -> str:
         if self._entity_category_service:
             try:
-                prompt = await self._entity_category_service.get_for_llm_prompt()
+                async with self.db.begin_nested():
+                    prompt = await self._entity_category_service.get_for_llm_prompt()
                 logger.info("Using dynamic entity categories from database")
                 return prompt
             except Exception as exc:

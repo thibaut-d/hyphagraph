@@ -116,4 +116,26 @@ describe("ExtractedRelationsList", () => {
       ),
     ).toBeInTheDocument();
   });
+
+  it("renders labels for observational relation types without falling back to Other", () => {
+    render(
+      <ExtractedRelationsList
+        relations={[
+          {
+            ...naryRelation,
+            relation_type: "associated_with",
+            roles: [
+              { entity_slug: "dysautonomia", role_type: "target" },
+              { entity_slug: "fibromyalgia", role_type: "condition" },
+            ],
+            text_span: "Dysautonomia was associated with fibromyalgia.",
+          },
+        ]}
+        selectedRelations={new Set(["selected"])}
+        onToggle={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Associated With")).toBeInTheDocument();
+  });
 });

@@ -55,6 +55,41 @@ _CAUSES_CUE_PATTERN = re.compile(
     r")\b",
     re.IGNORECASE,
 )
+_ASSOCIATION_CUE_PATTERN = re.compile(
+    r"\b("
+    r"associated with|"
+    r"association between|"
+    r"correlated with|"
+    r"correlation between|"
+    r"linked to|"
+    r"related to|"
+    r"comorbid with|"
+    r"co[- ]occurs? with|"
+    r"illustrates the association between"
+    r")\b",
+    re.IGNORECASE,
+)
+_PREVALENCE_CUE_PATTERN = re.compile(
+    r"\b("
+    r"prevalence|"
+    r"pooled prevalence|"
+    r"incidence|"
+    r"prevalent in|"
+    r"present in"
+    r")\b",
+    re.IGNORECASE,
+)
+_RECOMMENDATION_CUE_PATTERN = re.compile(
+    r"\b("
+    r"screening .* warranted|"
+    r"regular screening|"
+    r"recommended|"
+    r"should be screened|"
+    r"should consider|"
+    r"is warranted"
+    r")\b",
+    re.IGNORECASE,
+)
 
 
 class ExtractionSemanticNormalizer:
@@ -158,14 +193,16 @@ class ExtractionSemanticNormalizer:
         entities: list[ExtractedEntity],
     ) -> list[ExtractedRelation]:
         entity_lookup = {entity.slug: entity for entity in entities}
-        return [
-            self._normalize_relation(
+        normalized_relations: list[ExtractedRelation] = []
+        for relation in relations:
+            normalized_relation = self._normalize_relation(
                 relation,
                 entity_slug_aliases=entity_slug_aliases,
                 entity_lookup=entity_lookup,
             )
-            for relation in relations
-        ]
+            if normalized_relation is not None:
+                normalized_relations.append(normalized_relation)
+        return normalized_relations
 
     def _derive_relation_entity_aliases(
         self,
@@ -228,7 +265,7 @@ class ExtractionSemanticNormalizer:
         *,
         entity_slug_aliases: dict[str, str],
         entity_lookup: dict[str, ExtractedEntity],
-    ) -> ExtractedRelation:
+    ) -> ExtractedRelation | None:
         normalized_roles = [
             role.model_copy(
                 update={
@@ -246,6 +283,11 @@ class ExtractionSemanticNormalizer:
                 roles=normalized_roles,
                 entity_lookup=entity_lookup,
             )
+        if normalized_relation_type == "other" and self._should_drop_ambiguous_other_relation(
+            relation,
+            roles=normalized_roles,
+        ):
+            return None
 
         normalized_roles = self._normalize_core_target_role(
             normalized_roles,
@@ -279,15 +321,45 @@ class ExtractionSemanticNormalizer:
         entity_lookup: dict[str, ExtractedEntity],
     ) -> str:
         role_types = {role.role_type for role in roles}
+        text_span = relation.text_span
+        if self._looks_like_associated_with(text_span, roles=roles):
+            return "associated_with"
+        if self._looks_like_prevalence_in(text_span, roles=roles):
+            return "prevalence_in"
         if "agent" not in role_types or not role_types.intersection({"target", "outcome"}):
             return relation.relation_type
 
-        text_span = relation.text_span
         if self._looks_like_causes(text_span, roles=roles, entity_lookup=entity_lookup):
             return "causes"
         if self._looks_like_treats(text_span, roles=roles, entity_lookup=entity_lookup):
             return "treats"
         return relation.relation_type
+
+    def _looks_like_prevalence_in(
+        self,
+        text_span: str,
+        *,
+        roles: list[ExtractedRole],
+    ) -> bool:
+        role_types = {role.role_type for role in roles}
+        if "target" not in role_types:
+            return False
+        if not role_types.intersection({"population", "condition", "study_group", "control_group"}):
+            return False
+        return bool(_PREVALENCE_CUE_PATTERN.search(text_span))
+
+    def _looks_like_associated_with(
+        self,
+        text_span: str,
+        *,
+        roles: list[ExtractedRole],
+    ) -> bool:
+        role_types = {role.role_type for role in roles}
+        if "target" not in role_types:
+            return False
+        if not role_types.intersection({"condition", "population", "study_group", "control_group"}):
+            return False
+        return bool(_ASSOCIATION_CUE_PATTERN.search(text_span))
 
     def _looks_like_treats(
         self,
@@ -370,6 +442,19 @@ class ExtractionSemanticNormalizer:
             return evidence_context
 
         return evidence_context.model_copy(update={"finding_polarity": "neutral"})
+
+    def _should_drop_ambiguous_other_relation(
+        self,
+        relation: ExtractedRelation,
+        *,
+        roles: list[ExtractedRole],
+    ) -> bool:
+        role_types = {role.role_type for role in roles}
+        if _RECOMMENDATION_CUE_PATTERN.search(relation.text_span):
+            return True
+        if not role_types.intersection({"target", "outcome"}):
+            return True
+        return len({role.entity_slug for role in roles}) < 2
 
     def _slugify_base_mention(self, base_mention: str, *, plural_wrapper: bool) -> str | None:
         candidate = base_mention.strip()

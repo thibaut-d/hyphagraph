@@ -274,6 +274,9 @@ RELATION EXTRACTION RULES:
 - For side-effect or safety findings where no significant difference is found versus a control or placebo, use "causes" with finding_polarity "contradicts" — do NOT use "other". Example: "no significant increase in nausea compared to placebo" → relation_type "causes", finding_polarity "contradicts". This captures that the study tested whether the drug causes the effect and found no evidence it does more than control.
 - Do NOT use relation_type "other" for ordinary efficacy findings or adverse-event findings when
   the span already makes "treats" or "causes" explicit.
+- Use relation_type "associated_with" for explicit non-causal association, correlation, co-occurrence, or comorbidity findings when the source does not claim mechanism or causation.
+- Use relation_type "prevalence_in" for source-stated prevalence or incidence findings tied to a population, condition, study group, or control group.
+- Recommendation-only or screening-only language should usually NOT become a relation unless the same span explicitly states a diagnosis, measurement, prevalence, risk, treatment, or association finding with clear core participants.
 - If the text gives only a mechanistic assumption, background rationale, or methodology note, mark evidence_context.statement_kind accordingly
 - If the text presents competing or contradictory findings, output separate relations rather than merging them
 - HyphaGraph relations are hyperedges: when one source statement includes reusable semantic participants such as population, comparator, outcome, mechanism, or study condition, keep that context as additional roles in the SAME relation instead of decomposing the statement into multiple binary relations
@@ -295,6 +298,8 @@ RELATION EXTRACTION RULES:
   - treats MUST include agent and target
   - causes MUST include the thing causing the effect as agent, plus the adverse event/effect as target or outcome
   - prevents MUST include agent and target or outcome
+  - associated_with MUST include target plus condition, population, or study_group
+  - prevalence_in MUST include target plus condition, population, study_group, or control_group
   - biomarker_for MUST include biomarker and target or condition
   - measures MUST include measured_by and target or outcome
 - control_group, population, and comparator context NEVER replace a missing core role
@@ -501,6 +506,12 @@ Extract:
      Example: "metformin treats type-2-diabetes" (NOT "type-2-diabetes treats metformin")
    - causes: agent is the cause, target/outcome is the effect/outcome
      Example: "smoking causes lung-cancer" (NOT "lung-cancer causes smoking")
+   - associated_with: target is the focal phenomenon and condition/population is the explicit non-causal associate
+     Example: "dysautonomia associated_with fibromyalgia" (NOT "fibromyalgia associated_with dysautonomia" when dysautonomia is the measured finding)
+     Use associated_with for explicit source-stated association, correlation, or co-occurrence without causal or mechanistic language.
+   - prevalence_in: target is the measured phenomenon and population/condition is where that prevalence is reported
+     Example: "dysautonomia prevalence_in chronic-musculoskeletal-pain" (NOT "chronic-musculoskeletal-pain prevalence_in dysautonomia")
+     Use prevalence_in for source-stated prevalence or incidence findings.
    - biomarker_for: biomarker is the biomarker/test, target is the disease/condition
      Example: "hba1c biomarker_for type-2-diabetes" (NOT "type-2-diabetes biomarker_for hba1c")
    - affects_population: condition is disease/condition, population is the population group
@@ -538,7 +549,10 @@ Extract:
    - if the same entities appear in multiple contradictory or differently qualified spans, emit separate relations instead of merging them
    - if the source uses modal or hedged language such as "may", "might", "could", "suggests", "potential", or "appears to", prefer statement_kind "hypothesis" or finding_polarity "uncertain" unless the same span reports direct measured findings
    - For side-effect or safety findings where no significant difference is found versus a control or placebo, use relation_type "causes" with finding_polarity "contradicts" — do NOT use "other". Example: "no significant increase in nausea vs placebo" → relation_type "causes", finding_polarity "contradicts".
+   - Use relation_type "associated_with" for explicit non-causal association, correlation, co-occurrence, or comorbidity findings when the source does not claim mechanism or causation.
+   - Use relation_type "prevalence_in" for source-stated prevalence or incidence findings tied to a population, condition, study group, or control group.
    - do NOT use relation_type "other" for ordinary efficacy findings or adverse-event findings when the span already makes "treats" or "causes" explicit
+   - Recommendation-only or screening-only language should usually NOT become a relation unless the same span explicitly states a diagnosis, measurement, prevalence, risk, treatment, or association finding with clear core participants.
    - in therapeutic findings, a measured clinical outcome like overall survival, blood pressure, or quality of life should usually be the relation target even if the sentence also frames it as an endpoint or outcome
    - evidence_strength assignment — use the strongest level warranted by the source, never inflate it:
      strong   → meta-analysis or systematic review with clear outcomes, or RCT with significant result
@@ -764,7 +778,7 @@ Respond with JSON containing two arrays:
 
 CRITICAL REMINDERS:
 - Entity slugs: Must start with letter, only lowercase letters/numbers/hyphens, minimum 3 chars
-- Relation types: ONLY use the exact 13 types listed above (use "other" if unsure)
+- Relation types: ONLY use the exact relation types listed above (use "other" only when none fit)
 - Evidence strength: ONLY use strong, moderate, weak, or anecdotal
 
 Be thorough but conservative. Only extract information that is clearly and explicitly stated in the text.
@@ -834,6 +848,8 @@ _STATIC_RELATION_TYPES = """CRITICAL: relation_type MUST be EXACTLY one of these
    - prevents: Drug/treatment prevents disease or outcome
    - increases_risk: Factor increases risk of disease or outcome
    - decreases_risk: Factor decreases risk of disease or outcome
+   - associated_with: Explicit non-causal association, correlation, co-occurrence, or comorbidity
+   - prevalence_in: Source-stated prevalence or incidence of a phenomenon within a population or condition
    - mechanism: Biological mechanism underlying an effect
    - contraindicated: Drug/treatment should not be used with disease/drug
    - interacts_with: Drug interacts with another drug
@@ -846,10 +862,9 @@ _STATIC_RELATION_TYPES = """CRITICAL: relation_type MUST be EXACTLY one of these
    - other: Relationship that does not fit any specific type above
 
    IMPORTANT: If the relationship doesn't clearly fit one of the specific types above, use "other".
-   Do NOT invent new relation types like "has", "coexists_with", "correlates_with", "associated_with",
-   "regulates", "inhibits", "activates", "diagnosed_by", etc.
-   "coexists_with" / "associated_with" / "correlates_with" express co-occurrence without mechanism —
-   use "other" or affects_population instead.
+   Do NOT invent new relation types like "has", "regulates", "inhibits", "activates", or "diagnosed_by".
+   Use "associated_with" for explicit non-causal co-occurrence/correlation findings.
+   Use "prevalence_in" for source-stated prevalence or incidence findings.
    "other" is appropriate only when the core participants and their direction are clear but the type
    genuinely does not map to any named type. Do NOT use "other" as a catch-all for vague spans:
    if the source span is too ambiguous to identify clear core roles, omit the relation entirely."""

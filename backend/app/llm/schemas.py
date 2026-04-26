@@ -36,6 +36,36 @@ _VALID_ENTITY_CATEGORIES: frozenset[str] = frozenset(EntityCategory.__args__)  #
 
 ConfidenceLevel = Literal["high", "medium", "low"]
 
+_STATEMENT_KIND_ALIASES: dict[str, str] = {
+    "conclusion": "finding",
+    "conclusions": "finding",
+    "result": "finding",
+    "results": "finding",
+    "method": "methodology",
+    "methods": "methodology",
+}
+
+_RELATION_TYPE_ALIASES: dict[str, str] = {
+    "associated": "associated_with",
+    "association": "associated_with",
+    "associated_with": "associated_with",
+    "association_with": "associated_with",
+    "correlated_with": "associated_with",
+    "correlates_with": "associated_with",
+    "correlation_with": "associated_with",
+    "linked_to": "associated_with",
+    "related_to": "associated_with",
+    "comorbid_with": "associated_with",
+    "coexists_with": "associated_with",
+    "co_occurs_with": "associated_with",
+    "cooccurs_with": "associated_with",
+    "prevalence_of": "prevalence_in",
+    "prevalence_for": "prevalence_in",
+    "incidence_in": "prevalence_in",
+    "incidence_of": "prevalence_in",
+    "prevalent_in": "prevalence_in",
+}
+
 
 def _normalize_extracted_slug(value: object) -> object:
     """
@@ -57,6 +87,32 @@ def _normalize_extracted_slug(value: object) -> object:
         normalized = f"item-{normalized}"
 
     return normalized or value
+
+
+def _normalize_statement_kind(value: object) -> object:
+    """Map common section-heading aliases onto the canonical statement kinds."""
+    if not isinstance(value, str):
+        return value
+
+    normalized = value.strip().lower().replace(" ", "_")
+    aliased = _STATEMENT_KIND_ALIASES.get(normalized, normalized)
+    if aliased != normalized:
+        logger.warning("Statement kind %r normalized to %r", value, aliased)
+    return aliased
+
+
+def _normalize_relation_type(value: object) -> object:
+    """Map common relation-type aliases onto the controlled vocabulary."""
+    if not isinstance(value, str):
+        return value
+
+    normalized = value.strip().lower()
+    normalized = re.sub(r"[\s-]+", "_", normalized)
+    normalized = re.sub(r"_+", "_", normalized).strip("_")
+    aliased = _RELATION_TYPE_ALIASES.get(normalized, normalized)
+    if aliased != normalized:
+        logger.warning("Relation type %r normalized to %r", value, aliased)
+    return aliased
 
 
 class ExtractedEntity(BaseModel):
@@ -126,6 +182,8 @@ RelationType = Literal[
     "prevents",
     "increases_risk",
     "decreases_risk",
+    "associated_with",
+    "prevalence_in",
     "mechanism",
     "contraindicated",
     "interacts_with",
@@ -144,6 +202,8 @@ _REQUIRED_RELATION_ROLE_GROUPS: dict[str, tuple[tuple[str, ...], ...]] = {
     "prevents": (("agent",), ("target", "outcome")),
     "increases_risk": (("agent", "condition"), ("target", "outcome")),
     "decreases_risk": (("agent", "condition"), ("target", "outcome")),
+    "associated_with": (("target",), ("condition", "population", "study_group")),
+    "prevalence_in": (("target",), ("condition", "population", "control_group", "study_group")),
     "contraindicated": (("agent",), ("target", "condition")),
     "metabolized_by": (("agent",), ("target", "mechanism")),
     "biomarker_for": (("biomarker",), ("target", "condition")),
@@ -216,11 +276,12 @@ class ExtractedRelation(BaseModel):
     @classmethod
     def coerce_relation_type(cls, value: object) -> object:
         """Map unknown relation types to 'other'; the original value is captured in model_proposed_type."""
-        if isinstance(value, str) and value not in _VALID_RELATION_TYPES:
+        normalized = _normalize_relation_type(value)
+        if isinstance(normalized, str) and normalized not in _VALID_RELATION_TYPES:
             logger.warning("Unknown relation_type %r — coercing to 'other'", value)
             # Store the original value in model_proposed_type via model_validator below
             return "other"
-        return value
+        return normalized
 
     @model_validator(mode="before")
     @classmethod
@@ -229,7 +290,8 @@ class ExtractedRelation(BaseModel):
         if not isinstance(data, dict):
             return data
         rt = data.get("relation_type")
-        if isinstance(rt, str) and rt not in _VALID_RELATION_TYPES:
+        normalized = _normalize_relation_type(rt)
+        if isinstance(normalized, str) and normalized not in _VALID_RELATION_TYPES:
             data = dict(data)
             data.setdefault("model_proposed_type", rt)
         return data
@@ -447,6 +509,11 @@ StudyDesign = Literal[
 class ExtractedRelationEvidenceContext(BaseModel):
     """Structured context describing the evidentiary status of an extracted relation."""
 
+    @field_validator("statement_kind", mode="before")
+    @classmethod
+    def normalize_statement_kind(cls, value: object) -> object:
+        return _normalize_statement_kind(value)
+
     @field_validator("study_design", mode="before")
     @classmethod
     def normalize_study_design(cls, value: object) -> object:
@@ -600,6 +667,9 @@ def validate_batch_extraction(data: JsonObject) -> BatchExtractionResponse:
                     object_role = "target"
                 elif relation_type == "measures":
                     subject_role = "measured_by"
+                    object_role = "target"
+                elif relation_type in {"associated_with", "prevalence_in"}:
+                    subject_role = "condition"
                     object_role = "target"
 
                 # Create roles array

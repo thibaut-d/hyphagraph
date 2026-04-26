@@ -96,6 +96,8 @@ async def extract_entities(
     - causes: Drug/disease causes symptom/outcome
     - prevents: Drug/treatment prevents disease/outcome
     - increases_risk / decreases_risk: Risk modulation
+    - associated_with: Non-causal association or co-occurrence
+    - prevalence_in: Prevalence/incidence reported within a population or condition
     - mechanism: Biological mechanism underlying effect
     - contraindicated: Should not be used together
     - interacts_with: Drug-drug interaction

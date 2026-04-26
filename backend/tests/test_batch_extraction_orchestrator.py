@@ -142,6 +142,49 @@ async def test_gleaning_stops_after_duplicate_only_pass() -> None:
 
 
 @pytest.mark.asyncio
+async def test_extract_batch_normalizes_statement_kind_aliases_before_validation() -> None:
+    orchestrator = BatchExtractionOrchestrator(
+        enable_validation=False,
+        max_gleaning_passes=0,
+    )
+    orchestrator.llm = FakeLLM(
+        [
+            {
+                "entities": [
+                    _entity("probiotics", category="treatment"),
+                    _entity("fibromyalgia", category="disease"),
+                    _entity("anxiety", category="outcome"),
+                ],
+                "relations": [
+                    {
+                        "relation_type": "treats",
+                        "roles": [
+                            {"entity_slug": "probiotics", "role_type": "agent"},
+                            {"entity_slug": "anxiety", "role_type": "target"},
+                            {"entity_slug": "fibromyalgia", "role_type": "condition"},
+                        ],
+                        "confidence": "medium",
+                        "text_span": "Conclusions were mixed about probiotic effects on anxiety in fibromyalgia.",
+                        "evidence_context": {
+                            "statement_kind": "conclusion",
+                            "finding_polarity": "mixed",
+                        },
+                    }
+                ],
+            }
+        ]
+    )
+
+    _, relations = await orchestrator.extract_batch(
+        "Conclusions were mixed about probiotic effects on anxiety in fibromyalgia."
+    )
+
+    assert len(relations) == 1
+    assert relations[0].evidence_context is not None
+    assert relations[0].evidence_context.statement_kind == "finding"
+
+
+@pytest.mark.asyncio
 async def test_gleaning_keeps_original_items_when_follow_up_repeats_with_rewrites() -> None:
     orchestrator = BatchExtractionOrchestrator(
         enable_validation=False,
@@ -365,6 +408,144 @@ async def test_semantic_normalizer_upgrades_other_null_efficacy_relation() -> No
     }
     assert relation.evidence_context is not None
     assert relation.evidence_context.finding_polarity == "neutral"
+
+
+@pytest.mark.asyncio
+async def test_semantic_normalizer_upgrades_other_association_relation() -> None:
+    orchestrator = BatchExtractionOrchestrator(
+        enable_validation=False,
+        max_gleaning_passes=0,
+    )
+    orchestrator.llm = FakeLLM(
+        [
+            {
+                "entities": [
+                    _entity("dysautonomia", category="disease"),
+                    _entity("chronic-musculoskeletal-pain", category="disease"),
+                ],
+                "relations": [
+                    {
+                        "relation_type": "other",
+                        "roles": [
+                            {"entity_slug": "dysautonomia", "role_type": "target", "source_mention": "dysautonomia"},
+                            {
+                                "entity_slug": "chronic-musculoskeletal-pain",
+                                "role_type": "condition",
+                                "source_mention": "chronic musculoskeletal pain",
+                            },
+                        ],
+                        "confidence": "high",
+                        "text_span": "The high prevalence of dysautonomia in patients with chronic musculoskeletal painful conditions illustrates the association between dysautonomia and chronic pain.",
+                        "evidence_context": {
+                            "statement_kind": "finding",
+                            "finding_polarity": "supports",
+                        },
+                    }
+                ],
+            }
+        ]
+    )
+
+    _, relations = await orchestrator.extract_batch(
+        "The high prevalence of dysautonomia in patients with chronic musculoskeletal painful conditions illustrates the association between dysautonomia and chronic pain."
+    )
+
+    assert len(relations) == 1
+    assert relations[0].relation_type == "associated_with"
+
+
+@pytest.mark.asyncio
+async def test_semantic_normalizer_upgrades_other_prevalence_relation() -> None:
+    orchestrator = BatchExtractionOrchestrator(
+        enable_validation=False,
+        max_gleaning_passes=0,
+    )
+    orchestrator.llm = FakeLLM(
+        [
+            {
+                "entities": [
+                    _entity("dysautonomia", category="disease"),
+                    _entity(
+                        "people-with-chronic-musculoskeletal-pain",
+                        category="population",
+                    ),
+                ],
+                "relations": [
+                    {
+                        "relation_type": "other",
+                        "roles": [
+                            {"entity_slug": "dysautonomia", "role_type": "target", "source_mention": "dysautonomia"},
+                            {
+                                "entity_slug": "people-with-chronic-musculoskeletal-pain",
+                                "role_type": "population",
+                                "source_mention": "people with chronic musculoskeletal pain",
+                            },
+                        ],
+                        "confidence": "high",
+                        "text_span": "In people with chronic musculoskeletal pain, the pooled prevalence of dysautonomia was 64%.",
+                        "evidence_context": {
+                            "statement_kind": "finding",
+                            "finding_polarity": "supports",
+                        },
+                    }
+                ],
+            }
+        ]
+    )
+
+    _, relations = await orchestrator.extract_batch(
+        "In people with chronic musculoskeletal pain, the pooled prevalence of dysautonomia was 64%."
+    )
+
+    assert len(relations) == 1
+    assert relations[0].relation_type == "prevalence_in"
+
+
+@pytest.mark.asyncio
+async def test_semantic_normalizer_drops_ambiguous_other_relation_without_focal_target() -> None:
+    orchestrator = BatchExtractionOrchestrator(
+        enable_validation=False,
+        max_gleaning_passes=0,
+    )
+    orchestrator.llm = FakeLLM(
+        [
+            {
+                "entities": [
+                    _entity("pain", category="symptom"),
+                    _entity("fatigue", category="symptom"),
+                    _entity("dizziness", category="symptom"),
+                    _entity("autonomic-dysfunction", category="disease"),
+                ],
+                "relations": [
+                    {
+                        "relation_type": "other",
+                        "roles": [
+                            {"entity_slug": "pain", "role_type": "agent", "source_mention": "pain"},
+                            {"entity_slug": "fatigue", "role_type": "agent", "source_mention": "fatigue"},
+                            {"entity_slug": "dizziness", "role_type": "agent", "source_mention": "dizziness"},
+                            {
+                                "entity_slug": "autonomic-dysfunction",
+                                "role_type": "condition",
+                                "source_mention": "autonomic dysfunction",
+                            },
+                        ],
+                        "confidence": "medium",
+                        "text_span": "Several chronic musculoskeletal disorders are characterized by pain, fatigue, dizziness and other associated symptoms that may be related to autonomic dysfunction.",
+                        "evidence_context": {
+                            "statement_kind": "background",
+                            "finding_polarity": "uncertain",
+                        },
+                    }
+                ],
+            }
+        ]
+    )
+
+    _, relations = await orchestrator.extract_batch(
+        "Several chronic musculoskeletal disorders are characterized by pain, fatigue, dizziness and other associated symptoms that may be related to autonomic dysfunction."
+    )
+
+    assert relations == []
 
 
 @pytest.mark.asyncio

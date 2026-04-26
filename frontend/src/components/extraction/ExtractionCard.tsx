@@ -81,6 +81,8 @@ const REQUIRED_RELATION_ROLE_GROUPS: Record<string, string[][]> = {
   prevents: [["agent"], ["target", "outcome"]],
   increases_risk: [["agent", "condition"], ["target", "outcome"]],
   decreases_risk: [["agent", "condition"], ["target", "outcome"]],
+  associated_with: [["target"], ["condition", "population", "study_group"]],
+  prevalence_in: [["target"], ["condition", "population", "control_group", "study_group"]],
   contraindicated: [["agent"], ["target", "condition"]],
   metabolized_by: [["agent"], ["target", "mechanism"]],
   biomarker_for: [["biomarker"], ["target", "condition"]],

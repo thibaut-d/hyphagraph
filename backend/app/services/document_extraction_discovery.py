@@ -293,7 +293,7 @@ async def run_smart_discovery(
         )
 
     sorted_results = sorted(
-        all_results,
+        [r for r in all_results if not r.already_imported],
         key=lambda item: (item.trust_level, item.relevance_score),
         reverse=True,
     )

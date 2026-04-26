@@ -128,6 +128,57 @@ def test_validate_batch_extraction_normalizes_textual_sample_size_to_integer():
     assert result.relations[0].evidence_context.sample_size == 1474
 
 
+@pytest.mark.parametrize(
+    ("raw_statement_kind", "expected_statement_kind"),
+    [
+        ("conclusion", "finding"),
+        ("results", "finding"),
+        ("methods", "methodology"),
+    ],
+)
+def test_validate_batch_extraction_normalizes_statement_kind_section_heading_aliases(
+    raw_statement_kind: str,
+    expected_statement_kind: str,
+):
+    result = validate_batch_extraction(
+        {
+            "entities": [
+                {
+                    "slug": "probiotics",
+                    "summary": "Probiotics are the intervention discussed in the source.",
+                    "category": "treatment",
+                    "confidence": "high",
+                    "text_span": "probiotics",
+                },
+                {
+                    "slug": "fibromyalgia",
+                    "summary": "Fibromyalgia is the target condition in the source.",
+                    "category": "disease",
+                    "confidence": "high",
+                    "text_span": "fibromyalgia",
+                },
+            ],
+            "relations": [
+                {
+                    "relation_type": "treats",
+                    "roles": [
+                        {"entity_slug": "probiotics", "role_type": "agent"},
+                        {"entity_slug": "fibromyalgia", "role_type": "target"},
+                    ],
+                    "confidence": "medium",
+                    "text_span": "Probiotics were evaluated in people with fibromyalgia.",
+                    "evidence_context": {
+                        "statement_kind": raw_statement_kind,
+                    },
+                }
+            ],
+        }
+    )
+
+    assert result.relations[0].evidence_context is not None
+    assert result.relations[0].evidence_context.statement_kind == expected_statement_kind
+
+
 def test_validate_batch_extraction_accepts_legacy_study_context_but_serializes_evidence_context():
     result = validate_batch_extraction(
         {
@@ -217,6 +268,53 @@ def test_validate_batch_extraction_preserves_optional_role_source_mentions():
     assert result.relations[0].roles[1].source_mention == "pain"
 
 
+@pytest.mark.parametrize(
+    ("raw_relation_type", "expected_relation_type"),
+    [
+        ("associated_with", "associated_with"),
+        ("correlates_with", "associated_with"),
+        ("prevalence_of", "prevalence_in"),
+    ],
+)
+def test_validate_batch_extraction_normalizes_relation_type_aliases(
+    raw_relation_type: str,
+    expected_relation_type: str,
+):
+    result = validate_batch_extraction(
+        {
+            "entities": [
+                {
+                    "slug": "dysautonomia",
+                    "summary": "Dysautonomia is the focal phenomenon measured in the source.",
+                    "category": "disease",
+                    "confidence": "high",
+                    "text_span": "dysautonomia",
+                },
+                {
+                    "slug": "fibromyalgia",
+                    "summary": "Fibromyalgia is the condition discussed in the source.",
+                    "category": "disease",
+                    "confidence": "high",
+                    "text_span": "fibromyalgia",
+                },
+            ],
+            "relations": [
+                {
+                    "relation_type": raw_relation_type,
+                    "roles": [
+                        {"entity_slug": "dysautonomia", "role_type": "target"},
+                        {"entity_slug": "fibromyalgia", "role_type": "condition"},
+                    ],
+                    "confidence": "medium",
+                    "text_span": "Dysautonomia was associated with fibromyalgia.",
+                }
+            ],
+        }
+    )
+
+    assert result.relations[0].relation_type == expected_relation_type
+
+
 def test_validate_batch_extraction_rejects_causes_relation_without_agent():
     with pytest.raises(ValidationError) as exc_info:
         validate_batch_extraction(
@@ -246,6 +344,43 @@ def test_validate_batch_extraction_rejects_causes_relation_without_agent():
                         ],
                         "confidence": "medium",
                         "text_span": "adverse events experienced by participants were not serious",
+                    }
+                ],
+            }
+        )
+
+    assert "missing required core roles" in str(exc_info.value)
+
+
+def test_validate_batch_extraction_rejects_associated_with_without_context_role():
+    with pytest.raises(ValidationError) as exc_info:
+        validate_batch_extraction(
+            {
+                "entities": [
+                    {
+                        "slug": "dysautonomia",
+                        "summary": "Dysautonomia is the focal phenomenon measured in the source.",
+                        "category": "disease",
+                        "confidence": "high",
+                        "text_span": "dysautonomia",
+                    },
+                    {
+                        "slug": "chronic-pain",
+                        "summary": "Chronic pain is the condition discussed in the source.",
+                        "category": "disease",
+                        "confidence": "high",
+                        "text_span": "chronic pain",
+                    },
+                ],
+                "relations": [
+                    {
+                        "relation_type": "associated_with",
+                        "roles": [
+                            {"entity_slug": "dysautonomia", "role_type": "target"},
+                            {"entity_slug": "chronic-pain", "role_type": "agent"},
+                        ],
+                        "confidence": "medium",
+                        "text_span": "Dysautonomia was associated with chronic pain.",
                     }
                 ],
             }
