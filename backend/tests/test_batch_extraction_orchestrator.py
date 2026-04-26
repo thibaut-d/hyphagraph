@@ -549,6 +549,46 @@ async def test_semantic_normalizer_drops_ambiguous_other_relation_without_focal_
 
 
 @pytest.mark.asyncio
+async def test_incomplete_associated_with_relation_is_downgraded_then_reclassified_to_treats() -> None:
+    orchestrator = BatchExtractionOrchestrator(
+        enable_validation=False,
+        max_gleaning_passes=0,
+    )
+    orchestrator.llm = FakeLLM(
+        [
+            {
+                "entities": [
+                    _entity("probiotics", category="treatment"),
+                    _entity("sleep", category="outcome"),
+                ],
+                "relations": [
+                    {
+                        "relation_type": "associated_with",
+                        "roles": [
+                            {"entity_slug": "probiotics", "role_type": "agent", "source_mention": "probiotics"},
+                            {"entity_slug": "sleep", "role_type": "target", "source_mention": "sleep"},
+                        ],
+                        "confidence": "medium",
+                        "text_span": "Probiotics were associated with improvements in sleep.",
+                        "evidence_context": {
+                            "statement_kind": "finding",
+                            "finding_polarity": "supports",
+                        },
+                    }
+                ],
+            }
+        ]
+    )
+
+    _, relations = await orchestrator.extract_batch(
+        "Probiotics were associated with improvements in sleep."
+    )
+
+    assert len(relations) == 1
+    assert relations[0].relation_type == "treats"
+
+
+@pytest.mark.asyncio
 async def test_semantic_normalizer_rewrites_intervention_group_entity_slug_and_role_reference() -> None:
     orchestrator = BatchExtractionOrchestrator(
         enable_validation=False,

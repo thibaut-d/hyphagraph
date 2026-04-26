@@ -254,6 +254,7 @@ class ExtractedRole(BaseModel):
 
 
 _VALID_RELATION_TYPES: frozenset[str] = frozenset(RelationType.__args__)  # type: ignore[attr-defined]
+_OBSERVATIONAL_RELATION_TYPES = {"associated_with", "prevalence_in"}
 
 
 class ExtractedRelation(BaseModel):
@@ -347,6 +348,21 @@ class ExtractedRelation(BaseModel):
             self.relation_type,
             [role.role_type for role in self.roles],
         )
+        if (
+            missing_role_groups
+            and self.relation_type in _OBSERVATIONAL_RELATION_TYPES
+            and self._can_downgrade_incomplete_observational_relation(missing_role_groups)
+        ):
+            logger.warning(
+                "Downgrading incomplete observational relation %r to 'other' before batch validation",
+                self.relation_type,
+            )
+            return self.model_copy(
+                update={
+                    "relation_type": "other",
+                    "model_proposed_type": self.model_proposed_type or self.relation_type,
+                }
+            )
         if missing_role_groups:
             missing_labels = [
                 " or ".join(role_group)
@@ -357,6 +373,17 @@ class ExtractedRelation(BaseModel):
                 f"{', '.join(missing_labels)}"
             )
         return self
+
+    def _can_downgrade_incomplete_observational_relation(
+        self,
+        missing_role_groups: list[tuple[str, ...]],
+    ) -> bool:
+        role_types = {role.role_type for role in self.roles}
+        if "target" not in role_types:
+            return False
+
+        allowed_missing_role_types = {"condition", "population", "study_group", "control_group"}
+        return all(set(role_group).issubset(allowed_missing_role_types) for role_group in missing_role_groups)
 
 
 class RelationExtractionResponse(BaseModel):

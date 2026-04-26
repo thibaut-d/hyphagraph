@@ -9,6 +9,7 @@ Read policy:
 - Do not load all docs by default.
 - Start with the smallest relevant context set.
 - Use `docs/` as the detailed source of truth.
+- Store future feature ideas in `docs/ideas/`.
 - If a task matches a command workflow, read the matching file in `docs/commands/`.
 
 Default entry set:
