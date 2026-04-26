@@ -25,8 +25,8 @@ def upgrade() -> None:
             (
                 'associated_with',
                 '{"en": "Associated With"}',
-                'Explicit non-causal association, correlation, co-occurrence, or comorbidity',
-                'dysautonomia associated_with fibromyalgia',
+                '"Explicit non-causal association, correlation, co-occurrence, or comorbidity"',
+                '"dysautonomia associated_with fibromyalgia"',
                 '["correlates_with", "related_to", "linked_to", "comorbid_with"]',
                 true,
                 true,
@@ -35,8 +35,8 @@ def upgrade() -> None:
             (
                 'prevalence_in',
                 '{"en": "Prevalence In"}',
-                'Source-stated prevalence or incidence of a phenomenon within a population or condition',
-                'dysautonomia prevalence_in chronic-musculoskeletal-pain',
+                '"Source-stated prevalence or incidence of a phenomenon within a population or condition"',
+                '"dysautonomia prevalence_in chronic-musculoskeletal-pain"',
                 '["prevalence_of", "incidence_in", "prevalent_in"]',
                 true,
                 true,
