@@ -1,7 +1,7 @@
 """Add entity_categories table with built-in seed data
 
 Revision ID: 024
-Revises: 023
+Revises: 023_rm_legacy_claim_extractions
 Create Date: 2026-04-21
 """
 from alembic import op
@@ -10,7 +10,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 import json
 
 revision = "024"
-down_revision = "023"
+down_revision = "023_rm_legacy_claim_extractions"
 branch_labels = None
 depends_on = None
 
