@@ -1,7 +1,7 @@
 """add observational relation types
 
 Revision ID: 025_add_observational_relation_types
-Revises: 024_add_entity_categories
+Revises: 024
 Create Date: 2026-04-26 16:15:00.000000
 """
 
@@ -10,7 +10,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "025_add_observational_relation_types"
-down_revision = "024_add_entity_categories"
+down_revision = "024"
 branch_labels = None
 depends_on = None
 
