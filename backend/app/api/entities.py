@@ -13,7 +13,7 @@ from app.schemas.entity import (
     EntityWrite,
     EntityRead,
 )
-from app.schemas.entity_merge import EntityMergeResult
+from app.schemas.entity_merge import EntityMergeCandidate, EntityMergeResult
 from app.schemas.filters import EntityFilters, EntityFilterOptions
 from app.schemas.pagination import PaginatedResponse
 from app.services.entity_service import EntityService
@@ -156,6 +156,32 @@ async def list_entities(
         limit=limit,
         offset=offset
     )
+
+
+@router.get("/merge-candidates", response_model=list[EntityMergeCandidate])
+async def list_entity_merge_candidates(
+    similarity_threshold: float = Query(
+        0.86,
+        description="Minimum slug similarity for duplicate-entity candidates",
+        ge=0.0,
+        le=1.0,
+    ),
+    limit: int = Query(50, description="Maximum number of candidates", ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    _current_user=Depends(get_current_active_superuser),
+):
+    """
+    List possible duplicate entity nodes for graph-cleaning review.
+
+    This endpoint is a dry-run suggestion surface. It does not merge entities and
+    LLM or heuristic output must be reviewed by a superuser before mutation.
+    """
+    merge_service = EntityMergeService(db)
+    return await merge_service.list_merge_candidates(
+        similarity_threshold=similarity_threshold,
+        limit=limit,
+    )
+
 
 @router.get("/{entity_ref}", response_model=EntityRead)
 async def get_entity(

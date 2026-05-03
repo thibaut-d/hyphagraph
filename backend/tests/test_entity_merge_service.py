@@ -7,9 +7,11 @@ from app.models.relation import Relation
 from app.models.relation_revision import RelationRevision
 from app.models.relation_role_revision import RelationRoleRevision
 from app.schemas.entity import EntityWrite
+from app.schemas.relation import RelationWrite, RoleRevisionWrite
 from app.schemas.source import SourceWrite
 from app.services.entity_merge_service import EntityMergeService
 from app.services.entity_service import EntityService
+from app.services.relation_service import RelationService
 from app.services.source_service import SourceService
 
 
@@ -25,8 +27,7 @@ class TestEntityMergeService:
         duplicates = await merge_service.find_potential_duplicates(similarity_threshold=0.8)
 
         assert any(
-            left_id == entity_one.id
-            and right_id == entity_two.id
+            {left_id, right_id} == {entity_one.id, entity_two.id}
             and similarity == pytest.approx(0.9333333333)
             for left_id, right_id, similarity in duplicates
         )
@@ -119,6 +120,91 @@ class TestEntityMergeService:
         assert actions[0].action == "merge"
         assert actions[0].source_slug == "fibromyalgia-a"
         assert actions[0].target_slug == "fibromyalgia"
+
+    async def test_list_merge_candidates_returns_reviewable_entities(self, db_session):
+        entity_service = EntityService(db_session)
+        merge_service = EntityMergeService(db_session)
+
+        source = await entity_service.create(
+            EntityWrite(slug="fibromyalgia-syndrome", summary={"en": "Longer duplicate"})
+        )
+        target = await entity_service.create(
+            EntityWrite(slug="fibromyalgia", summary={"en": "Canonical entity"})
+        )
+
+        candidates = await merge_service.list_merge_candidates(similarity_threshold=0.7)
+
+        assert len(candidates) == 1
+        candidate = candidates[0]
+        assert candidate.source.id == source.id
+        assert candidate.source.slug == "fibromyalgia-syndrome"
+        assert candidate.target.id == target.id
+        assert candidate.target.slug == "fibromyalgia"
+        assert candidate.similarity > 0.7
+        assert candidate.reason == "One slug contains the other"
+        assert candidate.score_factors["slug_similarity"] < round(candidate.similarity, 4)
+        assert candidate.score_factors["contains_slug"] is True
+        assert candidate.score_factors["both_have_summary"] is True
+
+    async def test_list_merge_candidates_scores_terms_summaries_neighborhoods_and_sources(self, db_session):
+        entity_service = EntityService(db_session)
+        source_service = SourceService(db_session)
+        relation_service = RelationService(db_session)
+        merge_service = EntityMergeService(db_session)
+
+        source = await entity_service.create(
+            EntityWrite(
+                slug="acetylsalicylic-acid",
+                summary={"en": "A salicylate analgesic used for pain and inflammation."},
+            )
+        )
+        target = await entity_service.create(
+            EntityWrite(
+                slug="aspirin",
+                summary={"en": "A salicylate medicine used for pain and inflammation."},
+            )
+        )
+        condition = await entity_service.create(EntityWrite(slug="headache"))
+        evidence_source = await source_service.create(
+            SourceWrite(kind="study", title="Aspirin duplicate context", url="https://example.com/aspirin-context")
+        )
+        db_session.add(
+            EntityTerm(
+                entity_id=source.id,
+                term="aspirin",
+                language="en",
+                display_order=0,
+            )
+        )
+        await db_session.commit()
+
+        for entity in (source, target):
+            await relation_service.create(
+                RelationWrite(
+                    source_id=evidence_source.id,
+                    kind="treats",
+                    direction="supports",
+                    confidence=0.8,
+                    roles=[
+                        RoleRevisionWrite(entity_id=entity.id, role_type="agent"),
+                        RoleRevisionWrite(entity_id=condition.id, role_type="target"),
+                    ],
+                )
+            )
+
+        candidates = await merge_service.list_merge_candidates(similarity_threshold=0.99)
+
+        candidate = next(
+            item
+            for item in candidates
+            if {item.source.id, item.target.id} == {source.id, target.id}
+        )
+        assert candidate.reason == "Exact or alias-level term match"
+        assert candidate.similarity == 1.0
+        assert candidate.score_factors["term_similarity"] == 1.0
+        assert candidate.score_factors["summary_token_overlap"] > 0
+        assert candidate.score_factors["shared_relation_neighbors"] == 1
+        assert candidate.score_factors["shared_sources"] == 1
 
     async def test_circular_merge_is_rejected(self, db_session):
         """merge_entities raises ValueError when a reverse merge already exists (A→B then B→A)."""

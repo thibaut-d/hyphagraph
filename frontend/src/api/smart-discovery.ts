@@ -1,4 +1,5 @@
 import { apiFetch } from "./client";
+import type { JobStartResponse } from "./longRunningJobs";
 import type { PubMedBulkImportRequest, PubMedBulkImportResponse } from "../types/pubmed";
 
 export interface SmartDiscoveryRequest {
@@ -32,6 +33,18 @@ export interface SmartDiscoveryResponse {
 
 export function smartDiscovery(request: SmartDiscoveryRequest): Promise<SmartDiscoveryResponse> {
   return apiFetch("/smart-discovery", {
+    method: "POST",
+    body: JSON.stringify({
+      entity_slugs: request.entity_slugs,
+      max_results: request.max_results ?? 20,
+      min_quality: request.min_quality ?? 0.5,
+      databases: request.databases ?? ["pubmed"],
+    }),
+  });
+}
+
+export function startSmartDiscoveryJob(request: SmartDiscoveryRequest): Promise<JobStartResponse> {
+  return apiFetch("/smart-discovery/jobs", {
     method: "POST",
     body: JSON.stringify({
       entity_slugs: request.entity_slugs,

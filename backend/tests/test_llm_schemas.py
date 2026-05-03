@@ -392,41 +392,41 @@ def test_validate_batch_extraction_downgrades_incomplete_observational_relation_
     assert result.relations[0].model_proposed_type == relation_type
 
 
-def test_validate_batch_extraction_still_rejects_observational_relation_without_target():
-    with pytest.raises(ValidationError) as exc_info:
-        validate_batch_extraction(
-            {
-                "entities": [
-                    {
-                        "slug": "dysautonomia",
-                        "summary": "Dysautonomia is the focal phenomenon measured in the source.",
-                        "category": "disease",
-                        "confidence": "high",
-                        "text_span": "dysautonomia",
-                    },
-                    {
-                        "slug": "chronic-pain",
-                        "summary": "Chronic pain is the condition discussed in the source.",
-                        "category": "disease",
-                        "confidence": "high",
-                        "text_span": "chronic pain",
-                    },
-                ],
-                "relations": [
-                    {
-                        "relation_type": "associated_with",
-                        "roles": [
-                            {"entity_slug": "dysautonomia", "role_type": "agent"},
-                            {"entity_slug": "chronic-pain", "role_type": "condition"},
-                        ],
-                        "confidence": "medium",
-                        "text_span": "Dysautonomia was associated with chronic pain.",
-                    }
-                ],
-            }
-        )
+def test_validate_batch_extraction_downgrades_observational_relation_without_target():
+    result = validate_batch_extraction(
+        {
+            "entities": [
+                {
+                    "slug": "dysautonomia",
+                    "summary": "Dysautonomia is the focal phenomenon measured in the source.",
+                    "category": "disease",
+                    "confidence": "high",
+                    "text_span": "dysautonomia",
+                },
+                {
+                    "slug": "chronic-pain",
+                    "summary": "Chronic pain is the condition discussed in the source.",
+                    "category": "disease",
+                    "confidence": "high",
+                    "text_span": "chronic pain",
+                },
+            ],
+            "relations": [
+                {
+                    "relation_type": "associated_with",
+                    "roles": [
+                        {"entity_slug": "dysautonomia", "role_type": "agent"},
+                        {"entity_slug": "chronic-pain", "role_type": "condition"},
+                    ],
+                    "confidence": "medium",
+                    "text_span": "Dysautonomia was associated with chronic pain.",
+                }
+            ],
+        }
+    )
 
-    assert "missing required core roles" in str(exc_info.value)
+    assert result.relations[0].relation_type == "other"
+    assert result.relations[0].model_proposed_type == "associated_with"
 
 
 def test_validate_batch_extraction_normalizes_verbose_study_design_phrases():

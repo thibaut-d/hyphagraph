@@ -79,6 +79,8 @@ from app.models.user import User  # noqa: F401
 from app.models.refresh_token import RefreshToken  # noqa: F401
 from app.models.entity import Entity  # noqa: F401
 from app.models.entity_merge_record import EntityMergeRecord  # noqa: F401
+from app.models.graph_cleaning_decision import GraphCleaningDecision  # noqa: F401
+from app.models.long_running_job import LongRunningJob  # noqa: F401
 from app.models.entity_revision import EntityRevision  # noqa: F401
 from app.models.entity_term import EntityTerm  # noqa: F401
 from app.models.ui_category import UiCategory  # noqa: F401

@@ -351,7 +351,6 @@ class ExtractedRelation(BaseModel):
         if (
             missing_role_groups
             and self.relation_type in _OBSERVATIONAL_RELATION_TYPES
-            and self._can_downgrade_incomplete_observational_relation(missing_role_groups)
         ):
             logger.warning(
                 "Downgrading incomplete observational relation %r to 'other' before batch validation",
@@ -373,17 +372,6 @@ class ExtractedRelation(BaseModel):
                 f"{', '.join(missing_labels)}"
             )
         return self
-
-    def _can_downgrade_incomplete_observational_relation(
-        self,
-        missing_role_groups: list[tuple[str, ...]],
-    ) -> bool:
-        role_types = {role.role_type for role in self.roles}
-        if "target" not in role_types:
-            return False
-
-        allowed_missing_role_types = {"condition", "population", "study_group", "control_group"}
-        return all(set(role_group).issubset(allowed_missing_role_types) for role_group in missing_role_groups)
 
 
 class RelationExtractionResponse(BaseModel):

@@ -589,6 +589,228 @@ async def test_incomplete_associated_with_relation_is_downgraded_then_reclassifi
 
 
 @pytest.mark.asyncio
+async def test_incomplete_associated_with_relation_without_target_does_not_abort_batch() -> None:
+    orchestrator = BatchExtractionOrchestrator(
+        enable_validation=False,
+        max_gleaning_passes=0,
+    )
+    orchestrator.llm = FakeLLM(
+        [
+            {
+                "entities": [
+                    _entity("glp-1ra-users", category="population"),
+                    _entity("semaglutide", category="drug"),
+                ],
+                "relations": [
+                    {
+                        "relation_type": "associated_with",
+                        "roles": [
+                            {
+                                "entity_slug": "glp-1ra-users",
+                                "role_type": "population",
+                                "source_mention": "GLP-1RA users",
+                            },
+                            {
+                                "entity_slug": "semaglutide",
+                                "role_type": "agent",
+                                "source_mention": "semaglutide",
+                            },
+                        ],
+                        "confidence": "medium",
+                        "text_span": "Semaglutide was common among GLP-1RA users at baseline.",
+                        "evidence_context": {
+                            "statement_kind": "finding",
+                            "finding_polarity": "supports",
+                        },
+                    }
+                ],
+            }
+        ]
+    )
+
+    _, relations = await orchestrator.extract_batch(
+        "Semaglutide was common among GLP-1RA users at baseline."
+    )
+
+    assert relations == []
+
+
+@pytest.mark.asyncio
+async def test_reduced_odds_association_is_reclassified_to_decreases_risk() -> None:
+    orchestrator = BatchExtractionOrchestrator(
+        enable_validation=False,
+        max_gleaning_passes=0,
+    )
+    orchestrator.llm = FakeLLM(
+        [
+            {
+                "entities": [
+                    _entity("glp-1-receptor-agonists", category="drug"),
+                    _entity("opioid-prescription", category="outcome"),
+                    _entity("patients-with-fibromyalgia", category="population"),
+                    _entity("non-glp-1ra-users", category="population"),
+                ],
+                "relations": [
+                    {
+                        "relation_type": "other",
+                        "roles": [
+                            {
+                                "entity_slug": "glp-1-receptor-agonists",
+                                "role_type": "agent",
+                                "source_mention": "GLP-1RA use",
+                            },
+                            {
+                                "entity_slug": "opioid-prescription",
+                                "role_type": "target",
+                                "source_mention": "opioid prescription",
+                            },
+                            {
+                                "entity_slug": "patients-with-fibromyalgia",
+                                "role_type": "population",
+                                "source_mention": "patients with fibromyalgia",
+                            },
+                            {
+                                "entity_slug": "non-glp-1ra-users",
+                                "role_type": "control_group",
+                                "source_mention": "non-GLP-1RA users",
+                            },
+                        ],
+                        "confidence": "high",
+                        "text_span": "GLP-1RA use was associated with significantly reduced odds of opioid prescription (OR 0.65).",
+                        "evidence_context": {
+                            "statement_kind": "finding",
+                            "finding_polarity": "supports",
+                            "study_design": "cohort_study",
+                        },
+                    }
+                ],
+            }
+        ]
+    )
+
+    _, relations = await orchestrator.extract_batch(
+        "GLP-1RA use was associated with significantly reduced odds of opioid prescription (OR 0.65)."
+    )
+
+    assert len(relations) == 1
+    assert relations[0].relation_type == "decreases_risk"
+
+
+@pytest.mark.asyncio
+async def test_baseline_covariate_association_is_dropped() -> None:
+    orchestrator = BatchExtractionOrchestrator(
+        enable_validation=False,
+        max_gleaning_passes=0,
+    )
+    orchestrator.llm = FakeLLM(
+        [
+            {
+                "entities": [
+                    _entity("glp-1-receptor-agonists", category="drug"),
+                    _entity("body-mass-index", category="biomarker"),
+                    _entity("patients-with-fibromyalgia", category="population"),
+                    _entity("non-glp-1ra-users", category="population"),
+                ],
+                "relations": [
+                    {
+                        "relation_type": "associated_with",
+                        "roles": [
+                            {
+                                "entity_slug": "glp-1-receptor-agonists",
+                                "role_type": "agent",
+                                "source_mention": "GLP-1RA",
+                            },
+                            {
+                                "entity_slug": "body-mass-index",
+                                "role_type": "target",
+                                "source_mention": "BMI",
+                            },
+                            {
+                                "entity_slug": "patients-with-fibromyalgia",
+                                "role_type": "population",
+                                "source_mention": "patients",
+                            },
+                            {
+                                "entity_slug": "non-glp-1ra-users",
+                                "role_type": "control_group",
+                                "source_mention": "non-GLP-1RA users",
+                            },
+                        ],
+                        "confidence": "high",
+                        "text_span": "Baseline characteristics were well matched, though BMI was higher in the GLP-1RA cohort than in non-GLP-1RA users.",
+                        "evidence_context": {
+                            "statement_kind": "finding",
+                            "finding_polarity": "supports",
+                            "study_design": "cohort_study",
+                        },
+                    }
+                ],
+            }
+        ]
+    )
+
+    _, relations = await orchestrator.extract_batch(
+        "Baseline characteristics were well matched, though BMI was higher in the GLP-1RA cohort than in non-GLP-1RA users."
+    )
+
+    assert relations == []
+
+
+@pytest.mark.asyncio
+async def test_speculative_symptom_burden_summary_relation_is_dropped() -> None:
+    orchestrator = BatchExtractionOrchestrator(
+        enable_validation=False,
+        max_gleaning_passes=0,
+    )
+    orchestrator.llm = FakeLLM(
+        [
+            {
+                "entities": [
+                    _entity("glp-1-receptor-agonists", category="drug"),
+                    _entity("symptom-burden", category="outcome"),
+                    _entity("fibromyalgia", category="disease"),
+                ],
+                "relations": [
+                    {
+                        "relation_type": "associated_with",
+                        "roles": [
+                            {
+                                "entity_slug": "glp-1-receptor-agonists",
+                                "role_type": "agent",
+                                "source_mention": "GLP-1RA use",
+                            },
+                            {
+                                "entity_slug": "symptom-burden",
+                                "role_type": "target",
+                                "source_mention": "symptom burden",
+                            },
+                            {
+                                "entity_slug": "fibromyalgia",
+                                "role_type": "condition",
+                                "source_mention": "fibromyalgia",
+                            },
+                        ],
+                        "confidence": "medium",
+                        "text_span": "GLP-1RA use was associated with reduced opioid prescription and a reduction in ICD-10 codes related to fibromyalgia, potentially reflecting lower symptom burden.",
+                        "evidence_context": {
+                            "statement_kind": "finding",
+                            "finding_polarity": "uncertain",
+                            "study_design": "cohort_study",
+                        },
+                    }
+                ],
+            }
+        ]
+    )
+
+    _, relations = await orchestrator.extract_batch(
+        "GLP-1RA use was associated with reduced opioid prescription and a reduction in ICD-10 codes related to fibromyalgia, potentially reflecting lower symptom burden."
+    )
+
+    assert relations == []
+
+
+@pytest.mark.asyncio
 async def test_semantic_normalizer_rewrites_intervention_group_entity_slug_and_role_reference() -> None:
     orchestrator = BatchExtractionOrchestrator(
         enable_validation=False,

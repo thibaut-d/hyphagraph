@@ -2,18 +2,22 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Callable
+from collections.abc import Awaitable, Callable
 from uuid import UUID
 
 logger = logging.getLogger(__name__)
 
-from sqlalchemy import select
+from sqlalchemy import String, and_, cast, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.entity_revision import EntityRevision
 from app.models.source_revision import SourceRevision
+from app.models.staged_extraction import StagedExtraction
+from app.models.source import Source
+from app.schemas.source import DocumentExtractionPreview
 from app.schemas.source import SourceWrite
+from app.services.document_extraction_processing import build_extraction_preview
 from app.services.pubmed_fetcher import PubMedArticle, PubMedFetcher
 from app.services.source_service import SourceService
 
@@ -64,6 +68,43 @@ class SmartDiscoverySummary:
     databases_searched: list[str]
 
 
+@dataclass
+class BulkSourceExtractionCandidate:
+    source_id: UUID
+    title: str
+    document_text: str
+
+
+@dataclass
+class BulkSourceExtractionItem:
+    source_id: UUID
+    title: str
+    status: str
+    entity_count: int = 0
+    relation_count: int = 0
+    needs_review_count: int = 0
+    auto_verified_count: int = 0
+    error: str | None = None
+
+
+@dataclass
+class BulkSourceExtractionSummary:
+    search: str
+    study_budget: int
+    matched_count: int
+    selected_count: int
+    extracted_count: int
+    failed_count: int
+    skipped_count: int
+    results: list[BulkSourceExtractionItem]
+
+
+BulkExtractionPreviewBuilder = Callable[
+    [AsyncSession, UUID, str],
+    Awaitable[DocumentExtractionPreview],
+]
+
+
 def calculate_relevance(text: str, entity_names: list[str]) -> float:
     text_lower = text.lower()
     mentions = sum(1 for name in entity_names if name.lower() in text_lower)
@@ -85,6 +126,139 @@ def build_entity_query_clause(entity_slug: str) -> str:
     if len(query_terms) == 1:
         return query_terms[0]
     return f"({' OR '.join(query_terms)})"
+
+
+async def find_unextracted_source_candidates(
+    db: AsyncSession,
+    *,
+    search: str,
+    limit: int,
+) -> tuple[list[BulkSourceExtractionCandidate], int]:
+    """
+    Find imported studies matching search that have document text and no staged extraction.
+
+    A source with any staged extraction row is treated as already extracted. This keeps bulk
+    selection conservative and avoids duplicate staged LLM outputs.
+    """
+    search_term = " ".join(search.strip().split())
+    search_words = search_term.split()
+    already_extracted = exists().where(StagedExtraction.source_id == Source.id)
+    search_conditions = []
+    for word in search_words:
+        search_pattern = f"%{word}%"
+        search_conditions.append(
+            or_(
+                SourceRevision.title.ilike(search_pattern),
+                SourceRevision.origin.ilike(search_pattern),
+                cast(SourceRevision.authors, String).ilike(search_pattern),
+                cast(SourceRevision.summary, String).ilike(search_pattern),
+                SourceRevision.document_text.ilike(search_pattern),
+            )
+        )
+    base_query = (
+        select(Source.id, SourceRevision.title, SourceRevision.document_text)
+        .join(SourceRevision, Source.id == SourceRevision.source_id)
+        .where(SourceRevision.is_current == True)
+        .where(SourceRevision.status == "confirmed")
+        .where(SourceRevision.kind == "study")
+        .where(SourceRevision.document_text.is_not(None))
+        .where(func.length(func.trim(SourceRevision.document_text)) > 0)
+        .where(~already_extracted)
+        .where(and_(*search_conditions))
+        .order_by(
+            SourceRevision.year.desc().nullslast(),
+            SourceRevision.title.asc(),
+            SourceRevision.created_at.desc(),
+        )
+    )
+    total_result = await db.execute(select(func.count()).select_from(base_query.subquery()))
+    total = total_result.scalar() or 0
+    rows = (await db.execute(base_query.limit(limit))).all()
+    return (
+        [
+            BulkSourceExtractionCandidate(
+                source_id=row[0],
+                title=row[1],
+                document_text=row[2],
+            )
+            for row in rows
+        ],
+        total,
+    )
+
+
+async def _default_bulk_preview_builder(
+    db: AsyncSession,
+    source_id: UUID,
+    document_text: str,
+) -> DocumentExtractionPreview:
+    return await build_extraction_preview(
+        db,
+        source_id=source_id,
+        text=document_text,
+        commit=False,
+    )
+
+
+async def run_bulk_source_extraction(
+    db: AsyncSession,
+    *,
+    search: str,
+    study_budget: int,
+    preview_builder: BulkExtractionPreviewBuilder = _default_bulk_preview_builder,
+) -> BulkSourceExtractionSummary:
+    candidates, matched_count = await find_unextracted_source_candidates(
+        db,
+        search=search,
+        limit=study_budget,
+    )
+    results: list[BulkSourceExtractionItem] = []
+
+    for candidate in candidates:
+        try:
+            preview = await preview_builder(db, candidate.source_id, candidate.document_text)
+            await db.commit()
+            results.append(
+                BulkSourceExtractionItem(
+                    source_id=candidate.source_id,
+                    title=candidate.title,
+                    status="extracted",
+                    entity_count=preview.entity_count,
+                    relation_count=preview.relation_count,
+                    needs_review_count=preview.needs_review_count or 0,
+                    auto_verified_count=preview.auto_verified_count or 0,
+                )
+            )
+        except Exception as exc:
+            await db.rollback()
+            logger.warning(
+                "Bulk extraction failed for source %s: %s",
+                candidate.source_id,
+                exc,
+                exc_info=True,
+            )
+            results.append(
+                BulkSourceExtractionItem(
+                    source_id=candidate.source_id,
+                    title=candidate.title,
+                    status="failed",
+                    error=str(exc) or type(exc).__name__,
+                )
+            )
+
+    extracted_count = sum(1 for item in results if item.status == "extracted")
+    failed_count = sum(1 for item in results if item.status == "failed")
+    selected_count = len(candidates)
+    return BulkSourceExtractionSummary(
+        search=search,
+        study_budget=study_budget,
+        matched_count=matched_count,
+        selected_count=selected_count,
+        extracted_count=extracted_count,
+        failed_count=failed_count,
+        skipped_count=max(matched_count - selected_count, 0),
+        results=results,
+    )
 
 
 async def create_source_from_pubmed_article(

@@ -12,7 +12,8 @@ import {
 
 import { getSource, deleteSource } from "../api/sources";
 import { deleteRelation } from "../api/relations";
-import { uploadAndExtract, extractFromUrl } from "../api/extraction";
+import { uploadAndExtract, startExtractFromUrlJob } from "../api/extraction";
+import { getLongRunningJob } from "../api/longRunningJobs";
 import { SourceRead } from "../types/source";
 import { RelationRead } from "../types/relation";
 import { invalidateSourceFilterCache } from "../utils/cacheUtils";
@@ -58,6 +59,7 @@ export function SourceDetailView() {
   // URL extraction state
   const [urlDialogOpen, setUrlDialogOpen] = useState(false);
   const [urlExtracting, setUrlExtracting] = useState(false);
+  const extractionJobStorageKey = id ? `hyphagraph.sourceUrlExtractionJobId.${id}` : null;
 
   const loadSource = useCallback(async (): Promise<SourceRead> => {
     if (!id) {
@@ -113,6 +115,78 @@ export function SourceDetailView() {
     extractionPreviewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [extractionPreview]);
 
+  const pollUrlExtractionJob = useCallback(async (jobId: string) => {
+    const job = await getLongRunningJob<DocumentExtractionPreview>(jobId);
+
+    if (job.status === "succeeded" && job.result_payload) {
+      setExtractionPreview(job.result_payload);
+      if (extractionJobStorageKey) {
+        localStorage.removeItem(extractionJobStorageKey);
+      }
+      setAutoExtracting(false);
+      setUrlExtracting(false);
+      return true;
+    }
+
+    if (job.status === "failed") {
+      if (extractionJobStorageKey) {
+        localStorage.removeItem(extractionJobStorageKey);
+      }
+      showError(job.error_message || "Extraction failed", { autoDismiss: false });
+      setAutoExtracting(false);
+      setUrlExtracting(false);
+      return true;
+    }
+
+    setAutoExtracting(true);
+    return false;
+  }, [extractionJobStorageKey, showError]);
+
+  const pollUrlExtractionJobUntilDone = useCallback((jobId: string) => {
+    let cancelled = false;
+    let timeoutId: number | undefined;
+
+    const poll = async () => {
+      try {
+        const done = await pollUrlExtractionJob(jobId);
+        if (!done && !cancelled) {
+          timeoutId = window.setTimeout(poll, 2000);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          if (extractionJobStorageKey) {
+            localStorage.removeItem(extractionJobStorageKey);
+          }
+          showError(error, { autoDismiss: false });
+          setAutoExtracting(false);
+          setUrlExtracting(false);
+        }
+      }
+    };
+
+    void poll();
+
+    return () => {
+      cancelled = true;
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [extractionJobStorageKey, pollUrlExtractionJob, showError]);
+
+  useEffect(() => {
+    if (!extractionJobStorageKey) {
+      return;
+    }
+
+    const jobId = localStorage.getItem(extractionJobStorageKey);
+    if (!jobId) {
+      return;
+    }
+
+    return pollUrlExtractionJobUntilDone(jobId);
+  }, [extractionJobStorageKey, pollUrlExtractionJobUntilDone]);
+
   const handleDelete = async () => {
     if (!id) return;
 
@@ -166,15 +240,18 @@ export function SourceDetailView() {
     try {
       // Smart detection: use source URL for extraction
       if (source.url) {
-        const preview = await extractFromUrl(id, source.url);
-        setExtractionPreview(preview);
+        const job = await startExtractFromUrlJob(id, source.url);
+        if (extractionJobStorageKey) {
+          localStorage.setItem(extractionJobStorageKey, job.job_id);
+        }
+        pollUrlExtractionJobUntilDone(job.job_id);
       } else {
         // No source URL is available, so route the user into the URL flow directly.
         setUrlDialogOpen(true);
+        setAutoExtracting(false);
       }
     } catch (error) {
       showError(error, { autoDismiss: false });
-    } finally {
       setAutoExtracting(false);
     }
   };
@@ -219,14 +296,16 @@ export function SourceDetailView() {
     setSaveResult(null);
 
     try {
-      const preview = await extractFromUrl(id, url);
-      setExtractionPreview(preview);
+      const job = await startExtractFromUrlJob(id, url);
+      if (extractionJobStorageKey) {
+        localStorage.setItem(extractionJobStorageKey, job.job_id);
+      }
+      pollUrlExtractionJobUntilDone(job.job_id);
       setUrlDialogOpen(false);
     } catch (error) {
       showError(error, { autoDismiss: false });
-      throw error; // Re-throw to let dialog handle error display
-    } finally {
       setUrlExtracting(false);
+      throw error; // Re-throw to let dialog handle error display
     }
   };
 

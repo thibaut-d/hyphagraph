@@ -19,6 +19,11 @@ from app.models.staged_extraction import ExtractionStatus, ExtractionType, Stage
 from app.models.ui_category import UiCategory
 from app.schemas.entity import EntityPrefillDraft
 from app.schemas.source import SourceWrite
+from app.schemas.source import DocumentExtractionPreview
+from app.services.document_extraction_discovery import (
+    find_unextracted_source_candidates,
+    run_bulk_source_extraction,
+)
 from app.services.document_extraction_workflow import (
     ExtractedBatch,
     ReviewSummary,
@@ -98,6 +103,114 @@ class TestLoadSourceDocumentText:
 
         assert exc_info.value.error_detail.message == "Source has no uploaded document"
         assert exc_info.value.error_detail.context == {"source_id": str(source.id)}
+
+
+@pytest.mark.asyncio
+class TestBulkSourceExtraction:
+    async def test_finds_only_imported_studies_without_prior_extraction(self, db_session, test_user):
+        source_service = SourceService(db_session)
+        eligible = await source_service.create(
+            SourceWrite(
+                kind="study",
+                title="Ketamine trial",
+                url="https://example.com/eligible",
+            ),
+            user_id=test_user.id,
+        )
+        await source_service.add_document_to_source(
+            source_id=eligible.id,
+            document_text="Depression trial document",
+            document_format="txt",
+            document_file_name="eligible.txt",
+            user_id=test_user.id,
+        )
+
+        already_extracted = await source_service.create(
+            SourceWrite(
+                kind="study",
+                title="Ketamine already extracted trial",
+                url="https://example.com/extracted",
+            ),
+            user_id=test_user.id,
+        )
+        await source_service.add_document_to_source(
+            source_id=already_extracted.id,
+            document_text="Ketamine extracted document",
+            document_format="txt",
+            document_file_name="extracted.txt",
+            user_id=test_user.id,
+        )
+        db_session.add(
+            StagedExtraction(
+                extraction_type=ExtractionType.ENTITY,
+                status=ExtractionStatus.PENDING,
+                source_id=already_extracted.id,
+                extraction_data={"slug": "ketamine"},
+                validation_score=0.8,
+                confidence_adjustment=1.0,
+                validation_flags=[],
+            )
+        )
+        await db_session.commit()
+
+        candidates, total = await find_unextracted_source_candidates(
+            db_session,
+            search="ketamine depression",
+            limit=10,
+        )
+
+        assert total == 1
+        assert [candidate.source_id for candidate in candidates] == [eligible.id]
+
+    async def test_runs_bulk_extraction_with_budget_and_per_source_failures(
+        self,
+        db_session,
+        test_user,
+    ):
+        source_service = SourceService(db_session)
+        first = await source_service.create(
+            SourceWrite(kind="study", title="Migraine first", url="https://example.com/first"),
+            user_id=test_user.id,
+        )
+        second = await source_service.create(
+            SourceWrite(kind="study", title="Migraine second", url="https://example.com/second"),
+            user_id=test_user.id,
+        )
+        for source in (first, second):
+            await source_service.add_document_to_source(
+                source_id=source.id,
+                document_text=f"{source.title} document",
+                document_format="txt",
+                document_file_name=f"{source.id}.txt",
+                user_id=test_user.id,
+            )
+
+        async def fake_preview_builder(db, source_id, document_text):
+            if source_id == second.id:
+                raise RuntimeError("bad extraction")
+            return DocumentExtractionPreview(
+                source_id=source_id,
+                entities=[],
+                relations=[],
+                entity_count=2,
+                relation_count=1,
+                link_suggestions=[],
+                needs_review_count=3,
+                auto_verified_count=0,
+            )
+
+        summary = await run_bulk_source_extraction(
+            db_session,
+            search="migraine",
+            study_budget=2,
+            preview_builder=fake_preview_builder,
+        )
+
+        assert summary.matched_count == 2
+        assert summary.selected_count == 2
+        assert summary.extracted_count == 1
+        assert summary.failed_count == 1
+        assert [item.status for item in summary.results] == ["extracted", "failed"]
 
 
 @pytest.mark.asyncio

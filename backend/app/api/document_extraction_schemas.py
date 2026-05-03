@@ -16,6 +16,41 @@ class UrlExtractionRequest(BaseModel):
     url: str
 
 
+class BulkSourceExtractionRequest(BaseModel):
+    search: str = Field(min_length=1, max_length=100)
+    study_budget: int = Field(default=10, ge=1, le=50)
+
+    @field_validator("search")
+    @classmethod
+    def validate_search(cls, value: str) -> str:
+        normalized = " ".join(value.strip().split())
+        if not normalized:
+            raise ValueError("Search term must be non-empty")
+        return normalized
+
+
+class BulkSourceExtractionItem(BaseModel):
+    source_id: UUID
+    title: str
+    status: str
+    entity_count: int = 0
+    relation_count: int = 0
+    needs_review_count: int = 0
+    auto_verified_count: int = 0
+    error: str | None = None
+
+
+class BulkSourceExtractionResponse(BaseModel):
+    search: str
+    study_budget: int
+    matched_count: int
+    selected_count: int
+    extracted_count: int
+    failed_count: int
+    skipped_count: int
+    results: list[BulkSourceExtractionItem]
+
+
 class PubMedBulkSearchRequest(BaseModel):
     query: str | None = None
     search_url: str | None = None

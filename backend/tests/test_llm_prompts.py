@@ -69,6 +69,10 @@ def test_relation_prompt_requires_explicit_relations_and_separate_conflicts():
     assert 'For null efficacy findings such as "did not significantly improve"' in RELATION_EXTRACTION_PROMPT
     assert 'Do NOT use relation_type "other" for ordinary efficacy findings' in RELATION_EXTRACTION_PROMPT
     assert 'Use relation_type "associated_with" for explicit non-causal association' in RELATION_EXTRACTION_PROMPT
+    assert 'Do NOT use "associated_with" when a study reports an intervention/exposure' in RELATION_EXTRACTION_PROMPT
+    assert 'Use "decreases_risk" for reduced/lower odds or risk' in RELATION_EXTRACTION_PROMPT
+    assert "Do NOT materialize baseline characteristics" in RELATION_EXTRACTION_PROMPT
+    assert "potentially reflecting lower symptom burden" in RELATION_EXTRACTION_PROMPT
     assert 'Use relation_type "prevalence_in" for source-stated prevalence or incidence findings' in RELATION_EXTRACTION_PROMPT
     assert 'a measured clinical outcome like "overall survival", "blood pressure", or' in RELATION_EXTRACTION_PROMPT
     assert 'Wrong extraction: causes(target=nausea, control_group=placebo)' in RELATION_EXTRACTION_PROMPT
@@ -135,6 +139,10 @@ def test_batch_prompt_carries_global_evidence_first_constraints():
     assert 'do not create intervention-arm wrapper entities like "chemotherapy arm"' in prompt
     assert 'do NOT use relation_type "other" for ordinary efficacy findings or adverse-event findings' in prompt
     assert 'Use relation_type "associated_with" for explicit non-causal association' in prompt
+    assert 'Do NOT use "associated_with" for intervention/exposure findings' in prompt
+    assert 'Use "decreases_risk" for reduced/lower odds or risk' in prompt
+    assert "Do NOT materialize baseline characteristics" in prompt
+    assert "potentially reflecting lower symptom burden" in prompt
     assert 'Use relation_type "prevalence_in" for source-stated prevalence or incidence findings' in prompt
     assert "text_span, sample_size_text, and statistical_support should copy or minimally trim the source wording" in prompt
     assert 'prefer statement_kind "hypothesis" or finding_polarity "uncertain"' in prompt

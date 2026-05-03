@@ -23,7 +23,10 @@ import {
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import { bulkSearchPubMed, bulkImportPubMed } from "../api/pubmed";
+import { startBulkSourceExtractionJob } from "../api/extraction";
+import { getLongRunningJob } from "../api/longRunningJobs";
 import type { PubMedSearchResult } from "../types/pubmed";
+import type { BulkSourceExtractionResponse } from "../types/extraction";
 import { usePageErrorHandler } from "../hooks/usePageErrorHandler";
 import { PubMedResultsTable } from "../components/source/PubMedResultsTable";
 
@@ -47,6 +50,12 @@ export function PubMedImportView() {
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [importSuccess, setImportSuccess] = useState<string | null>(null);
+
+  const [bulkSearchTerm, setBulkSearchTerm] = useState("");
+  const [bulkBudget, setBulkBudget] = useState(10);
+  const [bulkExtracting, setBulkExtracting] = useState(false);
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [bulkResult, setBulkResult] = useState<BulkSourceExtractionResponse | null>(null);
 
   // Abort controllers for cancellable long-running requests
   const searchControllerRef = useRef<AbortController | null>(null);
@@ -164,6 +173,45 @@ export function PubMedImportView() {
     importControllerRef.current?.abort();
   };
 
+  const waitForBulkExtractionJob = async (jobId: string): Promise<BulkSourceExtractionResponse> => {
+    for (let attempt = 0; attempt < 180; attempt += 1) {
+      const job = await getLongRunningJob<BulkSourceExtractionResponse>(jobId);
+      if (job.status === "succeeded" && job.result_payload) {
+        return job.result_payload;
+      }
+      if (job.status === "failed") {
+        throw new Error(job.error_message || "Bulk extraction failed");
+      }
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+    throw new Error("Bulk extraction is still running. Check the review queue later.");
+  };
+
+  const handleBulkExtract = async () => {
+    if (!bulkSearchTerm.trim()) {
+      setBulkError("Enter words to search imported studies");
+      return;
+    }
+
+    setBulkExtracting(true);
+    setBulkError(null);
+    setBulkResult(null);
+
+    try {
+      const job = await startBulkSourceExtractionJob({
+        search: bulkSearchTerm,
+        study_budget: bulkBudget,
+      });
+      const result = await waitForBulkExtractionJob(job.job_id);
+      setBulkResult(result);
+    } catch (error) {
+      const parsedError = handlePageError(error, "Failed to bulk extract studies");
+      setBulkError(parsedError.userMessage);
+    } finally {
+      setBulkExtracting(false);
+    }
+  };
+
   return (
     <Stack spacing={3}>
       {/* Header */}
@@ -250,6 +298,67 @@ export function PubMedImportView() {
         {searchError && (
           <Alert severity="error" sx={{ mt: 2 }} onClose={() => setSearchError(null)}>
             {searchError}
+          </Alert>
+        )}
+      </Paper>
+
+      <Paper sx={{ p: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          Bulk Extract Imported Studies
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Search already imported studies and run automatic entity and relation extraction on
+          matching studies that have not been extracted yet.
+        </Typography>
+        <Stack spacing={2}>
+          <TextField
+            fullWidth
+            label="Search imported studies"
+            placeholder="e.g., ketamine depression"
+            value={bulkSearchTerm}
+            onChange={(event) => setBulkSearchTerm(event.target.value)}
+            disabled={bulkExtracting}
+          />
+          <Box>
+            <Typography gutterBottom>Study budget: {bulkBudget}</Typography>
+            <Slider
+              value={bulkBudget}
+              onChange={(_, value) => setBulkBudget(value as number)}
+              min={1}
+              max={50}
+              step={1}
+              marks={[
+                { value: 1, label: "1" },
+                { value: 10, label: "10" },
+                { value: 25, label: "25" },
+                { value: 50, label: "50" },
+              ]}
+              disabled={bulkExtracting}
+              sx={{ maxWidth: 600 }}
+            />
+          </Box>
+          <Box>
+            <Button
+              variant="contained"
+              startIcon={bulkExtracting ? <CircularProgress size={16} /> : <SearchIcon />}
+              onClick={handleBulkExtract}
+              disabled={bulkExtracting}
+            >
+              {bulkExtracting ? "Extracting..." : "Bulk Extract"}
+            </Button>
+          </Box>
+        </Stack>
+        {bulkError && (
+          <Alert severity="error" sx={{ mt: 2 }} onClose={() => setBulkError(null)}>
+            {bulkError}
+          </Alert>
+        )}
+        {bulkResult && (
+          <Alert severity={bulkResult.failed_count > 0 ? "warning" : "success"} sx={{ mt: 2 }}>
+            Matched {bulkResult.matched_count} unextracted studies. Extracted{" "}
+            {bulkResult.extracted_count} of {bulkResult.selected_count} selected studies;{" "}
+            {bulkResult.failed_count} failed. Review staged entities and relations in the review
+            queue.
           </Alert>
         )}
       </Paper>

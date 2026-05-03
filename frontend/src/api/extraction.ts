@@ -4,7 +4,9 @@
  * Handles document upload, extraction, entity linking, and saving to graph.
  */
 import { apiFetch, apiFetchFormData } from "./client";
+import type { JobStartResponse } from "./longRunningJobs";
 import type {
+  BulkSourceExtractionRequest,
   DocumentUploadResponse,
   DocumentExtractionPreview,
   SaveExtractionRequest,
@@ -118,6 +120,31 @@ export async function extractFromUrl(
     {
       method: "POST",
       body: JSON.stringify({ url }),
+    }
+  );
+}
+
+export async function startExtractFromUrlJob(
+  sourceId: string,
+  url: string
+): Promise<JobStartResponse> {
+  return apiFetch<JobStartResponse>(
+    `/sources/${sourceId}/extract-from-url/jobs`,
+    {
+      method: "POST",
+      body: JSON.stringify({ url }),
+    }
+  );
+}
+
+export async function startBulkSourceExtractionJob(
+  request: BulkSourceExtractionRequest
+): Promise<JobStartResponse> {
+  return apiFetch<JobStartResponse>(
+    "/sources/bulk-extraction/jobs",
+    {
+      method: "POST",
+      body: JSON.stringify(request),
     }
   );
 }

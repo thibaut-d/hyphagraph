@@ -182,6 +182,33 @@ export interface DocumentExtractionPreview {
   avg_validation_score?: number | null;
 }
 
+export interface BulkSourceExtractionRequest {
+  search: string;
+  study_budget: number;
+}
+
+export interface BulkSourceExtractionItem {
+  source_id: string;
+  title: string;
+  status: "extracted" | "failed";
+  entity_count: number;
+  relation_count: number;
+  needs_review_count: number;
+  auto_verified_count: number;
+  error?: string | null;
+}
+
+export interface BulkSourceExtractionResponse {
+  search: string;
+  study_budget: number;
+  matched_count: number;
+  selected_count: number;
+  extracted_count: number;
+  failed_count: number;
+  skipped_count: number;
+  results: BulkSourceExtractionItem[];
+}
+
 // =============================================================================
 // Save Extraction
 // =============================================================================

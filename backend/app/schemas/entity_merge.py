@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from pydantic import BaseModel
 
 
@@ -19,3 +21,22 @@ class AutoMergeAction(BaseModel):
     similarity: float
     action: str
     result: EntityMergeResult | None = None
+
+
+class EntityMergeCandidateEntity(BaseModel):
+    """Entity summary used when reviewing a possible graph-cleaning merge."""
+
+    id: UUID
+    slug: str
+    summary: dict[str, str] | None = None
+
+
+class EntityMergeCandidate(BaseModel):
+    """Human-reviewable candidate for merging two entity nodes."""
+
+    source: EntityMergeCandidateEntity
+    target: EntityMergeCandidateEntity
+    similarity: float
+    reason: str
+    score_factors: dict[str, float | str | bool] = {}
+    proposed_action: str = "merge"

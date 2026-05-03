@@ -90,6 +90,42 @@ _RECOMMENDATION_CUE_PATTERN = re.compile(
     r")\b",
     re.IGNORECASE,
 )
+_DECREASED_RISK_CUE_PATTERN = re.compile(
+    r"\b("
+    r"reduced odds|reduced risk|lower odds|lower risk|decreased odds|decreased risk|"
+    r"reduction in|significantly reduced|less likely|fewer"
+    r")\b",
+    re.IGNORECASE,
+)
+_INCREASED_RISK_CUE_PATTERN = re.compile(
+    r"\b("
+    r"increased odds|increased risk|higher odds|higher risk|elevated odds|elevated risk|"
+    r"increase in|significantly increased|more likely|more frequent"
+    r")\b",
+    re.IGNORECASE,
+)
+_BASELINE_COVARIATE_CONTEXT_PATTERN = re.compile(
+    r"\b("
+    r"baseline characteristics|at baseline|after propensity score matching|"
+    r"propensity score matching|well matched|cohort than|cohort compared with|"
+    r"remained higher|remained lower"
+    r")\b",
+    re.IGNORECASE,
+)
+_COVARIATE_OUTCOME_PATTERN = re.compile(
+    r"\b("
+    r"bmi|body mass index|haemoglobin a1c|hemoglobin a1c|hba1c|"
+    r"age|sex|obesity|diabetes|comorbidit"
+    r")\b",
+    re.IGNORECASE,
+)
+_SPECULATIVE_SUMMARY_PATTERN = re.compile(
+    r"\b("
+    r"potentially reflecting|may reflect|might reflect|could reflect|suggesting lower|"
+    r"suggests lower"
+    r")\b",
+    re.IGNORECASE,
+)
 
 
 class ExtractionSemanticNormalizer:
@@ -277,6 +313,8 @@ class ExtractionSemanticNormalizer:
         ]
 
         normalized_relation_type = relation.relation_type
+        if self._should_drop_context_only_relation(relation):
+            return None
         if normalized_relation_type == "other":
             normalized_relation_type = self._infer_relation_type(
                 relation,
@@ -322,18 +360,32 @@ class ExtractionSemanticNormalizer:
     ) -> str:
         role_types = {role.role_type for role in roles}
         text_span = relation.text_span
-        if self._looks_like_associated_with(text_span, roles=roles):
-            return "associated_with"
-        if self._looks_like_prevalence_in(text_span, roles=roles):
-            return "prevalence_in"
         if "agent" not in role_types or not role_types.intersection({"target", "outcome"}):
+            if self._looks_like_associated_with(text_span, roles=roles):
+                return "associated_with"
+            if self._looks_like_prevalence_in(text_span, roles=roles):
+                return "prevalence_in"
             return relation.relation_type
 
+        if self._looks_like_decreases_risk(text_span):
+            return "decreases_risk"
+        if self._looks_like_increases_risk(text_span):
+            return "increases_risk"
         if self._looks_like_causes(text_span, roles=roles, entity_lookup=entity_lookup):
             return "causes"
         if self._looks_like_treats(text_span, roles=roles, entity_lookup=entity_lookup):
             return "treats"
+        if self._looks_like_associated_with(text_span, roles=roles):
+            return "associated_with"
+        if self._looks_like_prevalence_in(text_span, roles=roles):
+            return "prevalence_in"
         return relation.relation_type
+
+    def _looks_like_decreases_risk(self, text_span: str) -> bool:
+        return bool(_DECREASED_RISK_CUE_PATTERN.search(text_span))
+
+    def _looks_like_increases_risk(self, text_span: str) -> bool:
+        return bool(_INCREASED_RISK_CUE_PATTERN.search(text_span))
 
     def _looks_like_prevalence_in(
         self,
@@ -455,6 +507,17 @@ class ExtractionSemanticNormalizer:
         if not role_types.intersection({"target", "outcome"}):
             return True
         return len({role.entity_slug for role in roles}) < 2
+
+    def _should_drop_context_only_relation(self, relation: ExtractedRelation) -> bool:
+        text_span = relation.text_span
+        if (
+            _BASELINE_COVARIATE_CONTEXT_PATTERN.search(text_span)
+            and _COVARIATE_OUTCOME_PATTERN.search(text_span)
+        ):
+            return True
+        if _SPECULATIVE_SUMMARY_PATTERN.search(text_span):
+            return True
+        return False
 
     def _slugify_base_mention(self, base_mention: str, *, plural_wrapper: bool) -> str | None:
         candidate = base_mention.strip()

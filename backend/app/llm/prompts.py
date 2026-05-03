@@ -275,7 +275,20 @@ RELATION EXTRACTION RULES:
 - Do NOT use relation_type "other" for ordinary efficacy findings or adverse-event findings when
   the span already makes "treats" or "causes" explicit.
 - Use relation_type "associated_with" for explicit non-causal association, correlation, co-occurrence, or comorbidity findings when the source does not claim mechanism or causation.
+- Do NOT use "associated_with" when a study reports an intervention/exposure with
+  reduced odds, lower risk, increased odds, or higher risk of a measured outcome.
+  Use "decreases_risk" for reduced/lower odds or risk and "increases_risk" for
+  increased/higher odds or risk, while preserving observational study design and
+  comparator context in evidence_context/scope.
 - Use relation_type "prevalence_in" for source-stated prevalence or incidence findings tied to a population, condition, study group, or control group.
+- Do NOT materialize baseline characteristics, post-matching covariate imbalances,
+  or cohort descriptors as intervention relations. Examples: "BMI was higher in
+  the treatment cohort at baseline" and "HbA1c remained higher in users" are
+  study context/confounding notes, not evidence that the intervention changes BMI
+  or HbA1c.
+- Do NOT create a separate relation from speculative summary language such as
+  "potentially reflecting lower symptom burden" unless the same local span reports
+  a direct measured outcome with clear core roles.
 - Recommendation-only or screening-only language should usually NOT become a relation unless the same span explicitly states a diagnosis, measurement, prevalence, risk, treatment, or association finding with clear core participants.
 - If the text gives only a mechanistic assumption, background rationale, or methodology note, mark evidence_context.statement_kind accordingly
 - If the text presents competing or contradictory findings, output separate relations rather than merging them
@@ -550,7 +563,20 @@ Extract:
    - if the source uses modal or hedged language such as "may", "might", "could", "suggests", "potential", or "appears to", prefer statement_kind "hypothesis" or finding_polarity "uncertain" unless the same span reports direct measured findings
    - For side-effect or safety findings where no significant difference is found versus a control or placebo, use relation_type "causes" with finding_polarity "contradicts" — do NOT use "other". Example: "no significant increase in nausea vs placebo" → relation_type "causes", finding_polarity "contradicts".
    - Use relation_type "associated_with" for explicit non-causal association, correlation, co-occurrence, or comorbidity findings when the source does not claim mechanism or causation.
+   - Do NOT use "associated_with" for intervention/exposure findings that report
+     reduced odds, lower risk, increased odds, or higher risk of a measured
+     outcome. Use "decreases_risk" for reduced/lower odds or risk and
+     "increases_risk" for increased/higher odds or risk, while preserving
+     observational study design and comparator context.
    - Use relation_type "prevalence_in" for source-stated prevalence or incidence findings tied to a population, condition, study group, or control group.
+   - Do NOT materialize baseline characteristics, post-matching covariate
+     imbalances, or cohort descriptors as intervention relations. Examples:
+     "BMI was higher in the treatment cohort at baseline" and "HbA1c remained
+     higher in users" are study context/confounding notes, not evidence that the
+     intervention changes BMI or HbA1c.
+   - Do NOT create a separate relation from speculative summary language such as
+     "potentially reflecting lower symptom burden" unless the same local span
+     reports a direct measured outcome with clear core roles.
    - do NOT use relation_type "other" for ordinary efficacy findings or adverse-event findings when the span already makes "treats" or "causes" explicit
    - Recommendation-only or screening-only language should usually NOT become a relation unless the same span explicitly states a diagnosis, measurement, prevalence, risk, treatment, or association finding with clear core participants.
    - in therapeutic findings, a measured clinical outcome like overall survival, blood pressure, or quality of life should usually be the relation target even if the sentence also frames it as an endpoint or outcome
@@ -864,7 +890,12 @@ _STATIC_RELATION_TYPES = """CRITICAL: relation_type MUST be EXACTLY one of these
    IMPORTANT: If the relationship doesn't clearly fit one of the specific types above, use "other".
    Do NOT invent new relation types like "has", "regulates", "inhibits", "activates", or "diagnosed_by".
    Use "associated_with" for explicit non-causal co-occurrence/correlation findings.
+   Do NOT use "associated_with" when an intervention/exposure is linked to reduced/lower
+   or increased/higher odds/risk of a measured outcome; use "decreases_risk" or
+   "increases_risk" respectively.
    Use "prevalence_in" for source-stated prevalence or incidence findings.
+   Do NOT create intervention relations from baseline characteristics, post-matching
+   covariate imbalances, or speculative summary language.
    "other" is appropriate only when the core participants and their direction are clear but the type
    genuinely does not map to any named type. Do NOT use "other" as a catch-all for vague spans:
    if the source span is too ambiguous to identify clear core roles, omit the relation entirely."""

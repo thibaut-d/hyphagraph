@@ -7,6 +7,8 @@ Provides:
 - Entity terms management for aliases
 """
 import logging
+import re
+from collections import defaultdict
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import delete, select, update, func
@@ -16,10 +18,16 @@ from app.models.entity import Entity
 from app.models.entity_merge_record import EntityMergeRecord
 from app.models.entity_revision import EntityRevision
 from app.models.entity_term import EntityTerm
+from app.models.relation import Relation
 from app.models.relation_revision import RelationRevision
 from app.models.relation_role_revision import RelationRoleRevision
 from app.repositories.computed_relation_repo import ComputedRelationRepository
-from app.schemas.entity_merge import AutoMergeAction, EntityMergeResult
+from app.schemas.entity_merge import (
+    AutoMergeAction,
+    EntityMergeCandidate,
+    EntityMergeCandidateEntity,
+    EntityMergeResult,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -355,3 +363,239 @@ class EntityMergeService:
         )
 
         return merge_actions
+
+    async def list_merge_candidates(
+        self,
+        similarity_threshold: float = 0.86,
+        limit: int = 50,
+    ) -> list[EntityMergeCandidate]:
+        """
+        Return deterministic entity-merge candidates for admin review.
+
+        This is intentionally a dry-run read model. It proposes likely duplicate
+        nodes, but never mutates graph state or treats the suggestion as authoritative.
+        """
+        rows = await self.db.execute(
+            select(Entity, EntityRevision)
+            .join(EntityRevision, Entity.id == EntityRevision.entity_id)
+            .where(
+                EntityRevision.is_current == True,  # noqa: E712
+                Entity.is_merged == False,  # noqa: E712
+                Entity.is_rejected == False,  # noqa: E712
+            )
+        )
+        entities = [(entity, revision) for entity, revision in rows]
+        if len(entities) < 2:
+            return []
+
+        entity_ids = {entity.id for entity, _ in entities}
+        terms_by_entity = await self._load_terms_by_entity(entity_ids)
+        neighborhoods, source_sets = await self._load_relation_context_by_entity(entity_ids)
+
+        candidates: list[EntityMergeCandidate] = []
+        for i, (first_entity, first_revision) in enumerate(entities):
+            for second_entity, second_revision in entities[i + 1:]:
+                score, reason, factors = self._score_merge_candidate(
+                    first_revision,
+                    second_revision,
+                    terms_by_entity.get(first_entity.id, set()),
+                    terms_by_entity.get(second_entity.id, set()),
+                    neighborhoods.get(first_entity.id, set()),
+                    neighborhoods.get(second_entity.id, set()),
+                    source_sets.get(first_entity.id, set()),
+                    source_sets.get(second_entity.id, set()),
+                )
+                if score < similarity_threshold:
+                    continue
+
+                if len(first_revision.slug) > len(second_revision.slug):
+                    source_id = first_entity.id
+                    source_revision = first_revision
+                    target_id = second_entity.id
+                    target_revision = second_revision
+                else:
+                    source_id = second_entity.id
+                    source_revision = second_revision
+                    target_id = first_entity.id
+                    target_revision = first_revision
+
+                candidates.append(
+                    EntityMergeCandidate(
+                        source=EntityMergeCandidateEntity(
+                            id=source_id,
+                            slug=source_revision.slug,
+                            summary=source_revision.summary,
+                        ),
+                        target=EntityMergeCandidateEntity(
+                            id=target_id,
+                            slug=target_revision.slug,
+                            summary=target_revision.summary,
+                        ),
+                        similarity=round(score, 4),
+                        reason=reason,
+                        score_factors={
+                            **factors,
+                            "source_slug_length": len(source_revision.slug),
+                            "target_slug_length": len(target_revision.slug),
+                        },
+                    )
+                )
+
+        candidates.sort(key=lambda candidate: candidate.similarity, reverse=True)
+
+        return candidates[:limit]
+
+    async def _load_terms_by_entity(self, entity_ids: set[UUID]) -> dict[UUID, set[str]]:
+        if not entity_ids:
+            return {}
+
+        result = await self.db.execute(
+            select(EntityTerm).where(EntityTerm.entity_id.in_(entity_ids))
+        )
+        terms_by_entity: dict[UUID, set[str]] = defaultdict(set)
+        for term in result.scalars():
+            normalized = self._normalize_match_text(term.term)
+            if normalized:
+                terms_by_entity[term.entity_id].add(normalized)
+        return terms_by_entity
+
+    async def _load_relation_context_by_entity(
+        self,
+        entity_ids: set[UUID],
+    ) -> tuple[dict[UUID, set[UUID]], dict[UUID, set[UUID]]]:
+        if not entity_ids:
+            return {}, {}
+
+        result = await self.db.execute(
+            select(
+                Relation.id,
+                Relation.source_id,
+                RelationRoleRevision.entity_id,
+            )
+            .join(RelationRevision, Relation.id == RelationRevision.relation_id)
+            .join(
+                RelationRoleRevision,
+                RelationRevision.id == RelationRoleRevision.relation_revision_id,
+            )
+            .where(
+                RelationRevision.is_current == True,  # noqa: E712
+                RelationRevision.status == "confirmed",
+                Relation.is_rejected == False,  # noqa: E712
+            )
+        )
+
+        relation_entities: dict[UUID, set[UUID]] = defaultdict(set)
+        relation_sources: dict[UUID, UUID] = {}
+        for relation_id, source_id, entity_id in result:
+            relation_entities[relation_id].add(entity_id)
+            relation_sources[relation_id] = source_id
+
+        neighborhoods: dict[UUID, set[UUID]] = defaultdict(set)
+        source_sets: dict[UUID, set[UUID]] = defaultdict(set)
+        for relation_id, participants in relation_entities.items():
+            source_id = relation_sources[relation_id]
+            for entity_id in participants & entity_ids:
+                neighborhoods[entity_id].update(participants - {entity_id})
+                source_sets[entity_id].add(source_id)
+
+        return neighborhoods, source_sets
+
+    def _score_merge_candidate(
+        self,
+        first_revision: EntityRevision,
+        second_revision: EntityRevision,
+        first_terms: set[str],
+        second_terms: set[str],
+        first_neighbors: set[UUID],
+        second_neighbors: set[UUID],
+        first_sources: set[UUID],
+        second_sources: set[UUID],
+    ) -> tuple[float, str, dict[str, float | str | bool]]:
+        first_slug = self._normalize_match_text(first_revision.slug)
+        second_slug = self._normalize_match_text(second_revision.slug)
+        slug_similarity = SequenceMatcher(None, first_slug, second_slug).ratio()
+        contains_slug = first_slug in second_slug or second_slug in first_slug
+
+        first_names = {first_slug, *first_terms}
+        second_names = {second_slug, *second_terms}
+        term_similarity = max(
+            (
+                SequenceMatcher(None, first_name, second_name).ratio()
+                for first_name in first_names
+                for second_name in second_names
+            ),
+            default=0.0,
+        )
+        exact_term_overlap = bool(first_names & second_names)
+
+        summary_overlap = self._summary_token_overlap(
+            first_revision.summary,
+            second_revision.summary,
+        )
+        shared_neighbor_count = len(first_neighbors & second_neighbors)
+        shared_source_count = len(first_sources & second_sources)
+        shared_neighbor_score = min(shared_neighbor_count / 3, 1.0)
+        shared_source_score = min(shared_source_count / 3, 1.0)
+        same_category = (
+            first_revision.ui_category_id is not None
+            and first_revision.ui_category_id == second_revision.ui_category_id
+        )
+
+        score = max(slug_similarity, term_similarity)
+        if contains_slug:
+            score += 0.03
+        if same_category:
+            score += 0.03
+        score += summary_overlap * 0.08
+        score += shared_neighbor_score * 0.08
+        score += shared_source_score * 0.06
+        score = min(score, 1.0)
+
+        reason = "Very similar entity slugs"
+        if exact_term_overlap or term_similarity >= 0.99:
+            reason = "Exact or alias-level term match"
+        elif contains_slug:
+            reason = "One slug contains the other"
+        elif shared_neighbor_count and shared_source_count:
+            reason = "Similar names with shared relation neighborhoods and sources"
+        elif summary_overlap >= 0.5:
+            reason = "Similar names with overlapping summaries"
+
+        return (
+            score,
+            reason,
+            {
+                "slug_similarity": round(slug_similarity, 4),
+                "term_similarity": round(term_similarity, 4),
+                "contains_slug": contains_slug,
+                "same_ui_category": same_category,
+                "summary_token_overlap": round(summary_overlap, 4),
+                "shared_relation_neighbors": shared_neighbor_count,
+                "shared_sources": shared_source_count,
+                "both_have_summary": bool(first_revision.summary and second_revision.summary),
+            },
+        )
+
+    def _summary_token_overlap(
+        self,
+        first_summary: dict[str, str] | None,
+        second_summary: dict[str, str] | None,
+    ) -> float:
+        first_tokens = self._summary_tokens(first_summary)
+        second_tokens = self._summary_tokens(second_summary)
+        if not first_tokens or not second_tokens:
+            return 0.0
+        return len(first_tokens & second_tokens) / len(first_tokens | second_tokens)
+
+    def _summary_tokens(self, summary: dict[str, str] | None) -> set[str]:
+        if not summary:
+            return set()
+        text = " ".join(value for value in summary.values() if value)
+        return {
+            token
+            for token in re.findall(r"[a-z0-9]+", text.lower())
+            if len(token) > 2
+        }
+
+    def _normalize_match_text(self, value: str) -> str:
+        return re.sub(r"[^a-z0-9]+", " ", value.lower()).strip()

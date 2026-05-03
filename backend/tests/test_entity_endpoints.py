@@ -11,6 +11,7 @@ from fastapi import status
 
 from app.main import app
 from app.database import get_db
+from app.dependencies.auth import get_current_active_superuser
 from app.models.user import User
 from datetime import datetime, timezone
 
@@ -143,6 +144,52 @@ class TestEntityEndpoints:
                 entity_id = uuid4()
                 response = await client.delete(f"/api/entities/{entity_id}")
                 assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        finally:
+            app.dependency_overrides.clear()
+
+    async def test_merge_candidates_requires_superuser(self, override_get_db):
+        """Test graph-cleaning candidate scan requires admin privileges."""
+        app.dependency_overrides[get_db] = override_get_db
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                response = await client.get("/api/entities/merge-candidates")
+                assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        finally:
+            app.dependency_overrides.clear()
+
+    async def test_merge_candidates_returns_dry_run_suggestions(
+        self,
+        mock_current_user,
+        override_get_db,
+        db_session,
+    ):
+        """Test graph-cleaning candidate scan returns reviewable merge candidates."""
+        from app.schemas.entity import EntityWrite
+        from app.services.entity_service import EntityService
+
+        mock_current_user.is_superuser = True
+        db_session.add(mock_current_user)
+        await db_session.commit()
+
+        entity_service = EntityService(db_session)
+        source = await entity_service.create(EntityWrite(slug="fibromyalgia-syndrome"))
+        target = await entity_service.create(EntityWrite(slug="fibromyalgia"))
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_current_active_superuser] = lambda: mock_current_user
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                response = await client.get(
+                    "/api/entities/merge-candidates?similarity_threshold=0.7"
+                )
+                assert response.status_code == status.HTTP_200_OK
+                data = response.json()
+                assert len(data) == 1
+                assert data[0]["source"]["id"] == str(source.id)
+                assert data[0]["source"]["slug"] == "fibromyalgia-syndrome"
+                assert data[0]["target"]["id"] == str(target.id)
+                assert data[0]["target"]["slug"] == "fibromyalgia"
+                assert data[0]["proposed_action"] == "merge"
         finally:
             app.dependency_overrides.clear()
 

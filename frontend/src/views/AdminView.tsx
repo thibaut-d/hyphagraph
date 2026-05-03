@@ -10,7 +10,6 @@
  */
 
 import { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
 import {
   Typography,
   Paper,
@@ -40,14 +39,11 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
-  Autocomplete,
-  CircularProgress,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import CallMergeIcon from "@mui/icons-material/CallMerge";
-import MergeTypeIcon from "@mui/icons-material/MergeType";
 import PeopleIcon from "@mui/icons-material/People";
 import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
@@ -55,14 +51,33 @@ import EmailIcon from "@mui/icons-material/Email";
 import CategoryIcon from "@mui/icons-material/Category";
 import BugReportIcon from "@mui/icons-material/BugReport";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
+import CleaningServicesIcon from "@mui/icons-material/CleaningServices";
 import LockIcon from "@mui/icons-material/Lock";
 import LabelIcon from "@mui/icons-material/Label";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
 import { apiFetch } from "../api/client";
+import {
+  applyDuplicateRelationReview,
+  applyRoleCorrection,
+  critiqueGraphCleaningCandidates,
+  getGraphCleaningAnalysis,
+  listGraphCleaningDecisions,
+  saveGraphCleaningDecision,
+  type GraphCleaningAnalysis,
+  type GraphCleaningCritiqueItem,
+  type GraphCleaningDecision,
+} from "../api/graphCleaning";
 import { usePageErrorHandler } from "../hooks/usePageErrorHandler";
 import { AdminEditDialog } from "../components/admin/AdminEditDialog";
 import { AdminDeleteDialog } from "../components/admin/AdminDeleteDialog";
+import {
+  GraphCleaningPanel,
+  type CleaningRecommendationFilter,
+  type CleaningStatusFilter,
+  type CleaningTypeFilter,
+  type EntityMergeCandidate,
+} from "../components/admin/GraphCleaningPanel";
 
 interface UserStats {
   total_users: number;
@@ -153,7 +168,6 @@ const emptyEntityCatForm = () => ({
 });
 
 export function AdminView() {
-  const { t } = useTranslation();
   const handlePageError = usePageErrorHandler();
   const [activeTab, setActiveTab] = useState(0);
   const [stats, setStats] = useState<UserStats | null>(null);
@@ -219,6 +233,34 @@ export function AdminView() {
   const [entityMergeSaving, setEntityMergeSaving] = useState(false);
   const [entityMergeError, setEntityMergeError] = useState<string | null>(null);
   const [entityMergeResult, setEntityMergeResult] = useState<{ source_slug: string; target_slug: string; relations_moved: number } | null>(null);
+  const [mergeCandidates, setMergeCandidates] = useState<EntityMergeCandidate[]>([]);
+  const [mergeCandidatesLoading, setMergeCandidatesLoading] = useState(false);
+  const [mergeCandidatesScanned, setMergeCandidatesScanned] = useState(false);
+  const [mergeCandidateThreshold, setMergeCandidateThreshold] = useState(0.86);
+  const [cleaningAnalysis, setCleaningAnalysis] = useState<GraphCleaningAnalysis>({
+    duplicate_relations: [],
+    role_consistency: [],
+  });
+  const [cleaningDecisions, setCleaningDecisions] = useState<GraphCleaningDecision[]>([]);
+  const [cleaningCritiques, setCleaningCritiques] = useState<GraphCleaningCritiqueItem[]>([]);
+  const [cleaningCritiqueBatchSize, setCleaningCritiqueBatchSize] = useState(5);
+  const [cleaningActionBusy, setCleaningActionBusy] = useState(false);
+  const [cleaningStatusFilter, setCleaningStatusFilter] = useState<CleaningStatusFilter>("open");
+  const [cleaningTypeFilter, setCleaningTypeFilter] = useState<CleaningTypeFilter>("all");
+  const [cleaningRecommendationFilter, setCleaningRecommendationFilter] =
+    useState<CleaningRecommendationFilter>("all");
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [duplicateDialogFingerprint, setDuplicateDialogFingerprint] = useState("");
+  const [duplicateDialogRelationIds, setDuplicateDialogRelationIds] = useState<string[]>([]);
+  const [duplicateDialogRationale, setDuplicateDialogRationale] = useState("");
+  const [roleDialogOpen, setRoleDialogOpen] = useState(false);
+  const [roleDialogEntityId, setRoleDialogEntityId] = useState("");
+  const [roleDialogEntityLabel, setRoleDialogEntityLabel] = useState("");
+  const [roleDialogRelationKind, setRoleDialogRelationKind] = useState<string | null>(null);
+  const [roleDialogRelationId, setRoleDialogRelationId] = useState("");
+  const [roleDialogFromRole, setRoleDialogFromRole] = useState("");
+  const [roleDialogToRole, setRoleDialogToRole] = useState("");
+  const [roleDialogRationale, setRoleDialogRationale] = useState("");
 
   useEffect(() => {
     loadData();
@@ -229,6 +271,7 @@ export function AdminView() {
     if (activeTab === 2) loadBugReports();
     if (activeTab === 3) loadRelTypes();
     if (activeTab === 4) loadEntityCats();
+    if (activeTab === 5) loadCleaningDecisions();
   }, [activeTab]);
 
   const loadData = async () => {
@@ -709,6 +752,253 @@ export function AdminView() {
     }
   };
 
+  const loadMergeCandidates = async () => {
+    setMergeCandidatesLoading(true);
+    setEntityMergeError(null);
+    try {
+      const [entityCandidates, analysis, decisions] = await Promise.all([
+        apiFetch<EntityMergeCandidate[]>(
+          `/entities/merge-candidates?similarity_threshold=${mergeCandidateThreshold}&limit=50`
+        ),
+        getGraphCleaningAnalysis(50),
+        listGraphCleaningDecisions(),
+      ]);
+      setMergeCandidates(entityCandidates);
+      setCleaningAnalysis(analysis);
+      setCleaningDecisions(decisions);
+      setMergeCandidatesScanned(true);
+    } catch (err) {
+      const parsedError = handlePageError(err, "Failed to load graph cleaning candidates");
+      setEntityMergeError(parsedError.userMessage);
+    } finally {
+      setMergeCandidatesLoading(false);
+    }
+  };
+
+  const loadCleaningDecisions = async () => {
+    setEntityMergeError(null);
+    try {
+      setCleaningDecisions(await listGraphCleaningDecisions());
+    } catch (err) {
+      const parsedError = handlePageError(err, "Failed to load graph cleaning decisions");
+      setEntityMergeError(parsedError.userMessage);
+    }
+  };
+
+  const reviewMergeCandidate = (candidate: EntityMergeCandidate) => {
+    setEntityMergeSource(candidate.source);
+    setEntityMergeTarget(candidate.target);
+    setEntityMergeConfirmOpen(true);
+  };
+
+  const getCleaningDecision = (candidateType: GraphCleaningDecision["candidate_type"], fingerprint: string) =>
+    cleaningDecisions.find(
+      (decision) =>
+        decision.candidate_type === candidateType &&
+        decision.candidate_fingerprint === fingerprint,
+    );
+
+  const getCleaningCritique = (fingerprint: string) =>
+    cleaningCritiques.find((critique) => critique.candidate_fingerprint === fingerprint);
+
+  const shouldShowCleaningCandidate = (
+    candidateType: GraphCleaningDecision["candidate_type"],
+    fingerprint: string,
+  ) => {
+    if (cleaningTypeFilter !== "all" && cleaningTypeFilter !== candidateType) return false;
+    const decision = getCleaningDecision(candidateType, fingerprint);
+    if (cleaningStatusFilter !== "all" && (decision?.status ?? "open") !== cleaningStatusFilter) {
+      return false;
+    }
+    const critique = getCleaningCritique(fingerprint);
+    if (cleaningRecommendationFilter === "no_critique") return !critique;
+    if (cleaningRecommendationFilter !== "all") {
+      return critique?.recommendation === cleaningRecommendationFilter;
+    }
+    return true;
+  };
+
+  const saveCleaningDecision = async (
+    candidateType: GraphCleaningDecision["candidate_type"],
+    fingerprint: string,
+    status: GraphCleaningDecision["status"],
+    notes: string,
+    decisionPayload?: Record<string, unknown>,
+  ) => {
+    setCleaningActionBusy(true);
+    setEntityMergeError(null);
+    try {
+      await saveGraphCleaningDecision({
+        candidate_type: candidateType,
+        candidate_fingerprint: fingerprint,
+        status,
+        notes,
+        decision_payload: decisionPayload ?? null,
+      });
+      await loadCleaningDecisions();
+    } catch (err) {
+      const parsedError = handlePageError(err, "Failed to save graph cleaning decision");
+      setEntityMergeError(parsedError.userMessage);
+    } finally {
+      setCleaningActionBusy(false);
+    }
+  };
+
+  const allCleaningCritiqueCandidates = () => [
+    ...mergeCandidates.map((candidate) => ({
+      candidate_fingerprint: `${candidate.source.id}:${candidate.target.id}`,
+      candidate_type: "entity_merge",
+      source_slug: candidate.source.slug,
+      target_slug: candidate.target.slug,
+      reason: candidate.reason,
+      similarity: candidate.similarity,
+    })),
+    ...cleaningAnalysis.duplicate_relations.map((candidate) => ({
+      ...candidate,
+      candidate_type: "duplicate_relation",
+      candidate_fingerprint: candidate.fingerprint,
+    })),
+    ...cleaningAnalysis.role_consistency.map((candidate) => ({
+      ...candidate,
+      candidate_type: "role_consistency",
+      candidate_fingerprint: `${candidate.entity_id}:${candidate.relation_kind ?? "unknown"}`,
+    })),
+  ];
+
+  const totalCleaningCritiqueCandidates = allCleaningCritiqueCandidates().length;
+  const remainingCleaningCritiqueCandidates = allCleaningCritiqueCandidates().filter(
+    (candidate) => !getCleaningCritique(String(candidate.candidate_fingerprint)),
+  ).length;
+
+  const runCleaningCritique = async () => {
+    setCleaningActionBusy(true);
+    setEntityMergeError(null);
+    try {
+      const candidates = allCleaningCritiqueCandidates()
+        .filter((candidate) => !getCleaningCritique(String(candidate.candidate_fingerprint)))
+        .slice(0, cleaningCritiqueBatchSize);
+      if (candidates.length === 0) {
+        return;
+      }
+      const critique = await critiqueGraphCleaningCandidates(candidates);
+      setCleaningCritiques((current) => {
+        const merged = new Map(current.map((item) => [item.candidate_fingerprint, item]));
+        critique.items.forEach((item) => merged.set(item.candidate_fingerprint, item));
+        return Array.from(merged.values());
+      });
+    } catch (err) {
+      const parsedError = handlePageError(err, "Failed to run LLM critique");
+      setEntityMergeError(parsedError.userMessage);
+    } finally {
+      setCleaningActionBusy(false);
+    }
+  };
+
+  const runSingleCleaningCritique = async (candidate: Record<string, unknown>) => {
+    setCleaningActionBusy(true);
+    setEntityMergeError(null);
+    try {
+      const critique = await critiqueGraphCleaningCandidates([candidate]);
+      setCleaningCritiques((current) => {
+        const merged = new Map(current.map((item) => [item.candidate_fingerprint, item]));
+        critique.items.forEach((item) => merged.set(item.candidate_fingerprint, item));
+        return Array.from(merged.values());
+      });
+    } catch (err) {
+      const parsedError = handlePageError(err, "Failed to run LLM critique");
+      setEntityMergeError(parsedError.userMessage);
+    } finally {
+      setCleaningActionBusy(false);
+    }
+  };
+
+  const openDuplicateDialog = (fingerprint: string, relationIds: string[]) => {
+    setDuplicateDialogFingerprint(fingerprint);
+    setDuplicateDialogRelationIds(relationIds);
+    setDuplicateDialogRationale("");
+    setDuplicateDialogOpen(true);
+  };
+
+  const applyDuplicateCandidate = async () => {
+    const duplicateIds = duplicateDialogRelationIds.slice(1);
+    if (duplicateIds.length === 0 || !duplicateDialogRationale.trim()) return;
+    setCleaningActionBusy(true);
+    setEntityMergeError(null);
+    try {
+      await applyDuplicateRelationReview({
+        duplicate_relation_ids: duplicateIds,
+        rationale: duplicateDialogRationale.trim(),
+        candidate_fingerprint: duplicateDialogFingerprint,
+      });
+      setDuplicateDialogOpen(false);
+      await loadMergeCandidates();
+    } catch (err) {
+      const parsedError = handlePageError(err, "Failed to apply duplicate relation review");
+      setEntityMergeError(parsedError.userMessage);
+    } finally {
+      setCleaningActionBusy(false);
+    }
+  };
+
+  const applyRoleCandidate = async (candidate: {
+    entity_id: string;
+    entity_slug?: string | null;
+    relation_kind: string | null;
+    usages: Array<{ role_type: string; relation_ids: string[] }>;
+  }) => {
+    const fromUsage = candidate.usages[0];
+    const relationId = fromUsage?.relation_ids[0];
+    if (!relationId || !fromUsage) return;
+    setRoleDialogEntityId(candidate.entity_id);
+    setRoleDialogEntityLabel(candidate.entity_slug ?? candidate.entity_id);
+    setRoleDialogRelationKind(candidate.relation_kind);
+    setRoleDialogRelationId(relationId);
+    setRoleDialogFromRole(fromUsage.role_type);
+    setRoleDialogToRole("");
+    setRoleDialogRationale("");
+    setRoleDialogOpen(true);
+  };
+
+  const confirmRoleCorrection = async () => {
+    if (!roleDialogRelationId || !roleDialogToRole.trim() || !roleDialogRationale.trim()) return;
+    setCleaningActionBusy(true);
+    setEntityMergeError(null);
+    try {
+      await applyRoleCorrection(roleDialogRelationId, {
+        corrections: [{
+          entity_id: roleDialogEntityId,
+          from_role_type: roleDialogFromRole,
+          to_role_type: roleDialogToRole.trim(),
+        }],
+        rationale: roleDialogRationale.trim(),
+        candidate_fingerprint: `${roleDialogEntityId}:${roleDialogRelationKind ?? "unknown"}`,
+      });
+      setRoleDialogOpen(false);
+      await loadMergeCandidates();
+    } catch (err) {
+      const parsedError = handlePageError(err, "Failed to apply role correction");
+      setEntityMergeError(parsedError.userMessage);
+    } finally {
+      setCleaningActionBusy(false);
+    }
+  };
+
+  const visibleMergeCandidates = mergeCandidates.filter((candidate) =>
+    shouldShowCleaningCandidate(
+      "entity_merge",
+      `${candidate.source.id}:${candidate.target.id}`,
+    )
+  );
+  const visibleDuplicateRelationCandidates = cleaningAnalysis.duplicate_relations.filter((candidate) =>
+    shouldShowCleaningCandidate("duplicate_relation", candidate.fingerprint)
+  );
+  const visibleRoleConsistencyCandidates = cleaningAnalysis.role_consistency.filter((candidate) =>
+    shouldShowCleaningCandidate(
+      "role_consistency",
+      `${candidate.entity_id}:${candidate.relation_kind ?? "unknown"}`,
+    )
+  );
+
   if (loading) {
     return <Typography>Loading...</Typography>;
   }
@@ -738,7 +1028,7 @@ export function AdminView() {
           <Tab icon={<BugReportIcon />} iconPosition="start" label="Bug Reports" />
           <Tab icon={<AccountTreeIcon />} iconPosition="start" label="Relation Types" />
           <Tab icon={<LabelIcon />} iconPosition="start" label="Entity Categories" />
-          <Tab icon={<MergeTypeIcon />} iconPosition="start" label="Entity Merge" />
+          <Tab icon={<CleaningServicesIcon />} iconPosition="start" label="Graph Cleaning" />
         </Tabs>
       </Paper>
 
@@ -1644,100 +1934,58 @@ export function AdminView() {
         </DialogActions>
       </Dialog>
 
-      {/* ── Entity Merge tab ── */}
+      {/* ── Graph Cleaning tab ── */}
       {activeTab === 5 && (
-        <Paper sx={{ p: 3 }}>
-          <Typography variant="h5" sx={{ mb: 2 }}>Entity Graph Merge</Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Merge two knowledge-graph entity nodes into one. All current-revision relations from the
-            source will be re-attributed to the target. The source slug is preserved as a term on the
-            target. The source entity is then marked as merged and hidden from listings.
-          </Typography>
-
-          {entityMergeError && <Alert severity="error" sx={{ mb: 2 }}>{entityMergeError}</Alert>}
-          {entityMergeResult && (
-            <Alert severity="success" sx={{ mb: 2 }}>
-              Merged <strong>{entityMergeResult.source_slug}</strong> →{" "}
-              <strong>{entityMergeResult.target_slug}</strong>:{" "}
-              {entityMergeResult.relations_moved} relation(s) moved.
-            </Alert>
-          )}
-
-          <Stack spacing={3} sx={{ maxWidth: 600 }}>
-            <Autocomplete
-              options={entityMergeSourceOptions}
-              getOptionLabel={(o) => `${o.slug}${o.summary?.en ? " — " + o.summary.en.slice(0, 60) : ""}`}
-              isOptionEqualToValue={(a, b) => a.id === b.id}
-              loading={entityMergeSourceLoading}
-              value={entityMergeSource}
-              onChange={(_, value) => {
-                setEntityMergeSource(value);
-                if (value?.id === entityMergeTarget?.id) setEntityMergeTarget(null);
-              }}
-              onInputChange={(_, value) =>
-                searchEntities(value, setEntityMergeSourceOptions, setEntityMergeSourceLoading)
-              }
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Source entity (will be merged away)"
-                  helperText="Type at least 2 characters to search"
-                  InputProps={{
-                    ...params.InputProps,
-                    endAdornment: (
-                      <>
-                        {entityMergeSourceLoading ? <CircularProgress size={16} /> : null}
-                        {params.InputProps.endAdornment}
-                      </>
-                    ),
-                  }}
-                />
-              )}
-            />
-
-            <Autocomplete
-              options={entityMergeTargetOptions}
-              getOptionLabel={(o) => `${o.slug}${o.summary?.en ? " — " + o.summary.en.slice(0, 60) : ""}`}
-              isOptionEqualToValue={(a, b) => a.id === b.id}
-              loading={entityMergeTargetLoading}
-              value={entityMergeTarget}
-              onChange={(_, value) => setEntityMergeTarget(value)}
-              onInputChange={(_, value) =>
-                searchEntities(value, setEntityMergeTargetOptions, setEntityMergeTargetLoading)
-              }
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Target entity (will be kept)"
-                  helperText="Type at least 2 characters to search"
-                  InputProps={{
-                    ...params.InputProps,
-                    endAdornment: (
-                      <>
-                        {entityMergeTargetLoading ? <CircularProgress size={16} /> : null}
-                        {params.InputProps.endAdornment}
-                      </>
-                    ),
-                  }}
-                />
-              )}
-            />
-
-            <Box>
-              <Button
-                variant="contained"
-                color="warning"
-                startIcon={<MergeTypeIcon />}
-                disabled={!entityMergeSource || !entityMergeTarget || entityMergeSource.id === entityMergeTarget.id}
-                onClick={() => setEntityMergeConfirmOpen(true)}
-              >
-                Merge →
-              </Button>
-            </Box>
-          </Stack>
-        </Paper>
+        <GraphCleaningPanel
+          entityMergeError={entityMergeError}
+          entityMergeResult={entityMergeResult}
+          mergeCandidates={mergeCandidates}
+          visibleMergeCandidates={visibleMergeCandidates}
+          visibleDuplicateRelationCandidates={visibleDuplicateRelationCandidates}
+          visibleRoleConsistencyCandidates={visibleRoleConsistencyCandidates}
+          cleaningAnalysis={cleaningAnalysis}
+          cleaningDecisions={cleaningDecisions}
+          cleaningCritiques={cleaningCritiques}
+          cleaningCritiqueBatchSize={cleaningCritiqueBatchSize}
+          totalCleaningCritiqueCandidates={totalCleaningCritiqueCandidates}
+          remainingCleaningCritiqueCandidates={remainingCleaningCritiqueCandidates}
+          cleaningActionBusy={cleaningActionBusy}
+          mergeCandidatesLoading={mergeCandidatesLoading}
+          mergeCandidatesScanned={mergeCandidatesScanned}
+          mergeCandidateThreshold={mergeCandidateThreshold}
+          cleaningStatusFilter={cleaningStatusFilter}
+          cleaningTypeFilter={cleaningTypeFilter}
+          cleaningRecommendationFilter={cleaningRecommendationFilter}
+          entityMergeSourceOptions={entityMergeSourceOptions}
+          entityMergeTargetOptions={entityMergeTargetOptions}
+          entityMergeSourceLoading={entityMergeSourceLoading}
+          entityMergeTargetLoading={entityMergeTargetLoading}
+          entityMergeSource={entityMergeSource}
+          entityMergeTarget={entityMergeTarget}
+          setMergeCandidateThreshold={setMergeCandidateThreshold}
+          setCleaningStatusFilter={setCleaningStatusFilter}
+          setCleaningTypeFilter={setCleaningTypeFilter}
+          setCleaningRecommendationFilter={setCleaningRecommendationFilter}
+          setCleaningCritiqueBatchSize={setCleaningCritiqueBatchSize}
+          runCleaningCritique={runCleaningCritique}
+          runSingleCleaningCritique={runSingleCleaningCritique}
+          loadMergeCandidates={loadMergeCandidates}
+          getCleaningDecision={getCleaningDecision}
+          getCleaningCritique={getCleaningCritique}
+          reviewMergeCandidate={reviewMergeCandidate}
+          saveCleaningDecision={saveCleaningDecision}
+          openDuplicateDialog={openDuplicateDialog}
+          applyRoleCandidate={applyRoleCandidate}
+          searchEntities={searchEntities}
+          setEntityMergeSourceOptions={setEntityMergeSourceOptions}
+          setEntityMergeTargetOptions={setEntityMergeTargetOptions}
+          setEntityMergeSourceLoading={setEntityMergeSourceLoading}
+          setEntityMergeTargetLoading={setEntityMergeTargetLoading}
+          setEntityMergeSource={setEntityMergeSource}
+          setEntityMergeTarget={setEntityMergeTarget}
+          openEntityMergeConfirm={() => setEntityMergeConfirmOpen(true)}
+        />
       )}
-
       {/* Entity merge confirmation dialog */}
       <Dialog open={entityMergeConfirmOpen} onClose={() => setEntityMergeConfirmOpen(false)}>
         <DialogTitle>Confirm Entity Merge</DialogTitle>
@@ -1761,6 +2009,85 @@ export function AdminView() {
             onClick={handleEntityMergeConfirm}
           >
             {entityMergeSaving ? "Merging…" : "Merge"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={duplicateDialogOpen} onClose={() => setDuplicateDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Mark Duplicate Relations</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Alert severity="warning">
+              This hides reviewed duplicate relations from normal listings but preserves their audit trail.
+              The first relation in the group is kept; the remaining {Math.max(duplicateDialogRelationIds.length - 1, 0)} relation(s) are marked duplicate/rejected.
+            </Alert>
+            <TextField
+              label="Rationale"
+              value={duplicateDialogRationale}
+              onChange={(event) => setDuplicateDialogRationale(event.target.value)}
+              multiline
+              rows={3}
+              required
+              helperText="Explain why these are duplicate extractions from the same evidence context."
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDuplicateDialogOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="warning"
+            disabled={cleaningActionBusy || duplicateDialogRationale.trim().length < 3}
+            onClick={applyDuplicateCandidate}
+          >
+            Mark duplicates
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={roleDialogOpen} onClose={() => setRoleDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Correct Relation Role</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Alert severity="info">
+              This creates a new relation revision. Historical role rows are not edited.
+            </Alert>
+            <Typography variant="body2">
+              Entity <strong>{roleDialogEntityLabel}</strong> currently appears as{" "}
+              <code>{roleDialogFromRole}</code> in relation{" "}
+              <code>{roleDialogRelationId}</code>.
+            </Typography>
+            <TextField
+              label="Correct role type"
+              value={roleDialogToRole}
+              onChange={(event) => setRoleDialogToRole(event.target.value)}
+              required
+              helperText="Example: target, condition, agent, outcome"
+            />
+            <TextField
+              label="Rationale"
+              value={roleDialogRationale}
+              onChange={(event) => setRoleDialogRationale(event.target.value)}
+              multiline
+              rows={3}
+              required
+              helperText="Explain why this role correction is warranted."
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRoleDialogOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="warning"
+            disabled={
+              cleaningActionBusy ||
+              roleDialogToRole.trim().length < 1 ||
+              roleDialogRationale.trim().length < 3
+            }
+            onClick={confirmRoleCorrection}
+          >
+            Create revision
           </Button>
         </DialogActions>
       </Dialog>

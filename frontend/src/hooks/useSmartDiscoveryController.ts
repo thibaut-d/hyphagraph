@@ -1,11 +1,13 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import {
   bulkImportFromDiscovery,
-  smartDiscovery,
+  startSmartDiscoveryJob,
+  type SmartDiscoveryResponse,
   type SmartDiscoveryResult,
 } from "../api/smart-discovery";
+import { getLongRunningJob } from "../api/longRunningJobs";
 import type { EntityRead } from "../types/entity";
 import { useNotification } from "../notifications/NotificationContext";
 import { usePageErrorHandler } from "./usePageErrorHandler";
@@ -40,6 +42,9 @@ interface SmartDiscoveryController {
   handleImport: () => Promise<void>;
 }
 
+const SMART_DISCOVERY_JOB_STORAGE_KEY = "hyphagraph.smartDiscoveryJobId";
+const POLL_INTERVAL_MS = 2000;
+
 export function useSmartDiscoveryController(): SmartDiscoveryController {
   const navigate = useNavigate();
   const { showError } = useNotification();
@@ -60,6 +65,79 @@ export function useSmartDiscoveryController(): SmartDiscoveryController {
   const [importError, setImportError] = useState<string | null>(null);
   const [importSuccess, setImportSuccess] = useState<ImportSuccess | null>(null);
 
+  const applyDiscoveryResponse = useCallback((response: SmartDiscoveryResponse) => {
+    setResults(response.results);
+    setQueryUsed(response.query_used);
+    setTotalFound(response.total_found);
+
+    const autoSelectedPmids = response.results
+      .filter((result) => !result.already_imported)
+      .slice(0, maxResults)
+      .map((result) => result.pmid)
+      .filter((pmid): pmid is string => Boolean(pmid));
+
+    setSelectedPmids(new Set(autoSelectedPmids));
+  }, [maxResults]);
+
+  const pollDiscoveryJob = useCallback(async (jobId: string) => {
+    const job = await getLongRunningJob<SmartDiscoveryResponse>(jobId);
+
+    if (job.status === "succeeded" && job.result_payload) {
+      applyDiscoveryResponse(job.result_payload);
+      localStorage.removeItem(SMART_DISCOVERY_JOB_STORAGE_KEY);
+      setSearching(false);
+      return true;
+    }
+
+    if (job.status === "failed") {
+      localStorage.removeItem(SMART_DISCOVERY_JOB_STORAGE_KEY);
+      setSearchError(job.error_message || "Smart discovery failed");
+      setSearching(false);
+      return true;
+    }
+
+    setSearching(true);
+    return false;
+  }, [applyDiscoveryResponse]);
+
+  const pollDiscoveryJobUntilDone = useCallback((jobId: string) => {
+    let cancelled = false;
+    let timeoutId: number | undefined;
+
+    const poll = async () => {
+      try {
+        const done = await pollDiscoveryJob(jobId);
+        if (!done && !cancelled) {
+          timeoutId = window.setTimeout(poll, POLL_INTERVAL_MS);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          localStorage.removeItem(SMART_DISCOVERY_JOB_STORAGE_KEY);
+          setSearchError(handlePageError(error, "Failed to resume smart discovery").userMessage);
+          setSearching(false);
+        }
+      }
+    };
+
+    void poll();
+
+    return () => {
+      cancelled = true;
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [handlePageError, pollDiscoveryJob]);
+
+  useEffect(() => {
+    const jobId = localStorage.getItem(SMART_DISCOVERY_JOB_STORAGE_KEY);
+    if (!jobId) {
+      return;
+    }
+
+    return pollDiscoveryJobUntilDone(jobId);
+  }, [pollDiscoveryJobUntilDone]);
+
   const handleSearch = async (selectedEntities: EntityRead[]) => {
     if (selectedEntities.length === 0) {
       showError("Please select at least one entity");
@@ -79,27 +157,16 @@ export function useSmartDiscoveryController(): SmartDiscoveryController {
     setImportError(null);
 
     try {
-      const response = await smartDiscovery({
+      const job = await startSmartDiscoveryJob({
         entity_slugs: selectedEntities.map((entity) => entity.slug),
         max_results: maxResults,
         min_quality: minQuality,
         databases: selectedDatabases,
       });
-
-      setResults(response.results);
-      setQueryUsed(response.query_used);
-      setTotalFound(response.total_found);
-
-      const autoSelectedPmids = response.results
-        .filter((result) => !result.already_imported)
-        .slice(0, maxResults)
-        .map((result) => result.pmid)
-        .filter((pmid): pmid is string => Boolean(pmid));
-
-      setSelectedPmids(new Set(autoSelectedPmids));
+      localStorage.setItem(SMART_DISCOVERY_JOB_STORAGE_KEY, job.job_id);
+      pollDiscoveryJobUntilDone(job.job_id);
     } catch (error) {
       setSearchError(handlePageError(error, "Failed to run smart discovery").userMessage);
-    } finally {
       setSearching(false);
     }
   };

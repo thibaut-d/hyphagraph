@@ -17,8 +17,10 @@ from app.api import (
     export,
     extraction,
     extraction_review,
+    graph_cleaning,
     import_routes,
     inferences,
+    long_running_jobs,
     relations,
     relation_types,
     search,
@@ -70,6 +72,8 @@ async def _token_purge_loop() -> None:
 # This prevents NoReferencedTableError during foreign key resolution
 from app.models.entity import Entity  # noqa: F401
 from app.models.entity_merge_record import EntityMergeRecord  # noqa: F401
+from app.models.graph_cleaning_decision import GraphCleaningDecision  # noqa: F401
+from app.models.long_running_job import LongRunningJob  # noqa: F401
 from app.models.source import Source  # noqa: F401
 from app.models.relation import Relation  # noqa: F401
 from app.models.user import User  # noqa: F401
@@ -167,8 +171,10 @@ app.include_router(relation_types.router, prefix="/api/relation-types", tags=["r
 app.include_router(entity_categories.router, prefix="/api/entity-categories", tags=["entity-categories"])
 app.include_router(export.router, prefix="/api/export", tags=["export"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
+app.include_router(graph_cleaning.router, prefix="/api/admin/graph-cleaning", tags=["graph-cleaning"])
 app.include_router(extraction_review.router, prefix="/api")
 app.include_router(import_routes.router, prefix="/api")
+app.include_router(long_running_jobs.router, prefix="/api")
 
 # --- Test Helpers (only in testing mode) ---
 if settings.TESTING:
