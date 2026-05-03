@@ -10,7 +10,7 @@ from app.api.service_dependencies import get_extraction_review_service
 from app.dependencies.auth import get_current_active_superuser, get_current_user
 from app.main import app
 from app.models.user import User
-from app.schemas.staged_extraction import StagedExtractionFilters
+from app.schemas.staged_extraction import MaterializationResult, StagedExtractionFilters
 from app.utils.errors import ForbiddenException
 
 
@@ -262,6 +262,35 @@ class TestExtractionReviewPendingFilters:
         assert payload["extractions"][0]["extraction_type"] == "relation"
         assert payload["extractions"][0]["extraction_data"]["relation_type"] == "causes"
         assert payload["extractions"][0]["validation_flags"] == ["missing_required_agent_role"]
+
+    @pytest.mark.asyncio
+    async def test_review_approve_returns_validation_error_when_materialization_fails(
+        self, review_service, superuser
+    ):
+        extraction_id = uuid4()
+
+        async def override_superuser():
+            return superuser
+
+        review_service.approve_extraction.return_value = MaterializationResult(
+            success=False,
+            extraction_id=extraction_id,
+            extraction_type="relation",
+            error="Entity with slug 'walking' not found; cannot materialize relation",
+        )
+
+        app.dependency_overrides[get_current_active_superuser] = override_superuser
+        app.dependency_overrides[get_extraction_review_service] = lambda: review_service
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.post(
+                f"/api/extraction-review/{extraction_id}/review",
+                json={"decision": "approve"},
+            )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+        assert "walking" in response.json()["error"]["message"]
 
     @pytest.mark.asyncio
     async def test_pending_response_uses_filter_pagination(self, review_service, superuser):

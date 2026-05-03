@@ -24,7 +24,7 @@ from app.models.entity_revision import EntityRevision
 from app.models.user import User
 from app.services.extraction_review_service import ExtractionReviewService
 from app.services.extraction_validation_service import ValidationResult
-from app.llm.schemas import ExtractedEntity
+from app.llm.schemas import ExtractedEntity, ExtractedRelation, ExtractedRole
 
 
 @pytest.fixture
@@ -1525,6 +1525,45 @@ async def test_materialize_extraction_after_manual_approval(
     result = await review_service.materialize_extraction(staged.id)
     assert result.success is True
     assert result.materialized_entity_id is not None
+
+
+@pytest.mark.asyncio
+async def test_materialize_relation_with_missing_entity_returns_failure_without_500(
+    review_service,
+    sample_source,
+    sample_user,
+):
+    """A relation whose role entity is not materialized returns a failure result."""
+    relation = ExtractedRelation(
+        relation_type="treats",
+        roles=[
+            ExtractedRole(entity_slug="walking", role_type="agent"),
+            ExtractedRole(entity_slug="depressive-symptoms", role_type="target"),
+        ],
+        confidence="medium",
+        text_span="Walking improved depressive symptoms.",
+    )
+    staged = StagedExtraction(
+        extraction_type=ExtractionType.RELATION,
+        status=ExtractionStatus.PENDING,
+        source_id=sample_source.id,
+        extraction_data=relation.model_dump(mode="json"),
+        validation_score=0.5,
+        confidence_adjustment=1.0,
+        validation_flags=[],
+    )
+    review_service.db.add(staged)
+    await review_service.db.commit()
+
+    result = await review_service.approve_extraction(
+        extraction_id=staged.id,
+        reviewer_id=sample_user.id,
+        auto_materialize=True,
+    )
+
+    assert result.success is False
+    assert result.extraction_type == "relation"
+    assert "Entity with slug 'walking' not found" in result.error
 
 
 # === Test Review Edge Cases (not found) ===

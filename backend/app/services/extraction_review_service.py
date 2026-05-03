@@ -420,6 +420,7 @@ class ExtractionReviewService:
                 error=f"Extraction not approved (status: {staged.status.value})",
             )
 
+        extraction_type_value = staged.extraction_type.value
         effective_llm_review_status = llm_review_status or (
             "auto_verified" if staged.auto_approved else "confirmed"
         )
@@ -471,8 +472,8 @@ class ExtractionReviewService:
             return MaterializationResult(
                 success=False,
                 extraction_id=extraction_id,
-                extraction_type=staged.extraction_type.value,
-                error=f"Unsupported extraction type: {staged.extraction_type.value}",
+                extraction_type=extraction_type_value,
+                error=f"Unsupported extraction type: {extraction_type_value}",
             )
 
         except Exception as e:
@@ -481,7 +482,7 @@ class ExtractionReviewService:
             return MaterializationResult(
                 success=False,
                 extraction_id=extraction_id,
-                extraction_type=staged.extraction_type.value,
+                extraction_type=extraction_type_value,
                 error=str(e),
             )
 

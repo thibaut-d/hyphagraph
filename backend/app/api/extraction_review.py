@@ -192,6 +192,17 @@ async def review_extraction(
             notes=decision.notes,
             auto_materialize=True,
         )
+        if not result.success:
+            raise AppException(
+                status_code=400,
+                error_code=ErrorCode.VALIDATION_ERROR,
+                message=result.error or "Failed to approve extraction",
+                details="The extraction could not be materialized into the graph.",
+                context={
+                    "extraction_id": str(extraction_id),
+                    "extraction_type": result.extraction_type,
+                },
+            )
         return result
     else:  # reject
         staged = await service.get_extraction(extraction_id)
