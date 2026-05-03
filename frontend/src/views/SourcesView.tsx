@@ -22,6 +22,7 @@ import DownloadIcon from "@mui/icons-material/Download";
 import SearchIcon from "@mui/icons-material/Search";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import ClearAllIcon from "@mui/icons-material/ClearAll";
+import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 
 import { listSources, SourceFilters, getSourceFilterOptions, SourceFilterOptions } from "../api/sources";
 import { SourceRead } from "../types/source";
@@ -362,6 +363,15 @@ export function SourcesView() {
                 size="small"
               >
                 {t("sources.import_pubmed", "Import from PubMed")}
+              </Button>
+              <Button
+                component={RouterLink}
+                to="/sources/bulk-extraction"
+                variant="outlined"
+                startIcon={<AutoFixHighIcon />}
+                size="small"
+              >
+                {t("sources.bulk_extraction", "Bulk Extract")}
               </Button>
               <Button
                 component={RouterLink}

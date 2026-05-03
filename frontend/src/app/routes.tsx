@@ -31,6 +31,7 @@ import { SynthesisView } from "../views/SynthesisView";
 import { DisagreementsView } from "../views/DisagreementsView";
 import { EvidenceView } from "../views/EvidenceView";
 import { PubMedImportView } from "../views/PubMedImportView";
+import { BulkSourceExtractionView } from "../views/BulkSourceExtractionView";
 import InferencesView from "../views/InferencesView";
 import { SmartSourceDiscoveryView } from "../views/SmartSourceDiscoveryView";
 import { AdminView } from "../views/AdminView";
@@ -64,6 +65,7 @@ export const router = createBrowserRouter([
       { path: "sources/import", element: <ProtectedRoute><ImportSourcesView /></ProtectedRoute> },
       { path: "sources/import-pubmed", element: <ProtectedRoute><PubMedImportView /></ProtectedRoute> },
       { path: "sources/smart-discovery", element: <ProtectedRoute><SmartSourceDiscoveryView /></ProtectedRoute> },
+      { path: "sources/bulk-extraction", element: <ProtectedRoute><BulkSourceExtractionView /></ProtectedRoute> },
       { path: "sources/:id", element: <SourceDetailView /> },
       { path: "sources/:id/edit", element: <ProtectedRoute><EditSourceView /></ProtectedRoute> },
 
