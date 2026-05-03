@@ -3,6 +3,7 @@ from uuid import uuid4
 import pytest
 
 from app.models.long_running_job import LongRunningJobKind, LongRunningJobStatus
+from app.schemas.long_running_job import LongRunningJobRead
 from app.services.long_running_job_service import create_job, load_owned_job, run_job
 
 
@@ -61,3 +62,17 @@ async def test_load_owned_job_rejects_other_user(db_session, test_user):
 
     with pytest.raises(Exception):
         await load_owned_job(db_session, job_id=job.id, user_id=uuid4())
+
+
+async def test_long_running_job_read_accepts_bulk_source_extraction_kind():
+    LongRunningJobRead.model_validate(
+        {
+            "id": uuid4(),
+            "kind": LongRunningJobKind.BULK_SOURCE_EXTRACTION.value,
+            "status": LongRunningJobStatus.SUCCEEDED.value,
+            "request_payload": {"search": "pain", "study_budget": 10},
+            "result_payload": {"extracted_count": 1},
+            "created_at": "2026-05-03T19:12:00Z",
+            "updated_at": "2026-05-03T19:12:00Z",
+        }
+    )

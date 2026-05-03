@@ -5,7 +5,7 @@ from uuid import UUID
 from pydantic import BaseModel
 
 
-JobKindLiteral = Literal["smart_discovery", "source_url_extraction"]
+JobKindLiteral = Literal["smart_discovery", "source_url_extraction", "bulk_source_extraction"]
 JobStatusLiteral = Literal["pending", "running", "succeeded", "failed"]
 
 
