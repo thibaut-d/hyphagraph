@@ -434,6 +434,18 @@ class ExtractionReviewService:
 
         try:
             if staged.extraction_type == ExtractionType.ENTITY:
+                entity_data = ExtractedEntity(**staged.extraction_data)
+                existing_entity_id = await self._find_current_entity_id_by_slug(entity_data.slug)
+                if existing_entity_id is not None:
+                    staged.materialized_entity_id = existing_entity_id
+                    await self.db.commit()
+                    return MaterializationResult(
+                        success=True,
+                        extraction_id=extraction_id,
+                        extraction_type="entity",
+                        materialized_entity_id=existing_entity_id,
+                    )
+
                 entity_id = await materialize_entity(
                     self.db,
                     staged,

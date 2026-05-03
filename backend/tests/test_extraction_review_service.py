@@ -1640,6 +1640,57 @@ async def test_approving_relation_also_materializes_matching_staged_entities(
     assert refreshed_symptoms.materialized_entity_id is not None
 
 
+@pytest.mark.asyncio
+async def test_approving_entity_with_existing_slug_links_existing_entity(
+    review_service,
+    sample_source,
+    sample_user,
+    high_confidence_validation,
+):
+    """Approving a staged entity whose slug already exists should not create a duplicate."""
+    existing = Entity()
+    review_service.db.add(existing)
+    await review_service.db.flush()
+    review_service.db.add(
+        EntityRevision(
+            entity_id=existing.id,
+            slug="aerobic-exercise",
+            summary={"en": "Existing entity"},
+            status="confirmed",
+            is_current=True,
+        )
+    )
+    staged, _ = await review_service.stage_extraction(
+        extraction_type=ExtractionType.ENTITY,
+        extraction_data=ExtractedEntity(
+            slug="aerobic-exercise",
+            category="treatment",
+            summary="A category of physical exercise interventions",
+            text_span="Aerobic exercise",
+            confidence="high",
+        ),
+        source_id=sample_source.id,
+        validation_result=high_confidence_validation,
+        auto_materialize=False,
+    )
+
+    result = await review_service.approve_extraction(
+        extraction_id=staged.id,
+        reviewer_id=sample_user.id,
+        auto_materialize=True,
+    )
+
+    assert result.success is True
+    assert result.materialized_entity_id == existing.id
+
+    revisions = (
+        await review_service.db.execute(
+            select(EntityRevision).where(EntityRevision.slug == "aerobic-exercise")
+        )
+    ).scalars().all()
+    assert len(revisions) == 1
+
+
 # === Test Review Edge Cases (not found) ===
 
 
