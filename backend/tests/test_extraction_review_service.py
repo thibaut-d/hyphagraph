@@ -1566,6 +1566,80 @@ async def test_materialize_relation_with_missing_entity_returns_failure_without_
     assert "Entity with slug 'walking' not found" in result.error
 
 
+@pytest.mark.asyncio
+async def test_approving_relation_also_materializes_matching_staged_entities(
+    review_service,
+    sample_source,
+    sample_user,
+    high_confidence_validation,
+):
+    """Approving a relation should approve same-source staged entity prerequisites."""
+    walking = ExtractedEntity(
+        slug="walking",
+        category="treatment",
+        summary="Walking exercise",
+        text_span="walking",
+        confidence="high",
+    )
+    symptoms = ExtractedEntity(
+        slug="depressive-symptoms",
+        category="symptom",
+        summary="Depressive symptoms",
+        text_span="depressive symptoms",
+        confidence="high",
+    )
+    walking_staged, _ = await review_service.stage_extraction(
+        extraction_type=ExtractionType.ENTITY,
+        extraction_data=walking,
+        source_id=sample_source.id,
+        validation_result=high_confidence_validation,
+        auto_materialize=False,
+    )
+    symptoms_staged, _ = await review_service.stage_extraction(
+        extraction_type=ExtractionType.ENTITY,
+        extraction_data=symptoms,
+        source_id=sample_source.id,
+        validation_result=high_confidence_validation,
+        auto_materialize=False,
+    )
+    relation = ExtractedRelation(
+        relation_type="treats",
+        roles=[
+            ExtractedRole(entity_slug="walking", role_type="agent"),
+            ExtractedRole(entity_slug="depressive-symptoms", role_type="target"),
+        ],
+        confidence="medium",
+        text_span="Walking improved depressive symptoms.",
+    )
+    relation_staged = StagedExtraction(
+        extraction_type=ExtractionType.RELATION,
+        status=ExtractionStatus.PENDING,
+        source_id=sample_source.id,
+        extraction_data=relation.model_dump(mode="json"),
+        validation_score=0.5,
+        confidence_adjustment=1.0,
+        validation_flags=[],
+    )
+    review_service.db.add(relation_staged)
+    await review_service.db.commit()
+
+    result = await review_service.approve_extraction(
+        extraction_id=relation_staged.id,
+        reviewer_id=sample_user.id,
+        auto_materialize=True,
+    )
+
+    assert result.success is True
+    assert result.materialized_relation_id is not None
+
+    refreshed_walking = await review_service.db.get(StagedExtraction, walking_staged.id)
+    refreshed_symptoms = await review_service.db.get(StagedExtraction, symptoms_staged.id)
+    assert refreshed_walking.status == ExtractionStatus.APPROVED
+    assert refreshed_walking.materialized_entity_id is not None
+    assert refreshed_symptoms.status == ExtractionStatus.APPROVED
+    assert refreshed_symptoms.materialized_entity_id is not None
+
+
 # === Test Review Edge Cases (not found) ===
 
 

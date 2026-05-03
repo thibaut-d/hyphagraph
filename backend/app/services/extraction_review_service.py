@@ -452,6 +452,15 @@ class ExtractionReviewService:
                 )
 
             elif staged.extraction_type == ExtractionType.RELATION:
+                relation_data = ExtractedRelation(**staged.extraction_data)
+                await self._materialize_missing_relation_role_entities(
+                    staged=staged,
+                    relation_data=relation_data,
+                    user_id=user_id,
+                    llm_review_status=effective_llm_review_status,
+                    confirmed_by_user_id=effective_confirmed_by_user_id,
+                    confirmed_at=effective_confirmed_at,
+                )
                 relation_id = await materialize_relation(
                     self.db,
                     staged,
@@ -485,6 +494,75 @@ class ExtractionReviewService:
                 extraction_type=extraction_type_value,
                 error=str(e),
             )
+
+    async def _materialize_missing_relation_role_entities(
+        self,
+        *,
+        staged: StagedExtraction,
+        relation_data: ExtractedRelation,
+        user_id: UUID | None,
+        llm_review_status: str,
+        confirmed_by_user_id: UUID | None,
+        confirmed_at: datetime | None,
+    ) -> None:
+        """
+        Approve/materialize staged entity drafts required by an approved relation.
+
+        Bulk extraction stages entities and relations together. If a reviewer approves
+        a relation before approving its role entities, materialize the matching entity
+        drafts from the same source first so the relation can resolve its role IDs.
+        """
+        role_slugs = list(dict.fromkeys(role.entity_slug for role in relation_data.roles))
+        for slug in role_slugs:
+            existing_entity_id = await self._find_current_entity_id_by_slug(slug)
+            if existing_entity_id is not None:
+                continue
+
+            entity_staged = await self._find_reviewable_entity_staged_by_slug(
+                source_id=staged.source_id,
+                slug=slug,
+            )
+            if entity_staged is None:
+                continue
+
+            apply_review_metadata(entity_staged, user_id, "Approved with dependent relation", True)
+            entity_id = await materialize_entity(
+                self.db,
+                entity_staged,
+                user_id=user_id,
+                llm_review_status=llm_review_status,
+                confirmed_by_user_id=confirmed_by_user_id,
+                confirmed_at=confirmed_at,
+            )
+            entity_staged.materialized_entity_id = entity_id
+
+    async def _find_current_entity_id_by_slug(self, slug: str) -> UUID | None:
+        result = await self.db.execute(
+            select(EntityRevision.entity_id)
+            .where(EntityRevision.slug == slug)
+            .where(EntityRevision.is_current == True)  # noqa: E712
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
+    async def _find_reviewable_entity_staged_by_slug(
+        self,
+        *,
+        source_id: UUID,
+        slug: str,
+    ) -> StagedExtraction | None:
+        result = await self.db.execute(
+            select(StagedExtraction)
+            .where(StagedExtraction.source_id == source_id)
+            .where(StagedExtraction.extraction_type == ExtractionType.ENTITY)
+            .where(StagedExtraction.status.in_([ExtractionStatus.PENDING, ExtractionStatus.AUTO_VERIFIED]))
+            .where(StagedExtraction.materialized_entity_id.is_(None))
+            .order_by(StagedExtraction.created_at.asc())
+        )
+        for candidate in result.scalars().all():
+            if candidate.extraction_data.get("slug") == slug:
+                return candidate
+        return None
 
     # =========================================================================
     # Querying and Statistics
