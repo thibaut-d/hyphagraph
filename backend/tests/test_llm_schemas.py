@@ -504,6 +504,47 @@ def test_validate_batch_extraction_normalizes_verbose_study_design_phrases():
     assert result.relations[2].evidence_context.study_design == "randomized_controlled_trial"
 
 
+def test_validate_batch_extraction_normalizes_meta_regression_study_design():
+    result = validate_batch_extraction(
+        {
+            "entities": [
+                {
+                    "slug": "duloxetine",
+                    "summary": "Duloxetine is the active treatment discussed in the source.",
+                    "category": "drug",
+                    "confidence": "high",
+                    "text_span": "duloxetine",
+                },
+                {
+                    "slug": "fibromyalgia",
+                    "summary": "Fibromyalgia is the target condition in the source.",
+                    "category": "disease",
+                    "confidence": "high",
+                    "text_span": "fibromyalgia",
+                },
+            ],
+            "relations": [
+                {
+                    "relation_type": "treats",
+                    "roles": [
+                        {"entity_slug": "duloxetine", "role_type": "agent"},
+                        {"entity_slug": "fibromyalgia", "role_type": "target"},
+                    ],
+                    "confidence": "medium",
+                    "text_span": "a multilevel meta-regression",
+                    "evidence_context": {
+                        "statement_kind": "finding",
+                        "study_design": "multilevel meta-regression",
+                    },
+                },
+            ],
+        }
+    )
+
+    assert result.relations[0].evidence_context is not None
+    assert result.relations[0].evidence_context.study_design == "meta_analysis"
+
+
 def test_raise_internal_api_exception_uses_structured_app_exception():
     with pytest.raises(AppException) as exc_info:
         raise_internal_api_exception(

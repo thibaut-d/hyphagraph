@@ -415,8 +415,8 @@ def _normalize_study_design(value: object) -> object:
     Map free-text study-design descriptions to enum values.
 
     LLMs frequently return verbose phrases like "systematic review and
-    meta-analysis of randomized controlled trials" instead of a single
-    enum token. This function normalises the most common patterns so
+    meta-analysis of randomized controlled trials" or "multilevel meta-regression"
+    instead of a single enum token. This function normalises the most common patterns so
     Pydantic validation does not reject valid extractions.
 
     Priority order when the text matches multiple keywords: meta_analysis >
@@ -440,7 +440,13 @@ def _normalize_study_design(value: object) -> object:
         return v
 
     # Keyword-based heuristics (highest-specificity first).
-    if "meta-analysis" in v or "meta analysis" in v or "meta_analysis" in v:
+    if (
+        "meta-analysis" in v
+        or "meta analysis" in v
+        or "meta_analysis" in v
+        or "meta-regression" in v
+        or "meta regression" in v
+    ):
         return "meta_analysis"
     if "systematic review" in v or "systematic_review" in v:
         return "systematic_review"
