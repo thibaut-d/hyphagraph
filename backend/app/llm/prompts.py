@@ -50,6 +50,11 @@ Guidelines:
   "appears to" as uncertainty unless the source also reports direct measured evidence
 - Note uncertainty levels when present in the source
 - Preserve relation applicability context when present, including population, dosage, comparator, timeframe, and study conditions
+- If a finding is limited to a specific studied population, preserve that population explicitly.
+  This is mandatory for animal/non-human populations and for constrained human cohorts such as
+  age bands, sex-specific cohorts, pregnancy status, disease stage, comorbidities, or genotype.
+  Do not let a relation or assertion_text imply a general human population when the source studied
+  dogs, mice, cells, children, older adults, pregnant patients, or another specific cohort.
 - Preserve evidence-context details when present, including source type, study design, sample size, and statistical support
 - Never merge or reconcile conflicting statements into a single output item
 - Use standardized medical terminology only when it is already present in the text or is a direct surface-form normalization of the same mention
@@ -82,15 +87,25 @@ SUMMARY RULES:
 - Do NOT turn a sparse mention into a source-specific use statement
 - Prefer a generic definitional summary like "Nonsteroidal anti-inflammatory drug class." over a context-bound summary like "Used in this study to treat chronic pain."
 - Keep the summary short and neutral; do not expand it into a long encyclopedia entry
-- Do not create standalone entities for dosage, duration, timeframe, sample size, or study design metadata. Keep those as relation scope or evidence context instead.
+- Do not create standalone entities for dosage, duration, timeframe, sample size, study design, or vague protocol-duration metadata such as "shorter protocols" or "extended recordings". Keep those as relation scope or evidence context instead.
+- Do not create standalone entities for vague aggregate buckets such as "patient-related factors", "patient population and individual factors", "surgical technical factors", or "other imaging and assessment tools". Extract the concrete named mechanisms, populations, tools, or procedures instead, and leave broad bucket wording in notes.
 - Emit each real-world entity only once per extraction batch. Merge repeated mentions under one canonical slug instead of duplicating near-identical entities.
 - text_span should be the shortest exact mention that identifies the entity in the source text.
 - Prefer entities that participate in an explicit relation or provide reusable study context such as
   population, comparator, control group, biomarker, condition, or outcome.
+- Extract source-stated studied populations as population entities when they limit a relation's
+  applicability, especially non-human/animal populations and constrained human cohorts such as
+  children, older adults, pregnant patients, patients with a specific disease stage, comorbidity,
+  genotype, or other enrollment-defining characteristic.
 - Omit generic document nouns or paper artifacts unless the source clearly uses them as real
   biomedical participants in a relation. Usually omit items like "study", "trial", "authors",
   "results", "table", "figure", "intervention group", or "control group" when they do not denote
   a reusable entity page.
+- Do not create vague temporally anchored treatment entities such as "current treatments",
+  "current pharmacological treatments", "existing therapies", "standard treatment", or
+  "usual care" unless the same local span names the specific treatment, treatment class, or exact
+  scoped domain such as "nonsteroidal anti-inflammatory drugs for canine osteoarthritis". "Current"
+  is not a date, and a vague present-day bucket is not a reusable biomedical entity.
 - Do not create intervention-arm wrapper entities like "chemotherapy arm", "treatment arm", or
   "high-dose group" when the reusable entity is the intervention itself. Extract the underlying
   intervention entity and keep the arm/group wording only in relation text_span or source_mention.
@@ -265,13 +280,34 @@ RELATION EXTRACTION RULES:
 - Preserve negation, uncertainty, study conditions, dosage, timeframe, comparator, and population in scope or notes when relevant
 - Prefer one relation per explicit study statement or finding span
 - If the same entities appear in multiple source spans with different polarity, certainty, population, comparator, or outcome, emit separate relations rather than one merged relation.
+- Population applicability is safety-critical: when a finding, null finding, safety claim, efficacy
+  claim, prevalence statement, or methodology statement is explicitly limited to a studied
+  population, include that population as a population role in the SAME relation.
+- Always preserve non-human or animal populations as explicit population roles when the source
+  states them (for example dogs with osteoarthritis, mice, rats, or in-vitro cell lines). Do not
+  write assertion_text that sounds applicable to humans when the source population is non-human.
+- For human studies, preserve enrollment-defining population limits such as age group, sex,
+  pregnancy status, disease stage, comorbidity, genotype, severity, or refractory status as
+  population or condition roles when explicitly stated in the local span.
+- If the population is stated in the same local claim span, do not put it only in notes or omit it;
+  make it a relation role. If it is only stated elsewhere in the document, include it only when the
+  local span directly refers to the same study participants or groups.
 - If one source span reports two distinct outcomes or claims, emit separate relations when that preserves the source meaning more faithfully.
 - If the text says an intervention did not work, was inconclusive, or had mixed results, still extract the relation but set evidence_context.finding_polarity accordingly instead of rewriting it as a positive effect
 - For null efficacy findings such as "did not significantly improve", "no significant difference",
   or "similar to placebo", use finding_polarity "neutral" unless the span explicitly reports worse
   outcomes than the comparator. Do not mark those therapeutic no-difference findings as
   "contradicts".
-- For side-effect or safety findings where no significant difference is found versus a control or placebo, use "causes" with finding_polarity "contradicts" — do NOT use "other". Example: "no significant increase in nausea compared to placebo" → relation_type "causes", finding_polarity "contradicts". This captures that the study tested whether the drug causes the effect and found no evidence it does more than control.
+- For side-effect or safety findings where a specific adverse event or harm endpoint is named and
+  no significant difference is found versus a control or placebo, use "causes" with
+  finding_polarity "contradicts" — do NOT use "other". Example: "no significant increase in
+  nausea compared to placebo" → relation_type "causes", target=nausea,
+  finding_polarity "contradicts". This captures that the study tested whether the drug causes the
+  named effect and found no evidence it does more than control.
+- Generic safety conclusions such as "safe for use", "well tolerated", or "no safety concerns"
+  are NOT valid causes relations unless the same local span names a concrete adverse event, harm,
+  toxicity, or safety outcome as target/outcome. Keep generic safety as an outcome/methodology or
+  conservative "other" relation for review rather than inventing an adverse-event target.
 - Do NOT use relation_type "other" for ordinary efficacy findings or adverse-event findings when
   the span already makes "treats" or "causes" explicit.
 - Use relation_type "associated_with" for explicit non-causal association, correlation, co-occurrence, or comorbidity findings when the source does not claim mechanism or causation.
@@ -290,6 +326,11 @@ RELATION EXTRACTION RULES:
   "potentially reflecting lower symptom burden" unless the same local span reports
   a direct measured outcome with clear core roles.
 - Recommendation-only or screening-only language should usually NOT become a relation unless the same span explicitly states a diagnosis, measurement, prevalence, risk, treatment, or association finding with clear core participants.
+- Do not extract relations whose agent, target, or comparator is only a vague temporally anchored
+  bucket such as "current treatments", "existing therapies", "standard treatment", "usual care",
+  or "conventional therapy" unless the local span names the specific treatment, treatment class, or
+  exact scoped domain. If the span only says current treatments are limited, omit the relation or
+  keep the limitation in notes attached to a more specific extracted relation.
 - If the text gives only a mechanistic assumption, background rationale, or methodology note, mark evidence_context.statement_kind accordingly
 - If the text presents competing or contradictory findings, output separate relations rather than merging them
 - HyphaGraph relations are hyperedges: when one source statement includes reusable semantic participants such as population, comparator, outcome, mechanism, or study condition, keep that context as additional roles in the SAME relation instead of decomposing the statement into multiple binary relations
@@ -298,6 +339,8 @@ RELATION EXTRACTION RULES:
 - Put dosage, duration, timeframe, study_design, sample_size, and statistical_support into scope or evidence_context instead of inventing standalone entities for them
 - Do not create duration or dosage roles from vague qualifiers alone. Prefer exact values like "12 weeks" or "60mg daily". If the source only says "short-term", "long-term", "high dose", or similar vague language, keep that in notes or methodology_text instead of a role entity.
 - Every role entity_slug used in a relation must be present in the identified entity list above
+- Never emit a one-role relation. A valid HyphaGraph relation must connect at least two explicit
+  source-stated participants with valid roles; if a span only gives one participant, omit it.
 - Every role should include source_mention when the participant is explicitly named in the relation span.
 - source_mention must be copied exactly from the local relation text_span, not normalized or paraphrased.
 - assertion_text should be a faithful, source-bounded paraphrase of the local finding. Do not strengthen certainty, magnitude, or clinical importance beyond what the text states.
@@ -320,7 +363,9 @@ RELATION EXTRACTION RULES:
   "quality of life" should usually be the relation's target, even if the sentence also frames it
   as an outcome or endpoint.
 - If the source mentions an adverse event like nausea but does not explicitly identify what caused it in the same source span, omit the relation instead of guessing
-- If the source only says adverse events were similar to placebo or not serious, do not invent a causes relation unless the active intervention and the adverse event are both explicit in the same span
+- If the source only says adverse events were similar to placebo, not serious, safe, or well
+  tolerated, do not invent a causes relation unless the active intervention and the specific
+  adverse event/harm endpoint are both explicit in the same span.
 - If the source says "combined X with Y", "X plus Y", "adjunctive Y", or similar combination language, do NOT emit a single-agent treats relation for only X or only Y unless the text explicitly attributes the effect to that one component
 - For combination findings, comparator/control groups are not active agents; include named active interventions as agent roles and keep placebo only as control_group
 
@@ -472,8 +517,18 @@ Extract:
    - if an entity is only named in a list or sparse mention, keep the summary short, generic, and non-interpretive
    - extract reusable relation participants as entities, including comparator/control groups, study arms, populations, outcomes, and explicitly named conditions
    - prefer entities that participate in an explicit relation or provide reusable study context such as population, comparator, control_group, biomarker, condition, or outcome
+   - extract source-stated studied populations as population entities when they limit relation
+     applicability, especially animal/non-human populations and constrained human cohorts such as
+     children, older adults, pregnant patients, disease-stage groups, comorbidity-defined groups,
+     genotype-defined groups, or other enrollment-defining cohorts
    - omit generic document nouns or paper artifacts unless the source clearly uses them as real biomedical participants in a relation
-   - do NOT create entities for dosage, duration, timeframe, sample size, or study design metadata; keep them in relation scope or evidence_context
+   - do not create vague temporally anchored treatment entities such as "current treatments",
+     "current pharmacological treatments", "existing therapies", "standard treatment", "usual
+     care", or "conventional therapy" unless the same local span names the specific treatment,
+     treatment class, or exact scoped domain. "Current" is not a date, and a vague present-day
+     bucket is not a reusable biomedical entity.
+   - do NOT create entities for dosage, duration, timeframe, sample size, study design, or vague protocol-duration metadata such as "shorter protocols" or "extended recordings"; keep them in relation scope or evidence_context
+   - do NOT create standalone entities for vague aggregate buckets such as "patient-related factors", "patient population and individual factors", "surgical technical factors", or "other imaging and assessment tools"; extract concrete named mechanisms, populations, tools, or procedures instead
    - emit each real-world entity only once per batch; merge repeated mentions into one canonical entity record
    - do not create intervention-arm wrapper entities like "chemotherapy arm" or "treatment group" when the reusable entity is the intervention itself; use the underlying intervention entity and keep the arm/group wording only in source_mention if needed
    - text_span should be the shortest exact source mention for that entity
@@ -513,6 +568,18 @@ Extract:
    - When a single source statement reports combination therapy or co-administration, include every explicitly named active intervention as agent roles in the SAME relation if the finding applies to the combination.
    - Do not split one contextual statement into several binary relations when one n-ary relation can preserve the source context.
    - Do not add contextual roles that are not explicitly stated in the same source span.
+   - Population applicability is safety-critical: if a finding, null finding, safety claim,
+     efficacy claim, prevalence statement, or methodology statement is limited to a studied
+     population, include that population as a population role in the SAME relation.
+   - Always preserve non-human or animal populations as explicit population roles when stated
+     (for example dogs with osteoarthritis, mice, rats, or in-vitro cell lines). Do not write
+     assertion_text that sounds applicable to humans when the source population is non-human.
+   - For human studies, preserve enrollment-defining population limits such as age group, sex,
+     pregnancy status, disease stage, comorbidity, genotype, severity, or refractory status as
+     population or condition roles when explicitly stated in the local span.
+   - If the population is stated in the same local claim span, do not put it only in notes or omit
+     it; make it a relation role. If it is only stated elsewhere in the document, include it only
+     when the local span directly refers to the same study participants or groups.
 
    CRITICAL GUIDELINES FOR RELATION DIRECTION:
    - treats: agent is the treatment/drug, target is the disease/symptom
@@ -548,6 +615,8 @@ Extract:
    - first identify the local claim-bearing span; relation extraction should stay anchored to that span
    - relation text_span should usually be 1-3 sentences and should be sufficient on its own to justify the relation
    - every role entity_slug used in a relation MUST also appear in the entities array
+   - never emit a one-role relation; a valid HyphaGraph relation must connect at least two
+     explicit source-stated participants with valid roles
    - each role should include source_mention as the shortest exact local phrase for that participant inside text_span whenever the participant is explicitly named
    - source_mention must stay source-faithful; do not paraphrase or normalize it
    - include evidence_context for every relation
@@ -561,7 +630,16 @@ Extract:
    - for null efficacy findings such as "did not significantly improve", "no significant difference", or "similar to placebo", use finding_polarity "neutral" unless the source explicitly says the intervention performed worse than the comparator
    - if the same entities appear in multiple contradictory or differently qualified spans, emit separate relations instead of merging them
    - if the source uses modal or hedged language such as "may", "might", "could", "suggests", "potential", or "appears to", prefer statement_kind "hypothesis" or finding_polarity "uncertain" unless the same span reports direct measured findings
-   - For side-effect or safety findings where no significant difference is found versus a control or placebo, use relation_type "causes" with finding_polarity "contradicts" — do NOT use "other". Example: "no significant increase in nausea vs placebo" → relation_type "causes", finding_polarity "contradicts".
+   - For side-effect or safety findings where a specific adverse event or harm endpoint is named
+     and no significant difference is found versus a control or placebo, use relation_type
+     "causes" with finding_polarity "contradicts" — do NOT use "other". Example: "no
+     significant increase in nausea vs placebo" → relation_type "causes", target=nausea,
+     finding_polarity "contradicts".
+   - Generic safety conclusions such as "safe for use", "well tolerated", or "no safety
+     concerns" are NOT valid causes relations unless the same local span names a concrete adverse
+     event, harm, toxicity, or safety outcome as target/outcome. Keep generic safety as an
+     outcome/methodology or conservative "other" relation for review rather than inventing an
+     adverse-event target.
    - Use relation_type "associated_with" for explicit non-causal association, correlation, co-occurrence, or comorbidity findings when the source does not claim mechanism or causation.
    - Do NOT use "associated_with" for intervention/exposure findings that report
      reduced odds, lower risk, increased odds, or higher risk of a measured
@@ -579,6 +657,12 @@ Extract:
      reports a direct measured outcome with clear core roles.
    - do NOT use relation_type "other" for ordinary efficacy findings or adverse-event findings when the span already makes "treats" or "causes" explicit
    - Recommendation-only or screening-only language should usually NOT become a relation unless the same span explicitly states a diagnosis, measurement, prevalence, risk, treatment, or association finding with clear core participants.
+   - Do not extract relations whose agent, target, or comparator is only a vague temporally
+     anchored bucket such as "current treatments", "existing therapies", "standard treatment",
+     "usual care", or "conventional therapy" unless the local span names the specific treatment,
+     treatment class, or exact scoped domain. If the span only says current treatments are limited,
+     omit the relation or keep the limitation in notes attached to a more specific extracted
+     relation.
    - in therapeutic findings, a measured clinical outcome like overall survival, blood pressure, or quality of life should usually be the relation target even if the sentence also frames it as an endpoint or outcome
    - evidence_strength assignment — use the strongest level warranted by the source, never inflate it:
      strong   → meta-analysis or systematic review with clear outcomes, or RCT with significant result
@@ -830,6 +914,10 @@ Follow the same extraction rules as the main batch prompt:
 - Extract only information explicitly supported by the text
 - Keep findings, background, hypotheses, and methodology separate
 - Keep relation scope and evidence context source-faithful
+- Preserve studied populations explicitly; if a missed finding is limited to dogs, mice,
+  children, older adults, pregnant patients, disease-stage groups, comorbidity-defined groups,
+  genotype-defined groups, or another specific cohort, include that population as a population
+  role in the same relation.
 - Every relation role entity_slug must already exist in the prior extraction or be included as a NEW entity in this response
 - Keep output append-only; never modify prior extraction content
 

@@ -352,6 +352,61 @@ def test_validate_batch_extraction_rejects_causes_relation_without_agent():
     assert "missing required core roles" in str(exc_info.value)
 
 
+def test_validate_batch_extraction_drops_one_role_relation_before_validation():
+    result = validate_batch_extraction(
+        {
+            "entities": [
+                {
+                    "slug": "current-pharmacological-treatments",
+                    "summary": "Vague treatment bucket emitted by the model.",
+                    "category": "treatment",
+                    "confidence": "medium",
+                    "text_span": "current pharmacological treatments",
+                },
+                {
+                    "slug": "cannabis-extract",
+                    "summary": "Cannabis extract is the intervention discussed in the source.",
+                    "category": "drug",
+                    "confidence": "high",
+                    "text_span": "cannabis extract",
+                },
+                {
+                    "slug": "oa-related-pain",
+                    "summary": "Pain related to osteoarthritis.",
+                    "category": "symptom",
+                    "confidence": "high",
+                    "text_span": "OA-related pain",
+                },
+            ],
+            "relations": [
+                {
+                    "relation_type": "treats",
+                    "roles": [
+                        {
+                            "entity_slug": "current-pharmacological-treatments",
+                            "role_type": "agent",
+                        },
+                    ],
+                    "confidence": "medium",
+                    "text_span": "Current pharmacological treatments are often limited in efficacy.",
+                },
+                {
+                    "relation_type": "treats",
+                    "roles": [
+                        {"entity_slug": "cannabis-extract", "role_type": "agent"},
+                        {"entity_slug": "oa-related-pain", "role_type": "target"},
+                    ],
+                    "confidence": "high",
+                    "text_span": "Cannabis extract did not significantly reduce OA-related pain.",
+                },
+            ],
+        }
+    )
+
+    assert len(result.relations) == 1
+    assert result.relations[0].roles[0].entity_slug == "cannabis-extract"
+
+
 @pytest.mark.parametrize("relation_type", ["associated_with", "prevalence_in"])
 def test_validate_batch_extraction_downgrades_incomplete_observational_relation_to_other(
     relation_type: str,
@@ -429,6 +484,50 @@ def test_validate_batch_extraction_downgrades_observational_relation_without_tar
     assert result.relations[0].model_proposed_type == "associated_with"
 
 
+def test_validate_batch_extraction_downgrades_causes_relation_without_target_or_outcome():
+    result = validate_batch_extraction(
+        {
+            "entities": [
+                {
+                    "slug": "cannabis-extract",
+                    "summary": "Cannabis extract is the intervention discussed in the source.",
+                    "category": "drug",
+                    "confidence": "high",
+                    "text_span": "cannabis extract",
+                },
+                {
+                    "slug": "dogs-with-oa",
+                    "summary": "Dogs diagnosed with osteoarthritis.",
+                    "category": "population",
+                    "confidence": "high",
+                    "text_span": "dogs with OA",
+                },
+            ],
+            "relations": [
+                {
+                    "relation_type": "causes",
+                    "roles": [
+                        {"entity_slug": "cannabis-extract", "role_type": "agent"},
+                        {"entity_slug": "dogs-with-oa", "role_type": "population"},
+                    ],
+                    "confidence": "medium",
+                    "text_span": (
+                        "full-spectrum cannabis extract containing CBD and THC is safe "
+                        "for use in dogs for up to 90 days"
+                    ),
+                    "evidence_context": {
+                        "statement_kind": "finding",
+                        "finding_polarity": "contradicts",
+                    },
+                }
+            ],
+        }
+    )
+
+    assert result.relations[0].relation_type == "other"
+    assert result.relations[0].model_proposed_type == "causes"
+
+
 def test_validate_batch_extraction_normalizes_verbose_study_design_phrases():
     """LLMs often return prose like 'systematic review and meta-analysis of RCTs'
     instead of a single enum token.  The normalizer must map the highest-specificity
@@ -491,39 +590,47 @@ def test_validate_batch_extraction_normalizes_verbose_study_design_phrases():
                         "study_design": "randomized controlled trial",
                     },
                 },
-            ],
-        }
-    )
-
-    assert result.relations[0].evidence_context is not None
-    # meta-analysis wins over systematic_review because it has higher priority
-    assert result.relations[0].evidence_context.study_design == "meta_analysis"
-    assert result.relations[1].evidence_context is not None
-    assert result.relations[1].evidence_context.study_design == "systematic_review"
-    assert result.relations[2].evidence_context is not None
-    assert result.relations[2].evidence_context.study_design == "randomized_controlled_trial"
-
-
-def test_validate_batch_extraction_normalizes_meta_regression_study_design():
-    result = validate_batch_extraction(
-        {
-            "entities": [
                 {
-                    "slug": "duloxetine",
-                    "summary": "Duloxetine is the active treatment discussed in the source.",
-                    "category": "drug",
-                    "confidence": "high",
-                    "text_span": "duloxetine",
+                    "relation_type": "treats",
+                    "roles": [
+                        {"entity_slug": "duloxetine", "role_type": "agent"},
+                        {"entity_slug": "fibromyalgia", "role_type": "target"},
+                    ],
+                    "confidence": "medium",
+                    "text_span": "a double-blind, randomized study",
+                    "evidence_context": {
+                        "statement_kind": "finding",
+                        "study_design": "double-blind, randomized study",
+                    },
                 },
                 {
-                    "slug": "fibromyalgia",
-                    "summary": "Fibromyalgia is the target condition in the source.",
-                    "category": "disease",
-                    "confidence": "high",
-                    "text_span": "fibromyalgia",
+                    "relation_type": "treats",
+                    "roles": [
+                        {"entity_slug": "duloxetine", "role_type": "agent"},
+                        {"entity_slug": "fibromyalgia", "role_type": "target"},
+                    ],
+                    "confidence": "medium",
+                    "text_span": "a double-blind randomized study",
+                    "evidence_context": {
+                        "statement_kind": "finding",
+                        "study_design": "double_blind_randomized_study",
+                    },
                 },
-            ],
-            "relations": [
+                {
+                    "relation_type": "treats",
+                    "roles": [
+                        {"entity_slug": "duloxetine", "role_type": "agent"},
+                        {"entity_slug": "fibromyalgia", "role_type": "target"},
+                    ],
+                    "confidence": "medium",
+                    "text_span": "a randomized, double-blind, placebo-controlled crossover design",
+                    "evidence_context": {
+                        "statement_kind": "finding",
+                        "study_design": (
+                            "randomized, double-blind, placebo-controlled crossover design"
+                        ),
+                    },
+                },
                 {
                     "relation_type": "treats",
                     "roles": [
@@ -542,7 +649,20 @@ def test_validate_batch_extraction_normalizes_meta_regression_study_design():
     )
 
     assert result.relations[0].evidence_context is not None
+    # meta-analysis wins over systematic_review because it has higher priority
     assert result.relations[0].evidence_context.study_design == "meta_analysis"
+    assert result.relations[1].evidence_context is not None
+    assert result.relations[1].evidence_context.study_design == "systematic_review"
+    assert result.relations[2].evidence_context is not None
+    assert result.relations[2].evidence_context.study_design == "randomized_controlled_trial"
+    assert result.relations[3].evidence_context is not None
+    assert result.relations[3].evidence_context.study_design == "randomized_controlled_trial"
+    assert result.relations[4].evidence_context is not None
+    assert result.relations[4].evidence_context.study_design == "randomized_controlled_trial"
+    assert result.relations[5].evidence_context is not None
+    assert result.relations[5].evidence_context.study_design == "randomized_controlled_trial"
+    assert result.relations[6].evidence_context is not None
+    assert result.relations[6].evidence_context.study_design == "meta_analysis"
 
 
 def test_raise_internal_api_exception_uses_structured_app_exception():

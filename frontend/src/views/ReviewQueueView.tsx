@@ -13,7 +13,10 @@ import {
   DialogTitle,
   Grid,
   List,
+  ListItemButton,
+  ListItemText,
   Paper,
+  Radio,
   Stack,
   TextField,
   ToggleButton,
@@ -27,16 +30,39 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import SelectAllIcon from "@mui/icons-material/SelectAll";
 import WarningIcon from "@mui/icons-material/Warning";
 
-import type { ExtractionType } from "../api/extractionReview";
-import { correctRelationType } from "../api/extractionReview";
+import type {
+  ExtractionType,
+  StagedEntityMergeCandidate,
+  StagedExtractionRead,
+} from "../api/extractionReview";
+import {
+  correctRelationType,
+  listStagedEntityMergeCandidates,
+  reviewExtraction,
+} from "../api/extractionReview";
+import { mergeEntityInto } from "../api/entities";
 import { ExtractionCard } from "../components/extraction/ExtractionCard";
 import { useReviewDialog } from "../hooks/useReviewDialog";
 import { useReviewQueue } from "../hooks/useReviewQueue";
 import { useSelection } from "../hooks/useSelection";
 import { useNotification } from "../notifications/NotificationContext";
-import type { RelationType } from "../types/extraction";
+import type { ExtractedEntity, RelationType } from "../types/extraction";
 
 const PAGE_SIZE = 20;
+
+function getEntityExtractionSlug(extraction: StagedExtractionRead | null): string {
+  if (!extraction || extraction.extraction_type !== "entity") {
+    return "";
+  }
+  return (extraction.extraction_data as ExtractedEntity).slug ?? "";
+}
+
+function getSummaryText(summary: Record<string, string> | null | undefined): string {
+  if (!summary) {
+    return "";
+  }
+  return summary.en || Object.values(summary).find((value) => value.trim().length > 0) || "";
+}
 
 function QueueIdentitySection({
   title,
@@ -62,6 +88,12 @@ export function ReviewQueueView() {
   const [minScore, setMinScore] = useState<number | undefined>(undefined);
   const [onlyFlagged, setOnlyFlagged] = useState(false);
   const [extractionType, setExtractionType] = useState<ExtractionType | undefined>(undefined);
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
+  const [mergeExtraction, setMergeExtraction] = useState<StagedExtractionRead | null>(null);
+  const [mergeCandidates, setMergeCandidates] = useState<StagedEntityMergeCandidate[]>([]);
+  const [selectedMergeTargetId, setSelectedMergeTargetId] = useState("");
+  const [mergeCandidatesLoading, setMergeCandidatesLoading] = useState(false);
+  const [mergeSaving, setMergeSaving] = useState(false);
 
   const { extractions, stats, isLoading, hasMore, loadMore, refresh } = useReviewQueue({
     pageSize: PAGE_SIZE,
@@ -119,6 +151,71 @@ export function ReviewQueueView() {
       clearSelection();
       refresh();
     });
+  };
+
+  const closeMergeDialog = () => {
+    if (mergeSaving) {
+      return;
+    }
+    setMergeDialogOpen(false);
+    setMergeExtraction(null);
+    setMergeCandidates([]);
+    setSelectedMergeTargetId("");
+  };
+
+  const openEntityMergeDialog = async (extraction: StagedExtractionRead) => {
+    setMergeExtraction(extraction);
+    setMergeDialogOpen(true);
+    setMergeCandidates([]);
+    setSelectedMergeTargetId("");
+    setMergeCandidatesLoading(true);
+    try {
+      const candidates = await listStagedEntityMergeCandidates(extraction.id);
+      setMergeCandidates(candidates);
+      setSelectedMergeTargetId(candidates[0]?.target.id ?? "");
+    } catch (error) {
+      showError(error);
+    } finally {
+      setMergeCandidatesLoading(false);
+    }
+  };
+
+  const handleConfirmEntityMerge = async () => {
+    if (!mergeExtraction || !selectedMergeTargetId) {
+      return;
+    }
+
+    const target = mergeCandidates.find((candidate) => candidate.target.id === selectedMergeTargetId)?.target;
+    if (!target) {
+      showError("Select a merge target");
+      return;
+    }
+
+    setMergeSaving(true);
+    try {
+      const approved = await reviewExtraction(mergeExtraction.id, {
+        decision: "approve",
+        notes: `Approved for merge into ${target.slug}`,
+      });
+      const sourceEntityId = approved.materialized_entity_id;
+      if (!sourceEntityId) {
+        throw new Error("Approved staged entity did not return a materialized entity ID");
+      }
+
+      if (sourceEntityId === target.id) {
+        showSuccess(t("review_queue.merge_linked_existing", "Staged entity linked to the existing entity"));
+      } else {
+        await mergeEntityInto(sourceEntityId, target.id);
+        showSuccess(t("review_queue.merge_completed", "Entity merged"));
+      }
+
+      closeMergeDialog();
+      handleRefresh();
+    } catch (error) {
+      showError(error);
+    } finally {
+      setMergeSaving(false);
+    }
   };
 
   const openBatchReviewDialog = (decision: "approve" | "reject") => {
@@ -364,6 +461,7 @@ export function ReviewQueueView() {
                     onToggleSelect={() => toggleSelection(extraction.id)}
                     onApprove={() => handleSingleReview(extraction.id, "approve")}
                     onReject={() => handleSingleReview(extraction.id, "reject")}
+                    onMergeEntity={() => openEntityMergeDialog(extraction)}
                     onChangeRelationType={handleChangeRelationType}
                   />
                 ))}
@@ -415,6 +513,86 @@ export function ReviewQueueView() {
                   ? t("review_queue.dialog_action_approve")
                   : t("review_queue.dialog_action_reject"),
             })}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={mergeDialogOpen} onClose={closeMergeDialog} fullWidth maxWidth="sm">
+        <DialogTitle>{t("review_queue.merge_dialog_title", "Merge staged entity")}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Alert severity="warning">
+              {t(
+                "review_queue.merge_dialog_warning",
+                "This will approve the staged entity, then merge it into the selected existing entity."
+              )}
+            </Alert>
+            <Typography variant="body2" color="text.secondary">
+              {t("review_queue.merge_source_label", "Staged entity")}:{" "}
+              <strong>{getEntityExtractionSlug(mergeExtraction)}</strong>
+            </Typography>
+            {mergeCandidatesLoading ? (
+              <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
+                <CircularProgress />
+              </Box>
+            ) : mergeCandidates.length === 0 ? (
+              <Alert severity="info">
+                {t("review_queue.merge_no_candidates", "No similar existing entities were found.")}
+              </Alert>
+            ) : (
+              <List disablePadding>
+                {mergeCandidates.map((candidate) => (
+                  <ListItemButton
+                    key={candidate.target.id}
+                    selected={selectedMergeTargetId === candidate.target.id}
+                    onClick={() => setSelectedMergeTargetId(candidate.target.id)}
+                    sx={{ borderRadius: 1, mb: 1 }}
+                  >
+                    <Radio
+                      edge="start"
+                      checked={selectedMergeTargetId === candidate.target.id}
+                      tabIndex={-1}
+                      disableRipple
+                    />
+                    <ListItemText
+                      primary={
+                        <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
+                          <Typography variant="subtitle1">{candidate.target.slug}</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {(candidate.similarity * 100).toFixed(0)}%
+                          </Typography>
+                        </Stack>
+                      }
+                      secondary={
+                        <Stack spacing={0.5} component="span">
+                          <Typography variant="caption" color="text.secondary" component="span">
+                            {candidate.reason}
+                          </Typography>
+                          {getSummaryText(candidate.target.summary) && (
+                            <Typography variant="caption" color="text.secondary" component="span">
+                              {getSummaryText(candidate.target.summary)}
+                            </Typography>
+                          )}
+                        </Stack>
+                      }
+                      secondaryTypographyProps={{ component: "div" }}
+                    />
+                  </ListItemButton>
+                ))}
+              </List>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeMergeDialog} disabled={mergeSaving}>
+            {t("common.cancel")}
+          </Button>
+          <Button
+            onClick={handleConfirmEntityMerge}
+            variant="contained"
+            disabled={!selectedMergeTargetId || mergeCandidatesLoading || mergeSaving}
+          >
+            {mergeSaving ? t("review_queue.merge_saving", "Merging...") : t("extraction_card.merge", "Merge")}
           </Button>
         </DialogActions>
       </Dialog>

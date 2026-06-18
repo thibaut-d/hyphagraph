@@ -1,5 +1,10 @@
 import { apiFetch } from "./client";
-import { InferenceDetailRead, InferenceRead } from "../types/inference";
+import {
+  EntityAISynthesisRead,
+  EntityAISynthesisRequest,
+  InferenceDetailRead,
+  InferenceRead,
+} from "../types/inference";
 import { appendOptionalJson, buildQueryString, createSearchParams } from "./queryString";
 
 export type ScopeFilterValue = string | number | boolean;
@@ -26,4 +31,14 @@ export function getInferenceDetailForEntity(
     appendOptionalJson(query, "scope", scopeFilter);
   });
   return apiFetch(`/inferences/entity/${entityId}/detail${buildQueryString(params)}`);
+}
+
+export function generateEntityAISynthesis(
+  entityId: string,
+  payload: EntityAISynthesisRequest,
+): Promise<EntityAISynthesisRead> {
+  return apiFetch(`/inferences/entity/${entityId}/ai-synthesis`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }

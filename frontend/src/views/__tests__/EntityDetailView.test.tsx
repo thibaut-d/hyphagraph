@@ -5,6 +5,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router';
 import { EntityDetailView } from '../EntityDetailView';
@@ -20,6 +21,7 @@ vi.mock('../../api/entities', () => ({
 
 vi.mock('../../api/inferences', () => ({
   getInferenceForEntity: vi.fn(),
+  generateEntityAISynthesis: vi.fn(),
 }));
 
 vi.mock('../../notifications/NotificationContext', () => ({
@@ -98,7 +100,7 @@ vi.mock('../../components/entity/EntityDeleteDialog', () => ({
 }));
 
 import { getEntity, deleteEntity } from '../../api/entities';
-import { getInferenceForEntity } from '../../api/inferences';
+import { generateEntityAISynthesis, getInferenceForEntity } from '../../api/inferences';
 
 // Mock react-router navigation
 const mockNavigate = vi.fn();
@@ -245,6 +247,45 @@ describe('EntityDetailView', () => {
       await waitFor(() => {
         expect(screen.getByText(/related assertions/i)).toBeInTheDocument();
       });
+    });
+
+    it('does not generate AI synthesis on page load', async () => {
+      renderWithRouter('123e4567-e89b-12d3-a456-426614174000');
+
+      await waitFor(() => {
+        expect(screen.getByText('AI synthesis')).toBeInTheDocument();
+      });
+
+      expect(generateEntityAISynthesis).not.toHaveBeenCalled();
+    });
+
+    it('generates AI synthesis only when requested', async () => {
+      (generateEntityAISynthesis as any).mockResolvedValue({
+        entity_id: mockEntity.id,
+        entity_slug: mockEntity.slug,
+        synthesis: 'A readable synthesis.',
+        key_points: ['Point one'],
+        limitations: ['Coverage is limited'],
+        evidence_note: 'Generated from graph evidence.',
+        general_knowledge_note: null,
+        source_relation_count: 1,
+        source_count: 1,
+        generated_with_llm: 'fake-model',
+        token_usage: {},
+      });
+
+      renderWithRouter('123e4567-e89b-12d3-a456-426614174000');
+
+      const button = await screen.findByRole('button', { name: /generate ai synthesis/i });
+      await userEvent.click(button);
+
+      await waitFor(() => {
+        expect(generateEntityAISynthesis).toHaveBeenCalledWith(mockEntity.id, {
+          user_language: 'en',
+          scope_filter: null,
+        });
+      });
+      expect(await screen.findByText('A readable synthesis.')).toBeInTheDocument();
     });
 
     it('shows fetch errors instead of a misleading not found state', async () => {

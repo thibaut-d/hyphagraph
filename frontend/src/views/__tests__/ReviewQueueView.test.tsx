@@ -3,9 +3,11 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 import { ReviewQueueView } from "../ReviewQueueView";
+import * as entitiesApi from "../../api/entities";
 import * as reviewApi from "../../api/extractionReview";
 
 vi.mock("../../api/extractionReview");
+vi.mock("../../api/entities");
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -98,6 +100,20 @@ describe("ReviewQueueView", () => {
       page: 1,
       page_size: 20,
       has_more: false,
+    });
+    vi.mocked(reviewApi.listStagedEntityMergeCandidates).mockResolvedValue([]);
+    vi.mocked(reviewApi.reviewExtraction).mockResolvedValue({
+      success: true,
+      extraction_id: "ext-1",
+      extraction_type: "entity",
+      materialized_entity_id: "entity-source",
+    });
+    vi.mocked(entitiesApi.mergeEntityInto).mockResolvedValue({
+      source_slug: "fibromyalgia-syndrome",
+      target_slug: "fibromyalgia",
+      relations_moved: 0,
+      term_added: true,
+      merge_recorded: true,
     });
   });
 
@@ -203,6 +219,62 @@ describe("ReviewQueueView", () => {
 
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "review_queue.approve_selected" })).toBeDisabled();
+    });
+  });
+
+  it("approves a staged entity and merges it into the selected existing candidate", async () => {
+    vi.mocked(reviewApi.listPendingExtractions).mockResolvedValue({
+      extractions: [
+        makeExtraction({
+          id: "ext-fms",
+          extraction_data: {
+            slug: "fibromyalgia-syndrome",
+            category: "disease",
+            summary: "Longer duplicate term",
+            text_span: "fibromyalgia syndrome",
+          } as unknown as reviewApi.StagedExtractionData,
+        }),
+      ],
+      total: 1,
+      page: 1,
+      page_size: 20,
+      has_more: false,
+    });
+    vi.mocked(reviewApi.listStagedEntityMergeCandidates).mockResolvedValue([
+      {
+        target: {
+          id: "entity-target",
+          slug: "fibromyalgia",
+          summary: { en: "Canonical entity" },
+        },
+        similarity: 0.91,
+        reason: "One slug contains the other",
+        score_factors: {},
+        proposed_action: "approve_then_merge",
+      },
+    ]);
+    vi.mocked(reviewApi.reviewExtraction).mockResolvedValue({
+      success: true,
+      extraction_id: "ext-fms",
+      extraction_type: "entity",
+      materialized_entity_id: "entity-source",
+    });
+
+    renderView();
+    await screen.findByText("fibromyalgia-syndrome");
+
+    fireEvent.click(screen.getByRole("button", { name: "Merge" }));
+    expect(await screen.findByText("fibromyalgia")).toBeInTheDocument();
+
+    const mergeButtons = screen.getAllByRole("button", { name: "Merge" });
+    fireEvent.click(mergeButtons[mergeButtons.length - 1]);
+
+    await waitFor(() => {
+      expect(reviewApi.reviewExtraction).toHaveBeenCalledWith("ext-fms", {
+        decision: "approve",
+        notes: "Approved for merge into fibromyalgia",
+      });
+      expect(entitiesApi.mergeEntityInto).toHaveBeenCalledWith("entity-source", "entity-target");
     });
   });
 });

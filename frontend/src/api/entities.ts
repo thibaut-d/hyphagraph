@@ -48,6 +48,14 @@ export interface EntityFilterOptions {
   recency_options?: string[];
 }
 
+export interface EntityMergeResult {
+  source_slug: string;
+  target_slug: string;
+  relations_moved: number;
+  term_added: boolean;
+  merge_recorded: boolean;
+}
+
 export interface EntityPrefillAlias {
   term: string;
   language: string | null;
@@ -117,6 +125,12 @@ export function updateEntity(id: string, payload: EntityWrite): Promise<EntityRe
 export function deleteEntity(id: string): Promise<void> {
   return apiFetch(`/entities/${id}`, {
     method: "DELETE",
+  });
+}
+
+export function mergeEntityInto(sourceEntityId: string, targetEntityId: string): Promise<EntityMergeResult> {
+  return apiFetch(`/entities/${sourceEntityId}/merge-into/${targetEntityId}`, {
+    method: "POST",
   });
 }
 

@@ -1300,6 +1300,56 @@ async def test_stage_relation_materialization_persists_direction_and_scope(
 
 
 @pytest.mark.asyncio
+async def test_stage_relation_materialization_uses_assertion_text_as_display_note(
+    review_service, sample_source, entity_slugs_in_db, high_confidence_validation
+):
+    from app.llm.schemas import ExtractedRelation, ExtractedRelationEvidenceContext, ExtractedRole
+    from app.models.relation_revision import RelationRevision
+    from sqlalchemy import select
+
+    relation = ExtractedRelation(
+        relation_type="treats",
+        roles=[
+            ExtractedRole(entity_slug="drug-agent", role_type="agent"),
+            ExtractedRole(entity_slug="pain-condition", role_type="target"),
+        ],
+        confidence="high",
+        text_span="In a randomized trial, the drug-agent improved pain-condition severity.",
+        notes=None,
+        evidence_context=ExtractedRelationEvidenceContext(
+            statement_kind="finding",
+            finding_polarity="supports",
+            assertion_text="The drug-agent improved pain-condition severity.",
+        ),
+    )
+
+    _, relation_id = await review_service.stage_extraction(
+        extraction_type=ExtractionType.RELATION,
+        extraction_data=relation,
+        source_id=sample_source.id,
+        validation_result=high_confidence_validation,
+        auto_materialize=True,
+    )
+
+    result = await review_service.db.execute(
+        select(RelationRevision).where(
+            RelationRevision.relation_id == relation_id,
+            RelationRevision.is_current.is_(True),
+        )
+    )
+    revision = result.scalar_one()
+
+    assert revision.notes == {"en": "The drug-agent improved pain-condition severity."}
+    assert revision.scope == {
+        "evidence_context": {
+            "statement_kind": "finding",
+            "finding_polarity": "supports",
+            "assertion_text": "The drug-agent improved pain-condition severity.",
+        }
+    }
+
+
+@pytest.mark.asyncio
 async def test_stage_relation_materialization_normalizes_uncertain_polarity_to_neutral_direction(
     review_service, sample_source, entity_slugs_in_db, high_confidence_validation
 ):

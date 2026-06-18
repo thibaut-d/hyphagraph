@@ -24,6 +24,9 @@ def test_system_prompt_forbids_outside_knowledge_and_merging_conflicts():
     assert "Prefer relation-bearing biomedical entities" in MEDICAL_KNOWLEDGE_SYSTEM_PROMPT
     assert 'Treat modal or hedged language such as "may", "might", "could", "suggests", "potential", or' in MEDICAL_KNOWLEDGE_SYSTEM_PROMPT
     assert "Keep normalized identity separate from source wording" in MEDICAL_KNOWLEDGE_SYSTEM_PROMPT
+    assert "If a finding is limited to a specific studied population" in MEDICAL_KNOWLEDGE_SYSTEM_PROMPT
+    assert "mandatory for animal/non-human populations" in MEDICAL_KNOWLEDGE_SYSTEM_PROMPT
+    assert "Do not let a relation or assertion_text imply a general human population" in MEDICAL_KNOWLEDGE_SYSTEM_PROMPT
 
 
 def test_entity_prompt_requires_neutral_global_summaries_and_explicit_mentions():
@@ -37,7 +40,18 @@ def test_entity_prompt_requires_neutral_global_summaries_and_explicit_mentions()
     assert "Emit each real-world entity only once per extraction batch" in ENTITY_EXTRACTION_PROMPT
     assert "text_span should be the shortest exact mention" in ENTITY_EXTRACTION_PROMPT
     assert "Prefer entities that participate in an explicit relation" in ENTITY_EXTRACTION_PROMPT
+    assert "Extract source-stated studied populations as population entities" in ENTITY_EXTRACTION_PROMPT
+    assert "non-human/animal populations" in ENTITY_EXTRACTION_PROMPT
+    assert "enrollment-defining characteristic" in ENTITY_EXTRACTION_PROMPT
+    assert "Do not create vague temporally anchored treatment entities" in ENTITY_EXTRACTION_PROMPT
+    assert '"current pharmacological treatments"' in ENTITY_EXTRACTION_PROMPT
+    assert '"Current"' in ENTITY_EXTRACTION_PROMPT
+    assert "not a date" in ENTITY_EXTRACTION_PROMPT
     assert "Omit generic document nouns or paper artifacts" in ENTITY_EXTRACTION_PROMPT
+    assert "patient-related factors" in ENTITY_EXTRACTION_PROMPT
+    assert "other imaging and assessment tools" in ENTITY_EXTRACTION_PROMPT
+    assert "shorter protocols" in ENTITY_EXTRACTION_PROMPT
+    assert "extended recordings" in ENTITY_EXTRACTION_PROMPT
     assert 'Do not create intervention-arm wrapper entities like "chemotherapy arm"' in ENTITY_EXTRACTION_PROMPT
     assert "text_span must remain the exact shortest source phrase" in ENTITY_EXTRACTION_PROMPT
 
@@ -53,6 +67,8 @@ def test_relation_prompt_requires_explicit_relations_and_separate_conflicts():
     assert "HyphaGraph relations are hyperedges" in RELATION_EXTRACTION_PROMPT
     assert "additional roles in the SAME relation" in RELATION_EXTRACTION_PROMPT
     assert "Every role entity_slug used in a relation must be present" in RELATION_EXTRACTION_PROMPT
+    assert "Never emit a one-role relation" in RELATION_EXTRACTION_PROMPT
+    assert "must connect at least two explicit" in RELATION_EXTRACTION_PROMPT
     assert "source_mention" in RELATION_EXTRACTION_PROMPT
     assert "shortest exact mention for that participant" in RELATION_EXTRACTION_PROMPT
     assert "assertion_text should be a faithful, source-bounded paraphrase" in RELATION_EXTRACTION_PROMPT
@@ -67,6 +83,9 @@ def test_relation_prompt_requires_explicit_relations_and_separate_conflicts():
     assert "causes MUST include the thing causing the effect as agent" in RELATION_EXTRACTION_PROMPT
     assert "control_group, population, and comparator context NEVER replace a missing core role" in RELATION_EXTRACTION_PROMPT
     assert 'For null efficacy findings such as "did not significantly improve"' in RELATION_EXTRACTION_PROMPT
+    assert "where a specific adverse event or harm endpoint is named" in RELATION_EXTRACTION_PROMPT
+    assert 'Generic safety conclusions such as "safe for use"' in RELATION_EXTRACTION_PROMPT
+    assert "NOT valid causes relations unless the same local span names" in RELATION_EXTRACTION_PROMPT
     assert 'Do NOT use relation_type "other" for ordinary efficacy findings' in RELATION_EXTRACTION_PROMPT
     assert 'Use relation_type "associated_with" for explicit non-causal association' in RELATION_EXTRACTION_PROMPT
     assert 'Do NOT use "associated_with" when a study reports an intervention/exposure' in RELATION_EXTRACTION_PROMPT
@@ -84,6 +103,14 @@ def test_relation_prompt_requires_explicit_relations_and_separate_conflicts():
     assert "Keep source wording separate from normalized fields" in RELATION_EXTRACTION_PROMPT
     assert 'prefer evidence_context.statement_kind "hypothesis" or' in RELATION_EXTRACTION_PROMPT
     assert "Recommendation-only or screening-only language should usually NOT become a relation" in RELATION_EXTRACTION_PROMPT
+    assert "Population applicability is safety-critical" in RELATION_EXTRACTION_PROMPT
+    assert "Always preserve non-human or animal populations as explicit population roles" in RELATION_EXTRACTION_PROMPT
+    assert "assertion_text that sounds applicable to humans" in RELATION_EXTRACTION_PROMPT
+    assert "For human studies, preserve enrollment-defining population limits" in RELATION_EXTRACTION_PROMPT
+    assert "make it a relation role" in RELATION_EXTRACTION_PROMPT
+    assert "Do not extract relations whose agent, target, or comparator is only a vague temporally anchored" in RELATION_EXTRACTION_PROMPT
+    assert '"current treatments"' in RELATION_EXTRACTION_PROMPT
+    assert "If the span only says current treatments are limited" in RELATION_EXTRACTION_PROMPT
 
 
 def test_relation_and_batch_prompts_block_invented_role_names():
@@ -118,12 +145,21 @@ def test_batch_prompt_carries_global_evidence_first_constraints():
     assert "relation text_span should usually be 1-3 sentences" in prompt
     assert "null findings and no-difference findings should still be extracted" in prompt
     assert 'for null efficacy findings such as "did not significantly improve"' in prompt
+    assert "where a specific adverse event or harm endpoint is named" in prompt
+    assert 'Generic safety conclusions such as "safe for use"' in prompt
+    assert "NOT valid causes relations unless the same local span names" in prompt
     assert "assertion_text should be a faithful, source-bounded paraphrase" in prompt
     assert "include evidence_context for every relation" in prompt
+    assert "never emit a one-role relation" in prompt
+    assert "must connect at least two" in prompt
     assert "each role should include source_mention" in prompt
     assert "participant count" in prompt
     assert 'Do not create vague duration/dosage/timeframe entities such as "duration-short-term"' in prompt
-    assert "do NOT create entities for dosage, duration, timeframe, sample size, or study design metadata" in prompt
+    assert "do NOT create entities for dosage, duration, timeframe, sample size, study design" in prompt
+    assert "patient-related factors" in prompt
+    assert "other imaging and assessment tools" in prompt
+    assert "shorter protocols" in prompt
+    assert "extended recordings" in prompt
     assert "brief general biomedical knowledge is allowed for entity summaries only" in prompt
     assert "keep the summary short, generic, and non-interpretive" in prompt
     assert '"dosage": "500mg twice daily"' in prompt
@@ -135,6 +171,16 @@ def test_batch_prompt_carries_global_evidence_first_constraints():
     assert '"entity_slug": "paclitaxel", "role_type": "agent"' in prompt
     assert '"source_mention": "carboplatin"' in prompt
     assert "Prefer relation-bearing biomedical entities" in prompt
+    assert "extract source-stated studied populations as population entities" in prompt
+    assert "Population applicability is safety-critical" in prompt
+    assert "Always preserve non-human or animal populations as explicit population roles" in prompt
+    assert "assertion_text that sounds applicable to humans" in prompt
+    assert "For human studies, preserve enrollment-defining population limits" in prompt
+    assert "do not create vague temporally anchored treatment entities" in prompt
+    assert '"current pharmacological treatments"' in prompt
+    assert '"Current" is not a date' in prompt
+    assert "Do not extract relations whose agent, target, or comparator is only a vague temporally" in prompt
+    assert "If the span only says current treatments are limited" in prompt
     assert "omit generic document nouns or paper artifacts" in prompt
     assert 'do not create intervention-arm wrapper entities like "chemotherapy arm"' in prompt
     assert 'do NOT use relation_type "other" for ordinary efficacy findings or adverse-event findings' in prompt
@@ -168,5 +214,7 @@ def test_batch_gleaning_prompt_requires_append_only_missed_items():
     assert "Every relation role entity_slug must already exist in the prior extraction" in (
         BATCH_EXTRACTION_GLEANING_PROMPT
     )
+    assert "Preserve studied populations explicitly" in BATCH_EXTRACTION_GLEANING_PROMPT
+    assert "include that population as a population" in BATCH_EXTRACTION_GLEANING_PROMPT
     assert '"entities": []' in prompt
     assert '"slug": "aspirin"' in prompt

@@ -29,6 +29,7 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import WarningIcon from "@mui/icons-material/Warning";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import CallMergeIcon from "@mui/icons-material/CallMerge";
 
 interface ExtractionCardProps {
   extraction: StagedExtractionRead;
@@ -36,6 +37,7 @@ interface ExtractionCardProps {
   onToggleSelect: () => void;
   onApprove: () => void;
   onReject: () => void;
+  onMergeEntity?: () => void;
   onChangeRelationType?: (extractionId: string, newType: RelationType) => void;
 }
 
@@ -43,6 +45,12 @@ function isRelationExtraction(extraction: StagedExtractionRead): extraction is S
   extraction_data: ExtractedRelation;
 } {
   return extraction.extraction_type === "relation";
+}
+
+function isEntityExtraction(extraction: StagedExtractionRead): extraction is StagedExtractionRead & {
+  extraction_data: ExtractedEntity;
+} {
+  return extraction.extraction_type === "entity";
 }
 
 function humanizeToken(value: string | null | undefined): string {
@@ -175,6 +183,7 @@ export function ExtractionCard({
   onToggleSelect,
   onApprove,
   onReject,
+  onMergeEntity,
   onChangeRelationType,
 }: ExtractionCardProps) {
   const { t } = useTranslation();
@@ -404,6 +413,16 @@ export function ExtractionCard({
                 >
                   {t("extraction_card.reject")}
                 </Button>
+                {isEntityExtraction(extraction) && onMergeEntity && (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<CallMergeIcon />}
+                    onClick={onMergeEntity}
+                  >
+                    {t("extraction_card.merge", "Merge")}
+                  </Button>
+                )}
                 {extraction.materialized_entity_id && (
                   <Button
                     size="small"

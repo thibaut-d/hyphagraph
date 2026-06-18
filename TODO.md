@@ -1,3 +1,120 @@
+## Normalize Randomized Crossover Study Design Phrases
+
+Prevent extraction from failing when an LLM emits a verbose study design such as
+"randomized, double-blind, placebo-controlled crossover design" instead of the
+controlled `randomized_controlled_trial` enum.
+
+### Objective
+Accept source-faithful free-text randomized controlled design phrases while
+preserving the controlled evidence-context schema.
+
+### Impacted modules
+- `backend/app/llm/schemas.py`
+- `backend/tests/test_llm_schemas.py`
+
+### Assumptions
+- A phrase containing randomized/randomised plus controlled design language
+  should normalize to `randomized_controlled_trial`.
+- The extraction contract should remain enum-based; free text should not be
+  stored directly in `study_design`.
+
+### Plan
+1. Add regression coverage for the observed THC/FMS study-design phrase.
+2. Extend the existing study-design normalizer to recognize randomized design
+   wording.
+3. Run focused schema tests and extraction orchestrator tests.
+
+### Validation
+- `docker compose -f docker-compose.local.yml exec api bash -c 'cd /app && uv run pytest tests/test_llm_schemas.py tests/test_batch_extraction_orchestrator.py -q'`
+
+### Risks
+- Over-mapping a randomized but uncontrolled phrase; require randomized wording
+  plus study/trial/design or controlled/blinded/placebo/crossover context.
+
+### Status
+completed
+
+## Prune Vague Aggregate Extraction Entities
+
+Prevent extraction drafts from creating standalone reusable entities for broad
+factor/tool buckets such as "patient-related factors" or "other imaging and
+assessment tools" when the same relation already contains concrete named
+participants.
+
+### Objective
+Keep source-grounded concrete entities and relations while dropping vague
+aggregate placeholders from extracted entity/relation drafts before review.
+
+### Impacted modules
+- `backend/app/llm/prompts.py`
+- `backend/app/services/extraction_semantic_normalizer.py`
+- `backend/tests/test_batch_extraction_orchestrator.py`
+- `backend/tests/test_llm_prompts.py`
+
+### Assumptions
+- Named mechanisms/tools such as `central-sensitization`, `eos-system`, and
+  `predictive-simulation` should remain.
+- Generic buckets ending in "factors" or introduced as "other ... tools" should
+  be omitted when they are only contextual labels.
+- Optional relation roles can be removed if the remaining role set still
+  satisfies the relation schema.
+
+### Plan
+1. Add regression tests for the observed THA extraction shape.
+2. Add deterministic pruning of vague aggregate entities and their optional
+   relation roles.
+3. Add prompt rules discouraging the vague entities at generation time.
+4. Run focused backend tests.
+
+### Validation
+- `cd backend && uv run pytest tests/test_batch_extraction_orchestrator.py tests/test_llm_prompts.py -q`
+
+### Risks
+- Over-pruning a legitimately named risk factor class; keep rules tied to broad
+  factor/tool wording and preserve roles when removal would invalidate a relation.
+
+### Status
+completed
+
+## Improve Relation Typing for Pain Variability Extractions
+
+Reduce avoidable `other` relation drafts when systematic-review summaries state explicit
+clinical associations, mechanism-background context, or patient clustering.
+
+### Objective
+Map source-grounded pain-variability extraction spans to the existing controlled relation
+types when the local text makes the relation semantics explicit.
+
+### Impacted modules
+- `backend/app/llm/schemas.py`
+- `backend/app/services/extraction_semantic_normalizer.py`
+- `backend/tests/test_batch_extraction_orchestrator.py`
+
+### Assumptions
+- "Associated with measures of clinical relevance" should use `associated_with`
+  even when the associated item is modeled as an `outcome`.
+- "Because of evidence for central sensitization" can be represented as a
+  `mechanism` background relation when the roles include a mechanism participant.
+- "Cluster patients based on degree of pain variability" is an explicit
+  association between the patient population and pain-variability outcome.
+
+### Plan
+1. Add focused tests reproducing the observed `other` drafts.
+2. Broaden deterministic association validation to allow outcome/symptom/biomarker
+   partners without weakening source-span requirements.
+3. Add a narrow mechanism cue for evidence-backed mechanism background spans.
+4. Run targeted backend tests.
+
+### Validation
+- `docker compose -f docker-compose.local.yml exec api bash -c 'cd /app && uv run pytest tests/test_batch_extraction_orchestrator.py -q'`
+- `docker compose -f docker-compose.local.yml exec api bash -c 'cd /app && uv run pytest tests/test_llm_schemas.py -q'`
+
+### Risks
+- Over-classifying vague relatedness language; keep rules tied to explicit local cues.
+
+### Status
+completed
+
 ## Add Bulk Imported-Study Extraction Job
 
 Add a bulk tool that searches already imported studies for a term, selects up
@@ -459,6 +576,93 @@ preview generation stays deterministic and auditable.
 ### Risks
 - Over-normalizing a genuinely distinct statement type and hiding model drift.
 - Backend/frontend contract drift if aliases leak past the schema boundary.
+
+### Status
+completed
+
+## Add Review Queue Entity Merge Action
+
+Let reviewers merge a staged entity extraction into an existing likely duplicate
+entity directly from `/review-queue`.
+
+### Objective
+Add a `Merge` action for staged entity items that shows likely existing entity
+matches, approves/materializes the staged entity, then uses the existing entity
+merge process to merge the new source node into the selected target.
+
+### Impacted modules
+- `backend/app/services/entity_merge_service.py`
+- `backend/app/api/extraction_review.py`
+- `backend/app/schemas/entity_merge.py`
+- `frontend/src/api/entities.ts`
+- `frontend/src/api/extractionReview.ts`
+- `frontend/src/components/extraction/ExtractionCard.tsx`
+- `frontend/src/views/ReviewQueueView.tsx`
+- targeted backend/frontend tests
+
+### Assumptions
+- The staged entity must still be approved before graph mutation so review
+  provenance remains explicit.
+- Candidate suggestions are heuristic and must remain user-reviewed.
+- Relation evidence and contradiction visibility are unchanged; this only
+  changes entity deduplication before/after materialization.
+
+### Plan
+1. Add a targeted backend candidate endpoint for one staged entity extraction.
+2. Add typed frontend clients for candidate lookup and merge execution.
+3. Add `Merge` UI for entity staged items with candidate review and confirmation.
+4. Add focused backend and frontend tests.
+5. Run targeted pytest and Vitest checks.
+
+### Validation
+- `docker compose -f docker-compose.local.yml exec -T api bash -c 'cd /app && uv run pytest tests/test_entity_merge_service.py tests/test_extraction_review_endpoints.py -q'`
+- `cd frontend && npm test -- --run src/views/__tests__/ReviewQueueView.test.tsx`
+
+### Risks
+- A reviewer could choose the wrong target; keep the dialog explicit about source
+  and target direction.
+- If materialization fails, merge must not run.
+
+### Status
+completed
+
+## Fix Remote Dev Loading Regressions After Entity Merge
+
+Repair two regressions observed on `algiagraph.com` after merging
+`fibromyalgia-syndrome` into `fibromyalgia`.
+
+### Objective
+Keep `/entities` and Admin Graph Cleaning responsive after review-queue entity merges.
+
+### Impacted modules
+- `frontend/src/views/EntitiesView.tsx`
+- `backend/app/services/entity_merge_service.py`
+
+### Assumptions
+- Graph-cleaning entity candidates are advisory and can use deterministic
+  blocking before expensive fuzzy scoring.
+- Infinite-scroll pagination should derive the next offset from loaded item
+  count rather than a separate mutable offset state.
+
+### Plan
+1. Restart the blocked remote-dev API process.
+2. Reproduce `/entities` loading via direct API calls.
+3. Fix duplicate/concurrent infinite-scroll pagination calls.
+4. Reproduce slow Admin Graph Cleaning candidate scan.
+5. Add cheap entity-pair blocking before expensive term similarity scoring.
+6. Run focused frontend/backend tests and verify remote endpoints.
+
+### Validation
+- `cd frontend && npm test -- --run src/views/__tests__/EntitiesView.test.tsx`
+- `cd frontend && npm run build`
+- `docker compose -f docker-compose.local.yml exec -T api bash -c 'cd /app && uv run pytest tests/test_entity_merge_service.py tests/test_graph_cleaning_service.py -q'`
+- Remote direct service scan: entity merge candidates complete in about 10s instead of timing out.
+- `https://algiagraph.com/api/entities/?limit=50&offset=0` returns `200`.
+- `https://algiagraph.com/api/entities/filter-options` returns `200`.
+
+### Risks
+- Entity merge candidate scan now skips pairs that have neither similar slugs,
+  containment, nor exact alias/name overlap before fuzzy term scoring.
 
 ### Status
 completed

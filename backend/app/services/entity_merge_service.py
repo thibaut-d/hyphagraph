@@ -27,6 +27,7 @@ from app.schemas.entity_merge import (
     EntityMergeCandidate,
     EntityMergeCandidateEntity,
     EntityMergeResult,
+    StagedEntityMergeCandidate,
 )
 
 
@@ -395,15 +396,32 @@ class EntityMergeService:
         candidates: list[EntityMergeCandidate] = []
         for i, (first_entity, first_revision) in enumerate(entities):
             for second_entity, second_revision in entities[i + 1:]:
+                first_terms = terms_by_entity.get(first_entity.id, set())
+                second_terms = terms_by_entity.get(second_entity.id, set())
+                first_slug = self._normalize_match_text(first_revision.slug)
+                second_slug = self._normalize_match_text(second_revision.slug)
+                slug_similarity = SequenceMatcher(None, first_slug, second_slug).ratio()
+                contains_slug = first_slug in second_slug or second_slug in first_slug
+                exact_name_overlap = bool(
+                    {first_slug, *first_terms} & {second_slug, *second_terms}
+                )
+                if (
+                    not exact_name_overlap
+                    and not contains_slug
+                    and slug_similarity < 0.55
+                ):
+                    continue
+
                 score, reason, factors = self._score_merge_candidate(
                     first_revision,
                     second_revision,
-                    terms_by_entity.get(first_entity.id, set()),
-                    terms_by_entity.get(second_entity.id, set()),
+                    first_terms,
+                    second_terms,
                     neighborhoods.get(first_entity.id, set()),
                     neighborhoods.get(second_entity.id, set()),
                     source_sets.get(first_entity.id, set()),
                     source_sets.get(second_entity.id, set()),
+                    similarity_threshold=similarity_threshold,
                 )
                 if score < similarity_threshold:
                     continue
@@ -443,6 +461,99 @@ class EntityMergeService:
 
         candidates.sort(key=lambda candidate: candidate.similarity, reverse=True)
 
+        return candidates[:limit]
+
+    async def list_staged_entity_merge_targets(
+        self,
+        *,
+        slug: str,
+        summary: str | None = None,
+        similarity_threshold: float = 0.55,
+        limit: int = 10,
+    ) -> list[StagedEntityMergeCandidate]:
+        """
+        Return existing entity targets that may match one staged entity draft.
+
+        This is a dry-run suggestion surface for review queue UX. The staged
+        entity is not in the graph yet, so candidates only include existing
+        targets. A reviewer must approve/materialize the staged extraction
+        before merge_entities can move graph edges and record provenance.
+        """
+        normalized_slug = self._normalize_match_text(slug)
+        if not normalized_slug:
+            return []
+
+        rows = await self.db.execute(
+            select(Entity, EntityRevision)
+            .join(EntityRevision, Entity.id == EntityRevision.entity_id)
+            .where(
+                EntityRevision.is_current == True,  # noqa: E712
+                Entity.is_merged == False,  # noqa: E712
+                Entity.is_rejected == False,  # noqa: E712
+            )
+        )
+        entities = [(entity, revision) for entity, revision in rows]
+        if not entities:
+            return []
+
+        terms_by_entity = await self._load_terms_by_entity({entity.id for entity, _ in entities})
+        staged_summary = {"en": summary} if summary else None
+
+        candidates: list[StagedEntityMergeCandidate] = []
+        for entity, revision in entities:
+            target_slug = self._normalize_match_text(revision.slug)
+            slug_similarity = SequenceMatcher(None, normalized_slug, target_slug).ratio()
+            target_terms = terms_by_entity.get(entity.id, set())
+            term_similarity = max(
+                (
+                    SequenceMatcher(None, normalized_slug, target_term).ratio()
+                    for target_term in target_terms
+                ),
+                default=0.0,
+            )
+            exact_term_match = normalized_slug in target_terms
+            contains_slug = normalized_slug in target_slug or target_slug in normalized_slug
+            summary_overlap = self._summary_token_overlap(staged_summary, revision.summary)
+
+            score = max(slug_similarity, term_similarity)
+            if exact_term_match:
+                score = 1.0
+            elif contains_slug:
+                score += 0.03
+            score += summary_overlap * 0.08
+            score = min(score, 1.0)
+
+            if score < similarity_threshold:
+                continue
+
+            reason = "Very similar entity slugs"
+            if exact_term_match or term_similarity >= 0.99:
+                reason = "Exact or alias-level term match"
+            elif contains_slug:
+                reason = "One slug contains the other"
+            elif summary_overlap >= 0.5:
+                reason = "Similar names with overlapping summaries"
+
+            candidates.append(
+                StagedEntityMergeCandidate(
+                    target=EntityMergeCandidateEntity(
+                        id=entity.id,
+                        slug=revision.slug,
+                        summary=revision.summary,
+                    ),
+                    similarity=round(score, 4),
+                    reason=reason,
+                    score_factors={
+                        "slug_similarity": round(slug_similarity, 4),
+                        "term_similarity": round(term_similarity, 4),
+                        "contains_slug": contains_slug,
+                        "summary_token_overlap": round(summary_overlap, 4),
+                        "target_has_summary": bool(revision.summary),
+                    },
+                )
+            )
+
+        candidates.sort(key=lambda candidate: candidate.similarity, reverse=True)
         return candidates[:limit]
 
     async def _load_terms_by_entity(self, entity_ids: set[UUID]) -> dict[UUID, set[str]]:
@@ -510,6 +621,7 @@ class EntityMergeService:
         second_neighbors: set[UUID],
         first_sources: set[UUID],
         second_sources: set[UUID],
+        similarity_threshold: float = 0.86,
     ) -> tuple[float, str, dict[str, float | str | bool]]:
         first_slug = self._normalize_match_text(first_revision.slug)
         second_slug = self._normalize_match_text(second_revision.slug)
@@ -518,16 +630,7 @@ class EntityMergeService:
 
         first_names = {first_slug, *first_terms}
         second_names = {second_slug, *second_terms}
-        term_similarity = max(
-            (
-                SequenceMatcher(None, first_name, second_name).ratio()
-                for first_name in first_names
-                for second_name in second_names
-            ),
-            default=0.0,
-        )
         exact_term_overlap = bool(first_names & second_names)
-
         summary_overlap = self._summary_token_overlap(
             first_revision.summary,
             second_revision.summary,
@@ -540,6 +643,30 @@ class EntityMergeService:
             first_revision.ui_category_id is not None
             and first_revision.ui_category_id == second_revision.ui_category_id
         )
+
+        possible_bonus = 0.0
+        if contains_slug:
+            possible_bonus += 0.03
+        if same_category:
+            possible_bonus += 0.03
+        possible_bonus += summary_overlap * 0.08
+        possible_bonus += shared_neighbor_score * 0.08
+        possible_bonus += shared_source_score * 0.06
+
+        term_similarity = 1.0 if exact_term_overlap else 0.0
+        should_run_fuzzy_term_scan = (
+            not exact_term_overlap
+            and (
+                slug_similarity + possible_bonus >= similarity_threshold
+                or slug_similarity >= 0.5
+                or contains_slug
+                or shared_neighbor_count > 0
+                or shared_source_count > 0
+                or summary_overlap >= 0.25
+            )
+        )
+        if should_run_fuzzy_term_scan:
+            term_similarity = self._best_name_similarity(first_names, second_names)
 
         score = max(slug_similarity, term_similarity)
         if contains_slug:
@@ -599,3 +726,16 @@ class EntityMergeService:
 
     def _normalize_match_text(self, value: str) -> str:
         return re.sub(r"[^a-z0-9]+", " ", value.lower()).strip()
+
+    def _best_name_similarity(self, first_names: set[str], second_names: set[str]) -> float:
+        best = 0.0
+        for first_name in first_names:
+            for second_name in second_names:
+                # Cheap upper bound for SequenceMatcher ratio.
+                max_possible = (2 * min(len(first_name), len(second_name))) / (
+                    len(first_name) + len(second_name)
+                )
+                if max_possible <= best:
+                    continue
+                best = max(best, SequenceMatcher(None, first_name, second_name).ratio())
+        return best

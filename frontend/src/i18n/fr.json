@@ -140,6 +140,19 @@
     "delete_confirm_title": "Supprimer l'entité",
     "delete_confirm_message": "Êtes-vous sûr de vouloir supprimer cette entité ? Cette action ne peut pas être annulée."
   },
+  "entity_ai_synthesis": {
+    "title": "Synthèse IA",
+    "advisory_chip": "Générée par IA",
+    "model_chip": "Modèle : {{model}}",
+    "generate": "Générer une synthèse IA",
+    "update": "Mettre à jour la synthèse IA",
+    "generating": "Génération...",
+    "advisory_notice": "Ce texte est généré à la demande à partir des relations calculées du graphe. Il ne fait pas autorité et ne remplace pas les preuves ci-dessous.",
+    "no_inference": "Aucune relation calculée n'est encore disponible ; aucune synthèse IA ne peut être générée.",
+    "key_points": "Points clés",
+    "limitations": "Limites",
+    "evidence_counts": "Générée à partir de {{relations}} relation(s) répartie(s) sur {{sources}} source(s)."
+  },
   "create_entity": {
     "title": "Créer une entité",
     "description": "Créer une nouvelle entité dans le graphe de connaissances. Le slug est un identifiant unique pour cette entité.",
@@ -564,7 +577,14 @@
     "batch_tools_title": "Outils par lot",
     "batch_tools_description": "Sélectionnez des extractions étagées pour les approuver ou les rejeter en un seul lot.",
     "items_title": "Éléments de la file",
-    "items_description": "Révisez les extractions étagées une par une, ou utilisez les outils par lot ci-dessus après avoir sélectionné un ensemble."
+    "items_description": "Révisez les extractions étagées une par une, ou utilisez les outils par lot ci-dessus après avoir sélectionné un ensemble.",
+    "merge_dialog_title": "Fusionner l'entité étagée",
+    "merge_dialog_warning": "Cela approuvera l'entité étagée, puis la fusionnera dans l'entité existante sélectionnée.",
+    "merge_source_label": "Entité étagée",
+    "merge_no_candidates": "Aucune entité existante similaire n'a été trouvée.",
+    "merge_linked_existing": "Entité étagée liée à l'entité existante",
+    "merge_completed": "Entité fusionnée",
+    "merge_saving": "Fusion..."
   },
   "extraction_card": {
     "no_notes": "Aucune note",
@@ -591,7 +611,8 @@
     "status_auto_staged": "Staged automatiquement (IA)",
     "status_approved": "Approuvé",
     "status_pending": "En attente de révision",
-    "status_rejected": "Rejeté"
+    "status_rejected": "Rejeté",
+    "merge": "Fusionner"
   },
   "llm_drafts": {
     "tab_label": "Brouillons IA",

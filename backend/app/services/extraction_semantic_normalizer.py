@@ -18,12 +18,25 @@ from app.llm.schemas import (
     ExtractedRelation,
     ExtractedRelationEvidenceContext,
     ExtractedRole,
+    get_missing_required_relation_roles,
 )
 
 _GROUP_SUFFIX_PATTERN = re.compile(r"\s+(group|groups|arm|arms)\s*$", re.IGNORECASE)
 _PLURAL_GROUP_WRAPPER_PATTERN = re.compile(r"\s+(groups|arms)\s*$", re.IGNORECASE)
 _ALL_CAPS_ACRONYM_PATTERN = re.compile(r"^[A-Z0-9-]{2,10}$")
 _NON_SLUG_CHARS_PATTERN = re.compile(r"[^a-z0-9]+")
+_VAGUE_AGGREGATE_ENTITY_PATTERN = re.compile(
+    r"\b("
+    r"patient(?:[- ]population)?(?:[- ]and[- ]individual)?[- ]factors|"
+    r"patient[- ]related[- ]factors|"
+    r"surgical[- ]technical[- ]factors|"
+    r"other[- ].*[- ]tools|"
+    r".*[- ]and[- ]assessment[- ]tools|"
+    r"(?:shorter|short|longer|extended)[- ](?:hrv[- ])?(?:recording[- ])?protocols?|"
+    r"(?:shorter|short|longer|extended)[- ](?:hrv[- ])?recordings?"
+    r")\b",
+    re.IGNORECASE,
+)
 
 _NULL_EFFECT_PATTERN = re.compile(
     r"\b("
@@ -126,6 +139,26 @@ _SPECULATIVE_SUMMARY_PATTERN = re.compile(
     r")\b",
     re.IGNORECASE,
 )
+_MECHANISM_CUE_PATTERN = re.compile(
+    r"\b("
+    r"mechanism|mechanisms|"
+    r"pathogenesis|"
+    r"involves .* mechanisms|"
+    r"because of .* evidence for|"
+    r"evidence for .* sensitization|"
+    r"underlying .* mechanism"
+    r")\b",
+    re.IGNORECASE,
+)
+_CLUSTERING_CUE_PATTERN = re.compile(
+    r"\b("
+    r"cluster(?:ed|ing)? .* based on|"
+    r"cluster patients based on|"
+    r"stratif(?:y|ied|ication) .* based on|"
+    r"subgroup(?:ed)? .* based on"
+    r")\b",
+    re.IGNORECASE,
+)
 
 
 class ExtractionSemanticNormalizer:
@@ -167,6 +200,8 @@ class ExtractionSemanticNormalizer:
         for entity in entities:
             normalized_entity = self._normalize_entity(entity)
             entity_slug_aliases[entity.slug] = normalized_entity.slug
+            if self._is_vague_aggregate_entity(normalized_entity):
+                continue
             if normalized_entity.slug in seen_slugs:
                 continue
             normalized_entities.append(normalized_entity)
@@ -311,8 +346,20 @@ class ExtractionSemanticNormalizer:
             )
             for role in relation.roles
         ]
+        normalized_roles = self._drop_vague_aggregate_roles(
+            normalized_roles,
+            entity_lookup=entity_lookup,
+        )
 
         normalized_relation_type = relation.relation_type
+        if get_missing_required_relation_roles(
+            normalized_relation_type,
+            [role.role_type for role in normalized_roles],
+        ):
+            if self._looks_like_mechanism(relation.text_span, roles=normalized_roles):
+                normalized_relation_type = "mechanism"
+            elif normalized_relation_type != "other":
+                return None
         if self._should_drop_context_only_relation(relation):
             return None
         if normalized_relation_type == "other":
@@ -346,6 +393,45 @@ class ExtractionSemanticNormalizer:
             }
         )
 
+    def _drop_vague_aggregate_roles(
+        self,
+        roles: list[ExtractedRole],
+        *,
+        entity_lookup: dict[str, ExtractedEntity],
+    ) -> list[ExtractedRole]:
+        retained_roles = [
+            role
+            for role in roles
+            if not self._is_vague_aggregate_role(role, entity_lookup=entity_lookup)
+        ]
+        return retained_roles
+
+    def _is_vague_aggregate_role(
+        self,
+        role: ExtractedRole,
+        *,
+        entity_lookup: dict[str, ExtractedEntity],
+    ) -> bool:
+        if self._is_vague_aggregate_text(role.entity_slug):
+            return True
+        if role.source_mention and self._is_vague_aggregate_text(role.source_mention):
+            return True
+        return self._is_vague_aggregate_entity(entity_lookup.get(role.entity_slug))
+
+    def _is_vague_aggregate_entity(self, entity: ExtractedEntity | None) -> bool:
+        if entity is None:
+            return False
+        candidate = " ".join(
+            value.strip().replace("_", " ").replace("-", " ")
+            for value in (entity.slug, entity.text_span)
+            if value and value.strip()
+        )
+        return self._is_vague_aggregate_text(candidate)
+
+    def _is_vague_aggregate_text(self, value: str) -> bool:
+        candidate = value.strip().replace("_", " ").replace("-", " ")
+        return bool(_VAGUE_AGGREGATE_ENTITY_PATTERN.search(candidate))
+
     def _normalize_role_type(self, role_type: str) -> str:
         if role_type == "comparator":
             return "control_group"
@@ -361,6 +447,8 @@ class ExtractionSemanticNormalizer:
         role_types = {role.role_type for role in roles}
         text_span = relation.text_span
         if "agent" not in role_types or not role_types.intersection({"target", "outcome"}):
+            if self._looks_like_mechanism(text_span, roles=roles):
+                return "mechanism"
             if self._looks_like_associated_with(text_span, roles=roles):
                 return "associated_with"
             if self._looks_like_prevalence_in(text_span, roles=roles):
@@ -375,6 +463,8 @@ class ExtractionSemanticNormalizer:
             return "causes"
         if self._looks_like_treats(text_span, roles=roles, entity_lookup=entity_lookup):
             return "treats"
+        if self._looks_like_mechanism(text_span, roles=roles):
+            return "mechanism"
         if self._looks_like_associated_with(text_span, roles=roles):
             return "associated_with"
         if self._looks_like_prevalence_in(text_span, roles=roles):
@@ -400,6 +490,19 @@ class ExtractionSemanticNormalizer:
             return False
         return bool(_PREVALENCE_CUE_PATTERN.search(text_span))
 
+    def _looks_like_mechanism(
+        self,
+        text_span: str,
+        *,
+        roles: list[ExtractedRole],
+    ) -> bool:
+        role_types = {role.role_type for role in roles}
+        if "mechanism" not in role_types:
+            return False
+        if not role_types.intersection({"target", "condition", "outcome"}):
+            return False
+        return bool(_MECHANISM_CUE_PATTERN.search(text_span))
+
     def _looks_like_associated_with(
         self,
         text_span: str,
@@ -409,9 +512,22 @@ class ExtractionSemanticNormalizer:
         role_types = {role.role_type for role in roles}
         if "target" not in role_types:
             return False
-        if not role_types.intersection({"condition", "population", "study_group", "control_group"}):
+        if not role_types.intersection(
+            {
+                "condition",
+                "population",
+                "study_group",
+                "control_group",
+                "outcome",
+                "symptom",
+                "biomarker",
+            }
+        ):
             return False
-        return bool(_ASSOCIATION_CUE_PATTERN.search(text_span))
+        return bool(
+            _ASSOCIATION_CUE_PATTERN.search(text_span)
+            or _CLUSTERING_CUE_PATTERN.search(text_span)
+        )
 
     def _looks_like_treats(
         self,

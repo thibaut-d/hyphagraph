@@ -146,6 +146,24 @@ class TestEntityMergeService:
         assert candidate.score_factors["contains_slug"] is True
         assert candidate.score_factors["both_have_summary"] is True
 
+    async def test_list_staged_entity_merge_targets_returns_existing_matches(self, db_session):
+        entity_service = EntityService(db_session)
+        merge_service = EntityMergeService(db_session)
+
+        await entity_service.create(EntityWrite(slug="fibromyalgia"))
+        await entity_service.create(EntityWrite(slug="duloxetine"))
+
+        candidates = await merge_service.list_staged_entity_merge_targets(
+            slug="fibromyalgia-syndrome",
+            summary="Longer duplicate term for fibromyalgia",
+            similarity_threshold=0.7,
+        )
+
+        assert len(candidates) == 1
+        assert candidates[0].target.slug == "fibromyalgia"
+        assert candidates[0].proposed_action == "approve_then_merge"
+        assert candidates[0].similarity > 0.7
+
     async def test_list_merge_candidates_scores_terms_summaries_neighborhoods_and_sources(self, db_session):
         entity_service = EntityService(db_session)
         source_service = SourceService(db_session)

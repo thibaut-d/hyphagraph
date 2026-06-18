@@ -89,6 +89,20 @@ export interface MaterializationResult {
   error?: string | null;
 }
 
+export interface EntityMergeCandidateEntity {
+  id: string;
+  slug: string;
+  summary?: Record<string, string> | null;
+}
+
+export interface StagedEntityMergeCandidate {
+  target: EntityMergeCandidateEntity;
+  similarity: number;
+  reason: string;
+  score_factors?: Record<string, string | number | boolean>;
+  proposed_action: "approve_then_merge";
+}
+
 export interface StagedExtractionFilters {
   status?: ExtractionStatus;
   extraction_type?: ExtractionType;
@@ -147,6 +161,19 @@ export async function getStagedExtraction(
   extractionId: string
 ): Promise<StagedExtractionRead> {
   return apiFetch<StagedExtractionRead>(`/extraction-review/${extractionId}`);
+}
+
+/**
+ * List existing entities that may match one staged entity extraction.
+ *
+ * GET /api/extraction-review/{id}/entity-merge-candidates
+ */
+export async function listStagedEntityMergeCandidates(
+  extractionId: string
+): Promise<StagedEntityMergeCandidate[]> {
+  return apiFetch<StagedEntityMergeCandidate[]>(
+    `/extraction-review/${extractionId}/entity-merge-candidates`
+  );
 }
 
 /**

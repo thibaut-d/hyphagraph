@@ -38,6 +38,18 @@ def _relation_direction(relation_data: ExtractedRelation) -> str | None:
     return canonicalize_finding_polarity(relation_data.evidence_context.finding_polarity)
 
 
+def _relation_notes(relation_data: ExtractedRelation) -> dict[str, str] | None:
+    assertion_text = (
+        relation_data.evidence_context.assertion_text
+        if relation_data.evidence_context
+        else None
+    )
+    note_text = relation_data.notes or assertion_text or relation_data.text_span
+    if not note_text:
+        return None
+    return {"en": note_text}
+
+
 async def materialize_entity(
     db: AsyncSession,
     staged: StagedExtraction,
@@ -102,9 +114,7 @@ async def materialize_relation(
             "direction": _relation_direction(relation_data),
             "confidence": final_confidence,
             "scope": _relation_scope(relation_data),
-            "notes": {"en": relation_data.notes or relation_data.text_span}
-            if relation_data.notes or relation_data.text_span
-            else None,
+            "notes": _relation_notes(relation_data),
             "status": status,
             "created_with_llm": staged.llm_model,
             "created_by_user_id": user_id,

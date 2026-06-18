@@ -40,3 +40,13 @@ class EntityMergeCandidate(BaseModel):
     reason: str
     score_factors: dict[str, float | str | bool] = {}
     proposed_action: str = "merge"
+
+
+class StagedEntityMergeCandidate(BaseModel):
+    """Existing entity candidate for merging a staged entity after approval."""
+
+    target: EntityMergeCandidateEntity
+    similarity: float
+    reason: str
+    score_factors: dict[str, float | str | bool] = {}
+    proposed_action: str = "approve_then_merge"

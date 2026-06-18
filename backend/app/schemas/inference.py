@@ -2,6 +2,7 @@ from uuid import UUID
 from typing import Optional
 from pydantic import Field
 from app.schemas.base import Schema
+from app.schemas.common_types import ScopeFilter
 from app.schemas.relation import RelationRead
 from app.schemas.source import SourceRead
 
@@ -67,3 +68,22 @@ class InferenceDetailRead(InferenceRead):
     relation_kind_summaries: list[RelationKindSummaryRead]
     evidence_items: list[EvidenceItemRead]
     disagreement_groups: list[DisagreementGroupRead]
+
+
+class EntityAISynthesisRequest(Schema):
+    user_language: str = Field("en", min_length=2, max_length=8)
+    scope_filter: ScopeFilter | None = None
+
+
+class EntityAISynthesisRead(Schema):
+    entity_id: UUID
+    entity_slug: str
+    synthesis: str
+    key_points: list[str] = []
+    limitations: list[str] = []
+    evidence_note: str
+    general_knowledge_note: str | None = None
+    source_relation_count: int
+    source_count: int
+    generated_with_llm: str
+    token_usage: dict[str, int] = {}

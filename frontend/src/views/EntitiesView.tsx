@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { listEntities, EntityFilters, getEntityFilterOptions, EntityFilterOptions } from "../api/entities";
 import { EntityRead } from "../types/entity";
 import { Link as RouterLink } from "react-router-dom";
@@ -45,7 +45,7 @@ export function EntitiesView() {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [hasMore, setHasMore] = useState(true);
-  const [offset, setOffset] = useState(0);
+  const loadingRef = useRef(false);
   const [smartDiscoveryOpen, setSmartDiscoveryOpen] = useState(false);
   const filterOptions = useFilterOptionsCache<EntityFilterOptions>(
     'entity-filter-options-cache',
@@ -120,8 +120,8 @@ export function EntitiesView() {
   useEffect(() => {
     setIsLoading(true);
     setEntities([]);
-    setOffset(0);
     setHasMore(true);
+    loadingRef.current = false;
   }, [
     debouncedSearch,
     filters.ui_category_id,
@@ -135,6 +135,10 @@ export function EntitiesView() {
 
   // Fetch entities with server-side filtering and pagination
   const loadEntities = useCallback(async (currentOffset: number) => {
+    if (loadingRef.current) {
+      return;
+    }
+    loadingRef.current = true;
     setIsLoading(true);
 
     const apiFilters: EntityFilters = {
@@ -188,6 +192,7 @@ export function EntitiesView() {
     } catch (err) {
       showError(err);
     } finally {
+      loadingRef.current = false;
       setIsLoading(false);
     }
   }, [
@@ -207,10 +212,11 @@ export function EntitiesView() {
   }, [loadEntities]);
 
   const handleLoadMore = useCallback(() => {
-    const newOffset = offset + PAGE_SIZE;
-    setOffset(newOffset);
-    loadEntities(newOffset);
-  }, [offset, loadEntities]);
+    if (isLoading || !hasMore) {
+      return;
+    }
+    loadEntities(entities.length);
+  }, [entities.length, hasMore, isLoading, loadEntities]);
 
   const sentinelRef = useInfiniteScroll({
     onLoadMore: handleLoadMore,

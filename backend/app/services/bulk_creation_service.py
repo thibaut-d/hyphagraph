@@ -46,6 +46,19 @@ def _build_relation_direction(extracted: ExtractedRelation) -> str | None:
     return canonicalize_finding_polarity(extracted.evidence_context.finding_polarity)
 
 
+def _build_relation_notes(extracted: ExtractedRelation) -> dict[str, str] | None:
+    """Choose the best source-grounded natural-language statement for display."""
+    assertion_text = (
+        extracted.evidence_context.assertion_text
+        if extracted.evidence_context
+        else None
+    )
+    note_text = extracted.notes or assertion_text or extracted.text_span
+    if not note_text:
+        return None
+    return {"en": note_text}
+
+
 class BulkCreationService:
     """
     Service for bulk creation of entities and relations from LLM extraction.
@@ -245,7 +258,7 @@ class BulkCreationService:
                         "direction": _build_relation_direction(extracted),
                         "confidence": CONFIDENCE_FLOAT.get(extracted.confidence, CONFIDENCE_FLOAT["low"]),
                         "scope": _build_relation_scope(extracted),
-                        "notes": {"en": extracted.notes} if extracted.notes else None,
+                        "notes": _build_relation_notes(extracted),
                         "created_with_llm": settings.OPENAI_MODEL,
                         "created_by_user_id": user_id,
                         # Extraction save is explicit human approval, so the

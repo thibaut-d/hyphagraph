@@ -6,6 +6,7 @@ import { Alert, Typography, Stack, CircularProgress } from "@mui/material";
 import { EntityDetailFilterValues, FilterDrawer, EntityDetailFilters } from "../components/filters";
 import { EntityDetailHeader } from "../components/entity/EntityDetailHeader";
 import { EntityDeleteDialog } from "../components/entity/EntityDeleteDialog";
+import { EntityAISynthesisBlock } from "../components/entity/EntityAISynthesisBlock";
 import { ScopeFilterPanel } from "../components/entity/ScopeFilterPanel";
 import { InferenceSection } from "../components/entity/InferenceSection";
 
@@ -117,11 +118,23 @@ export function EntityDetailView() {
   }
 
   const sourcesArray = Object.values(sources);
+  const hasInference =
+    Boolean(inference?.role_inferences?.length) ||
+    Object.values(inference?.relations_by_kind ?? {}).some(
+      (relations) => relations.length > 0,
+    );
 
   return (
     <Stack spacing={3}>
       {/* Header */}
       <EntityDetailHeader entity={entity} onDeleteClick={openDeleteDialog} />
+
+      {/* On-demand AI Synthesis */}
+      <EntityAISynthesisBlock
+        entity={entity}
+        scopeFilter={scopeFilter}
+        hasInference={hasInference}
+      />
 
       {/* Inference */}
       {inferenceError && (

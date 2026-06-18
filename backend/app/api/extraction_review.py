@@ -10,7 +10,10 @@ from pydantic import BaseModel
 
 from app.api.service_dependencies import get_extraction_review_service
 from app.dependencies.auth import get_current_active_superuser
+from app.llm.schemas import ExtractedEntity
+from app.models.staged_extraction import ExtractionStatus, ExtractionType
 from app.models.user import User
+from app.schemas.entity_merge import StagedEntityMergeCandidate
 from app.schemas.staged_extraction import (
     StagedExtractionRead,
     StagedExtractionListResponse,
@@ -22,6 +25,7 @@ from app.schemas.staged_extraction import (
     MaterializationResult,
     StagedExtractionFilters,
 )
+from app.services.entity_merge_service import EntityMergeService
 from app.services.extraction_review_service import ExtractionReviewService
 from app.utils.errors import AppException, ErrorCode
 
@@ -126,6 +130,61 @@ async def get_extraction(
         )
 
     return StagedExtractionRead.model_validate(extraction)
+
+
+@router.get("/{extraction_id}/entity-merge-candidates", response_model=list[StagedEntityMergeCandidate])
+async def list_staged_entity_merge_candidates(
+    extraction_id: UUID,
+    similarity_threshold: float = Query(
+        0.55,
+        description="Minimum similarity for existing entity targets",
+        ge=0.0,
+        le=1.0,
+    ),
+    limit: int = Query(10, description="Maximum number of candidates", ge=1, le=25),
+    service: ExtractionReviewService = Depends(get_extraction_review_service),
+    current_user: User = Depends(get_current_active_superuser),
+):
+    """
+    List existing entities that may match one staged entity extraction.
+
+    This is a dry-run suggestion endpoint for review queue merge UX. It does not
+    approve, materialize, or merge anything.
+    """
+    extraction = await service.get_extraction(extraction_id)
+    if not extraction:
+        raise AppException(
+            status_code=404,
+            error_code=ErrorCode.NOT_FOUND,
+            message="Staged extraction not found",
+            context={"extraction_id": str(extraction_id)},
+        )
+
+    if extraction.extraction_type != ExtractionType.ENTITY:
+        raise AppException(
+            status_code=400,
+            error_code=ErrorCode.VALIDATION_ERROR,
+            message="Merge candidates are only available for entity extractions",
+            context={"extraction_id": str(extraction_id)},
+        )
+
+    reviewable = {ExtractionStatus.PENDING, ExtractionStatus.AUTO_VERIFIED}
+    if extraction.status not in reviewable:
+        raise AppException(
+            status_code=400,
+            error_code=ErrorCode.VALIDATION_ERROR,
+            message="Merge candidates are only available for reviewable extractions",
+            context={"extraction_id": str(extraction_id), "status": extraction.status.value},
+        )
+
+    entity_data = ExtractedEntity(**extraction.extraction_data)
+    merge_service = EntityMergeService(service.db)
+    return await merge_service.list_staged_entity_merge_targets(
+        slug=entity_data.slug,
+        summary=entity_data.summary,
+        similarity_threshold=similarity_threshold,
+        limit=limit,
+    )
 
 
 class RelationTypeCorrectionRequest(BaseModel):

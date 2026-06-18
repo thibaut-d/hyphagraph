@@ -502,6 +502,314 @@ async def test_semantic_normalizer_upgrades_other_prevalence_relation() -> None:
 
 
 @pytest.mark.asyncio
+async def test_semantic_normalizer_upgrades_other_clinical_outcome_association() -> None:
+    orchestrator = BatchExtractionOrchestrator(
+        enable_validation=False,
+        max_gleaning_passes=0,
+    )
+    orchestrator.llm = FakeLLM(
+        [
+            {
+                "entities": [
+                    _entity("intraindividual-pain-variability", category="outcome"),
+                    _entity("mental-health", category="outcome"),
+                ],
+                "relations": [
+                    {
+                        "relation_type": "other",
+                        "roles": [
+                            {
+                                "entity_slug": "intraindividual-pain-variability",
+                                "role_type": "target",
+                                "source_mention": "degree of intraindividual pain variability",
+                            },
+                            {
+                                "entity_slug": "mental-health",
+                                "role_type": "outcome",
+                                "source_mention": "mental health",
+                            },
+                        ],
+                        "confidence": "medium",
+                        "text_span": "Preliminary evidence suggests that degree of intraindividual pain variability may be associated with measures of clinical relevance, including mental health.",
+                        "evidence_context": {
+                            "statement_kind": "finding",
+                            "finding_polarity": "uncertain",
+                            "evidence_strength": "strong",
+                            "study_design": "systematic_review",
+                        },
+                    }
+                ],
+            }
+        ]
+    )
+
+    _, relations = await orchestrator.extract_batch(
+        "Preliminary evidence suggests that degree of intraindividual pain variability may be associated with measures of clinical relevance, including mental health."
+    )
+
+    assert len(relations) == 1
+    assert relations[0].relation_type == "associated_with"
+    assert {role.role_type for role in relations[0].roles} == {"target", "outcome"}
+    assert relations[0].evidence_context is not None
+    assert relations[0].evidence_context.finding_polarity == "uncertain"
+
+
+@pytest.mark.asyncio
+async def test_semantic_normalizer_upgrades_other_mechanism_background_relation() -> None:
+    orchestrator = BatchExtractionOrchestrator(
+        enable_validation=False,
+        max_gleaning_passes=0,
+    )
+    orchestrator.llm = FakeLLM(
+        [
+            {
+                "entities": [
+                    _entity("osteoarthritis", category="disease"),
+                    _entity("central-sensitization", category="biological_mechanism"),
+                ],
+                "relations": [
+                    {
+                        "relation_type": "other",
+                        "roles": [
+                            {
+                                "entity_slug": "osteoarthritis",
+                                "role_type": "target",
+                                "source_mention": "osteoarthritis",
+                            },
+                            {
+                                "entity_slug": "central-sensitization",
+                                "role_type": "mechanism",
+                                "source_mention": "central sensitization",
+                            },
+                        ],
+                        "confidence": "medium",
+                        "text_span": "Studies included patients with osteoarthritis because of the growing evidence for central sensitization.",
+                        "evidence_context": {
+                            "statement_kind": "background",
+                            "finding_polarity": "uncertain",
+                        },
+                    }
+                ],
+            }
+        ]
+    )
+
+    _, relations = await orchestrator.extract_batch(
+        "Studies included patients with osteoarthritis because of the growing evidence for central sensitization."
+    )
+
+    assert len(relations) == 1
+    assert relations[0].relation_type == "mechanism"
+
+
+@pytest.mark.asyncio
+async def test_semantic_normalizer_upgrades_other_patient_clustering_association() -> None:
+    orchestrator = BatchExtractionOrchestrator(
+        enable_validation=False,
+        max_gleaning_passes=0,
+    )
+    orchestrator.llm = FakeLLM(
+        [
+            {
+                "entities": [
+                    _entity("patients-with-nociplastic-pain", category="population"),
+                    _entity("intraindividual-pain-variability", category="outcome"),
+                ],
+                "relations": [
+                    {
+                        "relation_type": "other",
+                        "roles": [
+                            {
+                                "entity_slug": "intraindividual-pain-variability",
+                                "role_type": "target",
+                                "source_mention": "degree of pain variability",
+                            },
+                            {
+                                "entity_slug": "patients-with-nociplastic-pain",
+                                "role_type": "population",
+                                "source_mention": "patients",
+                            },
+                        ],
+                        "confidence": "medium",
+                        "text_span": "In several studies, it was possible to cluster patients based on degree of pain variability.",
+                        "evidence_context": {
+                            "statement_kind": "finding",
+                            "finding_polarity": "supports",
+                        },
+                    }
+                ],
+            }
+        ]
+    )
+
+    _, relations = await orchestrator.extract_batch(
+        "In several studies, it was possible to cluster patients based on degree of pain variability."
+    )
+
+    assert len(relations) == 1
+    assert relations[0].relation_type == "associated_with"
+
+
+@pytest.mark.asyncio
+async def test_semantic_normalizer_prunes_vague_aggregate_factor_and_tool_entities() -> None:
+    orchestrator = BatchExtractionOrchestrator(
+        enable_validation=False,
+        max_gleaning_passes=0,
+    )
+    orchestrator.llm = FakeLLM(
+        [
+            {
+                "entities": [
+                    _entity("ipsilateral-knee-pain", category="symptom"),
+                    _entity("referred-pain", category="biological_mechanism"),
+                    _entity("central-sensitization", category="biological_mechanism"),
+                    _entity("surgical-technical-factors", category="other"),
+                    _entity("patient-related-factors", category="population"),
+                    _entity("pain-score-questionnaires", category="other"),
+                    _entity("eos-system", category="other"),
+                    _entity("predictive-simulation", category="other"),
+                    _entity("imaging-and-assessment-tools", category="other"),
+                ],
+                "relations": [
+                    {
+                        "relation_type": "associated_with",
+                        "roles": [
+                            {
+                                "entity_slug": "ipsilateral-knee-pain",
+                                "role_type": "target",
+                                "source_mention": "ipsilateral knee pain",
+                            },
+                            {
+                                "entity_slug": "referred-pain",
+                                "role_type": "mechanism",
+                                "source_mention": "referred pain",
+                            },
+                            {
+                                "entity_slug": "central-sensitization",
+                                "role_type": "mechanism",
+                                "source_mention": "central sensitization",
+                            },
+                            {
+                                "entity_slug": "surgical-technical-factors",
+                                "role_type": "condition",
+                                "source_mention": "surgical technical factors",
+                            },
+                            {
+                                "entity_slug": "patient-related-factors",
+                                "role_type": "population",
+                                "source_mention": "patient-related factors",
+                            },
+                        ],
+                        "confidence": "high",
+                        "text_span": "The pathogenesis further involves neurobiological mechanisms such as referred pain and central sensitization, surgical technical factors, and patient-related factors.",
+                        "evidence_context": {
+                            "statement_kind": "finding",
+                            "finding_polarity": "supports",
+                        },
+                    },
+                    {
+                        "relation_type": "measures",
+                        "roles": [
+                            {
+                                "entity_slug": "pain-score-questionnaires",
+                                "role_type": "measured_by",
+                                "source_mention": "pain score questionnaires",
+                            },
+                            {
+                                "entity_slug": "ipsilateral-knee-pain",
+                                "role_type": "target",
+                                "source_mention": "this complication",
+                            },
+                        ],
+                        "confidence": "medium",
+                        "text_span": "Diagnose this complication based on relevant pain score questionnaires, EOS system, predictive simulation, and other imaging and assessment tools.",
+                        "evidence_context": {"statement_kind": "methodology"},
+                    },
+                    {
+                        "relation_type": "measures",
+                        "roles": [
+                            {
+                                "entity_slug": "imaging-and-assessment-tools",
+                                "role_type": "measured_by",
+                                "source_mention": "other imaging and assessment tools",
+                            },
+                            {
+                                "entity_slug": "ipsilateral-knee-pain",
+                                "role_type": "target",
+                                "source_mention": "this complication",
+                            },
+                        ],
+                        "confidence": "medium",
+                        "text_span": "Diagnose this complication based on relevant pain score questionnaires, EOS system, predictive simulation, and other imaging and assessment tools.",
+                        "evidence_context": {"statement_kind": "methodology"},
+                    },
+                ],
+            }
+        ]
+    )
+
+    entities, relations = await orchestrator.extract_batch(
+        "The pathogenesis further involves neurobiological mechanisms such as referred pain and central sensitization, surgical technical factors, and patient-related factors. "
+        "Diagnose this complication based on relevant pain score questionnaires, EOS system, predictive simulation, and other imaging and assessment tools."
+    )
+
+    assert "surgical-technical-factors" not in {entity.slug for entity in entities}
+    assert "patient-related-factors" not in {entity.slug for entity in entities}
+    assert "imaging-and-assessment-tools" not in {entity.slug for entity in entities}
+    assert "referred-pain" in {entity.slug for entity in entities}
+    assert "central-sensitization" in {entity.slug for entity in entities}
+    assert "pain-score-questionnaires" in {entity.slug for entity in entities}
+    assert all(
+        role.entity_slug
+        not in {
+            "surgical-technical-factors",
+            "patient-related-factors",
+            "imaging-and-assessment-tools",
+        }
+        for relation in relations
+        for role in relation.roles
+    )
+    assert [relation.relation_type for relation in relations] == ["mechanism", "measures"]
+
+
+@pytest.mark.asyncio
+async def test_semantic_normalizer_prunes_vague_protocol_duration_entities() -> None:
+    orchestrator = BatchExtractionOrchestrator(
+        enable_validation=False,
+        max_gleaning_passes=0,
+    )
+    orchestrator.llm = FakeLLM(
+        [
+            {
+                "entities": [
+                    _entity("heart-rate-variability", category="biomarker"),
+                    _entity(
+                        "shorter-protocols",
+                        summary="Shorter HRV recording protocols.",
+                        category="other",
+                    ),
+                    _entity(
+                        "extended-recordings",
+                        summary="Longer or extended HRV recordings.",
+                        category="other",
+                    ),
+                ],
+                "relations": [],
+            }
+        ]
+    )
+
+    entities, relations = await orchestrator.extract_batch(
+        "Shorter protocols and extended recordings were discussed for HRV measurement."
+    )
+
+    assert "heart-rate-variability" in {entity.slug for entity in entities}
+    assert "shorter-protocols" not in {entity.slug for entity in entities}
+    assert "extended-recordings" not in {entity.slug for entity in entities}
+    assert relations == []
+
+
+@pytest.mark.asyncio
 async def test_semantic_normalizer_drops_ambiguous_other_relation_without_focal_target() -> None:
     orchestrator = BatchExtractionOrchestrator(
         enable_validation=False,

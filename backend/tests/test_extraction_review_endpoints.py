@@ -7,10 +7,16 @@ from fastapi import status
 from httpx import ASGITransport, AsyncClient
 
 from app.api.service_dependencies import get_extraction_review_service
+from app.database import get_db
 from app.dependencies.auth import get_current_active_superuser, get_current_user
 from app.main import app
+from app.models.staged_extraction import ExtractionStatus, ExtractionType, StagedExtraction
 from app.models.user import User
+from app.schemas.entity import EntityWrite
+from app.schemas.source import SourceWrite
 from app.schemas.staged_extraction import MaterializationResult, StagedExtractionFilters
+from app.services.entity_service import EntityService
+from app.services.source_service import SourceService
 from app.utils.errors import ForbiddenException
 
 
@@ -74,6 +80,14 @@ def superuser():
         is_verified=True,
         created_at=datetime.now(timezone.utc),
     )
+
+
+@pytest.fixture
+def override_get_db(db_session):
+    async def _override_get_db():
+        yield db_session
+
+    return _override_get_db
 
 
 @pytest.fixture(autouse=True)
@@ -205,6 +219,57 @@ class TestExtractionReviewPendingFilters:
         assert filters.page_size == 25
         assert filters.sort_by == "validation_score"
         assert filters.sort_order == "asc"
+
+    @pytest.mark.asyncio
+    async def test_entity_merge_candidates_returns_existing_targets(
+        self,
+        override_get_db,
+        db_session,
+        superuser,
+    ):
+        async def override_superuser():
+            return superuser
+
+        entity_service = EntityService(db_session)
+        await entity_service.create(EntityWrite(slug="fibromyalgia"))
+        await entity_service.create(EntityWrite(slug="duloxetine"))
+        source = await SourceService(db_session).create(
+            SourceWrite(kind="study", title="Fibromyalgia study", url="https://example.com/fms")
+        )
+        staged = StagedExtraction(
+            extraction_type=ExtractionType.ENTITY,
+            status=ExtractionStatus.PENDING,
+            source_id=source.id,
+            extraction_data={
+                "slug": "fibromyalgia-syndrome",
+                "category": "disease",
+                "summary": "Longer duplicate term for fibromyalgia",
+                "confidence": "high",
+                "text_span": "fibromyalgia syndrome",
+            },
+            validation_score=0.85,
+            confidence_adjustment=1.0,
+            validation_flags=[],
+            auto_commit_eligible=False,
+            auto_approved=False,
+        )
+        db_session.add(staged)
+        await db_session.commit()
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_current_active_superuser] = override_superuser
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get(
+                f"/api/extraction-review/{staged.id}/entity-merge-candidates",
+                params={"similarity_threshold": "0.7"},
+            )
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["target"]["slug"] == "fibromyalgia"
+        assert data[0]["proposed_action"] == "approve_then_merge"
 
     @pytest.mark.asyncio
     async def test_pending_allows_review_of_relation_payload_that_fails_strict_write_schema(

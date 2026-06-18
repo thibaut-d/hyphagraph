@@ -202,7 +202,10 @@ _REQUIRED_RELATION_ROLE_GROUPS: dict[str, tuple[tuple[str, ...], ...]] = {
     "prevents": (("agent",), ("target", "outcome")),
     "increases_risk": (("agent", "condition"), ("target", "outcome")),
     "decreases_risk": (("agent", "condition"), ("target", "outcome")),
-    "associated_with": (("target",), ("condition", "population", "study_group")),
+    "associated_with": (
+        ("target",),
+        ("condition", "population", "study_group", "outcome", "symptom", "biomarker"),
+    ),
     "prevalence_in": (("target",), ("condition", "population", "control_group", "study_group")),
     "contraindicated": (("agent",), ("target", "condition")),
     "metabolized_by": (("agent",), ("target", "mechanism")),
@@ -255,6 +258,7 @@ class ExtractedRole(BaseModel):
 
 _VALID_RELATION_TYPES: frozenset[str] = frozenset(RelationType.__args__)  # type: ignore[attr-defined]
 _OBSERVATIONAL_RELATION_TYPES = {"associated_with", "prevalence_in"}
+_TARGET_REQUIRED_ROLE_GROUP = ("target", "outcome")
 
 
 class ExtractedRelation(BaseModel):
@@ -348,12 +352,16 @@ class ExtractedRelation(BaseModel):
             self.relation_type,
             [role.role_type for role in self.roles],
         )
-        if (
-            missing_role_groups
-            and self.relation_type in _OBSERVATIONAL_RELATION_TYPES
-        ):
+        should_downgrade_incomplete_relation = (
+            self.relation_type in _OBSERVATIONAL_RELATION_TYPES
+            or (
+                self.relation_type == "causes"
+                and _TARGET_REQUIRED_ROLE_GROUP in missing_role_groups
+            )
+        )
+        if missing_role_groups and should_downgrade_incomplete_relation:
             logger.warning(
-                "Downgrading incomplete observational relation %r to 'other' before batch validation",
+                "Downgrading incomplete relation %r to 'other' before batch validation",
                 self.relation_type,
             )
             return self.model_copy(
@@ -415,8 +423,9 @@ def _normalize_study_design(value: object) -> object:
     Map free-text study-design descriptions to enum values.
 
     LLMs frequently return verbose phrases like "systematic review and
-    meta-analysis of randomized controlled trials" or "multilevel meta-regression"
-    instead of a single enum token. This function normalises the most common patterns so
+    meta-analysis of randomized controlled trials" or "multilevel
+    meta-regression" instead of a single
+    enum token. This function normalises the most common patterns so
     Pydantic validation does not reject valid extractions.
 
     Priority order when the text matches multiple keywords: meta_analysis >
@@ -428,6 +437,7 @@ def _normalize_study_design(value: object) -> object:
         return value
 
     v = value.strip().lower()
+    phrase = re.sub(r"[_\W]+", " ", v).strip()
 
     # Already a valid enum token — pass through unchanged.
     _valid = {
@@ -442,18 +452,27 @@ def _normalize_study_design(value: object) -> object:
     # Keyword-based heuristics (highest-specificity first).
     if (
         "meta-analysis" in v
-        or "meta analysis" in v
+        or "meta analysis" in phrase
         or "meta_analysis" in v
         or "meta-regression" in v
-        or "meta regression" in v
+        or "meta regression" in phrase
     ):
         return "meta_analysis"
-    if "systematic review" in v or "systematic_review" in v:
+    if "systematic review" in phrase or "systematic_review" in v:
         return "systematic_review"
-    if "randomized controlled trial" in v or "randomised controlled trial" in v or "rct" == v:
-        return "randomized_controlled_trial"
-    if "nonrandomized" in v or "non-randomized" in v or "non randomized" in v:
+    if "nonrandomized" in v or "non randomized" in phrase:
         return "nonrandomized_trial"
+    if (
+        "randomized controlled trial" in phrase
+        or "randomised controlled trial" in phrase
+        or re.search(r"\brandomi[sz]ed\b", phrase)
+        and re.search(
+            r"\b(study|trial|design|controlled|placebo|double blind|crossover)\b",
+            phrase,
+        )
+        or "rct" == v
+    ):
+        return "randomized_controlled_trial"
     if "cohort" in v:
         return "cohort_study"
     if "case-control" in v or "case control" in v:
@@ -672,9 +691,15 @@ def validate_batch_extraction(data: JsonObject) -> BatchExtractionResponse:
     """Validate and parse batch extraction response from LLM."""
     # Convert old subject/object format to new roles format for backward compatibility
     if "relations" in data:
+        valid_relations: list[object] = []
         for relation in data["relations"]:
             # If relation has subject_slug/object_slug but no roles array, convert it
-            if "subject_slug" in relation and "object_slug" in relation and "roles" not in relation:
+            if (
+                isinstance(relation, dict)
+                and "subject_slug" in relation
+                and "object_slug" in relation
+                and "roles" not in relation
+            ):
                 # Map subject/object to semantic roles based on relation type
                 relation_type = relation.get("relation_type", "other")
 
@@ -698,6 +723,17 @@ def validate_batch_extraction(data: JsonObject) -> BatchExtractionResponse:
                     {"entity_slug": relation["subject_slug"], "role_type": subject_role},
                     {"entity_slug": relation["object_slug"], "role_type": object_role}
                 ]
+            if isinstance(relation, dict):
+                roles = relation.get("roles")
+                if isinstance(roles, list) and len(roles) < 2:
+                    logger.warning(
+                        "Dropping malformed relation %r with fewer than 2 roles before batch validation",
+                        relation.get("relation_type"),
+                    )
+                    continue
+            valid_relations.append(relation)
+        data = dict(data)
+        data["relations"] = valid_relations
 
     return BatchExtractionResponse.model_validate(data)
 

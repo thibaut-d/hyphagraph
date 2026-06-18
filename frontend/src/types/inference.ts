@@ -61,3 +61,22 @@ export interface InferenceDetailRead extends InferenceRead {
   evidence_items: EvidenceItemRead[];
   disagreement_groups: DisagreementGroupRead[];
 }
+
+export interface EntityAISynthesisRequest {
+  user_language: string;
+  scope_filter?: Record<string, string | number | boolean> | null;
+}
+
+export interface EntityAISynthesisRead {
+  entity_id: string;
+  entity_slug: string;
+  synthesis: string;
+  key_points: string[];
+  limitations: string[];
+  evidence_note: string;
+  general_knowledge_note?: string | null;
+  source_relation_count: number;
+  source_count: number;
+  generated_with_llm: string;
+  token_usage: Record<string, number>;
+}
