@@ -8,6 +8,8 @@ services:
       - ./deploy/caddy/Caddyfile.dev:/etc/caddy/Caddyfile
       - caddy_data:/data
       - caddy_config:/config
+      - /srv/caddy-sites:/etc/caddy/sites:ro
+      - /srv/brindilo:/srv/brindilo:ro
     depends_on:
       api:
         condition: service_healthy

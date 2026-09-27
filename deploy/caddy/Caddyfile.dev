@@ -11,3 +11,6 @@ algiagraph.com {
         reverse_proxy web:3000
     }
 }
+
+# Sites hébergés à côté de hyphagraph (un fichier par site, monté en lecture seule)
+import /etc/caddy/sites/*.caddy
