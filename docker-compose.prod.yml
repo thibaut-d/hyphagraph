@@ -44,7 +44,7 @@ services:
     image: ghcr.io/thibaut-d/hyphagraph-backend:${HYPHAGRAPH_VERSION:-latest}
     command: >
       sh -c "uv run alembic upgrade head &&
-             uv run uvicorn app.main:app --host 0.0.0.0 --port 8000"
+             uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --forwarded-allow-ips '*'"
     env_file: .env
     depends_on:
       db:

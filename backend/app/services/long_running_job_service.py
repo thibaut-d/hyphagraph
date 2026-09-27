@@ -5,7 +5,7 @@ from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.long_running_job import (
@@ -119,3 +119,35 @@ async def run_job(
     finished_job.finished_at = now
     finished_job.updated_at = now
     await db.commit()
+
+
+ORPHANED_JOB_ERROR = "Job interrupted: the API process restarted before the job finished"
+
+
+async def fail_orphaned_jobs(db: AsyncSession) -> int:
+    """
+    Mark pending/running jobs as failed at startup.
+
+    Jobs execute as in-process asyncio tasks, so none can survive an API
+    restart. This assumes a single API process per database; with several
+    workers, one worker starting would fail another worker's live jobs.
+    """
+    now = utcnow()
+    result = await db.execute(
+        update(LongRunningJob)
+        .where(
+            LongRunningJob.status.in_(
+                [LongRunningJobStatus.PENDING, LongRunningJobStatus.RUNNING]
+            )
+        )
+        .values(
+            status=LongRunningJobStatus.FAILED,
+            error_message=ORPHANED_JOB_ERROR,
+            finished_at=now,
+            updated_at=now,
+        )
+    )
+    await db.commit()
+    if result.rowcount:
+        logger.warning("Marked %d orphaned long-running job(s) as failed", result.rowcount)
+    return result.rowcount

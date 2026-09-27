@@ -15,6 +15,7 @@ from app.config import settings
 from app.models.user import User
 from app.models.source import Source
 from app.models.source_revision import SourceRevision
+from app.services.long_running_job_service import fail_orphaned_jobs
 from app.services.user_service import UserService
 from app.schemas.auth import UserRegister
 
@@ -165,6 +166,7 @@ async def run_startup_tasks(db: AsyncSession) -> None:
     """
     logger.info("Running startup tasks...")
     await create_system_source(db)
+    await fail_orphaned_jobs(db)
     logger.info("Startup tasks completed")
 
 

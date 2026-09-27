@@ -4,7 +4,13 @@ import pytest
 
 from app.models.long_running_job import LongRunningJobKind, LongRunningJobStatus
 from app.schemas.long_running_job import LongRunningJobRead
-from app.services.long_running_job_service import create_job, load_owned_job, run_job
+from app.services.long_running_job_service import (
+    ORPHANED_JOB_ERROR,
+    create_job,
+    fail_orphaned_jobs,
+    load_owned_job,
+    run_job,
+)
 
 
 pytestmark = pytest.mark.asyncio
@@ -76,3 +82,40 @@ async def test_long_running_job_read_accepts_bulk_source_extraction_kind():
             "updated_at": "2026-05-03T19:12:00Z",
         }
     )
+
+
+async def test_fail_orphaned_jobs_fails_only_unfinished_jobs(db_session, test_user):
+    pending = await create_job(
+        db_session,
+        kind=LongRunningJobKind.SMART_DISCOVERY,
+        user_id=test_user.id,
+        request_payload={"entity_slugs": ["metformin"]},
+    )
+    running = await create_job(
+        db_session,
+        kind=LongRunningJobKind.BULK_SOURCE_EXTRACTION,
+        user_id=test_user.id,
+        request_payload={},
+    )
+    running.status = LongRunningJobStatus.RUNNING
+    succeeded = await create_job(
+        db_session,
+        kind=LongRunningJobKind.SOURCE_URL_EXTRACTION,
+        user_id=test_user.id,
+        request_payload={"url": "https://example.com"},
+    )
+    succeeded.status = LongRunningJobStatus.SUCCEEDED
+    await db_session.commit()
+
+    assert await fail_orphaned_jobs(db_session) == 2
+
+    for job_id in (pending.id, running.id):
+        loaded = await load_owned_job(db_session, job_id=job_id, user_id=test_user.id)
+        await db_session.refresh(loaded)
+        assert loaded.status == LongRunningJobStatus.FAILED
+        assert loaded.error_message == ORPHANED_JOB_ERROR
+        assert loaded.finished_at is not None
+    loaded = await load_owned_job(db_session, job_id=succeeded.id, user_id=test_user.id)
+    await db_session.refresh(loaded)
+    assert loaded.status == LongRunningJobStatus.SUCCEEDED
+    assert loaded.error_message is None

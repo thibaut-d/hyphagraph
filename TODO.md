@@ -8,14 +8,17 @@ stay clean and working.
   `/relations?limit=` without a trailing slash; FastAPI 307-redirected to
   `http://algiagraph.com/...`, which browsers block as mixed content, breaking
   the Relations list page. Fixed by using `/relations/?limit=`.
-- [ ] RD-2 `backend/docker-entrypoint.sh:11` — uvicorn runs without
+- [x] RD-2 `backend/docker-entrypoint.sh:11` — uvicorn runs without
   `--forwarded-allow-ips`, so `X-Forwarded-Proto` from Caddy is ignored and any
   trailing-slash redirect points to `http://`. Fix: add
-  `--proxy-headers --forwarded-allow-ips='*'` (only Caddy reaches the API).
-- [ ] RD-3 `long_running_jobs` — two `BULK_SOURCE_EXTRACTION` jobs
+  `--forwarded-allow-ips '*'` (only Caddy reaches the API). Done in the
+  entrypoint and `docker-compose.prod.yml`; redirects now use `https://`.
+- [x] RD-3 `long_running_jobs` — two `BULK_SOURCE_EXTRACTION` jobs
   (`9a8f6473…`, `a6caa0c9…`) stuck in `RUNNING` since 2026-05-03 (worker died
   on API reload). Fix: add startup recovery that marks orphaned `RUNNING` jobs
-  `FAILED` with an explicit error message, then clean up these two.
+  `FAILED` with an explicit error message, then clean up these two. Done:
+  `fail_orphaned_jobs` runs in `run_startup_tasks` (assumes one API process
+  per database); both jobs are now `FAILED`.
 - [ ] RD-4 `frontend/src/components/source-detail/SourceEvidenceSection.tsx:83`
   — `tsc` error: i18n `TFunction` not assignable to the narrower
   `(key, defaultValue?) => string` parameter. Fix: widen the parameter type.
