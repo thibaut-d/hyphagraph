@@ -32,7 +32,7 @@ export function listRelationsBySource(sourceId: string): Promise<RelationRead[]>
 }
 
 export function listRelations(limit = 50, offset = 0): Promise<PaginatedResponse<RelationRead>> {
-  return apiFetch(`/relations?limit=${limit}&offset=${offset}`);
+  return apiFetch(`/relations/?limit=${limit}&offset=${offset}`);
 }
 
 export function getRelation(relationId: string): Promise<RelationRead> {
