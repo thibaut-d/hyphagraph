@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"  # JWT signing algorithm
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30  # JWT token expiration (30 minutes)
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7  # Refresh token expiration (7 days)
+    # A just-rotated refresh token stays usable this long, as long as its successor is
+    # still valid. Covers concurrent tabs and reloads that abort an in-flight refresh
+    # (server rotated the token but the browser never stored the new cookie).
+    REFRESH_TOKEN_REUSE_GRACE_SECONDS: int = 30
     BCRYPT_ROUNDS: int = 12  # Bcrypt cost factor (10=fast for dev/test, 12=secure for prod)
 
     # Admin bootstrap credentials (used only by explicit bootstrap/setup flows)
@@ -26,6 +30,9 @@ class Settings(BaseSettings):
     RATE_LIMIT_ENABLED: bool = True  # Enable/disable rate limiting globally
     RATE_LIMIT_PER_MINUTE: int = 60  # General API rate limit (requests per minute)
     AUTH_RATE_LIMIT_PER_MINUTE: int = 5  # Auth endpoints rate limit (login, register, etc.)
+    # /auth/refresh runs on every page load and new tab (access token is memory-only),
+    # and requires a valid refresh cookie, so it gets a much higher limit than login.
+    AUTH_REFRESH_RATE_LIMIT_PER_MINUTE: int = 60
 
     # Email Configuration
     EMAIL_ENABLED: bool = False  # Enable/disable email sending

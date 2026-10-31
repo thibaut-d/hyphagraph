@@ -4,9 +4,9 @@ import logging
 from datetime import datetime, timedelta, timezone
 from inspect import isawaitable
 from typing import Protocol
-from uuid import UUID
+from uuid import UUID, uuid4
 
-from sqlalchemy import delete, or_, select
+from sqlalchemy import and_, delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -64,6 +64,41 @@ async def create_refresh_token_pair(
         raise
 
 
+def _as_utc(value: datetime) -> datetime:
+    # SQLite (tests) returns naive datetimes; Postgres returns aware ones.
+    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+
+
+async def _rotated_within_grace(service: UserServiceContext, token: RefreshToken) -> bool:
+    """Whether a revoked token may still be used because it was *just* rotated.
+
+    Accepted only if it was revoked by rotation (has a successor) less than
+    REFRESH_TOKEN_REUSE_GRACE_SECONDS ago, and the end of its rotation chain is
+    still active. Logout and password changes revoke the active successor, so
+    they keep cutting access immediately.
+    """
+    now = datetime.now(timezone.utc)
+    grace = timedelta(seconds=settings.REFRESH_TOKEN_REUSE_GRACE_SECONDS)
+    if token.replaced_by_id is None or token.revoked_at is None:
+        return False
+    if now - _as_utc(token.revoked_at) > grace:
+        return False
+
+    current = token
+    for _ in range(10):  # chain is short within the grace window; bound it anyway
+        successor = await service.db.get(RefreshToken, current.replaced_by_id)
+        if successor is None or _as_utc(successor.expires_at) <= now:
+            return False
+        if not successor.is_revoked:
+            return True
+        if successor.replaced_by_id is None or successor.revoked_at is None:
+            return False  # revoked by logout / password change, not by rotation
+        if now - _as_utc(successor.revoked_at) > grace:
+            return False
+        current = successor
+    return False
+
+
 async def refresh_access_token_with_user(
     service: UserServiceContext,
     refresh_token: str,
@@ -74,20 +109,26 @@ async def refresh_access_token_with_user(
     hash_token_for_lookup_fn=hash_token_for_lookup,
     verify_refresh_token_fn=verify_refresh_token,
 ) -> tuple[str, str, User]:
+    invalid = UnauthorizedException(
+        message="Invalid or expired refresh token",
+        details="The provided refresh token is invalid, expired, or has been revoked",
+    )
     lookup_hash = hash_token_for_lookup_fn(refresh_token)
     stmt = select(RefreshToken).where(
         RefreshToken.token_lookup_hash == lookup_hash,
-        RefreshToken.is_revoked == False,
         RefreshToken.expires_at > datetime.now(timezone.utc),
     )
     result = await service.db.execute(stmt)
     matched_token = result.scalar_one_or_none()
 
     if not matched_token or not await verify_refresh_token_fn(refresh_token, matched_token.token_hash):
-        raise UnauthorizedException(
-            message="Invalid or expired refresh token",
-            details="The provided refresh token is invalid, expired, or has been revoked",
-        )
+        raise invalid
+
+    reused_within_grace = False
+    if matched_token.is_revoked:
+        if not await _rotated_within_grace(service, matched_token):
+            raise invalid
+        reused_within_grace = True
 
     user = await service.repo.get_by_id(matched_token.user_id)
     if not user or not user.is_active:
@@ -96,10 +137,6 @@ async def refresh_access_token_with_user(
             details="The user associated with this token does not exist or is inactive",
         )
 
-    # Rotate: revoke the consumed token and issue a new one.
-    matched_token.is_revoked = True
-    matched_token.revoked_at = datetime.now(timezone.utc)
-
     new_refresh_token = generate_refresh_token_fn()
     new_token_hash = await hash_refresh_token_fn(new_refresh_token)
     new_lookup_hash = hash_token_for_lookup_fn(new_refresh_token)
@@ -107,6 +144,7 @@ async def refresh_access_token_with_user(
 
     try:
         new_db_token = RefreshToken(
+            id=uuid4(),
             user_id=user.id,
             token_lookup_hash=new_lookup_hash,
             token_hash=new_token_hash,
@@ -114,12 +152,24 @@ async def refresh_access_token_with_user(
             is_revoked=False,
         )
         service.db.add(new_db_token)
+        # Insert the successor before the UPDATE that references it (no ORM
+        # relationship, so the unit of work cannot infer the FK ordering).
+        await service.db.flush()
+        if not reused_within_grace:
+            # Rotate: revoke the consumed token and link it to its successor.
+            # On a grace reuse the existing successor stays valid (another tab
+            # or the cookie jar may hold it); we only issue an extra token.
+            matched_token.is_revoked = True
+            matched_token.revoked_at = datetime.now(timezone.utc)
+            matched_token.replaced_by_id = new_db_token.id
         await service.db.commit()
     except Exception as e:
         logger.error("Failed to rotate refresh token for user %s: %s", user.id, e, exc_info=True)
         await service.db.rollback()
         raise
 
+    if reused_within_grace:
+        logger.info("Accepted recently rotated refresh token for user %s (grace period)", user.id)
     access_token = create_access_token_fn(data={"sub": str(user.id), "tv": user.token_version})
     return access_token, new_refresh_token, user
 
@@ -173,7 +223,8 @@ async def purge_expired_tokens(db: AsyncSession) -> int:
     """Delete all expired or revoked refresh token rows.
 
     Rows are safe to delete when they are expired (expires_at < now) or
-    explicitly revoked — neither can ever authenticate again.
+    revoked — except tokens revoked within the rotation grace window, which can
+    still be exchanged once (see _rotated_within_grace).
 
     Returns:
         Number of rows deleted.
@@ -181,7 +232,15 @@ async def purge_expired_tokens(db: AsyncSession) -> int:
     stmt = delete(RefreshToken).where(
         or_(
             RefreshToken.expires_at < datetime.now(timezone.utc),
-            RefreshToken.is_revoked == True,
+            and_(
+                RefreshToken.is_revoked == True,
+                or_(
+                    RefreshToken.revoked_at.is_(None),
+                    RefreshToken.revoked_at
+                    < datetime.now(timezone.utc)
+                    - timedelta(seconds=settings.REFRESH_TOKEN_REUSE_GRACE_SECONDS),
+                ),
+            ),
         )
     )
     result = await db.execute(stmt)

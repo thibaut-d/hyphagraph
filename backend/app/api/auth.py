@@ -98,7 +98,7 @@ async def get_current_user_info(current_user: User = Depends(get_current_user)):
 
 
 @router.post("/refresh", response_model=Token)
-@limiter.limit(f"{settings.AUTH_RATE_LIMIT_PER_MINUTE}/minute")
+@limiter.limit(f"{settings.AUTH_REFRESH_RATE_LIMIT_PER_MINUTE}/minute")
 async def refresh_access_token(
     request: Request,
     response: Response,

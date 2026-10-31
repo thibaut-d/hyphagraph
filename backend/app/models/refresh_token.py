@@ -63,3 +63,11 @@ class RefreshToken(Base):
         DateTime(timezone=True),
         nullable=True,
     )
+
+    # Successor issued when this token was rotated (NULL if never rotated, or if it
+    # was revoked by logout / password change). Used for the reuse grace period.
+    replaced_by_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("refresh_tokens.id", ondelete="SET NULL"),
+        nullable=True,
+    )
