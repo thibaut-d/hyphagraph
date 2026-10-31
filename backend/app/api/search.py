@@ -11,8 +11,6 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 
 from app.api.service_dependencies import get_search_service
-from app.dependencies.auth import get_current_user
-from app.models.user import User
 from app.schemas.search import (
     SearchFilters,
     SearchResponse,
@@ -28,10 +26,12 @@ router = APIRouter(prefix="/search", tags=["search"])
 async def search(
     filters: Annotated[SearchFilters, Depends()],
     service: SearchService = Depends(get_search_service),
-    _current_user: User = Depends(get_current_user),
 ):
     """
     Unified search across entities, sources, and relations.
+
+    Intentionally unauthenticated: the site is publicly readable and search only
+    returns current, confirmed revisions (same visibility as the public list endpoints).
 
     Performs full-text search with relevance ranking across:
     - **Entities**: slug, summary, terms/aliases
@@ -82,10 +82,11 @@ async def search(
 async def get_suggestions(
     request: Annotated[SearchSuggestionRequest, Depends()],
     service: SearchService = Depends(get_search_service),
-    _current_user: User = Depends(get_current_user),
 ):
     """
     Get autocomplete suggestions for search queries.
+
+    Intentionally unauthenticated (public read access, confirmed revisions only).
 
     Provides fast typeahead suggestions based on prefix matching:
     - **Entities**: Matches entity slugs starting with the query
