@@ -9,6 +9,7 @@ import { render as rtlRender, screen, fireEvent } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { BrowserRouter, MemoryRouter } from "react-router-dom";
 import { Layout } from "../Layout";
+import { siteDisplayName } from "../../config/site";
 import { NotificationProvider } from "../../notifications/NotificationContext";
 import i18n from "i18next";
 
@@ -80,7 +81,7 @@ describe("Layout", () => {
         </BrowserRouter>
       );
 
-      expect(screen.getByText("HyphaGraph")).toBeInTheDocument();
+      expect(screen.getByText(siteDisplayName)).toBeInTheDocument();
     });
 
     it("renders all menu items", () => {
@@ -96,7 +97,8 @@ describe("Layout", () => {
       expect(screen.getByText("Entities")).toBeInTheDocument();
       expect(screen.getByText("Sources")).toBeInTheDocument();
       expect(screen.getByText("Search")).toBeInTheDocument();
-      expect(screen.getByText("Account")).toBeInTheDocument();
+      // "My account" nav item was removed (login button / profile menu cover it).
+      expect(screen.queryByText("Account")).not.toBeInTheDocument();
     });
 
     it("renders global search component", () => {
@@ -210,7 +212,8 @@ describe("Layout", () => {
       expect(screen.getByText("Entities")).toBeInTheDocument();
       expect(screen.getByText("Sources")).toBeInTheDocument();
       expect(screen.getByText("Search")).toBeInTheDocument();
-      expect(screen.getByText("Account")).toBeInTheDocument();
+      // "My account" nav item was removed (login button / profile menu cover it).
+      expect(screen.queryByText("Account")).not.toBeInTheDocument();
     });
 
     it("renders navigation on entities route", () => {
@@ -250,7 +253,6 @@ describe("Layout", () => {
       expect(screen.getByText("Entities").closest("a")).toHaveAttribute("href", "/entities");
       expect(screen.getByText("Sources").closest("a")).toHaveAttribute("href", "/sources");
       expect(screen.getByText("Search").closest("a")).toHaveAttribute("href", "/search");
-      expect(screen.getByText("Account").closest("a")).toHaveAttribute("href", "/account");
     });
 
     it("title links to home page", () => {
@@ -262,7 +264,7 @@ describe("Layout", () => {
         </BrowserRouter>
       );
 
-      const titleLink = screen.getByText("HyphaGraph").closest("a");
+      const titleLink = screen.getByText(siteDisplayName).closest("a");
       expect(titleLink).toHaveAttribute("href", "/");
     });
 

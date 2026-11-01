@@ -14,7 +14,9 @@ import * as entityTermsApi from "../../api/entityTerms";
 // Mock the API module
 vi.mock("../../api/entityTerms");
 
-// Mock i18n
+// Mock i18n. The component only shows aliases in the current UI language (or
+// language-less ones), so tests can switch the mocked UI language.
+const mockI18n = vi.hoisted(() => ({ language: "en" }));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string, defaultValue?: string) => {
@@ -31,7 +33,7 @@ vi.mock("react-i18next", () => ({
       };
       return translations[key] || defaultValue || key;
     },
-    i18n: { language: "en" },
+    i18n: mockI18n,
   }),
   initReactI18next: { type: '3rdParty', init: () => {} },
 }));
@@ -56,6 +58,7 @@ describe("EntityTermsDisplay", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockI18n.language = "en";
   });
 
   describe("Loading state", () => {
@@ -180,7 +183,7 @@ describe("EntityTermsDisplay", () => {
     it("does not repeat the display name inside aliases", async () => {
       const mockTerms = [
         createMockTerm({ id: "term-1", term: "Paracetamol", is_display_name: true }),
-        createMockTerm({ id: "term-2", term: "Doliprane", language: "fr" }),
+        createMockTerm({ id: "term-2", term: "Doliprane", language: "en" }),
       ];
 
       vi.spyOn(entityTermsApi, "listEntityTerms").mockResolvedValue(mockTerms);
@@ -194,7 +197,7 @@ describe("EntityTermsDisplay", () => {
       expect(screen.queryByText("Paracetamol")).not.toBeInTheDocument();
     });
 
-    it("shows language labels in full mode", async () => {
+    it("shows only aliases in the current UI language, with their language label", async () => {
       const mockTerms = [
         createMockTerm({ id: "term-1", term: "Paracetamol", language: "en" }),
         createMockTerm({ id: "term-2", term: "Paracétamol", language: "fr" }),
@@ -206,12 +209,30 @@ describe("EntityTermsDisplay", () => {
 
       await waitFor(() => {
         expect(screen.getByText("Paracetamol")).toBeInTheDocument();
+      });
+
+      expect(screen.getByText("English")).toBeInTheDocument();
+      expect(screen.queryByText("Paracétamol")).not.toBeInTheDocument();
+      expect(screen.queryByText("French")).not.toBeInTheDocument();
+    });
+
+    it("shows French aliases when the UI is in French", async () => {
+      mockI18n.language = "fr-FR";
+      const mockTerms = [
+        createMockTerm({ id: "term-1", term: "Paracetamol", language: "en" }),
+        createMockTerm({ id: "term-2", term: "Paracétamol", language: "fr" }),
+      ];
+
+      vi.spyOn(entityTermsApi, "listEntityTerms").mockResolvedValue(mockTerms);
+
+      renderWithNotifications(<EntityTermsDisplay entityId={mockEntityId} compact={false} />);
+
+      await waitFor(() => {
         expect(screen.getByText("Paracétamol")).toBeInTheDocument();
       });
 
-      // Check for language chips
-      expect(screen.getAllByText("English").length).toBeGreaterThan(0);
-      expect(screen.getAllByText("French").length).toBeGreaterThan(0);
+      expect(screen.getByText("French")).toBeInTheDocument();
+      expect(screen.queryByText("Paracetamol")).not.toBeInTheDocument();
     });
 
     it("does not show language chip when language is null", async () => {
@@ -249,39 +270,33 @@ describe("EntityTermsDisplay", () => {
   });
 
   describe("Language label mapping", () => {
-    it("maps common language codes to labels", async () => {
-      const mockTerms = [
-        createMockTerm({ id: "term-1", term: "English", language: "en" }),
-        createMockTerm({ id: "term-2", term: "French", language: "fr" }),
-        createMockTerm({ id: "term-3", term: "Spanish", language: "es" }),
-        createMockTerm({ id: "term-4", term: "German", language: "de" }),
-        createMockTerm({ id: "term-5", term: "Italian", language: "it" }),
-        createMockTerm({ id: "term-6", term: "Portuguese", language: "pt" }),
-        createMockTerm({ id: "term-7", term: "Paracetamolum", language: "la" }),
-      ];
-
-      vi.spyOn(entityTermsApi, "listEntityTerms").mockResolvedValue(mockTerms);
+    it.each([
+      ["en", "English"],
+      ["fr", "French"],
+      ["es", "Spanish"],
+      ["de", "German"],
+      ["it", "Italian"],
+      ["pt", "Portuguese"],
+      ["la", "Latin"],
+    ])("maps language code %s to %s", async (code, label) => {
+      mockI18n.language = code;
+      vi.spyOn(entityTermsApi, "listEntityTerms").mockResolvedValue([
+        createMockTerm({ id: "term-1", term: "Paracetamolum", language: code }),
+      ]);
 
       renderWithNotifications(<EntityTermsDisplay entityId={mockEntityId} compact={false} />);
 
       await waitFor(() => {
-        expect(screen.getAllByText("English").length).toBeGreaterThan(0);
+        expect(screen.getByText("Paracetamolum")).toBeInTheDocument();
       });
-
-      // Check language labels
-      expect(screen.getAllByText("English").length).toBeGreaterThan(0);
-      expect(screen.getAllByText("French").length).toBeGreaterThan(0);
-      expect(screen.getAllByText("Spanish").length).toBeGreaterThan(0);
-      expect(screen.getAllByText("German").length).toBeGreaterThan(0);
-      expect(screen.getAllByText("Italian").length).toBeGreaterThan(0);
-      expect(screen.getAllByText("Portuguese").length).toBeGreaterThan(0);
-      expect(screen.getByText("Latin")).toBeInTheDocument();
+      expect(screen.getByText(label)).toBeInTheDocument();
     });
 
     it("uppercases unknown language codes", async () => {
       const mockTerms = [
         createMockTerm({ id: "term-1", term: "Unknown", language: "xx" }),
       ];
+      mockI18n.language = "xx";
 
       vi.spyOn(entityTermsApi, "listEntityTerms").mockResolvedValue(mockTerms);
 

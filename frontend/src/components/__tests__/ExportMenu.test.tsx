@@ -29,8 +29,22 @@ describe("ExportMenu", () => {
     fireEvent.click(screen.getByText("Export as JSON"));
 
     await waitFor(() => {
-      expect(downloadExportFile).toHaveBeenCalledWith("entities", "json");
+      expect(downloadExportFile).toHaveBeenCalledWith("entities", "json", undefined);
       expect(onExport).toHaveBeenCalledWith("json");
+    });
+  });
+
+  it("forwards filter params so only the filtered data is exported", async () => {
+    (downloadExportFile as any).mockResolvedValue("entities.json");
+    const filterParams = { ui_category_id: ["drug"], search: "para" };
+
+    render(<ExportMenu exportType="entities" filterParams={filterParams} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /export/i }));
+    fireEvent.click(screen.getByText("Export as JSON"));
+
+    await waitFor(() => {
+      expect(downloadExportFile).toHaveBeenCalledWith("entities", "json", filterParams);
     });
   });
 });

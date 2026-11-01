@@ -39,7 +39,8 @@ describe("SourceDetailView errors", () => {
     renderSourceDetailView(mockSource.id);
 
     await waitFor(() => {
-      expect(screen.getByText("Test Study on Aspirin")).toBeInTheDocument();
+      // The title is shown in the breadcrumb and the page heading; target the heading.
+      expect(screen.getByRole("heading", { name: "Test Study on Aspirin" })).toBeInTheDocument();
     });
 
     expect(screen.getAllByText("Too many requests. Please try again later.").length).toBeGreaterThan(0);
