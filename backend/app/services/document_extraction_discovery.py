@@ -466,16 +466,20 @@ async def run_smart_discovery(
             )
         )
 
-    sorted_results = sorted(
-        [r for r in all_results if not r.already_imported],
-        key=lambda item: (item.trust_level, item.relevance_score),
-        reverse=True,
-    )
+    def rank(items: list[SmartDiscoveryItem]) -> list[SmartDiscoveryItem]:
+        return sorted(items, key=lambda item: (item.trust_level, item.relevance_score), reverse=True)
+
+    # The max_results budget applies to new articles only, so already-imported ones
+    # never crowd them out. Already-imported articles are still returned (flagged,
+    # after the new ones) so the UI can show them as "already in your database".
+    new_results = rank([r for r in all_results if not r.already_imported])[:max_results]
+    imported_results = rank([r for r in all_results if r.already_imported])
+    results = new_results + imported_results
     return SmartDiscoverySummary(
         entity_slugs=entity_slugs,
         query_used=query,
-        total_found=len(sorted_results),
-        results=sorted_results[:max_results],
+        total_found=len(results),
+        results=results,
         databases_searched=databases_searched,
     )
 

@@ -353,3 +353,38 @@ class TestRunSmartDiscovery:
 
         assert len(result.results) == 1
         assert result.results[0].relevance_score > 0
+
+
+@pytest.mark.asyncio
+class TestSmartDiscoveryBudgetWithImported:
+    async def test_imported_articles_do_not_consume_budget(self, db_session):
+        """Already-imported articles are listed after the new ones and don't count toward max_results."""
+        from app.services.source_service import SourceService
+        from app.schemas.source import SourceWrite
+
+        await SourceService(db_session).create(
+            SourceWrite(
+                kind="article",
+                title="Imported aspirin study",
+                url="https://pubmed.ncbi.nlm.nih.gov/10001/",
+                source_metadata={"pmid": "10001"},
+            ),
+            user_id=None,
+        )
+        articles = [_make_article(pmid, f"Aspirin study {pmid}") for pmid in ("10001", "10002", "10003")]
+        factory, _ = _make_fetcher_factory(["10001", "10002", "10003"], 3, articles)
+
+        result = await run_smart_discovery(
+            db_session,
+            entity_slugs=["aspirin"],
+            max_results=2,
+            min_quality=0.0,
+            databases=["pubmed"],
+            user_id=None,
+            pubmed_fetcher_factory=factory,
+            trust_level_resolver=_constant_trust(0.8),
+        )
+
+        assert [r.already_imported for r in result.results] == [False, False, True]
+        assert {r.pmid for r in result.results[:2]} == {"10002", "10003"}
+        assert result.results[2].pmid == "10001"
