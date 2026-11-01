@@ -87,7 +87,8 @@ describe("ImportEntitiesView — Stage 1 (upload)", () => {
 
   it("shows the CSV format hint by default", () => {
     renderView();
-    expect(screen.getByText("import.csv_hint")).toBeInTheDocument();
+    // The hint shares its Alert with the example-row label, so match by substring.
+    expect(screen.getByText(/import\.csv_hint/)).toBeInTheDocument();
   });
 
   it("switches to JSON hint when JSON toggle is clicked", () => {

@@ -21,7 +21,8 @@ describe("EvidenceView navigation", () => {
     });
 
     expect(screen.getByText("menu.entities")).toBeInTheDocument();
-    expect(screen.getAllByText("Paracetamol").length).toBeGreaterThan(0);
+    // Entities no longer carry a label: the breadcrumb shows the slug.
+    expect(screen.getAllByText("paracetamol").length).toBeGreaterThan(0);
     expect(screen.getByText("evidence.title")).toBeInTheDocument();
     expect(screen.getByText("common.back")).toBeInTheDocument();
   });
