@@ -675,3 +675,90 @@ def test_raise_internal_api_exception_uses_structured_app_exception():
     assert exc_info.value.error_detail.code == ErrorCode.INTERNAL_SERVER_ERROR
     assert exc_info.value.error_detail.message == "Failed to extract from URL"
     assert exc_info.value.error_detail.context == {"source_id": "source-123"}
+
+
+@pytest.mark.parametrize("null_like", ["null", "None", "N/A", "", "  not reported  "])
+def test_validate_batch_extraction_treats_null_like_strings_as_missing(null_like):
+    """Models sometimes emit the string "null" instead of JSON null for optional fields.
+
+    Seen in production with gpt-5.4: finding_polarity="null" and study_design="null"
+    made the whole batch response fail validation, losing the study's extraction.
+    """
+    result = validate_batch_extraction(
+        {
+            "entities": [
+                {
+                    "slug": "baduanjin",
+                    "summary": "Baduanjin is a qigong exercise evaluated in the source.",
+                    "category": "treatment",
+                    "confidence": "high",
+                    "text_span": "Baduanjin",
+                },
+                {
+                    "slug": "fibromyalgia",
+                    "summary": "Fibromyalgia is the condition studied in the source.",
+                    "category": "disease",
+                    "confidence": "high",
+                    "text_span": "fibromyalgia",
+                },
+            ],
+            "relations": [
+                {
+                    "relation_type": "treats",
+                    "roles": [
+                        {"entity_slug": "baduanjin", "role_type": "agent"},
+                        {"entity_slug": "fibromyalgia", "role_type": "target"},
+                    ],
+                    "confidence": "medium",
+                    "text_span": "Baduanjin alleviates pain in fibromyalgia",
+                    "evidence_context": {
+                        "statement_kind": "finding",
+                        "finding_polarity": null_like,
+                        "evidence_strength": null_like,
+                        "study_design": null_like,
+                        "sample_size": null_like,
+                    },
+                }
+            ],
+        }
+    )
+
+    context = result.relations[0].evidence_context
+    assert context is not None
+    assert context.finding_polarity is None
+    assert context.evidence_strength is None
+    assert context.study_design is None
+    assert context.sample_size is None
+
+
+def test_validate_batch_extraction_still_rejects_real_invalid_enum_values():
+    """Only null-like strings are softened; genuinely wrong values must still fail."""
+    with pytest.raises(ValidationError):
+        validate_batch_extraction(
+            {
+                "entities": [
+                    {
+                        "slug": "baduanjin",
+                        "summary": "Baduanjin is a qigong exercise evaluated in the source.",
+                        "category": "treatment",
+                        "confidence": "high",
+                        "text_span": "Baduanjin",
+                    },
+                ],
+                "relations": [
+                    {
+                        "relation_type": "treats",
+                        "roles": [
+                            {"entity_slug": "baduanjin", "role_type": "agent"},
+                            {"entity_slug": "baduanjin", "role_type": "target"},
+                        ],
+                        "confidence": "medium",
+                        "text_span": "Baduanjin alleviates pain",
+                        "evidence_context": {
+                            "statement_kind": "finding",
+                            "finding_polarity": "definitely-yes",
+                        },
+                    }
+                ],
+            }
+        )

@@ -398,6 +398,22 @@ EvidenceStrength = Literal[
 ]
 
 
+_NULL_LIKE_STRINGS = {"", "null", "none", "n/a", "na", "not specified", "not reported", "unspecified"}
+
+
+def _null_like_to_none(value: object) -> object:
+    """
+    Turn null-ish strings into a real None for optional fields.
+
+    Models sometimes emit the JSON string "null" (or "none", "N/A") instead of
+    JSON null for an optional enum/number. Without this, Pydantic rejects the
+    whole batch response and the study yields no extraction at all.
+    """
+    if isinstance(value, str) and value.strip().lower() in _NULL_LIKE_STRINGS:
+        return None
+    return value
+
+
 def _normalize_evidence_strength_alias(value: object) -> object:
     """
     Normalize common confidence-style aliases into the evidence-strength vocabulary.
@@ -554,20 +570,25 @@ class ExtractedRelationEvidenceContext(BaseModel):
     def normalize_statement_kind(cls, value: object) -> object:
         return _normalize_statement_kind(value)
 
+    @field_validator("finding_polarity", mode="before")
+    @classmethod
+    def normalize_finding_polarity(cls, value: object) -> object:
+        return _null_like_to_none(value)
+
     @field_validator("study_design", mode="before")
     @classmethod
     def normalize_study_design(cls, value: object) -> object:
-        return _normalize_study_design(value)
+        return _normalize_study_design(_null_like_to_none(value))
 
     @field_validator("evidence_strength", mode="before")
     @classmethod
     def normalize_evidence_strength(cls, value: object) -> object:
-        return _normalize_evidence_strength_alias(value)
+        return _normalize_evidence_strength_alias(_null_like_to_none(value))
 
     @field_validator("sample_size", mode="before")
     @classmethod
     def normalize_sample_size(cls, value: object) -> object:
-        return _normalize_sample_size(value)
+        return _normalize_sample_size(_null_like_to_none(value))
 
     statement_kind: StatementKind = Field(
         ...,
